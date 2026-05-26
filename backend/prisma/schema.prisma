@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////
+// TENANT
+//////////////////////
+model Tenant {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  type String
+
+  users         User[]
+
+  logoUrl       String?
+  backgroundUrl String?
+  academicYears AcademicYear[]
+  classes       Class[]
+  sections      Section[]
+  students      Student[]
+  subjects      Subject[]
+  teachers      Teacher[]
+  timetables Timetable[]
+  payments Payment[]
+  enrollments   Enrollment[]
+  isActive Boolean @default(true)
+ createdAt DateTime @default(now())
+}
+
+//////////////////////
+// USER
+//////////////////////
+model User {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  email    String @unique
+  password String
+  role     String
+
+  tenantId String? @db.ObjectId
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+  isFirstLogin Boolean @default(true)
+
+  // 🔥 NEW: Forgot Password Fields
+  resetOtp        String?
+  resetOtpExpiry  DateTime?
+
+  createdAt DateTime @default(now())
+  @@map("User")
+}
+
+//////////////////////
+// ACADEMIC YEAR
+//////////////////////
+model AcademicYear {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+
+  tenantId    String       @db.ObjectId
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  enrollments Enrollment[]
+  classes     Class[]
+  students    Student[]
+  sections    Section[]
+  subjects    Subject[]
+  teachers    Teacher[]
+  createdAt   DateTime     @default(now())
+}
+
+//////////////////////
+// CLASS
+//////////////////////
+model Class {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  tenantId       String         @db.ObjectId
+  academicYearId String         @db.ObjectId
+  teachers       TeacherClass[]
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
+  subjects       Subject[]
+  sections       Section[]
+  enrollments    Enrollment[]
+  timetables Timetable[]
+  createdAt      DateTime       @default(now())
+}
+
+//////////////////////
+// SECTION
+//////////////////////
+model Section {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  classId        String @db.ObjectId
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+timetables Timetable[]
+  class        Class        @relation(fields: [classId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  enrollments  Enrollment[]
+  createdAt    DateTime     @default(now())
+}
+
+//////////////////////
+// STUDENT
+//////////////////////
+model Student {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Basic Info
+  firstName String
+  lastName  String
+  gender    String
+  dob       DateTime
+
+  // Contact
+  email   String
+  phone   String
+  address String
+
+  // Academic
+  admissionNo String
+  rollNumber  String?
+
+  // Parent
+  fatherName  String
+  motherName  String
+  parentPhone String
+
+  // Tenant + Academic Year
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  enrollments Enrollment[]
+
+  isDeleted Boolean @default(false)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ studentHistories StudentHistory[]
+  @@unique([email, tenantId])
+  @@unique([admissionNo, tenantId])
+}
+
+//////////////////////
+// SUBJECT
+//////////////////////
+model Subject {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  classId        String           @db.ObjectId
+  tenantId       String           @db.ObjectId
+  academicYearId String           @db.ObjectId
+  teachers       TeacherSubject[]
+  timetables Timetable[]
+  class          Class            @relation(fields: [classId], references: [id])
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id])
+  createdAt      DateTime         @default(now())
+}
+
+//////////////////////
+// TEACHER
+//////////////////////
+model Teacher {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name  String
+  email String @unique
+  phone String
+
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+timetables Timetable[]
+  subjects TeacherSubject[]
+  classes  TeacherClass[]
+isDeleted Boolean @default(false)
+deletedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// TeacherSubject
+//////////////////////
+model TeacherSubject {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  teacherId String @db.ObjectId
+  subjectId String @db.ObjectId
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+//////////////////////
+// TeacherClass
+//////////////////////
+model TeacherClass {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  teacherId String @db.ObjectId
+  classId   String @db.ObjectId
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+///////////////
+// Atendence Module
+////////////////
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model Attendance {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  studentId String @db.ObjectId
+  classId   String @db.ObjectId
+  sectionId String @db.ObjectId
+  tenantId  String @db.ObjectId
+
+  date   DateTime
+  status AttendanceStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+isDeleted Boolean @default(false)
+deletedAt DateTime?
+  @@index([studentId, date])
+}
+
+/////////////
+// time table
+/////////////
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+}
+
+model Timetable {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  classId   String @db.ObjectId
+  sectionId String @db.ObjectId
+  subjectId String @db.ObjectId
+  teacherId String @db.ObjectId
+  tenantId  String @db.ObjectId
+isDeleted Boolean @default(false)
+deletedAt DateTime?
+  day    DayOfWeek
+  period Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  class   Class   @relation(fields: [classId], references: [id])
+  section Section @relation(fields: [sectionId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  @@index([classId, sectionId, day, period])
+}
+
+/////////////
+//exam
+/////////////
+model Exam {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  name     String // FA1 / Mid Term / Semester 1
+  type     String? // optional (FA / SA / TERM / SEM)
+  classId  String  @db.ObjectId
+  tenantId String  @db.ObjectId
+isDeleted Boolean @default(false)
+deletedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model ExamSubject {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  examId    String @db.ObjectId
+  subjectId String @db.ObjectId
+  maxMarks  Int
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+model Result {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  studentId     String @db.ObjectId
+  examId        String @db.ObjectId
+  subjectId     String @db.ObjectId
+  marksObtained Float
+  tenantId      String @db.ObjectId
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+/////////////////
+// fee structure
+/////////////////
+model FeeStructure {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String
+  academicYearId String
+  classId        String
+
+  name      String
+  amount    Float
+  frequency String
+
+  createdAt   DateTime     @default(now())
+  studentFees StudentFee[]
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+/////////////////////
+//enrolment studentI
+/////////////////////
+model Enrollment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId      String @db.ObjectId
+  classId        String @db.ObjectId
+  sectionId      String @db.ObjectId
+  academicYearId String @db.ObjectId
+  tenantId       String @db.ObjectId
+
+  student      Student      @relation(fields: [studentId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
+  section      Section      @relation(fields: [sectionId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+
+  studentFees StudentFee[]
+
+  createdAt DateTime @default(now())
+isDeleted Boolean @default(false)
+deletedAt DateTime?
+  @@unique([studentId, academicYearId])
+}
+
+////////////////
+// student fee
+////////////////
+model StudentFee {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  enrollmentId   String @db.ObjectId
+  feeStructureId String @db.ObjectId
+
+  totalAmount   Float
+  paidAmount    Float @default(0)
+  pendingAmount Float
+
+  status String
+
+  dueDate DateTime
+
+  tenantId     String
+  createdAt    DateTime     @default(now())
+  enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  payments     Payment[]
+  isDeleted Boolean @default(false)
+deletedAt DateTime?
+}
+
+//////////////
+//payment
+//////////////
+enum PaymentMethod {
+  CASH
+  ONLINE
+}
+model Payment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  /////////////////////////
+  // RELATIONS
+  /////////////////////////
+  studentFeeId String @db.ObjectId
+  studentFee   StudentFee @relation(fields: [studentFeeId], references: [id])
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  /////////////////////////
+  // PAYMENT INFO
+  /////////////////////////
+  amount Float
+  method PaymentMethod
+  reference String?
+
+  /////////////////////////
+  // META
+  /////////////////////////
+  receiptNo String @unique
+  paymentDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  isDeleted Boolean @default(false)
+  deletedAt DateTime?
+
+  /////////////////////////
+  // INDEXES
+  /////////////////////////
+  @@index([tenantId])
+  @@index([studentFeeId])
+}
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  action    String   // CREATE / UPDATE / DELETE
+  entity    String   // STUDENT / FEE / CLASS
+  entityId  String
+
+  userId    String?
+  data      Json?
+
+  createdAt DateTime @default(now())
+}
+/////////////////////
+//student history
+////////////////////////
+model StudentHistory {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId String @db.ObjectId
+  tenantId  String @db.ObjectId
+
+  action String   // CREATED, UPDATED, DELETED, RESTORED, PROMOTED
+  message String
+
+  performedBy String // userId
+
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  @@index([studentId])
+}

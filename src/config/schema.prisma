@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////
+// TENANT
+//////////////////////
+model Tenant {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  type String
+
+  users         User[]
+  academicYears AcademicYear[]
+  classes       Class[]
+  sections      Section[]
+  students      Student[]
+  subjects      Subject[]
+  teachers      Teacher[]
+  enrollments   Enrollment[]
+}
+
+//////////////////////
+// USER
+//////////////////////
+model User {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  email    String
+  password String
+  role     String
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([email, tenantId])
+}
+
+//////////////////////
+// ACADEMIC YEAR
+//////////////////////
+model AcademicYear {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  classes     Class[]
+  sections    Section[]
+  subjects    Subject[]
+  teachers    Teacher[]
+  students    Student[]
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// CLASS
+//////////////////////
+model Class {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  subjects    Subject[]
+  sections    Section[]
+  teachers    TeacherClass[]
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// SECTION
+//////////////////////
+model Section {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  classId        String @db.ObjectId
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  class        Class        @relation(fields: [classId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  enrollments Enrollment[]
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// STUDENT
+//////////////////////
+model Student {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  firstName String
+  lastName  String
+  gender    String
+  dob       DateTime
+
+  email   String
+  phone   String
+  address String
+
+  admissionNo String
+  rollNumber  String?
+
+  fatherName  String
+  motherName  String
+  parentPhone String
+
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  enrollments Enrollment[]
+
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([email, tenantId])
+  @@unique([admissionNo, tenantId])
+  @@index([tenantId])
+}
+
+//////////////////////
+// SUBJECT
+//////////////////////
+model Subject {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  classId        String @db.ObjectId
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  class        Class        @relation(fields: [classId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  teachers TeacherSubject[]
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////
+// TEACHER
+//////////////////////
+model Teacher {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name  String
+  email String
+  phone String
+
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  subjects TeacherSubject[]
+  classes  TeacherClass[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([email, tenantId])
+}
+
+//////////////////////
+// RELATIONS
+//////////////////////
+model TeacherSubject {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  teacherId String @db.ObjectId
+  subjectId String @db.ObjectId
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+}
+
+model TeacherClass {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  teacherId String @db.ObjectId
+  classId   String @db.ObjectId
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+}
+
+//////////////////////
+// ENROLLMENT
+//////////////////////
+model Enrollment {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId      String @db.ObjectId
+  classId        String @db.ObjectId
+  sectionId      String @db.ObjectId
+  academicYearId String @db.ObjectId
+  tenantId       String @db.ObjectId
+
+  student      Student      @relation(fields: [studentId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
+  section      Section      @relation(fields: [sectionId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+
+  studentFees StudentFee[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, academicYearId])
+  @@index([tenantId])
+}
+
+//////////////////////
+// ATTENDANCE
+//////////////////////
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model Attendance {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+
+  enrollmentId String @db.ObjectId
+  tenantId     String @db.ObjectId
+
+  date   DateTime
+  status AttendanceStatus
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([enrollmentId, date])
+}
+
+//////////////////////
+// TIMETABLE
+//////////////////////
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+}
+
+model Timetable {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  classId   String @db.ObjectId
+  sectionId String @db.ObjectId
+  subjectId String @db.ObjectId
+  teacherId String @db.ObjectId
+  tenantId  String @db.ObjectId
+
+  day    DayOfWeek
+  period Int
+
+  createdAt DateTime @default(now())
+
+  @@index([classId, sectionId, day, period])
+}
+
+//////////////////////
+// EXAM
+//////////////////////
+model Exam {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name   String
+  type   String?
+  classId String @db.ObjectId
+  tenantId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+}
+
+model ExamSubject {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  examId    String @db.ObjectId
+  subjectId String @db.ObjectId
+  maxMarks  Int
+}
+
+model Result {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId String @db.ObjectId
+  examId    String @db.ObjectId
+  subjectId String @db.ObjectId
+
+  marksObtained Float
+  tenantId      String @db.ObjectId
+}
+
+//////////////////////
+// FEES
+//////////////////////
+enum FeeStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+model FeeStructure {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+  classId        String @db.ObjectId
+
+  name      String
+  amount    Float
+  frequency String
+
+  class Class @relation(fields: [classId], references: [id])
+
+  studentFees StudentFee[]
+
+  createdAt DateTime @default(now())
+}
+
+model StudentFee {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  enrollmentId   String @db.ObjectId
+  feeStructureId String @db.ObjectId
+
+  totalAmount   Float
+  paidAmount    Float @default(0)
+  pendingAmount Float
+
+  status FeeStatus
+
+  dueDate DateTime
+
+  tenantId String @db.ObjectId
+
+  enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model Payment {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentFeeId String @db.ObjectId
+
+  amount      Float
+  paymentDate DateTime @default(now)
+
+  method    String
+  reference String?
+
+  tenantId String @db.ObjectId
+
+  studentFee StudentFee @relation(fields: [studentFeeId], references: [id])
+
+  @@index([tenantId])
+}

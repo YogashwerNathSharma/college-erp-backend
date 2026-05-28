@@ -1,65 +1,93 @@
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient().$extends({
 
-//////////////////////////
-// SOFT DELETE FILTER
-//////////////////////////
-prisma.$use(async (params, next) => {
-  const modelsWithSoftDelete = ["Student", "Teacher", "FeeStructure"];
+  query: {
 
-  if (
-    (params.action === "findMany" || params.action === "findFirst") &&
-    modelsWithSoftDelete.includes(params.model || "")
-  ) {
-    if (!params.args) params.args = {};
-    if (!params.args.where) params.args.where = {};
+    /////////////////////////////////////////////////////////
+    // SOFT DELETE FILTER
+    /////////////////////////////////////////////////////////
 
-    if (!("isDeleted" in params.args.where)) {
-      params.args.where.isDeleted = false;
-    }
-  }
+    student: {
 
-  return next(params);
-});
+      async findMany({ args, query }) {
 
-//////////////////////////
-// AUTO AUDIT LOG
-//////////////////////////
-prisma.$use(async (params, next) => {
-  const result = await next(params);
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
 
-  // ❌ prevent infinite loop
-  if (params.model === "AuditLog") return result;
+        return query(args);
 
-  const actions = ["create", "update", "delete"];
+      },
 
-  if (actions.includes(params.action)) {
-    try {
-      let actionType = params.action.toUpperCase();
+      async findFirst({ args, query }) {
 
-      // 🔥 detect soft delete
-      if (
-        params.action === "update" &&
-        params.args?.data?.isDeleted === true
-      ) {
-        actionType = "DELETE";
-      }
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
 
-      await prisma.auditLog.create({
-        data: {
-          action: actionType,
-          entity: params.model || "UNKNOWN",
-          entityId: result?.id || "",
-          data: params.args?.data || {},
-        },
-      });
-    } catch (err) {
-      console.error("Auto audit failed", err);
-    }
-  }
+        return query(args);
 
-  return result;
+      },
+
+    },
+
+    teacher: {
+
+      async findMany({ args, query }) {
+
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
+
+        return query(args);
+
+      },
+
+      async findFirst({ args, query }) {
+
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
+
+        return query(args);
+
+      },
+
+    },
+
+    feeStructure: {
+
+      async findMany({ args, query }) {
+
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
+
+        return query(args);
+
+      },
+
+      async findFirst({ args, query }) {
+
+        args.where = {
+          ...args.where,
+          isDeleted: false,
+        };
+
+        return query(args);
+
+      },
+
+    },
+
+  },
+
 });
 
 export default prisma;

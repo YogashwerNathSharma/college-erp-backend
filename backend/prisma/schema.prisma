@@ -11,25 +11,92 @@ datasource db {
 // TENANT
 //////////////////////
 model Tenant {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  //////////////////////////////////////////////////
+  // BASIC INFO
+  //////////////////////////////////////////////////
+
   name String
+
   type String
 
-  users         User[]
+  logoUrl String?
 
-  logoUrl       String?
   backgroundUrl String?
+
+  //////////////////////////////////////////////////
+  // USERS
+  //////////////////////////////////////////////////
+
+  users User[]
+
+  //////////////////////////////////////////////////
+  // ACADEMICS
+  //////////////////////////////////////////////////
+
   academicYears AcademicYear[]
-  classes       Class[]
-  sections      Section[]
-  students      Student[]
-  subjects      Subject[]
-  teachers      Teacher[]
+
+  classes Class[]
+
+  sections Section[]
+
+  students Student[]
+
+  subjects Subject[]
+
+  teachers Teacher[]
+
   timetables Timetable[]
+
+  enrollments Enrollment[]
+
+  studentHistories StudentHistory[]
+
+  //////////////////////////////////////////////////
+  // PAYMENTS
+  //////////////////////////////////////////////////
+
   payments Payment[]
-  enrollments   Enrollment[]
+
+  //////////////////////////////////////////////////
+  // SUBSCRIPTIONS
+  //////////////////////////////////////////////////
+
+  subscriptions TenantSubscription[]
+
+  //////////////////////////////////////////////////
+  // CURRENT ACTIVE SUBSCRIPTION
+  //////////////////////////////////////////////////
+
+  currentSubscriptionId String? @db.ObjectId
+
+
+  //////////////////////////////////////////////////
+  // SUBSCRIPTION LIMITS
+  //////////////////////////////////////////////////
+
+  maxStudents Int @default(0)
+
+  maxTeachers Int @default(0)
+
+  maxAdmins Int @default(0)
+
+  maxStorageInGB Int @default(0)
+
+  //////////////////////////////////////////////////
+  // STATUS
+  //////////////////////////////////////////////////
+
   isActive Boolean @default(true)
- createdAt DateTime @default(now())
+
+  //////////////////////////////////////////////////
+  // TIMESTAMPS
+  //////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
 }
 
 //////////////////////
@@ -44,13 +111,14 @@ model User {
 
   tenantId String? @db.ObjectId
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   isFirstLogin Boolean @default(true)
 
-  // 🔥 NEW: Forgot Password Fields
-  resetOtp        String?
-  resetOtpExpiry  DateTime?
+  resetOtp       String?
+  resetOtpExpiry DateTime?
 
   createdAt DateTime @default(now())
+
   @@map("User")
 }
 
@@ -64,15 +132,17 @@ model AcademicYear {
   endDate   DateTime
   isActive  Boolean  @default(false)
 
-  tenantId    String       @db.ObjectId
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
   enrollments Enrollment[]
   classes     Class[]
   students    Student[]
   sections    Section[]
   subjects    Subject[]
   teachers    Teacher[]
-  createdAt   DateTime     @default(now())
+
+  createdAt DateTime @default(now())
 }
 
 //////////////////////
@@ -82,16 +152,19 @@ model Class {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
 
-  tenantId       String         @db.ObjectId
-  academicYearId String         @db.ObjectId
-  teachers       TeacherClass[]
-  tenant         Tenant         @relation(fields: [tenantId], references: [id])
-  academicYear   AcademicYear   @relation(fields: [academicYearId], references: [id])
-  subjects       Subject[]
-  sections       Section[]
-  enrollments    Enrollment[]
-  timetables Timetable[]
-  createdAt      DateTime       @default(now())
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  teachers    TeacherClass[]
+  subjects    Subject[]
+  sections    Section[]
+  enrollments Enrollment[]
+  timetables  Timetable[]
+
+  createdAt DateTime @default(now())
 }
 
 //////////////////////
@@ -104,12 +177,15 @@ model Section {
   classId        String @db.ObjectId
   tenantId       String @db.ObjectId
   academicYearId String @db.ObjectId
-timetables Timetable[]
+
   class        Class        @relation(fields: [classId], references: [id])
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
-  enrollments  Enrollment[]
-  createdAt    DateTime     @default(now())
+
+  enrollments Enrollment[]
+  timetables  Timetable[]
+
+  createdAt DateTime @default(now())
 }
 
 //////////////////////
@@ -118,40 +194,37 @@ timetables Timetable[]
 model Student {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  // Basic Info
   firstName String
   lastName  String
   gender    String
   dob       DateTime
 
-  // Contact
   email   String
   phone   String
   address String
 
-  // Academic
   admissionNo String
   rollNumber  String?
 
-  // Parent
   fatherName  String
   motherName  String
   parentPhone String
 
-  // Tenant + Academic Year
   tenantId       String @db.ObjectId
   academicYearId String @db.ObjectId
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  enrollments Enrollment[]
+  enrollments      Enrollment[]
+  studentHistories StudentHistory[]
 
-  isDeleted Boolean @default(false)
+  isDeleted Boolean   @default(false)
   deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
- studentHistories StudentHistory[]
+
   @@unique([email, tenantId])
   @@unique([admissionNo, tenantId])
 }
@@ -163,15 +236,18 @@ model Subject {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
 
-  classId        String           @db.ObjectId
-  tenantId       String           @db.ObjectId
-  academicYearId String           @db.ObjectId
-  teachers       TeacherSubject[]
+  classId        String @db.ObjectId
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+
+  class        Class        @relation(fields: [classId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  teachers   TeacherSubject[]
   timetables Timetable[]
-  class          Class            @relation(fields: [classId], references: [id])
-  tenant         Tenant           @relation(fields: [tenantId], references: [id])
-  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id])
-  createdAt      DateTime         @default(now())
+
+  createdAt DateTime @default(now())
 }
 
 //////////////////////
@@ -189,11 +265,14 @@ model Teacher {
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
-timetables Timetable[]
-  subjects TeacherSubject[]
-  classes  TeacherClass[]
-isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  subjects   TeacherSubject[]
+  classes    TeacherClass[]
+  timetables Timetable[]
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
 }
 
@@ -208,8 +287,9 @@ model TeacherSubject {
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
   subject Subject @relation(fields: [subjectId], references: [id])
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
 //////////////////////
@@ -223,13 +303,14 @@ model TeacherClass {
 
   teacher Teacher @relation(fields: [teacherId], references: [id])
   class   Class   @relation(fields: [classId], references: [id])
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
-///////////////
-// Atendence Module
-////////////////
+//////////////////////
+// ATTENDANCE
+//////////////////////
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -247,14 +328,16 @@ model Attendance {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   @@index([studentId, date])
 }
 
-/////////////
-// time table
-/////////////
+//////////////////////
+// TIMETABLE
+//////////////////////
 enum DayOfWeek {
   MON
   TUE
@@ -271,32 +354,38 @@ model Timetable {
   subjectId String @db.ObjectId
   teacherId String @db.ObjectId
   tenantId  String @db.ObjectId
-isDeleted Boolean @default(false)
-deletedAt DateTime?
+
   day    DayOfWeek
   period Int
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
   class   Class   @relation(fields: [classId], references: [id])
   section Section @relation(fields: [sectionId], references: [id])
   subject Subject @relation(fields: [subjectId], references: [id])
   teacher Teacher @relation(fields: [teacherId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([classId, sectionId, day, period])
 }
 
-/////////////
-//exam
-/////////////
+//////////////////////
+// EXAM
+//////////////////////
 model Exam {
   id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  name     String // FA1 / Mid Term / Semester 1
-  type     String? // optional (FA / SA / TERM / SEM)
+  name     String
+  type     String?
   classId  String  @db.ObjectId
   tenantId String  @db.ObjectId
-isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
 }
 
@@ -305,8 +394,9 @@ model ExamSubject {
   examId    String @db.ObjectId
   subjectId String @db.ObjectId
   maxMarks  Int
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
 model Result {
@@ -316,32 +406,35 @@ model Result {
   subjectId     String @db.ObjectId
   marksObtained Float
   tenantId      String @db.ObjectId
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
-/////////////////
-// fee structure
-/////////////////
+//////////////////////
+// FEE STRUCTURE
+//////////////////////
 model FeeStructure {
   id             String @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId       String
-  academicYearId String
-  classId        String
+  tenantId       String @db.ObjectId
+  academicYearId String @db.ObjectId
+  classId        String @db.ObjectId
 
   name      String
   amount    Float
   frequency String
 
-  createdAt   DateTime     @default(now())
   studentFees StudentFee[]
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
-/////////////////////
-//enrolment studentI
-/////////////////////
+//////////////////////
+// ENROLLMENT
+//////////////////////
 model Enrollment {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
@@ -360,107 +453,398 @@ model Enrollment {
   studentFees StudentFee[]
 
   createdAt DateTime @default(now())
-isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   @@unique([studentId, academicYearId])
 }
 
-////////////////
-// student fee
-////////////////
+//////////////////////
+// STUDENT FEE
+//////////////////////
 model StudentFee {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   enrollmentId   String @db.ObjectId
   feeStructureId String @db.ObjectId
+  tenantId       String @db.ObjectId
 
   totalAmount   Float
-  paidAmount    Float @default(0)
+  paidAmount    Float  @default(0)
   pendingAmount Float
-
-  status String
+  status        String
 
   dueDate DateTime
 
-  tenantId     String
-  createdAt    DateTime     @default(now())
   enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id])
   feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
-  payments     Payment[]
-  isDeleted Boolean @default(false)
-deletedAt DateTime?
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 }
 
-//////////////
-//payment
-//////////////
+//////////////////////
+// PAYMENT
+//////////////////////
 enum PaymentMethod {
   CASH
   ONLINE
 }
+
 model Payment {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  /////////////////////////
-  // RELATIONS
-  /////////////////////////
-  studentFeeId String @db.ObjectId
+  studentFeeId String     @db.ObjectId
   studentFee   StudentFee @relation(fields: [studentFeeId], references: [id])
 
   tenantId String @db.ObjectId
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  /////////////////////////
-  // PAYMENT INFO
-  /////////////////////////
-  amount Float
-  method PaymentMethod
+  amount    Float
+  method    PaymentMethod
   reference String?
 
-  /////////////////////////
-  // META
-  /////////////////////////
-  receiptNo String @unique
+  receiptNo   String   @unique
   paymentDate DateTime @default(now())
   createdAt   DateTime @default(now())
 
-  isDeleted Boolean @default(false)
+  isDeleted Boolean   @default(false)
   deletedAt DateTime?
 
-  /////////////////////////
-  // INDEXES
-  /////////////////////////
   @@index([tenantId])
   @@index([studentFeeId])
 }
+
+//////////////////////
+// AUDIT LOG
+//////////////////////
 model AuditLog {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  action    String   // CREATE / UPDATE / DELETE
-  entity    String   // STUDENT / FEE / CLASS
-  entityId  String
+  action   String
+  entity   String
+  entityId String
 
-  userId    String?
-  data      Json?
+  userId String?
+  data   Json?
 
   createdAt DateTime @default(now())
 }
-/////////////////////
-//student history
-////////////////////////
+
+//////////////////////
+// STUDENT HISTORY
+//////////////////////
 model StudentHistory {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   studentId String @db.ObjectId
   tenantId  String @db.ObjectId
 
-  action String   // CREATED, UPDATED, DELETED, RESTORED, PROMOTED
+  action  String
   message String
 
-  performedBy String // userId
+  performedBy String
 
   createdAt DateTime @default(now())
 
   student Student @relation(fields: [studentId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
   @@index([studentId])
+}
+
+//////////////////////////////////////////////////////
+// SUBSCRIPTION PLAN
+//////////////////////////////////////////////////////
+
+model SubscriptionPlan {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  //////////////////////////////////////////////////
+  // BASIC INFO
+  //////////////////////////////////////////////////
+
+  name        String
+  slug        String @unique
+  description String?
+
+  //////////////////////////////////////////////////
+  // PRICING
+  //////////////////////////////////////////////////
+
+  price          Float
+  durationInDays Int
+
+  currency String @default("INR")
+
+  //////////////////////////////////////////////////
+  // LIMITS
+  //////////////////////////////////////////////////
+
+  maxStudents    Int
+  maxTeachers    Int
+  maxAdmins      Int @default(1)
+
+  maxStorageInGB Int @default(5)
+
+  //////////////////////////////////////////////////
+  // FEATURES
+  //////////////////////////////////////////////////
+
+  features String[]
+
+  //////////////////////////////////////////////////
+  // FLAGS
+  //////////////////////////////////////////////////
+
+  isTrial   Boolean @default(false)
+  isPopular Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  //////////////////////////////////////////////////
+  // RELATIONS
+  //////////////////////////////////////////////////
+
+  subscriptions TenantSubscription[]
+
+  //////////////////////////////////////////////////
+  // TIMESTAMPS
+  //////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //////////////////////////////////////////////////
+  // INDEXES
+  //////////////////////////////////////////////////
+
+  @@index([isActive])
+}
+
+//////////////////////////////////////////////////////
+// TENANT SUBSCRIPTION
+//////////////////////////////////////////////////////
+
+model TenantSubscription {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  //////////////////////////////////////////////////
+  // SUBSCRIPTION CODE
+  //////////////////////////////////////////////////
+
+  subscriptionCode String @unique
+
+  //////////////////////////////////////////////////
+  // TENANT RELATION
+  //////////////////////////////////////////////////
+
+  tenantId String @db.ObjectId
+
+  tenant Tenant @relation(fields: [tenantId],references: [id] )
+
+  //////////////////////////////////////////////////
+  // ACTIVE TENANT RELATION
+  //////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////
+  // PLAN RELATION
+  //////////////////////////////////////////////////
+
+  planId String @db.ObjectId
+
+  plan SubscriptionPlan @relation(fields: [planId],references: [id] )
+
+  payments SubscriptionPayment[]
+
+  //////////////////////////////////////////////////
+  // SUBSCRIPTION DATES
+  //////////////////////////////////////////////////
+
+  startDate DateTime
+
+  endDate DateTime
+
+  trialEndsAt DateTime?
+
+  cancelledAt DateTime?
+
+  //////////////////////////////////////////////////
+  // SUBSCRIPTION STATUS
+  //////////////////////////////////////////////////
+
+  status SubscriptionStatus @default(PENDING)
+
+  isActive Boolean @default(false)
+
+  //////////////////////////////////////////////////
+  // PAYMENT INFO
+  //////////////////////////////////////////////////
+
+  amount Float
+
+  currency String @default("INR")
+
+  paymentStatus PaymentStatus @default(PENDING)
+
+  paymentReference String?
+
+  paymentGateway String?
+
+  //////////////////////////////////////////////////
+  // RAZORPAY DETAILS
+  //////////////////////////////////////////////////
+
+  razorpayOrderId String?
+
+  razorpayPaymentId String?
+
+  razorpaySignature String?
+
+  //////////////////////////////////////////////////
+  // BILLING
+  //////////////////////////////////////////////////
+
+  invoiceNumber String?
+
+  autoRenew Boolean @default(false)
+
+  //////////////////////////////////////////////////
+  // SNAPSHOT LIMITS
+  //////////////////////////////////////////////////
+
+  maxStudents Int
+
+  maxTeachers Int
+
+  maxAdmins Int
+
+  maxStorageInGB Int
+
+  //////////////////////////////////////////////////
+  // EXTRA
+  //////////////////////////////////////////////////
+
+  notes String?
+
+  //////////////////////////////////////////////////
+  // TIMESTAMPS
+  //////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  //////////////////////////////////////////////////
+  // INDEXES
+  //////////////////////////////////////////////////
+
+  @@index([tenantId])
+
+  @@index([planId])
+
+  @@index([status])
+
+  @@index([paymentStatus])
+
+  @@index([startDate])
+
+  @@index([endDate])
+
+  @@index([isActive])
+
+  @@index([createdAt])
+}
+//////////////////////////////////////////////////////
+// PAYMENT TABLE
+//////////////////////////////////////////////////////
+
+model SubscriptionPayment{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  //////////////////////////////////////////////////
+  // RELATION
+  //////////////////////////////////////////////////
+subscriptionId String @db.ObjectId
+
+subscription TenantSubscription @relation(fields: [subscriptionId], references: [id])
+  //////////////////////////////////////////////////
+  // PAYMENT INFO
+  //////////////////////////////////////////////////
+
+  amount Float
+
+  currency String @default("INR")
+
+  method String?
+
+  gateway String?
+
+  //////////////////////////////////////////////////
+  // RAZORPAY
+  //////////////////////////////////////////////////
+
+  razorpayOrderId String?
+
+  razorpayPaymentId String?
+
+  razorpaySignature String?
+
+  //////////////////////////////////////////////////
+  // STATUS
+  //////////////////////////////////////////////////
+
+  status PaymentStatus @default(PENDING)
+
+  //////////////////////////////////////////////////
+  // EXTRA
+  //////////////////////////////////////////////////
+
+  notes String?
+
+  paidAt DateTime?
+
+  refundedAt DateTime?
+
+  //////////////////////////////////////////////////
+  // TIMESTAMPS
+  //////////////////////////////////////////////////
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  //////////////////////////////////////////////////
+  // INDEXES
+  //////////////////////////////////////////////////
+
+  @@index([subscriptionId])
+
+  @@index([status])
+
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  TRIAL
+  CANCELLED
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }

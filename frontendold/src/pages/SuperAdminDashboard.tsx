@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+
 import {
   Building2,
   Users,
   User,
   TrendingUp,
   Activity,
+  School2,
 } from "lucide-react";
 
+//////////////////////////////////////////////////////
+// 🚀 SUPER ADMIN DASHBOARD
+//////////////////////////////////////////////////////
+
 export default function SuperAdminDashboard() {
+
+  //////////////////////////////////////////////////////
+  // 🚀 STATE
+  //////////////////////////////////////////////////////
+
   const [data, setData] = useState<any>({
     totalSchools: 0,
     totalStudents: 0,
@@ -18,138 +29,467 @@ export default function SuperAdminDashboard() {
     recentTenants: [],
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   //////////////////////////////////////////////////////
   // 🚀 FETCH DATA
   //////////////////////////////////////////////////////
+
+  const fetchDashboard = async () => {
+
+    try {
+
+      const token =
+        localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5000/api/dashboard",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setData(res.data.data);
+
+    } catch (err) {
+
+      console.log(
+        "Dashboard Error:",
+        err
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  };
+
+  //////////////////////////////////////////////////////
+  // 🚀 AUTO REFRESH
+  //////////////////////////////////////////////////////
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("token");
 
-        const res = await axios.get(
-          "http://localhost:5000/api/dashboard",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+    fetchDashboard();
 
-        setData(res.data.data);
-      } catch (err) {
-        console.log("Super Admin Dashboard Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    ////////////////////////////////////////////////////
+    // 🔥 AUTO UPDATE EVERY 3 SEC
+    ////////////////////////////////////////////////////
 
-    fetchData();
+    const interval =
+      setInterval(() => {
+
+        fetchDashboard();
+
+      }, 3000);
+
+    return () =>
+      clearInterval(interval);
+
   }, []);
 
+  //////////////////////////////////////////////////////
+  // 🚀 LOADING
+  //////////////////////////////////////////////////////
+
   if (loading) {
-    return <div className="p-6 text-gray-500">Loading...</div>;
+
+    return (
+      <div className="p-10 text-gray-500 text-lg">
+        Loading Dashboard...
+      </div>
+    );
+
   }
 
   //////////////////////////////////////////////////////
-  // 🎨 UI
+  // 🚀 SAFE VALUES
   //////////////////////////////////////////////////////
-  return (
-    <div className="p-6">
 
-      {/* HEADER */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">
-          Super Admin Dashboard
-        </h1>
-        <p className="text-gray-500">
-          SaaS Overview (All Tenants)
-        </p>
+  const totalSchools =
+    Number(data?.totalSchools) || 1;
+
+  const activeTenants =
+    Number(data?.activeTenants) || 0;
+
+  const inactiveTenants =
+    Number(data?.inactiveTenants) || 0;
+
+  //////////////////////////////////////////////////////
+  // 🚀 PERCENTAGES
+  //////////////////////////////////////////////////////
+
+  const activePercentage =
+    (activeTenants / totalSchools) * 100;
+
+  const inactivePercentage =
+    (inactiveTenants / totalSchools) * 100;
+
+  //////////////////////////////////////////////////////
+  // 🚀 UI
+  //////////////////////////////////////////////////////
+
+  return (
+
+    <div className="p-6 md:p-8 bg-slate-100 min-h-screen">
+
+      {/* ////////////////////////////////////////////////////// */}
+      {/* 🚀 TOP HEADER */}
+      {/* ////////////////////////////////////////////////////// */}
+
+      <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-5 md:p-6 flex items-center justify-between mb-8">
+
+        {/* LEFT */}
+        <div className="flex items-center gap-4">
+
+          {/* LOGO */}
+          <img
+            src="/super-admin-logo.png"
+            alt="Super Admin"
+            className="w-14 h-14 rounded-full object-cover border-4 border-indigo-500 shadow-lg bg-white"
+          />
+
+          {/* TEXT */}
+          <div>
+
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">
+              Manage All Tenants
+            </h1>
+
+            <p className="text-slate-500 text-sm mt-1">
+              Centralized ERP SaaS Control Panel
+            </p>
+
+          </div>
+
+        </div>
+
       </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* ////////////////////////////////////////////////////// */}
+      {/* 🚀 PAGE TITLE */}
+      {/* ////////////////////////////////////////////////////// */}
+
+      <div className="mb-8">
+
+        <h2 className="text-4xl font-bold text-slate-900">
+          Super Admin Dashboard
+        </h2>
+
+        <p className="text-slate-500 mt-2 text-lg">
+          SaaS Overview (All Tenants)
+        </p>
+
+      </div>
+
+      {/* ////////////////////////////////////////////////////// */}
+      {/* 🚀 STATS CARDS */}
+      {/* ////////////////////////////////////////////////////// */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
 
         <Card
           title="Total Schools"
-          value={data.totalSchools}
-          icon={<Building2 />}
+          value={totalSchools}
+          icon={<School2 size={28} />}
           color="from-indigo-500 to-purple-600"
         />
 
         <Card
           title="Total Students"
           value={data.totalStudents}
-          icon={<Users />}
-          color="from-teal-500 to-cyan-600"
+          icon={<Users size={28} />}
+          color="from-cyan-500 to-teal-600"
         />
 
         <Card
           title="Total Teachers"
           value={data.totalTeachers}
-          icon={<User />}
+          icon={<User size={28} />}
           color="from-orange-500 to-pink-600"
         />
 
         <Card
           title="Active Tenants"
-          value={data.activeTenants}
-          icon={<Activity />}
+          value={activeTenants}
+          icon={<Activity size={28} />}
           color="from-green-500 to-emerald-600"
         />
 
       </div>
 
-      {/* TENANT STATUS + RECENT */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* ////////////////////////////////////////////////////// */}
+      {/* 🚀 STATUS + RECENT */}
+      {/* ////////////////////////////////////////////////////// */}
 
-        {/* STATUS */}
-        <div className="bg-white p-5 rounded-2xl shadow">
-          <h3 className="font-semibold mb-3">Tenant Status</h3>
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          <div className="flex justify-between text-sm">
-            <span className="text-green-600 font-medium">
-              Active: {data.activeTenants}
-            </span>
-            <span className="text-red-500 font-medium">
-              Inactive: {data.inactiveTenants}
-            </span>
+        {/* ////////////////////////////////////////////////////// */}
+        {/* 🚀 TENANT STATUS */}
+        {/* ////////////////////////////////////////////////////// */}
+
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-6">
+
+          {/* TITLE */}
+          <div className="flex items-center gap-3 mb-6">
+
+            <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600">
+
+              <Building2 size={22} />
+
+            </div>
+
+            <h3 className="text-xl font-bold text-slate-800">
+              Tenant Status
+            </h3>
+
           </div>
+
+          {/* ////////////////////////////////////////////////////// */}
+          {/* 🚀 ACTIVE */}
+          {/* ////////////////////////////////////////////////////// */}
+
+          <div className="mb-8">
+
+            <div className="flex justify-between mb-2">
+
+              <span className="text-sm font-semibold text-green-600">
+                Active Tenants
+              </span>
+
+              <span className="text-sm font-bold text-green-700">
+                {activeTenants}
+              </span>
+
+            </div>
+
+            <div className="relative group cursor-pointer">
+
+              <div className="w-full h-5 bg-slate-200 rounded-full overflow-hidden">
+
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-700"
+                  style={{
+                    width: `${Math.max(
+                      activePercentage,
+                      activeTenants > 0 ? 5 : 0
+                    )}%`,
+                  }}
+                />
+
+              </div>
+
+              {/* TOOLTIP */}
+              <div className="absolute hidden group-hover:flex flex-col z-50 -top-3 left-1/2 -translate-x-1/2 -translate-y-full bg-black text-white text-xs px-4 py-3 rounded-xl shadow-xl whitespace-nowrap">
+
+                <span className="font-bold mb-2">
+                  Active Tenants ({activeTenants})
+                </span>
+
+                {
+                  data.activeTenantList?.map(
+                    (tenant: any) => (
+                      <span key={tenant.id}>
+                        • {tenant.name}
+                      </span>
+                    )
+                  )
+                }
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* ////////////////////////////////////////////////////// */}
+          {/* 🚀 INACTIVE */}
+          {/* ////////////////////////////////////////////////////// */}
+
+          <div>
+
+            <div className="flex justify-between mb-2">
+
+              <span className="text-sm font-semibold text-red-500">
+                Inactive Tenants
+              </span>
+
+              <span className="text-sm font-bold text-red-600">
+                {inactiveTenants}
+              </span>
+
+            </div>
+
+            <div className="relative group cursor-pointer">
+
+              <div className="w-full h-5 bg-slate-200 rounded-full overflow-hidden">
+
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-500 to-pink-600 transition-all duration-700"
+                  style={{
+                    width: `${Math.max(
+                      inactivePercentage,
+                      inactiveTenants > 0 ? 5 : 0
+                    )}%`,
+                  }}
+                />
+
+              </div>
+
+              {/* TOOLTIP */}
+              <div className="absolute hidden group-hover:flex flex-col z-50 -top-3 left-1/2 -translate-x-1/2 -translate-y-full bg-black text-white text-xs px-4 py-3 rounded-xl shadow-xl whitespace-nowrap">
+
+                <span className="font-bold mb-2">
+                  Inactive Tenants ({inactiveTenants})
+                </span>
+
+                {
+                  data.inactiveTenantList?.map(
+                    (tenant: any) => (
+                      <span key={tenant.id}>
+                        • {tenant.name}
+                      </span>
+                    )
+                  )
+                }
+
+              </div>
+
+            </div>
+
+          </div>
+
         </div>
 
-        {/* RECENT TENANTS */}
-        <div className="bg-white p-5 rounded-2xl shadow">
-          <h3 className="font-semibold mb-3">Recent Tenants</h3>
+        {/* ////////////////////////////////////////////////////// */}
+        {/* 🚀 RECENT TENANTS */}
+        {/* ////////////////////////////////////////////////////// */}
+
+        <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-6">
+
+          <h3 className="text-xl font-bold text-slate-800 mb-5">
+            Recent Tenants
+          </h3>
 
           {data.recentTenants?.length > 0 ? (
-            <div className="space-y-2">
-              {data.recentTenants.map((t: any, i: number) => (
-                <div
-                  key={i}
-                  className="text-sm text-gray-600 border-b pb-1"
-                >
-                  {t.name}
-                </div>
-              ))}
+
+            <div className="space-y-4">
+
+              {data.recentTenants.map(
+                (tenant: any) => (
+
+                  <div
+                    key={tenant.id}
+                    className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 hover:shadow-md transition-all"
+                  >
+
+                    {/* LEFT */}
+                    <div className="flex items-center gap-3">
+
+                      {/* LOGO */}
+                      {tenant?.logoUrl ? (
+
+                        <img
+                          src={tenant.logoUrl}
+                          alt="tenant"
+                          className="w-11 h-11 rounded-full object-cover border-2 border-indigo-400 bg-white"
+                        />
+
+                      ) : (
+
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+
+                          {tenant?.name?.charAt(0)}
+
+                        </div>
+
+                      )}
+
+                      {/* INFO */}
+                      <div>
+
+                        <h4 className="font-semibold text-slate-800">
+                          {tenant.name}
+                        </h4>
+
+                        <p className="text-xs text-slate-500">
+                          Tenant ERP
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    {/* STATUS */}
+                    <div
+                      className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                        tenant.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {
+                        tenant.isActive
+                          ? "Active"
+                          : "Inactive"
+                      }
+                    </div>
+
+                  </div>
+                )
+              )}
+
             </div>
+
           ) : (
-            <p className="text-gray-400">No tenants found</p>
+
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+
+              <Building2
+                size={50}
+                className="text-slate-300"
+              />
+
+              <p className="text-slate-400 mt-3">
+                No tenants found
+              </p>
+
+            </div>
+
           )}
+
         </div>
 
       </div>
 
-      {/* INSIGHTS */}
-      <div className="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <TrendingUp size={18} />
-          Platform Insights
-        </h3>
+      {/* ////////////////////////////////////////////////////// */}
+      {/* 🚀 INSIGHTS */}
+      {/* ////////////////////////////////////////////////////// */}
 
-        <p className="mt-2 text-sm opacity-90">
-          {data.totalSchools > 5
-            ? "Your SaaS platform is growing fast 🚀"
-            : "Start adding more tenants to scale your platform 📈"}
+      <div className="mt-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white rounded-3xl shadow-xl p-8">
+
+        <div className="flex items-center gap-3">
+
+          <TrendingUp size={24} />
+
+          <h3 className="text-2xl font-bold">
+            Platform Insights
+          </h3>
+
+        </div>
+
+        <p className="mt-4 text-lg opacity-90 leading-8">
+
+          {totalSchools > 5
+            ? "Your ERP SaaS platform is scaling rapidly with multiple active tenants 🚀"
+            : "Start onboarding more schools to grow your ERP platform 📈"}
+
         </p>
+
       </div>
 
     </div>
@@ -157,14 +497,43 @@ export default function SuperAdminDashboard() {
 }
 
 //////////////////////////////////////////////////////
-// 🎴 CARD COMPONENT
+// 🚀 CARD COMPONENT
 //////////////////////////////////////////////////////
-const Card = ({ title, value, icon, color }: any) => (
-  <div className={`p-5 rounded-2xl text-white bg-gradient-to-r ${color} shadow-lg`}>
-    <div className="flex justify-between items-center">
-      <p className="opacity-80">{title}</p>
-      {icon}
+
+const Card = ({
+  title,
+  value,
+  icon,
+  color,
+}: any) => (
+
+  <div
+    className={`bg-gradient-to-r ${color} text-white rounded-3xl shadow-xl p-6 hover:scale-[1.02] transition-all duration-300`}
+  >
+
+    <div className="flex items-center justify-between">
+
+      {/* LEFT */}
+      <div>
+
+        <p className="text-sm opacity-80">
+          {title}
+        </p>
+
+        <h2 className="text-4xl font-bold mt-3">
+          {value ?? 0}
+        </h2>
+
+      </div>
+
+      {/* RIGHT */}
+      <div className="bg-white/20 p-4 rounded-2xl">
+
+        {icon}
+
+      </div>
+
     </div>
-    <h2 className="text-2xl font-bold mt-3">{value ?? 0}</h2>
+
   </div>
 );

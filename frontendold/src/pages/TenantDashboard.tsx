@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useOutletContext } from "react-router-dom";
@@ -9,63 +10,95 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-// 🔥 NEW COMPONENTS
+// 🔥 COMPONENTS
 import StatsCard from "../components/dashboard/StatsCard";
 import RevenueChart from "../components/dashboard/RevenueChart";
 import RecentPayments from "../components/dashboard/RecentPayments";
 import DefaultersList from "../components/dashboard/DefaultersList";
 import Insights from "../components/dashboard/Insights";
 
+//////////////////////////////////////////////////////
+// 🚀 DASHBOARD
+//////////////////////////////////////////////////////
+
 export default function Dashboard() {
 
   //////////////////////////////////////////////////////
   // 👤 USER
   //////////////////////////////////////////////////////
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const user = JSON.parse(
+    localStorage.getItem("user") || "{}"
+  );
 
   //////////////////////////////////////////////////////
-  // 🔗 Layout connection
+  // 🔗 OUTLET CONTEXT
   //////////////////////////////////////////////////////
+
   const { setTenant }: any = useOutletContext();
 
   //////////////////////////////////////////////////////
-  // 📊 DATA STATE (UPGRADED)
+  // 📊 STATE
   //////////////////////////////////////////////////////
+
   const [data, setData] = useState<any>({
     totalStudents: 0,
     totalClasses: 0,
     totalPaid: 0,
     totalPending: 0,
     monthlyData: [],
-    recentPayments: [],      // 🔥 NEW
-    defaulters: [],          // 🔥 NEW
-    insights: {},            // 🔥 NEW
+    recentPayments: [],
+    defaulters: [],
+    insights: {},
   });
+
+  //////////////////////////////////////////////////////
+  // ⏳ LOADING
+  //////////////////////////////////////////////////////
 
   const [loading, setLoading] = useState(true);
 
   //////////////////////////////////////////////////////
-  // 🚀 API
+  // 🚀 API CALL
   //////////////////////////////////////////////////////
+
   useEffect(() => {
+
     const fetchDashboard = async () => {
+
       try {
+
+        //////////////////////////////////////////////////////
+        // 🔑 TOKEN
+        //////////////////////////////////////////////////////
+
         const token = localStorage.getItem("token");
+
+        //////////////////////////////////////////////////////
+        // 🌐 API
+        //////////////////////////////////////////////////////
 
         const res = await axios.get(
           "http://localhost:5000/api/dashboard",
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
 
+        //////////////////////////////////////////////////////
+        // 📦 RESPONSE
+        //////////////////////////////////////////////////////
+
         const d = res.data?.data;
 
-        console.log("DASHBOARD API:", d);
+        console.log("DASHBOARD RESPONSE =>", d);
 
         //////////////////////////////////////////////////////
-        // 📊 SET DATA (UPGRADED)
+        // 📊 SET DASHBOARD DATA
         //////////////////////////////////////////////////////
+
         setData({
           totalStudents: d?.totalStudents ?? 0,
           totalClasses: d?.totalClasses ?? 0,
@@ -78,42 +111,114 @@ export default function Dashboard() {
         });
 
         //////////////////////////////////////////////////////
-        // 🏫 TENANT
+        // 🏫 TENANT DATA - NO HARDCODING
         //////////////////////////////////////////////////////
-        setTenant(d?.tenant);
+
+        const tenantData = {
+          // ✅ DYNAMIC - API se directly
+          name: d?.tenant?.name,
+          
+          // ✅ DYNAMIC - API se directly
+          schoolName: d?.tenant?.schoolName || d?.tenant?.name,
+          
+          // ✅ DYNAMIC - API se directly
+          type: d?.tenant?.type,
+
+          //////////////////////////////////////////////////////
+          // 🔥 LOGO - DYNAMIC
+          //////////////////////////////////////////////////////
+          
+          logoUrl: d?.tenant?.logoUrl
+            ? d.tenant.logoUrl
+            : d?.tenant?.logo
+            ? d.tenant.logo.startsWith("http")
+              ? d.tenant.logo
+              : `http://localhost:5000/${d.tenant.logo}`
+            : null,  // ✅ null - no hardcoded fallback
+        };
+
+        //////////////////////////////////////////////////////
+        // 🔥 DEBUG
+        //////////////////////////////////////////////////////
+
+        console.log(
+          "TENANT DATA =>",
+          tenantData
+        );
+
+        //////////////////////////////////////////////////////
+        // 🔥 SET TENANT - DONO JAGAH
+        //////////////////////////////////////////////////////
+
+        // 1️⃣ Context mein pass karo (Sidebar/TopNavbar ko)
+        setTenant(tenantData);
+
+        // 2️⃣ localStorage mein bhi save karo (persistence)
+        localStorage.setItem("tenant", JSON.stringify(tenantData));
 
       } catch (err) {
-        console.log("Dashboard error:", err);
+
+        console.log(
+          "Dashboard error:",
+          err
+        );
+
+        //////////////////////////////////////////////////////
+        // 🔥 ERROR HANDLING - localStorage se fallback
+        //////////////////////////////////////////////////////
+
+        const savedTenant = localStorage.getItem("tenant");
+        if (savedTenant) {
+          setTenant(JSON.parse(savedTenant));
+        }
+
       } finally {
+
         setLoading(false);
+
       }
     };
 
     fetchDashboard();
+
   }, []);
 
   //////////////////////////////////////////////////////
-  // ⏳ LOADING
+  // ⏳ LOADING UI
   //////////////////////////////////////////////////////
+
   if (loading) {
-    return <div className="p-6 text-gray-500">Loading dashboard...</div>;
+    return (
+      <div className="p-6 text-gray-500">
+        Loading dashboard...
+      </div>
+    );
   }
 
   //////////////////////////////////////////////////////
   // 🎨 UI
   //////////////////////////////////////////////////////
+
   return (
     <div className="p-6 space-y-6">
 
       {/* 🧾 HEADER */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500">
-          Welcome, <b>{user?.name}</b> ({user?.role})
+
+        <h1 className="text-3xl font-bold">
+          Dashboard
+        </h1>
+
+        <p className="text-gray-500 mt-1">
+          Welcome,{" "}
+          <b>{user?.name}</b>
+          {" "}
+          ({user?.role})
         </p>
+
       </div>
 
-      {/* 📊 CARDS (UPGRADED) */}
+      {/* 📊 STATS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
         <StatsCard
@@ -148,25 +253,39 @@ export default function Dashboard() {
       </div>
 
       {/* 🔥 INSIGHTS */}
-      <Insights data={data.insights} />
+      <Insights
+        data={data.insights}
+      />
 
-      {/* 📈 CHART + PAYMENTS */}
+      {/* 📈 CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <RevenueChart data={data.monthlyData} />
+        <RevenueChart
+          data={data.monthlyData}
+        />
 
-        <RecentPayments data={data.recentPayments} />
+        <RecentPayments
+          data={data.recentPayments}
+        />
 
       </div>
 
       {/* ⚠️ DEFAULTERS */}
-      <DefaultersList data={data.defaulters} />
+      <DefaultersList
+        data={data.defaulters}
+      />
 
       {/* ⚠️ ALERT */}
       {data.totalPending > 0 && (
-        <div className="p-4 bg-red-100 text-red-600 rounded-lg">
-          ⚠️ Pending Fees: ₹ {data.totalPending}
+
+        <div className="p-4 bg-red-100 text-red-600 rounded-xl shadow">
+
+          ⚠️ Pending Fees:
+          {" "}
+          ₹ {data.totalPending}
+
         </div>
+
       )}
 
     </div>

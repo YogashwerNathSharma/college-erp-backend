@@ -84,6 +84,7 @@ export const updateTenantImagesService = async ({
     data: {
       ...(logoUrl && { logoUrl }),
       ...(backgroundUrl && { backgroundUrl }),
+            updatedAt: new Date(),
     },
   });
 };

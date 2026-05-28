@@ -1,10 +1,39 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import React from "react";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+import ReactDOM from "react-dom/client";
+
+import App from "./App.tsx";
+
+import "./index.css";
+
+//////////////////////////////////////////////////////
+// LOAD RAZORPAY SCRIPT
+//////////////////////////////////////////////////////
+
+const razorpayScript =
+  document.createElement("script");
+
+razorpayScript.src =
+  "https://checkout.razorpay.com/v1/checkout.js";
+
+razorpayScript.async = true;
+
+document.body.appendChild(
+  razorpayScript
+);
+
+//////////////////////////////////////////////////////
+// APP
+//////////////////////////////////////////////////////
+
+ReactDOM.createRoot(
+  document.getElementById("root")!
+).render(
+
+  <React.StrictMode>
+
     <App />
-  </StrictMode>,
-)
+
+  </React.StrictMode>
+
+);

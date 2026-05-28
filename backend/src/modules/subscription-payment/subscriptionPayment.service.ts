@@ -1,0 +1,368 @@
+import crypto from "crypto";
+
+import prisma from "../../utils/prisma";
+
+import Razorpay from "razorpay";
+
+import {
+  PaymentStatus,
+  SubscriptionStatus,
+} from "@prisma/client";
+
+//////////////////////////////////////////////////////////////
+// RAZORPAY
+//////////////////////////////////////////////////////////////
+
+const razorpay =
+  new Razorpay({
+
+    key_id:
+      process.env.RAZORPAY_KEY_ID!,
+
+    key_secret:
+      process.env.RAZORPAY_KEY_SECRET!,
+
+  });
+
+//////////////////////////////////////////////////////////////
+// CREATE ORDER
+//////////////////////////////////////////////////////////////
+
+export const createOrderService =
+  async (
+    subscriptionId: string
+  ) => {
+
+    //////////////////////////////////////////////////
+    // GET SUBSCRIPTION
+    //////////////////////////////////////////////////
+
+    const subscription =
+      await prisma.tenantSubscription.findUnique({
+
+        where: {
+          id: subscriptionId,
+        },
+
+      });
+
+    if (!subscription) {
+
+      throw new Error(
+        "Subscription not found"
+      );
+
+    }
+
+    //////////////////////////////////////////////////
+    // CHECK ALREADY PAID
+    //////////////////////////////////////////////////
+
+    const existingPayment =
+      await prisma.subscriptionPayment.findFirst({
+
+        where: {
+
+          subscriptionId,
+
+          status:
+            PaymentStatus.PAID,
+
+        },
+
+      });
+
+    if (existingPayment) {
+
+      throw new Error(
+        "Subscription already paid"
+      );
+
+    }
+
+    //////////////////////////////////////////////////
+    // CREATE RAZORPAY ORDER
+    //////////////////////////////////////////////////
+
+    const options = {
+
+      amount:
+        Math.round(
+          subscription.amount * 100
+        ),
+
+      currency: "INR",
+
+      receipt:
+        subscription.subscriptionCode,
+
+    };
+
+    const order =
+      await razorpay.orders.create(
+        options
+      );
+
+    //////////////////////////////////////////////////
+    // UPDATE SUBSCRIPTION
+    //////////////////////////////////////////////////
+
+    await prisma.tenantSubscription.update({
+
+      where: {
+        id: subscription.id,
+      },
+
+      data: {
+
+        razorpayOrderId:
+          order.id,
+
+      },
+
+    });
+
+    //////////////////////////////////////////////////
+    // CREATE PAYMENT ENTRY
+    //////////////////////////////////////////////////
+
+    await prisma.subscriptionPayment.create({
+
+      data: {
+
+        subscriptionId:
+          subscription.id,
+
+        amount:
+          subscription.amount,
+
+        currency: "INR",
+
+        gateway: "RAZORPAY",
+
+        status:
+          PaymentStatus.PENDING,
+
+        razorpayOrderId:
+          order.id,
+
+      },
+
+    });
+
+    return order;
+
+  };
+
+//////////////////////////////////////////////////////////////
+// VERIFY PAYMENT
+//////////////////////////////////////////////////////////////
+
+export const verifyPaymentService =
+  async (
+    body: any
+  ) => {
+
+    const {
+
+      subscriptionId,
+
+      razorpay_order_id,
+
+      razorpay_payment_id,
+
+      razorpay_signature,
+
+    } = body;
+
+    //////////////////////////////////////////////////
+    // VERIFY SIGNATURE
+    //////////////////////////////////////////////////
+
+    const generatedSignature =
+      crypto
+        .createHmac(
+          "sha256",
+          process.env
+            .RAZORPAY_KEY_SECRET!
+        )
+        .update(
+          razorpay_order_id +
+            "|" +
+            razorpay_payment_id
+        )
+        .digest("hex");
+
+    const isAuthentic =
+      generatedSignature ===
+      razorpay_signature;
+
+    if (!isAuthentic) {
+
+      throw new Error(
+        "Invalid payment signature"
+      );
+
+    }
+
+    //////////////////////////////////////////////////
+    // GET SUBSCRIPTION
+    //////////////////////////////////////////////////
+
+    const subscription =
+      await prisma.tenantSubscription.findUnique({
+
+        where: {
+          id: subscriptionId,
+        },
+
+      });
+
+    if (!subscription) {
+
+      throw new Error(
+        "Subscription not found"
+      );
+
+    }
+
+    //////////////////////////////////////////////////
+    // UPDATE SUBSCRIPTION
+    //////////////////////////////////////////////////
+
+    await prisma.tenantSubscription.update({
+
+      where: {
+        id: subscription.id,
+      },
+
+      data: {
+
+        paymentStatus:
+          PaymentStatus.PAID,
+
+        status:
+          SubscriptionStatus.ACTIVE,
+
+        isActive: true,
+
+        razorpayPaymentId:
+          razorpay_payment_id,
+
+        razorpaySignature:
+          razorpay_signature,
+
+        paymentReference:
+          razorpay_payment_id,
+
+        paymentGateway:
+          "RAZORPAY",
+
+      },
+
+    });
+
+    //////////////////////////////////////////////////
+    // UPDATE TENANT LIMITS
+    //////////////////////////////////////////////////
+
+    await prisma.tenant.update({
+
+      where: {
+        id: subscription.tenantId,
+      },
+
+      data: {
+
+        maxStudents:
+          subscription.maxStudents,
+
+        maxTeachers:
+          subscription.maxTeachers,
+
+        maxAdmins:
+          subscription.maxAdmins,
+
+        maxStorageInGB:
+          subscription.maxStorageInGB,
+
+      },
+
+    });
+
+    //////////////////////////////////////////////////
+    // UPDATE PAYMENT HISTORY
+    //////////////////////////////////////////////////
+
+    await prisma.subscriptionPayment.updateMany({
+
+      where: {
+
+        razorpayOrderId:
+          razorpay_order_id,
+
+      },
+
+      data: {
+
+        status:
+          PaymentStatus.PAID,
+
+        razorpayPaymentId:
+          razorpay_payment_id,
+
+        razorpaySignature:
+          razorpay_signature,
+
+        paidAt:
+          new Date(),
+
+      },
+
+    });
+
+    return {
+
+      success: true,
+
+      message:
+        "Payment verified successfully",
+
+    };
+
+  };
+
+//////////////////////////////////////////////////////////////
+// GET PAYMENTS
+//////////////////////////////////////////////////////////////
+
+export const getPaymentsService =
+  async () => {
+
+    return prisma.subscriptionPayment.findMany({
+
+      include: {
+
+        subscription: {
+
+          include: {
+
+            tenant: true,
+
+            plan: true,
+
+          },
+
+        },
+
+      },
+
+      orderBy: {
+
+        createdAt: "desc",
+
+      },
+
+    });
+
+  };

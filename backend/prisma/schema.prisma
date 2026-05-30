@@ -848,3 +848,13 @@ enum PaymentStatus {
   FAILED
   REFUNDED
 }
+model PlatformSettings {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  appName      String   @default("College ERP")
+  tagline      String?
+  primaryColor String   @default("#4f46e5")
+  logoUrl      String?
+  faviconUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

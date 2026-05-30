@@ -1,35 +1,40 @@
 import prisma from "../../utils/prisma";
+import Razorpay from "razorpay";
+import { PaymentStatus } from "@prisma/client";
+
+//////////////////////////////////////////////////////
+// RAZORPAY INSTANCE
+//////////////////////////////////////////////////////
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+});
 
 /////////////////////////
 // CREATE TENANT
 /////////////////////////
-export const createTenant = async (data: any) => {
 
+export const createTenant = async (data: any) => {
   if (!data.name || !data.type) {
     throw new Error("Name and type are required");
   }
 
-  //////////////////////////
-  // 🔒 DUPLICATE CHECK
-  //////////////////////////
   const existing = await prisma.tenant.findFirst({
-    where: {
-      name: data.name,
-    },
+    where: { name: data.name },
   });
 
   if (existing) {
     throw new Error("Tenant already exists");
   }
 
-  return prisma.tenant.create({
-    data,
-  });
+  return prisma.tenant.create({ data });
 };
 
 /////////////////////////
 // GET ALL TENANTS
 /////////////////////////
+
 export const getTenants = async () => {
   return prisma.tenant.findMany({
     orderBy: { name: "asc" },
@@ -39,8 +44,8 @@ export const getTenants = async () => {
 /////////////////////////
 // GET SINGLE TENANT
 /////////////////////////
-export const getTenantById = async (id: string) => {
 
+export const getTenantById = async (id: string) => {
   const tenant = await prisma.tenant.findUnique({
     where: { id },
   });
@@ -55,6 +60,7 @@ export const getTenantById = async (id: string) => {
 /////////////////////////
 // UPDATE IMAGES
 /////////////////////////
+
 export const updateTenantImagesService = async ({
   tenantId,
   logoUrl,
@@ -64,10 +70,6 @@ export const updateTenantImagesService = async ({
   logoUrl?: string;
   backgroundUrl?: string;
 }) => {
-
-  //////////////////////////
-  // 🔒 CHECK EXISTENCE
-  //////////////////////////
   const existing = await prisma.tenant.findUnique({
     where: { id: tenantId },
   });
@@ -76,15 +78,145 @@ export const updateTenantImagesService = async ({
     throw new Error("Tenant not found");
   }
 
-  //////////////////////////
-  // 🚀 UPDATE
-  //////////////////////////
   return prisma.tenant.update({
     where: { id: tenantId },
     data: {
       ...(logoUrl && { logoUrl }),
       ...(backgroundUrl && { backgroundUrl }),
-            updatedAt: new Date(),
+      updatedAt: new Date(),
     },
   });
+};
+
+//////////////////////////////////////////////////////
+// 📋 GET MY SUBSCRIPTION (Tenant Dashboard)
+//////////////////////////////////////////////////////
+
+export const getMySubscriptionService = async (tenantId: string) => {
+  const subscription = await prisma.tenantSubscription.findFirst({
+    where: { tenantId, isActive: true },
+    include: { plan: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!subscription) {
+    return null;
+  }
+
+  const startDate = new Date(subscription.startDate);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + subscription.plan.durationInDays);
+
+  const daysRemaining = Math.max(
+    0,
+    Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  );
+
+  return {
+    planName: subscription.plan.name,
+    amount: subscription.amount,
+    startDate: subscription.startDate,
+    endDate,
+    daysRemaining,
+    durationInDays: subscription.plan.durationInDays,
+    status: subscription.status,
+    maxStudents: subscription.maxStudents,
+    maxTeachers: subscription.maxTeachers,
+    maxAdmins: subscription.maxAdmins,
+    maxStorageInGB: subscription.maxStorageInGB,
+  };
+};
+
+//////////////////////////////////////////////////////
+// 🛒 GET ALL PLANS (For tenant to browse)
+//////////////////////////////////////////////////////
+
+export const getAllPlansService = async () => {
+  return prisma.subscriptionPlan.findMany({
+    where: { isActive: true },
+    orderBy: { price: "asc" },
+  });
+};
+
+//////////////////////////////////////////////////////
+// 🔥 TENANT SELF-SUBSCRIBE + CREATE ORDER
+//////////////////////////////////////////////////////
+
+export const tenantSelfSubscribeService = async (
+  tenantId: string,
+  planId: string
+) => {
+  // Get plan
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { id: planId },
+  });
+
+  if (!plan) {
+    throw new Error("Plan not found");
+  }
+
+  // Check if already has active subscription
+  const existingActive = await prisma.tenantSubscription.findFirst({
+    where: { tenantId, isActive: true },
+  });
+
+  if (existingActive) {
+    // Deactivate old subscription
+    await prisma.tenantSubscription.update({
+      where: { id: existingActive.id },
+      data: { isActive: false },
+    });
+  }
+
+  // Create subscription
+const subscriptionCode = `SUB-${Date.now()}`;
+
+// ✅ Calculate endDate
+const startDate = new Date();
+const endDate = new Date(startDate);
+endDate.setDate(endDate.getDate() + plan.durationInDays);
+
+const subscription = await prisma.tenantSubscription.create({
+  data: {
+    tenantId,
+    planId,
+    subscriptionCode,
+    amount: plan.price,
+    currency: "INR",
+    maxStudents: plan.maxStudents,
+    maxTeachers: plan.maxTeachers,
+    maxAdmins: plan.maxAdmins,
+    maxStorageInGB: plan.maxStorageInGB,
+    startDate,          // ✅ add
+    endDate,            // ✅ add — ye missing tha
+    status: "PENDING",
+    isActive: false,
+  },
+});
+  // Create Razorpay order
+  const order = await razorpay.orders.create({
+    amount: Math.round(plan.price * 100),
+    currency: "INR",
+    receipt: subscriptionCode,
+  });
+
+  // Update subscription with order id
+  await prisma.tenantSubscription.update({
+    where: { id: subscription.id },
+    data: { razorpayOrderId: order.id },
+  });
+
+  // Create payment entry
+  await prisma.subscriptionPayment.create({
+    data: {
+      subscriptionId: subscription.id,
+      amount: plan.price,
+      currency: "INR",
+      gateway: "RAZORPAY",
+      status: PaymentStatus.PENDING,
+      razorpayOrderId: order.id,
+    },
+  });
+
+  return { order, subscriptionId: subscription.id };
 };

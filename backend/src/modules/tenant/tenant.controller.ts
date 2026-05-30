@@ -1,17 +1,22 @@
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
-import { updateTenantImagesService } from "./tenant.service";
 import {
   getTenants,
   getTenantById,
+  updateTenantImagesService,
+  getMySubscriptionService,
+  getAllPlansService,
+  tenantSelfSubscribeService,
 } from "./tenant.service";
 import bcrypt from "bcrypt";
+
 // 🔥 BASE URL (ENV SAFE)
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 /////////////////////////
 // CREATE TENANT
 /////////////////////////
+
 export const create = async (req: any, res: Response) => {
   try {
     const { name, type } = req.body;
@@ -24,36 +29,27 @@ export const create = async (req: any, res: Response) => {
     }
 
     const files = req.files || {};
-
     const logoFile = files?.logo?.[0]?.filename || null;
     const bgFile = files?.background?.[0]?.filename || null;
 
-    // ✅ 1. CREATE TENANT
+    // 1. CREATE TENANT
     const tenant = await prisma.tenant.create({
       data: {
         name,
         type,
         logoUrl: logoFile ? `${BASE_URL}/uploads/${logoFile}` : null,
-        backgroundUrl: bgFile
-          ? `${BASE_URL}/uploads/${bgFile}`
-          : null,
+        backgroundUrl: bgFile ? `${BASE_URL}/uploads/${bgFile}` : null,
       },
     });
 
-    // ✅ 2. AUTO ADMIN EMAIL
-    const email =
-      name.toLowerCase().replace(/\s/g, "") + "@admin.com";
+    // 2. AUTO ADMIN EMAIL
+    const email = name.toLowerCase().replace(/\s/g, "") + "@admin.com";
 
-    // ✅ 3. AUTO PASSWORD
-    //const rawPassword = Math.random().toString(36).slice(-8);
-    //const hashedPassword = await bcrypt.hash(rawPassword, 10);
-    
-const rawPassword = "123456";  // 🔥 FIX: Predictable default password
-const hashedPassword = await bcrypt.hash(rawPassword, 10);
+    // 3. AUTO PASSWORD
+    const rawPassword = "Admin@123";
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-
-
-    // ✅ 4. CREATE ADMIN USER
+    // 4. CREATE ADMIN USER
     await prisma.user.create({
       data: {
         name: "Admin",
@@ -64,32 +60,32 @@ const hashedPassword = await bcrypt.hash(rawPassword, 10);
       },
     });
 
-    // ✅ 5. RESPONSE WITH CREDENTIALS
+    // 5. RESPONSE WITH CREDENTIALS
     return res.status(201).json({
       success: true,
       data: tenant,
       admin: {
         email,
-        password: rawPassword, // 👈 only shown once
+        password: rawPassword,
       },
     });
 
   } catch (error: any) {
     console.error("CREATE TENANT ERROR:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Error creating tenant",
     });
   }
 };
+
 /////////////////////////
-// UPDATE TENANT (🔥 REQUIRED)
+// UPDATE TENANT
 /////////////////////////
+
 export const update = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-
     const { name, type, isActive } = req.body;
 
     const tenant = await prisma.tenant.update({
@@ -101,49 +97,38 @@ export const update = async (req: Request, res: Response) => {
       },
     });
 
-    return res.json({
-      success: true,
-      data: tenant,
-    });
+    return res.json({ success: true, data: tenant });
 
   } catch (error: any) {
     console.error("UPDATE TENANT ERROR:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Error updating tenant",
     });
   }
 };
+
 /////////////////////////
 // GET ALL TENANTS
 /////////////////////////
+
 export const getAll = async (req: Request, res: Response) => {
   try {
     const tenants = await getTenants();
-
-    return res.json({
-      success: true,
-      data: tenants,
-    });
-
+    return res.json({ success: true, data: tenants });
   } catch (e: any) {
     console.error("GET TENANTS ERROR:", e);
-
-    return res.status(500).json({
-      success: false,
-      message: e.message,
-    });
+    return res.status(500).json({ success: false, message: e.message });
   }
 };
 
 /////////////////////////
 // GET SINGLE TENANT
 /////////////////////////
+
 export const getOne = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-
     const tenant = await getTenantById(id);
 
     if (!tenant) {
@@ -153,27 +138,20 @@ export const getOne = async (req: Request, res: Response) => {
       });
     }
 
-    return res.json({
-      success: true,
-      data: tenant,
-    });
+    return res.json({ success: true, data: tenant });
 
   } catch (e: any) {
     console.error("GET TENANT ERROR:", e);
-
-    return res.status(500).json({
-      success: false,
-      message: e.message,
-    });
+    return res.status(500).json({ success: false, message: e.message });
   }
 };
 
 /////////////////////////
 // UPLOAD IMAGES
 /////////////////////////
+
 export const uploadTenantImages = async (req: any, res: Response) => {
   try {
-    // 🔥 SUPER ADMIN SUPPORT
     const tenantId =
       req.user?.role === "SUPER_ADMIN"
         ? req.query.tenantId
@@ -187,18 +165,13 @@ export const uploadTenantImages = async (req: any, res: Response) => {
     }
 
     const files = req.files || {};
-
     const logo = files?.logo?.[0];
     const background = files?.background?.[0];
 
     const updatedTenant = await updateTenantImagesService({
       tenantId,
-      logoUrl: logo
-        ? `${BASE_URL}/uploads/${logo.filename}`
-        : undefined,
-      backgroundUrl: background
-        ? `${BASE_URL}/uploads/${background.filename}`
-        : undefined,
+      logoUrl: logo ? `${BASE_URL}/uploads/${logo.filename}` : undefined,
+      backgroundUrl: background ? `${BASE_URL}/uploads/${background.filename}` : undefined,
     });
 
     return res.json({
@@ -209,10 +182,78 @@ export const uploadTenantImages = async (req: any, res: Response) => {
 
   } catch (error: any) {
     console.error("UPLOAD IMAGE ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+//////////////////////////////////////////////////////
+// 📋 GET MY SUBSCRIPTION (Tenant Dashboard)
+//////////////////////////////////////////////////////
+
+export const getMySubscription = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant ID not found in token",
+      });
+    }
+
+    const data = await getMySubscriptionService(tenantId);
+
+    return res.status(200).json({ success: true, data });
+
+  } catch (error: any) {
+    console.error("GET MY SUBSCRIPTION ERROR:", error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 🛒 GET ALL PLANS (For tenant to browse & buy)
+//////////////////////////////////////////////////////
+
+export const getAllPlans = async (req: Request, res: Response) => {
+  try {
+    const data = await getAllPlansService();
+    return res.status(200).json({ success: true, data });
+  } catch (error: any) {
+    console.error("GET PLANS ERROR:", error);
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 🔥 SELF SUBSCRIBE (Tenant buys plan + creates order)
+//////////////////////////////////////////////////////
+
+export const selfSubscribe = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { planId } = req.body;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant ID not found in token",
+      });
+    }
+
+    if (!planId) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan ID is required",
+      });
+    }
+
+    const data = await tenantSelfSubscribeService(tenantId, planId);
+
+    return res.status(200).json({ success: true, data });
+
+  } catch (error: any) {
+    console.error("SELF SUBSCRIBE ERROR:", error);
+    return res.status(400).json({ success: false, message: error.message });
   }
 };

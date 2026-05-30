@@ -4,6 +4,7 @@
 
 /* ================= ROOT VARIABLES ================= */
 :root {
+  --primary-color: #4f46e5;
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #ffffff;

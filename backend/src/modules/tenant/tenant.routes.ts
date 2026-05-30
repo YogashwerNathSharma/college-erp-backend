@@ -1,5 +1,14 @@
 import { Router } from "express";
-import { getAll, getOne, create, update } from "./tenant.controller";
+import {
+  getAll,
+  getOne,
+  create,
+  update,
+  uploadTenantImages,
+  getMySubscription,
+  getAllPlans,
+  selfSubscribe,
+} from "./tenant.controller";
 import { upload } from "../../middleware/upload.middleware";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
@@ -7,8 +16,32 @@ import { allowRoles } from "../../middleware/role.middleware";
 const router = Router();
 
 //////////////////////////////////////////////////
-// 🔥 GET ALL TENANTS
+// 📋 TENANT SELF-SERVICE (Login hone ke baad tenant apna data dekhe)
+// ⚠️ YE ROUTES "/:id" SE UPAR HONE CHAHIYE
 //////////////////////////////////////////////////
+
+router.get(
+  "/my-subscription",
+  authMiddleware,
+  getMySubscription
+);
+
+router.get(
+  "/plans",
+  authMiddleware,
+  getAllPlans
+);
+
+router.post(
+  "/self-subscribe",
+  authMiddleware,
+  selfSubscribe
+);
+
+//////////////////////////////////////////////////
+// 🔥 GET ALL TENANTS (SUPER ADMIN ONLY)
+//////////////////////////////////////////////////
+
 router.get(
   "/",
   authMiddleware,
@@ -17,18 +50,9 @@ router.get(
 );
 
 //////////////////////////////////////////////////
-// 🔥 GET SINGLE TENANT
+// 🔥 CREATE TENANT (SUPER ADMIN ONLY)
 //////////////////////////////////////////////////
-router.get(
-  "/:id",
-  authMiddleware,
-  allowRoles("SUPER_ADMIN"),
-  getOne
-);
 
-//////////////////////////////////////////////////
-// 🔥 CREATE TENANT (🔥 FIXED ROUTE)
-//////////////////////////////////////////////////
 router.post(
   "/",
   authMiddleware,
@@ -41,13 +65,40 @@ router.post(
 );
 
 //////////////////////////////////////////////////
-// 🔥 UPDATE / TOGGLE TENANT (🔥 NEW)
+// 🔥 UPLOAD IMAGES
 //////////////////////////////////////////////////
+
+router.post(
+  "/upload-images",
+  authMiddleware,
+  upload.fields([
+    { name: "logo", maxCount: 1 },
+    { name: "background", maxCount: 1 },
+  ]),
+  uploadTenantImages
+);
+
+//////////////////////////////////////////////////
+// 🔥 UPDATE / TOGGLE TENANT (SUPER ADMIN ONLY)
+//////////////////////////////////////////////////
+
 router.patch(
   "/:id",
   authMiddleware,
   allowRoles("SUPER_ADMIN"),
   update
+);
+
+//////////////////////////////////////////////////
+// 🔥 GET SINGLE TENANT (SUPER ADMIN ONLY)
+// ⚠️ YE SABSE LAST ME HONA CHAHIYE
+//////////////////////////////////////////////////
+
+router.get(
+  "/:id",
+  authMiddleware,
+  allowRoles("SUPER_ADMIN"),
+  getOne
 );
 
 export default router;

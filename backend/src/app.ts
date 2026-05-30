@@ -40,11 +40,12 @@ import paymentRoutes from "./modules/fees/payment/payment.routes";
 import studentFeeRoutes from "./modules/fees/studentFee/studentFee.routes";
 import defaulterRoutes from "./modules/fees/defaulters/defaulters.routes";
 import feesRoutes from "./modules/fees/fees.routes";
-import reportsRoutes from "./modules/fees/reports/reports.routes";
+import feereportsRoutes from "./modules/fees/reports/reports.routes";
 
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
-
+import superadminreportsRoutes from "./modules/super-admin/reports.routes";
+import settingsRoutes from "./modules/super-admin/settings.routes";
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
 import subscriptionPaymentRoutes from "./modules/subscription-payment/subscriptionPayment.routes";
@@ -134,12 +135,12 @@ app.use("/api/admission", admissionRoutes);
 app.use("/api/enrollment", enrollmentRoutes);
 
 app.use("/api/promotion", promotionRoutes);
-
+app.use("/api/fees/reports", feereportsRoutes);
 //////////////////////////////////////////////////////
 // FEES MODULE
 //////////////////////////////////////////////////////
 
-app.use("/api/reports", reportsRoutes);
+app.use("/api/reports", superadminreportsRoutes);
 
 app.use(
   "/api/fees/fee-structure",
@@ -171,7 +172,7 @@ app.use(
   "/api/super-admin",
   superAdminRoutes
 );
-
+app.use("/api/settings", settingsRoutes);
 //////////////////////////////////////////////////////
 // SUBSCRIPTIONS
 //////////////////////////////////////////////////////

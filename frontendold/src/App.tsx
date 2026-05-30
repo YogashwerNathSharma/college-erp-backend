@@ -29,7 +29,14 @@ import ReportsPage from "./pages/ReportsPage";
 
 // superadmin settings
 import SettingsPage from "./pages/SettingsPage";
-
+//academic year 
+import AcademicYearPage from "./pages/academic-year/AcademicYearPage";
+//classes
+import ClassesPage from "./pages/classes/ClassesPage";
+//sections
+import Sections from "./pages/Sections/SectionsPage"
+//subjects
+import SubjectsPage from "./pages/subjects/SubjectsPage";
 //////////////////////////////////////////////////////
 // 🔒 Protected Route
 //////////////////////////////////////////////////////
@@ -153,7 +160,13 @@ export default function App() {
 
             {/* ✅ STUDENTS */}
             <Route path="/students" element={<StudentsPage />} />
-
+{/*academic year*/}
+<Route path="/academic-years" element={<AcademicYearPage />} />
+{/*classes*/}
+<Route path="/classes" element={<ClassesPage />} />
+{/*Sections*/}
+<Route path="/Sections" element={<Sections />}/>
+<Route path="/subjects" element={<SubjectsPage />} />
           </Route>
         </Route>
 

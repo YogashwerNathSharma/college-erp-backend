@@ -184,7 +184,7 @@ model Section {
 
   enrollments Enrollment[]
   timetables  Timetable[]
-
+isActive Boolean @default(true)
   createdAt DateTime @default(now())
 }
 
@@ -246,7 +246,7 @@ model Subject {
 
   teachers   TeacherSubject[]
   timetables Timetable[]
-
+isActive Boolean @default(true)
   createdAt DateTime @default(now())
 }
 

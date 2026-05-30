@@ -74,3 +74,21 @@ export const getSubjectsService = async (tenantId: string) => {
     orderBy: { createdAt: "desc" },
   });
 };
+// UPDATE SUBJECT
+export const updateSubjectService = async (id: string, data: any, tenantId: string) => {
+  return prisma.subject.update({
+    where: { id },
+    data: { name: data.name },
+  });
+};
+
+// TOGGLE SUBJECT ACTIVE/INACTIVE
+export const toggleSubjectService = async (id: string, tenantId: string) => {
+  const subject = await prisma.subject.findFirst({ where: { id, tenantId } });
+  if (!subject) throw new Error("Subject not found");
+
+  return prisma.subject.update({
+    where: { id },
+    data: { isActive: !subject.isActive },
+  });
+};

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import {
   createSubjectService,
   getSubjectsService,
+  updateSubjectService,
+  toggleSubjectService,
 } from "./subject.service";
 
 /////////////////////////
@@ -75,5 +77,43 @@ export const getSubjects = async (req: Request, res: Response) => {
       success: false,
       message: error.message || "Failed to fetch subjects",
     });
+  }
+};
+/////////////////////////
+// UPDATE SUBJECT
+/////////////////////////
+export const updateSubject = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Name required" });
+    }
+
+    const updated = await updateSubjectService(id, { name }, tenantId);
+    return res.status(200).json({ success: true, data: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/////////////////////////
+// TOGGLE SUBJECT STATUS
+/////////////////////////
+export const toggleSubject = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+
+    const updated = await toggleSubjectService(id, tenantId);
+    return res.status(200).json({
+      success: true,
+      data: updated,
+      message: updated.isActive ? "Subject activated" : "Subject deactivated",
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

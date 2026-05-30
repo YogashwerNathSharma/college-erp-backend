@@ -46,9 +46,11 @@ import feereportsRoutes from "./modules/fees/reports/reports.routes";
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
 import settingsRoutes from "./modules/super-admin/settings.routes";
+
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
 import subscriptionPaymentRoutes from "./modules/subscription-payment/subscriptionPayment.routes";
+
 const app = express();
 
 //////////////////////////////////////////////////////
@@ -80,9 +82,7 @@ app.use(rateLimiter);
 
 app.use(
   "/uploads",
-  express.static(
-    path.join(__dirname, "../uploads")
-  )
+  express.static(path.join(__dirname, "../uploads"))
 );
 
 //////////////////////////////////////////////////////
@@ -90,40 +90,27 @@ app.use(
 //////////////////////////////////////////////////////
 
 app.use("/api", siteRoutes);
-
 app.use("/api/auth", authRoutes);
-
 app.use("/api/tenant", tenantRoutes);
-
 app.use("/api/academic", academicRoutes);
 
 //////////////////////////////////////////////////////
 // DASHBOARD
 //////////////////////////////////////////////////////
 
-app.use(
-  "/api/dashboard",
-  dashboardRoutes
-);
+app.use("/api/dashboard", dashboardRoutes);
 
 //////////////////////////////////////////////////////
 // ACADEMIC FLOW
 //////////////////////////////////////////////////////
 
 app.use("/api/class", classRoutes);
-
 app.use("/api/section", sectionRoutes);
-
 app.use("/api/students", studentRoutes);
-
 app.use("/api/teacher", teacherRoutes);
-
 app.use("/api/subjects", subjectRoutes);
-
 app.use("/api/attendance", attendanceRoutes);
-
 app.use("/api/timetable", timetableRoutes);
-
 app.use("/api/exam", examRoutes);
 
 //////////////////////////////////////////////////////
@@ -131,69 +118,39 @@ app.use("/api/exam", examRoutes);
 //////////////////////////////////////////////////////
 
 app.use("/api/admission", admissionRoutes);
-
 app.use("/api/enrollment", enrollmentRoutes);
-
 app.use("/api/promotion", promotionRoutes);
-app.use("/api/fees/reports", feereportsRoutes);
+
 //////////////////////////////////////////////////////
 // FEES MODULE
 //////////////////////////////////////////////////////
 
-app.use("/api/reports", superadminreportsRoutes);
-
-app.use(
-  "/api/fees/fee-structure",
-  feeStructureRoutes
-);
-
-app.use(
-  "/api/fees/student-fee",
-  studentFeeRoutes
-);
-
-app.use(
-  "/api/fees/payment",
-  paymentRoutes
-);
-
-app.use(
-  "/api/fees/defaulters",
-  defaulterRoutes
-);
-
+app.use("/api/fees/reports", feereportsRoutes);
+app.use("/api/fees/fee-structure", feeStructureRoutes);
+app.use("/api/fees/student-fee", studentFeeRoutes);
+app.use("/api/fees/payment", paymentRoutes);
+app.use("/api/fees/defaulters", defaulterRoutes);
 app.use("/api/fees", feesRoutes);
 
 //////////////////////////////////////////////////////
 // SUPER ADMIN
 //////////////////////////////////////////////////////
 
-app.use(
-  "/api/super-admin",
-  superAdminRoutes
-);
+app.use("/api/reports", superadminreportsRoutes);
+app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/settings", settingsRoutes);
+
 //////////////////////////////////////////////////////
 // SUBSCRIPTIONS
 //////////////////////////////////////////////////////
 
-app.use(
-  "/api/subscriptions",
-  subscriptionRoutes
-);
-app.use(
-  "/api/subscription-payments",
-  subscriptionPaymentRoutes
-);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/subscription-payments", subscriptionPaymentRoutes);
 
 //////////////////////////////////////////////////////
 // SWAGGER DOCS
 //////////////////////////////////////////////////////
 
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 export default app;

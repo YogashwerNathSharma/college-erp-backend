@@ -10,22 +10,31 @@ export const createClassService = async (data: any, tenantId: string) => {
   });
 };
 
+export const updateClassService = async (id: string, data: any, tenantId: string) => {
+  return prisma.class.update({
+    where: { id },
+    data: { name: data.name },
+  });
+};
 
+export const deleteClassService = async (id: string, tenantId: string) => {
+  return prisma.class.delete({
+    where: { id },
+  });
+};
 
-export const getClassesService = async (query: any) => {
-  const { page, limit, skip } = getPagination(query);
+// ✅ Fixed getClassesService
+export const getClassesService = async (tenantId: string, academicYearId?: string) => {
+  const where: any = { tenantId };
+  
+  if (academicYearId) {
+    where.academicYearId = academicYearId;
+  }
 
-  const [classes, total] = await Promise.all([
-    prisma.class.findMany({
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" }, // ✅ default sorting
-    }),
-    prisma.class.count(),
-  ]);
+  const classes = await prisma.class.findMany({
+    where,
+    orderBy: { name: "asc" },
+  });
 
-  return {
-    data: classes,
-    meta: buildPaginationMeta(total, page, limit),
-  };
+  return classes;
 };

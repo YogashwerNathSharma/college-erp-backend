@@ -1,18 +1,13 @@
 import { Router } from "express";
-import { createSection } from "./section.controller";
+import { createSection, getSections, updateSection, toggleSection } from "./section.controller";
 import { allowRoles } from "../../middleware/role.middleware";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 
 const router = Router();
 
-// 🔐 Section
-router.post(
-  "/",
-  authMiddleware,
-  allowRoles("ADMIN", "SUPER_ADMIN"), // 🔥 optional upgrade
-  resolveTenant, // 🔥 MUST
-  createSection
-);
-
+router.get("/", authMiddleware, resolveTenant, getSections);
+router.post("/", authMiddleware, allowRoles("ADMIN"), resolveTenant, createSection);
+router.put("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, updateSection);
+router.patch("/:id/toggle", authMiddleware, allowRoles("ADMIN"), resolveTenant, toggleSection);
 export default router;

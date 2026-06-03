@@ -32,7 +32,6 @@ import examRoutes from "./modules/exam/exam.routes";
 // ADMISSION
 import admissionRoutes from "./modules/admission/admission.routes";
 import enrollmentRoutes from "./modules/enrollment/enrollment.routes";
-import promotionRoutes from "./modules/students/submodules/promotion/promotion.routes";
 
 // FEES
 import feeStructureRoutes from "./modules/fees/feeStructure/feeStructure.routes";
@@ -46,6 +45,7 @@ import feereportsRoutes from "./modules/fees/reports/reports.routes";
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
 import settingsRoutes from "./modules/super-admin/settings.routes";
+
 
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
@@ -119,7 +119,6 @@ app.use("/api/exam", examRoutes);
 
 app.use("/api/admission", admissionRoutes);
 app.use("/api/enrollment", enrollmentRoutes);
-app.use("/api/promotion", promotionRoutes);
 
 //////////////////////////////////////////////////////
 // FEES MODULE

@@ -1,40 +1,115 @@
+
 import prisma from "../../utils/prisma";
-import { getPagination, buildPaginationMeta } from "../../utils/pagination";
+
+// ─── Create Class ────────────────────────────────────────────────────────────
+
 export const createClassService = async (data: any, tenantId: string) => {
   return prisma.class.create({
     data: {
       name: data.name,
       tenantId,
       academicYearId: data.academicYearId,
+      isActive: true,
     },
   });
 };
 
+// ─── Get All Classes (non-deleted) ───────────────────────────────────────────
+
+export const getClassesService = async (tenantId: string, academicYearId?: string) => {
+  const where: any = { tenantId, isDeleted: false };
+
+  if (academicYearId) {
+    where.academicYearId = academicYearId;
+  }
+
+  return prisma.class.findMany({
+    where,
+    orderBy: { name: "asc" },
+  });
+};
+
+// ─── Get Deleted Classes (Recycle Bin) ───────────────────────────────────────
+
+export const getDeletedClassesService = async (tenantId: string) => {
+  return prisma.class.findMany({
+    where: { tenantId, isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// ─── Update Class ────────────────────────────────────────────────────────────
+
 export const updateClassService = async (id: string, data: any, tenantId: string) => {
+  const cls = await prisma.class.findFirst({
+    where: { id, tenantId },
+  });
+
+  if (!cls) {
+    throw new Error("Class not found");
+  }
+
   return prisma.class.update({
     where: { id },
     data: { name: data.name },
   });
 };
 
-export const deleteClassService = async (id: string, tenantId: string) => {
-  return prisma.class.delete({
+// ─── Toggle Active/Inactive ─────────────────────────────────────────────────
+
+export const toggleClassStatusService = async (id: string, tenantId: string) => {
+  const cls = await prisma.class.findFirst({
+    where: { id, tenantId },
+  });
+
+  if (!cls) {
+    throw new Error("Class not found");
+  }
+
+  return prisma.class.update({
     where: { id },
+    data: { isActive: !cls.isActive },
   });
 };
 
-// ✅ Fixed getClassesService
-export const getClassesService = async (tenantId: string, academicYearId?: string) => {
-  const where: any = { tenantId };
-  
-  if (academicYearId) {
-    where.academicYearId = academicYearId;
-  }
+// ─── Soft Delete ─────────────────────────────────────────────────────────────
 
-  const classes = await prisma.class.findMany({
-    where,
-    orderBy: { name: "asc" },
+export const softDeleteClassService = async (id: string, tenantId: string) => {
+  const cls = await prisma.class.findFirst({
+    where: { id, tenantId },
   });
 
-  return classes;
+  if (!cls) {
+    throw new Error("Class not found");
+  }
+
+  return prisma.class.update({
+    where: { id },
+    data: {
+      isDeleted: true,
+      deletedAt: new Date(),
+      isActive: false,
+    },
+  });
+};
+
+// ─── Restore from Soft Delete ────────────────────────────────────────────────
+
+export const restoreClassService = async (id: string, tenantId: string) => {
+  const cls = await prisma.class.findFirst({
+    where: { id, tenantId, isDeleted: true },
+  });
+
+  if (!cls) {
+    throw new Error("Deleted class not found");
+  }
+
+  return prisma.class.update({
+    where: { id },
+    data: {
+      isDeleted: false,
+      deletedAt: null,
+      isActive: true,
+    },
+  });
 };

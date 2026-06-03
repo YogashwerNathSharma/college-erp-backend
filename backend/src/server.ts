@@ -1,10 +1,7 @@
-import app from "./app"; // 🔥 MUST
-import path from "path";
-import express from "express";
-const PORT = process.env.PORT || 4000;
+import app from "./app";
 
+const PORT = process.env.PORT || 5000;
 
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 College cum School, developed by yogashwer nath sharma , Erp Server running on port ${PORT}`);
 });

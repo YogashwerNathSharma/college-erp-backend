@@ -1,127 +1,186 @@
 import { Router } from "express";
-import { getStudentTimeline } from "./student.controller";
-import {
-  createStudent,
-  getStudents,
-  getStudentById,
-  updateStudent,
-  deleteStudent,
-  restoreStudent,
-} from "./student.controller";
-import { getDeletedStudents } from "./student.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
-import { validate } from "../../middleware/validate.middleware";
+import { validateStudentAge } from "./age-validation.service";
+import { uploadPhoto, uploadDocument } from "../../utils/upload";
 import {
-  createStudentSchema,
-  updateStudentSchema,
-} from "./student.validation";
-import { getCurrent } from "./submodules/currentStatus/currentStatus.controller";
-import { resolveTenant } from "../../middleware/tenant.middleware"; // 🔥 ADD
+  uploadStudentPhoto,
+  uploadStudentDocument,
+  getStudentDocuments,
+  deleteStudentDocument,
+  deleteStudentPhoto,
+} from "./upload.service";
+import {
+  createStudentHandler,
+  getAllStudentsHandler,
+  getStudentByIdHandler,
+  updateStudentHandler,
+  softDeleteStudentHandler,
+  restoreStudentHandler,
+  getDeletedStudentsHandler,
+  getStudentStatsHandler,
+  getEligibleStudentsHandler,
+  promoteStudentHandler,
+  bulkPromoteHandler,
+  undoPromotionHandler,
+  changeSectionHandler,
+  createEnrollmentHandler,
+  bulkCreateEnrollmentsHandler,
+  getAgeConfigHandler,
+  seedAgeConfigHandler,
+  updateAgeConfigHandler,
+  toggleAgeConfigHandler,
+  printStudentsHandler,
+} from "./student.controller";
 
 const router = Router();
 
-/////////////////////////
-// CURRENT STATUS
-/////////////////////////
-router.get(
-  "/:studentId/current",
-  authMiddleware,
-  resolveTenant, // 🔥 FIX
-  getCurrent
-);
+// ============================================
+// ALL ROUTES USE AUTH + TENANT
+// ============================================
+router.use(authMiddleware, resolveTenant);
 
-/////////////////////////
-// RESTORE STUDENT
-/////////////////////////
-router.patch(
-  "/:id/restore",
-  authMiddleware,
-  allowRoles("ADMIN"),
-  resolveTenant, // 🔥 FIX
-  restoreStudent
-);
+// ============================================
+// STATIC ROUTES FIRST (before /:id)
+// ============================================
+// ============================================
+// UPLOAD ROUTES (before /:id)
+// ============================================
 
-/////////////////////////
-// TEST
-/////////////////////////
-router.get("/test", (req, res) => {
-  res.send("student route working");
+// Upload student photo
+router.post("/:id/photo", (req: any, res: any) => {
+  uploadPhoto(req, res, async (err: any) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No photo file provided" });
+    }
+    try {
+      const result = await uploadStudentPhoto(req.params.id, req.tenantId, req.file);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
 });
 
-/////////////////////////
-// CREATE STUDENT
-/////////////////////////
-router.post(
-  "/",
-  authMiddleware,
-  allowRoles("ADMIN", "STAFF"),
-  resolveTenant, // 🔥 FIX
-  validate(createStudentSchema),
-  createStudent
-);
+// Delete student photo
+router.delete("/:id/photo", allowRoles("ADMIN"), async (req: any, res: any) => {
+  try {
+    const result = await deleteStudentPhoto(req.params.id, req.tenantId);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
 
-/////////////////////////
-// GET ALL STUDENTS
-/////////////////////////
-router.get(
-  "/",
-  authMiddleware,
-  resolveTenant, // 🔥 FIX
-  getStudents
-);
+// Upload student document
+router.post("/:id/documents", (req: any, res: any) => {
+  uploadDocument(req, res, async (err: any) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No document file provided" });
+    }
+    try {
+      const { type, name } = req.body;
+      const result = await uploadStudentDocument(
+        req.params.id,
+        req.tenantId,
+        req.file,
+        type || "other",
+        name
+      );
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  });
+});
 
-/////////////////////////
-// GET DELETED STUDENTS
-/////////////////////////
-router.get(
-  "/deleted",
-  authMiddleware,
-  resolveTenant, // 🔥 FIX
-  getDeletedStudents
-);
+// Get student documents
+router.get("/:id/documents", async (req: any, res: any) => {
+  try {
+    const documents = await getStudentDocuments(req.params.id, req.tenantId);
+    res.json({ success: true, data: documents });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-/////////////////////////
-// STUDENT TIMELINE
-/////////////////////////
-router.get(
-  "/:id/timeline",
-  authMiddleware,
-  resolveTenant, // 🔥 FIX
-  getStudentTimeline
-);
+// Delete student document
+router.delete("/documents/:documentId", allowRoles("ADMIN"), async (req: any, res: any) => {
+  try {
+    const result = await deleteStudentDocument(req.params.documentId, req.tenantId);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+// --- Stats ---
+router.get("/stats", getStudentStatsHandler);
 
-/////////////////////////
-// GET SINGLE STUDENT
-/////////////////////////
-router.get(
-  "/:id",
-  authMiddleware,
-  resolveTenant, // 🔥 FIX
-  getStudentById
-);
+// --- Recycle Bin ---
+router.get("/recycle-bin", getDeletedStudentsHandler);
 
-/////////////////////////
-// UPDATE STUDENT
-/////////////////////////
-router.put(
-  "/:id",
-  authMiddleware,
-  allowRoles("ADMIN", "STAFF"),
-  resolveTenant, // 🔥 FIX
-  validate(updateStudentSchema),
-  updateStudent
-);
+// --- Age Config ---
+router.get("/age-config", getAgeConfigHandler);
+router.get("/age-config/validate", async (req: any, res: any) => {
+  try {
+    const { classId, dob, academicYearStart } = req.query;
 
-/////////////////////////
-// DELETE STUDENT
-/////////////////////////
-router.delete(
-  "/:id",
-  authMiddleware,
-  allowRoles("ADMIN"),
-  resolveTenant, // 🔥 FIX
-  deleteStudent
-);
+    if (!classId || !dob || !academicYearStart) {
+      return res.status(400).json({
+        success: false,
+        message: "classId, dob, and academicYearStart are required",
+      });
+    }
+
+    const result = await validateStudentAge(
+      req.tenantId,
+      classId as string,
+      new Date(dob as string),
+      parseInt(academicYearStart as string)
+    );
+
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+router.post("/age-config/seed", allowRoles("ADMIN"), seedAgeConfigHandler);
+router.put("/age-config/:configId", allowRoles("ADMIN"), updateAgeConfigHandler);
+router.patch("/age-config/:configId/toggle", allowRoles("ADMIN"), toggleAgeConfigHandler);
+
+// --- Promotion ---
+router.get("/promotion/eligible", getEligibleStudentsHandler);
+router.post("/promote", allowRoles("ADMIN"), promoteStudentHandler);
+router.post("/promote/bulk", allowRoles("ADMIN"), bulkPromoteHandler);
+router.post("/promote/undo/:promotionId", allowRoles("ADMIN"), undoPromotionHandler);
+router.post("/promote/section-change", allowRoles("ADMIN"), changeSectionHandler);
+
+// --- Enrollment (for existing students without enrollment) ---
+router.post("/enrollment", allowRoles("ADMIN"), createEnrollmentHandler);
+router.post("/enrollment/bulk", allowRoles("ADMIN"), bulkCreateEnrollmentsHandler);
+
+// --- Print / Export ---
+router.post("/print", printStudentsHandler);
+
+// ============================================
+// CRUD ROUTES
+// ============================================
+router.get("/", getAllStudentsHandler);
+router.post("/", allowRoles("ADMIN"), createStudentHandler);
+
+// ============================================
+// DYNAMIC /:id ROUTES LAST
+// ============================================
+router.get("/:id", getStudentByIdHandler);
+router.put("/:id", allowRoles("ADMIN"), updateStudentHandler);
+router.delete("/:id", allowRoles("ADMIN"), softDeleteStudentHandler);
+router.patch("/:id/restore", allowRoles("ADMIN"), restoreStudentHandler);
 
 export default router;

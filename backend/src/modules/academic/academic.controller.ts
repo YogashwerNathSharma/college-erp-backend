@@ -1,15 +1,20 @@
+
 import { Request, Response } from "express";
 import {
   createAcademicYear,
   getAcademicYears,
+  getDeletedAcademicYears,
   setActiveYear,
+  toggleAcademicYearStatus,
+  softDeleteAcademicYear,
+  restoreAcademicYear,
+  updateAcademicYear,
 } from "./academic.service";
 
 // ✅ Create
 export const create = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-
     const year = await createAcademicYear(req.body, tenantId);
 
     return res.status(201).json({
@@ -18,7 +23,6 @@ export const create = async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error("CREATE ACADEMIC ERROR:", e);
-
     return res.status(500).json({
       success: false,
       message: e.message,
@@ -26,11 +30,10 @@ export const create = async (req: Request, res: Response) => {
   }
 };
 
-// ✅ Get All
+// ✅ Get All (non-deleted)
 export const getAll = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-
     const data = await getAcademicYears(tenantId);
 
     return res.status(200).json({
@@ -39,7 +42,25 @@ export const getAll = async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error("GET ACADEMIC ERROR:", e);
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
+  }
+};
 
+// ✅ Get Deleted (Recycle Bin)
+export const getDeleted = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const data = await getDeletedAcademicYears(tenantId);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (e: any) {
+    console.error("GET DELETED ACADEMIC ERROR:", e);
     return res.status(500).json({
       success: false,
       message: e.message,
@@ -51,9 +72,7 @@ export const getAll = async (req: Request, res: Response) => {
 export const setActive = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-
     const id = req.params.id as string;
-
     const year = await setActiveYear(id, tenantId);
 
     return res.status(200).json({
@@ -62,7 +81,91 @@ export const setActive = async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error("SET ACTIVE ERROR:", e);
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
+  }
+};
 
+// ✅ Toggle Active/Inactive
+export const toggleStatus = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+    const year = await toggleAcademicYearStatus(id, tenantId);
+
+    return res.status(200).json({
+      success: true,
+      data: year,
+      message: year.isActive ? "Academic year activated" : "Academic year deactivated",
+    });
+  } catch (e: any) {
+    console.error("TOGGLE STATUS ERROR:", e);
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
+  }
+};
+
+// ✅ Soft Delete
+export const softDelete = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+    const year = await softDeleteAcademicYear(id, tenantId);
+
+    return res.status(200).json({
+      success: true,
+      data: year,
+      message: "Academic year moved to recycle bin",
+    });
+  } catch (e: any) {
+    console.error("SOFT DELETE ERROR:", e);
+    const status = e.message.includes("Cannot delete") ? 400 : 500;
+    return res.status(status).json({
+      success: false,
+      message: e.message,
+    });
+  }
+};
+
+// ✅ Restore
+export const restore = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+    const year = await restoreAcademicYear(id, tenantId);
+
+    return res.status(200).json({
+      success: true,
+      data: year,
+      message: "Academic year restored successfully",
+    });
+  } catch (e: any) {
+    console.error("RESTORE ERROR:", e);
+    return res.status(500).json({
+      success: false,
+      message: e.message,
+    });
+  }
+};
+
+// ✅ Update
+export const update = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const id = req.params.id as string;
+    const year = await updateAcademicYear(id, tenantId, req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: year,
+      message: "Academic year updated successfully",
+    });
+  } catch (e: any) {
+    console.error("UPDATE ERROR:", e);
     return res.status(500).json({
       success: false,
       message: e.message,

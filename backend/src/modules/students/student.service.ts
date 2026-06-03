@@ -1,97 +1,171 @@
-import prisma from "../../utils/prisma";
+import { PrismaClient } from "@prisma/client";
+import { generateSrNumber, generateAdmissionNumber } from "./admission-number.service";
+const prisma = new PrismaClient();
 
-/////////////////////////
-// 🔥 STUDENT HISTORY
-/////////////////////////
-export const addStudentHistory = async (
-  studentId: string,
-  tenantId: string,
-  action: string,
-  message: string,
-  userId: string
-) => {
-  return prisma.studentHistory.create({
-    data: {
-      studentId,
-      tenantId,
-      action,
-      message,
-      performedBy: userId,
-    },
-  });
-};
+// ============================================
+// CREATE STUDENT — WITH AUTO ENROLLMENT
+// ============================================
+export const createStudent = async (data: any, tenantId: string, userId: string) => {
+  const {
+    firstName,
+    lastName,
+    gender,
+    dob,
+    email,
+    phone,
+    address,
+    admissionNo,
+    bloodGroup,
+    religion,
+    caste,
+    category,
+    nationality,
+    aadharNo,
+    fatherName,
+    fatherPhone,
+    fatherOccupation,
+    motherName,
+    motherPhone,
+    motherOccupation,
+    guardianName,
+    guardianPhone,
+    guardianRelation,
+    photoUrl,
+    classId,
+    sectionId,
+    academicYearId,
+    rollNumber,
+  } = data;
 
-/////////////////////////
-// CREATE STUDENT
-/////////////////////////
-export const createStudentService = async (
-  data: any,
-  tenantId: string,
-  userId: string
-) => {
-  const existing = await prisma.student.findFirst({
-    where: {
-      tenantId,
-      OR: [
-        ...(data.email ? [{ email: data.email }] : []),
-        ...(data.admissionNo ? [{ admissionNo: data.admissionNo }] : []),
-      ],
-    },
-  });
-
-  if (existing) {
-    throw new Error("Student already exists");
+  // Auto-generate admission number if not provided
+  let finalAdmissionNo = admissionNo;
+  if (!finalAdmissionNo) {
+    finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
   }
 
-  const student = await prisma.student.create({
-    data: {
-      ...data,
-      dob: data.dob ? new Date(data.dob) : null,
-      tenantId,
-    },
+  const srNo = await generateSrNumber(tenantId);
+
+  // Create Student + Enrollment in SAME transaction
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Create Student
+    const student = await tx.student.create({
+      data: {
+        firstName,
+        lastName,
+        gender,
+        dob: new Date(dob),
+        email: email || null,
+        phone: phone || null,
+        address,
+        admissionNo: finalAdmissionNo,
+        srNo,
+        bloodGroup: bloodGroup || null,
+        religion: religion || null,
+        caste: caste || null,
+        category: category || null,
+        nationality: nationality || "Indian",
+        aadharNo: aadharNo || null,
+        fatherName,
+        fatherPhone: fatherPhone || null,
+        fatherOccupation: fatherOccupation || null,
+        motherName: motherName || null,
+        motherPhone: motherPhone || null,
+        motherOccupation: motherOccupation || null,
+        guardianName: guardianName || null,
+        guardianPhone: guardianPhone || null,
+        guardianRelation: guardianRelation || null,
+        photoUrl: photoUrl || null,
+        admissionDate: new Date(),
+        status: "active",
+        isDeleted: false,
+        tenant: { connect: { id: tenantId } },
+        academicYear: { connect: { id: academicYearId } },
+      },
+    });
+
+    // 2. AUTO-CREATE ENROLLMENT
+    const enrollment = await tx.enrollment.create({
+      data: {
+        student: { connect: { id: student.id } },
+        class: { connect: { id: classId } },
+        section: { connect: { id: sectionId } },
+        academicYear: { connect: { id: academicYearId } },
+        tenant: { connect: { id: tenantId } },
+        rollNumber: rollNumber || null,
+        status: "active",
+      },
+    });
+
+    // 3. Log to StudentHistory
+    await tx.studentHistory.create({
+      data: {
+        student: { connect: { id: student.id } },
+        tenant: { connect: { id: tenantId } },
+        action: "ADMISSION",
+        details: JSON.stringify({
+          admissionNo: finalAdmissionNo,
+          classId,
+          sectionId,
+          academicYearId,
+          rollNumber: rollNumber || null,
+        }),
+        toClassId: classId,
+        toSectionId: sectionId,
+        academicYearId,
+        performedBy: userId,
+      },
+    });
+
+    return { student, enrollment };
   });
 
-  await addStudentHistory(
-    student.id,
-    tenantId,
-    "CREATED",
-    "Student created",
-    userId
-  );
-
-  return student;
+  return result;
 };
 
-/////////////////////////
-// GET ALL STUDENTS
-/////////////////////////
-export const getStudentsService = async (
+// ============================================
+// GET ALL STUDENTS (with enrollment info)
+// ============================================
+export const getAllStudents = async (
   tenantId: string,
-  page: number,
-  limit: number,
-  classId?: string
-) => {
-  const activeYear = await prisma.academicYear.findFirst({
-    where: {
-      tenantId,
-      isActive: true,
-    },
-  });
-
-  if (!activeYear) {
-    throw new Error("No active academic year");
+  filters: {
+    classId?: string;
+    sectionId?: string;
+    academicYearId?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
   }
+) => {
+  const { classId, sectionId, academicYearId, status, search, page = 1, limit = 50 } = filters;
 
   const where: any = {
     tenantId,
     isDeleted: false,
   };
 
-  if (classId) {
+  if (status) where.status = status;
+  if (search) {
+    where.OR = [
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
+      { admissionNo: { contains: search, mode: "insensitive" } },
+      { fatherName: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const enrollmentFilter: any = {};
+  if (classId) enrollmentFilter.classId = classId;
+  if (sectionId) enrollmentFilter.sectionId = sectionId;
+  if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
+
+  if (Object.keys(enrollmentFilter).length > 0) {
     where.enrollments = {
       some: {
-        classId,
-        academicYearId: activeYear.id,
+        ...enrollmentFilter,
+        status: "active",
+        isDeleted: false,
       },
     };
   }
@@ -99,353 +173,218 @@ export const getStudentsService = async (
   const [students, total] = await Promise.all([
     prisma.student.findMany({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: "desc" },
       include: {
         enrollments: {
           where: {
-            academicYearId: activeYear.id,
+            status: "active",
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
           },
           include: {
-            class: true,
-            section: true,
+            class: { select: { id: true, name: true } },
+            section: { select: { id: true, name: true } },
+            academicYear: { select: { id: true, name: true } },
           },
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
       },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
     }),
     prisma.student.count({ where }),
   ]);
 
   return {
+    students,
+    total,
     page,
     limit,
-    total,
-    data: students,
+    totalPages: Math.ceil(total / limit),
   };
 };
 
-/////////////////////////
-// GET SINGLE STUDENT
-/////////////////////////
-export const getStudentByIdService = async (
-  id: string,
-  tenantId: string
-) => {
+// ============================================
+// GET STUDENT BY ID
+// ============================================
+export const getStudentById = async (id: string, tenantId: string) => {
   const student = await prisma.student.findFirst({
-    where: {
-      id,
-      tenantId,
-      isDeleted: false,
-    },
+    where: { id, tenantId, isDeleted: false },
     include: {
       enrollments: {
+        where: { isDeleted: false },
         include: {
-          class: true,
-          section: true,
+          class: { select: { id: true, name: true } },
+          section: { select: { id: true, name: true } },
+          academicYear: { select: { id: true, name: true } },
         },
+        orderBy: { createdAt: "desc" },
       },
     },
   });
-
-  if (!student) {
-    throw new Error("Student not found");
-  }
-
   return student;
 };
 
-/////////////////////////
+// ============================================
 // UPDATE STUDENT
-/////////////////////////
-export const updateStudentService = async (
-  id: string,
-  data: any,
-  tenantId: string,
-  userId: string
-) => {
-  const existing = await prisma.student.findFirst({
+// ============================================
+export const updateStudent = async (id: string, data: any, tenantId: string) => {
+  const student = await prisma.student.updateMany({
     where: { id, tenantId, isDeleted: false },
-  });
-
-  if (!existing) {
-    throw new Error("Student not found");
-  }
-
-  if (data.email || data.admissionNo) {
-    const duplicate = await prisma.student.findFirst({
-      where: {
-        tenantId,
-        OR: [
-          ...(data.email ? [{ email: data.email }] : []),
-          ...(data.admissionNo ? [{ admissionNo: data.admissionNo }] : []),
-        ],
-        NOT: { id },
-      },
-    });
-
-    if (duplicate) {
-      throw new Error("Duplicate email or admission number");
-    }
-  }
-
-  const updated = await prisma.student.update({
-    where: { id },
     data: {
       ...data,
       dob: data.dob ? new Date(data.dob) : undefined,
     },
   });
-
-  await addStudentHistory(
-    id,
-    tenantId,
-    "UPDATED",
-    "Student updated",
-    userId
-  );
-
-  return updated;
+  return student;
 };
 
-/////////////////////////
-// DELETE (SOFT)
-/////////////////////////
-export const deleteStudentService = async (
-  id: string,
-  tenantId: string,
-  userId: string
-) => {
-  const existing = await prisma.student.findFirst({
-    where: { id, tenantId, isDeleted: false },
-  });
-
-  if (!existing) {
-    throw new Error("Student not found");
-  }
-
-  const deleted = await prisma.student.update({
-    where: { id },
+// ============================================
+// SOFT DELETE STUDENT
+// ============================================
+export const softDeleteStudent = async (id: string, tenantId: string) => {
+  const student = await prisma.student.updateMany({
+    where: { id, tenantId },
     data: {
       isDeleted: true,
       deletedAt: new Date(),
+      status: "inactive",
     },
   });
-
-  await addStudentHistory(
-    id,
-    tenantId,
-    "DELETED",
-    "Student moved to recycle bin",
-    userId
-  );
-
-  return deleted;
+  return student;
 };
 
-/////////////////////////
+// ============================================
 // RESTORE STUDENT
-/////////////////////////
-export const restoreStudentService = async (
-  id: string,
-  tenantId: string,
-  userId: string
-) => {
-  const existing = await prisma.student.findFirst({
-    where: {
-      id,
-      tenantId,
-      isDeleted: true,
-    },
-  });
-
-  if (!existing) {
-    throw new Error("Deleted student not found");
-  }
-
-  const restored = await prisma.student.update({
-    where: { id },
+// ============================================
+export const restoreStudent = async (id: string, tenantId: string) => {
+  const student = await prisma.student.updateMany({
+    where: { id, tenantId, isDeleted: true },
     data: {
       isDeleted: false,
       deletedAt: null,
+      status: "active",
     },
   });
-
-  await addStudentHistory(
-    id,
-    tenantId,
-    "RESTORED",
-    "Student restored",
-    userId
-  );
-
-  return restored;
+  return student;
 };
 
-/////////////////////////
-// GET DELETED STUDENTS
-/////////////////////////
-export const getDeletedStudentsService = async (
-  tenantId: string,
-  page: number,
-  limit: number
-) => {
-  const [students, total] = await Promise.all([
-    prisma.student.findMany({
-      where: {
-        tenantId,
-        isDeleted: true,
+// ============================================
+// GET DELETED STUDENTS (Recycle Bin)
+// ============================================
+export const getDeletedStudents = async (tenantId: string) => {
+  return prisma.student.findMany({
+    where: { tenantId, isDeleted: true },
+    include: {
+      enrollments: {
+        include: {
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+          academicYear: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
       },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.student.count({
-      where: {
-        tenantId,
-        isDeleted: true,
-      },
-    }),
+    },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// ============================================
+// GET STUDENT STATS
+// ============================================
+export const getStudentStats = async (tenantId: string, academicYearId?: string) => {
+  const baseWhere: any = { tenantId, isDeleted: false };
+
+  const [total, active, inactive, left] = await Promise.all([
+    prisma.student.count({ where: baseWhere }),
+    prisma.student.count({ where: { ...baseWhere, status: "active" } }),
+    prisma.student.count({ where: { ...baseWhere, status: "inactive" } }),
+    prisma.student.count({ where: { ...baseWhere, status: "left" } }),
   ]);
 
-  return {
-    page,
-    limit,
-    total,
-    data: students,
-  };
+  return { total, active, inactive, left };
 };
 
-/////////////////////////
-// BULK RESTORE
-/////////////////////////
-export const restoreManyStudentsService = async (
-  ids: string[],
-  tenantId: string,
-  userId: string
-) => {
-  const result = await prisma.student.updateMany({
-    where: {
-      id: { in: ids },
-      tenantId,
-      isDeleted: true,
-    },
-    data: {
-      isDeleted: false,
-      deletedAt: null,
-    },
-  });
-
-  // 🔥 OPTIMIZED HISTORY
-  await prisma.studentHistory.createMany({
-    data: ids.map((id) => ({
-      studentId: id,
-      tenantId,
-      action: "RESTORED",
-      message: "Student restored (bulk)",
-      performedBy: userId,
-    })),
-  });
-
-  return result;
-};
-
-/////////////////////////
-// TIMELINE
-/////////////////////////
-export const getStudentTimelineService = async (
+// ============================================
+// CREATE ENROLLMENT FOR EXISTING STUDENT
+// ============================================
+export const createEnrollmentForStudent = async (
   studentId: string,
+  data: { classId: string; sectionId: string; academicYearId: string; rollNumber?: string },
   tenantId: string
 ) => {
-  return prisma.studentHistory.findMany({
+  const existing = await prisma.enrollment.findFirst({
     where: {
       studentId,
-      tenantId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-};
-
-/////////////////////////
-// PROMOTE STUDENT
-/////////////////////////
-export const promoteStudentService = async (
-  studentId: string,
-  tenantId: string,
-  newClassId: string,
-  newSectionId: string,
-  userId: string
-) => {
-
-  const student = await prisma.student.findFirst({
-    where: {
-      id: studentId,
-      tenantId,
+      academicYearId: data.academicYearId,
       isDeleted: false,
     },
   });
 
-  if (!student) {
-    throw new Error("Student not found");
-  }
-
-  const activeYear = await prisma.academicYear.findFirst({
-    where: {
-      tenantId,
-      isActive: true,
-    },
-  });
-
-  if (!activeYear) {
-    throw new Error("No active academic year");
-  }
-
-  // 🔥 VALIDATION
-  const classExists = await prisma.class.findFirst({
-    where: { id: newClassId, tenantId },
-  });
-
-  if (!classExists) throw new Error("Class not found");
-
-  const sectionExists = await prisma.section.findFirst({
-    where: { id: newSectionId, tenantId },
-  });
-
-  if (!sectionExists) throw new Error("Section not found");
-
-  const existingEnrollment = await prisma.enrollment.findFirst({
-    where: {
-      studentId,
-      academicYearId: activeYear.id,
-      tenantId, // 🔥 FIX
-    },
-  });
-
-  if (existingEnrollment) {
-    throw new Error("Student already enrolled in this year");
+  if (existing) {
+    throw new Error("Student already has enrollment for this academic year");
   }
 
   const enrollment = await prisma.enrollment.create({
     data: {
-      studentId,
-      classId: newClassId,
-      sectionId: newSectionId,
-      academicYearId: activeYear.id,
-      tenantId,
-    },
-  });
-
-  await prisma.studentHistory.create({
-    data: {
-      studentId,
-      tenantId,
-      action: "PROMOTED",
-      message: "Student promoted to next class",
-      performedBy: userId,
+      student: { connect: { id: studentId } },
+      class: { connect: { id: data.classId } },
+      section: { connect: { id: data.sectionId } },
+      academicYear: { connect: { id: data.academicYearId } },
+      tenant: { connect: { id: tenantId } },
+      rollNumber: data.rollNumber || null,
+      status: "active",
     },
   });
 
   return enrollment;
+};
+
+// ============================================
+// BULK CREATE ENROLLMENT
+// ============================================
+export const bulkCreateEnrollments = async (
+  students: { studentId: string; rollNumber?: string }[],
+  classId: string,
+  sectionId: string,
+  academicYearId: string,
+  tenantId: string
+) => {
+  const results = { created: 0, skipped: 0, errors: [] as string[] };
+
+  for (const s of students) {
+    try {
+      const existing = await prisma.enrollment.findFirst({
+        where: {
+          studentId: s.studentId,
+          academicYearId,
+          isDeleted: false,
+        },
+      });
+
+      if (existing) {
+        results.skipped++;
+        continue;
+      }
+
+      await prisma.enrollment.create({
+        data: {
+          student: { connect: { id: s.studentId } },
+          class: { connect: { id: classId } },
+          section: { connect: { id: sectionId } },
+          academicYear: { connect: { id: academicYearId } },
+          tenant: { connect: { id: tenantId } },
+          rollNumber: s.rollNumber || null,
+          status: "active",
+        },
+      });
+      results.created++;
+    } catch (err: any) {
+      results.errors.push(`${s.studentId}: ${err.message}`);
+    }
+  }
+
+  return results;
 };

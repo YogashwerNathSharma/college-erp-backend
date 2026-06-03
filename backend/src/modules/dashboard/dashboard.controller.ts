@@ -268,25 +268,24 @@ export const getDashboard = async (
     const totalPending =
       fees._sum.pendingAmount ?? 0;
 
-    //////////////////////////////////////////////////////
-    // 🏫 TENANT INFO
-    //////////////////////////////////////////////////////
-
     const tenant =
-      await prisma.tenant.findUnique({
+  await prisma.tenant.findUnique({
 
-        where: {
-          id: tenantId,
-        },
+    where: {
+      id: tenantId,
+    },
 
-        select: {
-          name: true,
-          logoUrl: true,
-          backgroundUrl: true,
-          type: true,
-        },
-      });
+    select: {
+      name: true,
+      logoUrl: true,
+      backgroundUrl: true,
+      type: true,
 
+      address: true,
+      phone: true,
+      email: true,
+    },
+  });
     //////////////////////////////////////////////////////
     // 📈 MONTHLY FEES DATA
     //////////////////////////////////////////////////////

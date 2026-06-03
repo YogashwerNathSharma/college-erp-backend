@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from "react";
+
 import axios from "axios";
 import {
   Calendar,
@@ -8,6 +10,11 @@ import {
   Loader2,
   AlertCircle,
   GraduationCap,
+  Trash2,
+  RotateCcw,
+  Power,
+  Edit3,
+  Archive,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -18,6 +25,8 @@ interface AcademicYear {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  isDeleted: boolean;
+  deletedAt: string | null;
   tenantId: string;
   createdAt: string;
 }
@@ -64,12 +73,15 @@ function formatDate(dateStr: string): string {
 
 const AcademicYearPage: React.FC = () => {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [deletedYears, setDeletedYears] = useState<AcademicYear[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [settingActive, setSettingActive] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showRecycleBin, setShowRecycleBin] = useState<boolean>(false);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     startDate: "",
@@ -99,9 +111,28 @@ const AcademicYearPage: React.FC = () => {
     }
   }, []);
 
+  const fetchDeletedYears = useCallback(async () => {
+    try {
+      const response = await api.get<ApiResponse<AcademicYear[]>>(
+        "/api/academic/recycle-bin"
+      );
+      if (response.data.success) {
+        setDeletedYears(response.data.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch deleted years:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAcademicYears();
   }, [fetchAcademicYears]);
+
+  useEffect(() => {
+    if (showRecycleBin) {
+      fetchDeletedYears();
+    }
+  }, [showRecycleBin, fetchDeletedYears]);
 
   // ─── Auto-dismiss messages ─────────────────────────────────────────────────
 
@@ -144,24 +175,43 @@ const AcademicYearPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const response = await api.post<ApiResponse<AcademicYear>>(
-        "/api/academic",
-        {
-          name: formData.name.trim(),
-          startDate: formData.startDate,
-          endDate: formData.endDate,
+
+      if (editingYear) {
+        // Update existing
+        const response = await api.put<ApiResponse<AcademicYear>>(
+          `/api/academic/${editingYear.id}`,
+          {
+            name: formData.name.trim(),
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+          }
+        );
+        if (response.data.success) {
+          setSuccessMsg(`Academic year "${formData.name}" updated successfully!`);
         }
-      );
-      if (response.data.success) {
-        setSuccessMsg(`Academic year "${formData.name}" created successfully!`);
-        setShowModal(false);
-        setFormData({ name: "", startDate: "", endDate: "" });
-        fetchAcademicYears();
+      } else {
+        // Create new
+        const response = await api.post<ApiResponse<AcademicYear>>(
+          "/api/academic",
+          {
+            name: formData.name.trim(),
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+          }
+        );
+        if (response.data.success) {
+          setSuccessMsg(`Academic year "${formData.name}" created successfully!`);
+        }
       }
+
+      setShowModal(false);
+      setEditingYear(null);
+      setFormData({ name: "", startDate: "", endDate: "" });
+      fetchAcademicYears();
     } catch (err: any) {
       setFormError(
         err.response?.data?.message ||
-          "Failed to create academic year. Please try again."
+          "Failed to save academic year. Please try again."
       );
     } finally {
       setSubmitting(false);
@@ -172,7 +222,7 @@ const AcademicYearPage: React.FC = () => {
 
   const handleSetActive = async (id: string, name: string) => {
     try {
-      setSettingActive(id);
+      setActionLoading(id);
       setError(null);
       const response = await api.patch<ApiResponse<AcademicYear>>(
         `/api/academic/${id}/active`
@@ -187,8 +237,103 @@ const AcademicYearPage: React.FC = () => {
           "Failed to set active year. Please try again."
       );
     } finally {
-      setSettingActive(null);
+      setActionLoading(null);
     }
+  };
+
+  // ─── Toggle Status ─────────────────────────────────────────────────────────
+
+  const handleToggleStatus = async (id: string, name: string, currentlyActive: boolean) => {
+    try {
+      setActionLoading(id);
+      setError(null);
+      const response = await api.patch<ApiResponse<AcademicYear>>(
+        `/api/academic/${id}/toggle-status`
+      );
+      if (response.data.success) {
+        setSuccessMsg(
+          currentlyActive
+            ? `"${name}" has been deactivated.`
+            : `"${name}" is now active.`
+        );
+        fetchAcademicYears();
+      }
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to toggle status. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ─── Soft Delete ───────────────────────────────────────────────────────────
+
+  const handleSoftDelete = async (id: string, name: string) => {
+    if (!confirm(`Move "${name}" to recycle bin?`)) return;
+
+    try {
+      setActionLoading(id);
+      setError(null);
+      const response = await api.delete<ApiResponse<AcademicYear>>(
+        `/api/academic/${id}`
+      );
+      if (response.data.success) {
+        setSuccessMsg(`"${name}" moved to recycle bin.`);
+        fetchAcademicYears();
+      }
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to delete. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ─── Restore ──────────────────────────────────────────────────────────────
+
+  const handleRestore = async (id: string, name: string) => {
+    try {
+      setActionLoading(id);
+      const response = await api.patch<ApiResponse<AcademicYear>>(
+        `/api/academic/${id}/restore`
+      );
+      if (response.data.success) {
+        setSuccessMsg(`"${name}" restored successfully.`);
+        fetchDeletedYears();
+        fetchAcademicYears();
+      }
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || "Failed to restore. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ─── Edit ──────────────────────────────────────────────────────────────────
+
+  const handleEdit = (year: AcademicYear) => {
+    setEditingYear(year);
+    setFormData({
+      name: year.name,
+      startDate: year.startDate.split("T")[0],
+      endDate: year.endDate.split("T")[0],
+    });
+    setShowModal(true);
+  };
+
+  // ─── Open Modal for New ────────────────────────────────────────────────────
+
+  const openCreateModal = () => {
+    setEditingYear(null);
+    setFormData({ name: "", startDate: "", endDate: "" });
+    setFormError(null);
+    setShowModal(true);
   };
 
   // ─── Loading Skeleton ──────────────────────────────────────────────────────
@@ -229,7 +374,7 @@ const AcademicYearPage: React.FC = () => {
         across the ERP for organizing semesters, exams, and more.
       </p>
       <button
-        onClick={() => setShowModal(true)}
+        onClick={openCreateModal}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
       >
         <Plus className="w-4 h-4" />
@@ -252,20 +397,40 @@ const AcademicYearPage: React.FC = () => {
             Manage academic years and set the currently active session.
           </p>
         </div>
-        {!loading && academicYears.length > 0 && (
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          {/* Recycle Bin Toggle */}
           <button
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm self-start sm:self-auto"
+            onClick={() => setShowRecycleBin(!showRecycleBin)}
+            className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
+              showRecycleBin
+                ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            Add Academic Year
+            <Archive className="w-4 h-4" />
+            Recycle Bin
+            {deletedYears.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                {deletedYears.length}
+              </span>
+            )}
           </button>
-        )}
+
+          {!loading && academicYears.length > 0 && !showRecycleBin && (
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Academic Year
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ─── Toast Messages ─────────────────────────────────────────────────── */}
       {successMsg && (
-        <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm animate-in fade-in slide-in-from-top-2">
+        <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm">
           <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
           <span className="font-medium">{successMsg}</span>
           <button
@@ -290,122 +455,227 @@ const AcademicYearPage: React.FC = () => {
         </div>
       )}
 
-      {/* ─── Content ────────────────────────────────────────────────────────── */}
-      {loading ? (
-        <LoadingSkeleton />
-      ) : academicYears.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {academicYears
-            .sort((a, b) => {
-              // Active first, then by createdAt desc
-              if (a.isActive && !b.isActive) return -1;
-              if (!a.isActive && b.isActive) return 1;
-              return (
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-              );
-            })
-            .map((year) => (
-              <div
-                key={year.id}
-                className={`relative rounded-2xl border p-6 shadow-sm transition-all duration-200 ${
-                  year.isActive
-                    ? "bg-gradient-to-br from-indigo-50/80 to-white border-indigo-300 ring-1 ring-indigo-200"
-                    : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
-                }`}
-              >
-                {/* Active indicator ribbon */}
-                {year.isActive && (
-                  <div className="absolute top-0 right-6 -translate-y-0">
-                    <div className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-b-lg shadow-sm">
-                      Current
-                    </div>
-                  </div>
-                )}
+      {/* ─── Recycle Bin View ───────────────────────────────────────────────── */}
+      {showRecycleBin ? (
+        <div>
+          <div className="flex items-center gap-3 mb-6">
+            <Archive className="w-5 h-5 text-orange-500" />
+            <h2 className="text-lg font-semibold text-gray-800">
+              Recycle Bin
+            </h2>
+            <span className="text-sm text-gray-500">
+              ({deletedYears.length} items)
+            </span>
+          </div>
 
-                {/* Card Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        year.isActive
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      <Calendar className="w-5 h-5" />
+          {deletedYears.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Archive className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-sm text-gray-500">Recycle bin is empty</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {deletedYears.map((year) => (
+                <div
+                  key={year.id}
+                  className="rounded-2xl border border-orange-200 bg-orange-50/50 p-6 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-700">
+                        {year.name}
+                      </h3>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {year.name}
-                    </h3>
-                  </div>
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      year.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        year.isActive ? "bg-green-500" : "bg-gray-400"
-                      }`}
-                    />
-                    {year.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-
-                {/* Date Info */}
-                <div className="space-y-2 mb-5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Start Date</span>
-                    <span className="font-medium text-gray-700">
-                      {formatDate(year.startDate)}
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      Deleted
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">End Date</span>
-                    <span className="font-medium text-gray-700">
-                      {formatDate(year.endDate)}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Action */}
-                {!year.isActive && (
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">Start Date</span>
+                      <span className="font-medium text-gray-600">
+                        {formatDate(year.startDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-500">End Date</span>
+                      <span className="font-medium text-gray-600">
+                        {formatDate(year.endDate)}
+                      </span>
+                    </div>
+                    {year.deletedAt && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">Deleted On</span>
+                        <span className="font-medium text-red-600">
+                          {formatDate(year.deletedAt)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   <button
-                    onClick={() => handleSetActive(year.id, year.name)}
-                    disabled={settingActive === year.id}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 hover:border-indigo-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    onClick={() => handleRestore(year.id, year.name)}
+                    disabled={actionLoading === year.id}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors disabled:opacity-60"
                   >
-                    {settingActive === year.id ? (
+                    {actionLoading === year.id ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Setting Active…
+                        Restoring…
                       </>
                     ) : (
                       <>
-                        <Check className="w-4 h-4" />
-                        Set as Active
+                        <RotateCcw className="w-4 h-4" />
+                        Restore
                       </>
                     )}
                   </button>
-                )}
-
-                {year.isActive && (
-                  <div className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl cursor-default">
-                    <Check className="w-4 h-4" />
-                    Currently Active
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      ) : (
+        /* ─── Main Content ──────────────────────────────────────────────────── */
+        <>
+          {loading ? (
+            <LoadingSkeleton />
+          ) : academicYears.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {academicYears
+                .sort((a, b) => {
+                  if (a.isActive && !b.isActive) return -1;
+                  if (!a.isActive && b.isActive) return 1;
+                  return (
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime()
+                  );
+                })
+                .map((year) => (
+                  <div
+                    key={year.id}
+                    className={`relative rounded-2xl border p-6 shadow-sm transition-all duration-200 ${
+                      year.isActive
+                        ? "bg-gradient-to-br from-indigo-50/80 to-white border-indigo-300 ring-1 ring-indigo-200"
+                        : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
+                    }`}
+                  >
+                    {/* Active indicator ribbon */}
+                    {year.isActive && (
+                      <div className="absolute top-0 right-6 -translate-y-0">
+                        <div className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-b-lg shadow-sm">
+                          Current
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            year.isActive
+                              ? "bg-indigo-100 text-indigo-600"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {year.name}
+                        </h3>
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          year.isActive
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            year.isActive ? "bg-green-500" : "bg-gray-400"
+                          }`}
+                        />
+                        {year.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+
+                    {/* Date Info */}
+                    <div className="space-y-2 mb-5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">Start Date</span>
+                        <span className="font-medium text-gray-700">
+                          {formatDate(year.startDate)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">End Date</span>
+                        <span className="font-medium text-gray-700">
+                          {formatDate(year.endDate)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {/* Toggle Status Button */}
+                      <button
+                        onClick={() =>
+                          handleToggleStatus(year.id, year.name, year.isActive)
+                        }
+                        disabled={actionLoading === year.id}
+                        className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                          year.isActive
+                            ? "text-orange-700 bg-orange-50 border-orange-200 hover:bg-orange-100"
+                            : "text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100"
+                        }`}
+                      >
+                        {actionLoading === year.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4" />
+                        )}
+                        {year.isActive ? "Deactivate" : "Activate"}
+                      </button>
+
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => handleEdit(year)}
+                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      {/* Delete Button (only if not active) */}
+                      {!year.isActive && (
+                        <button
+                          onClick={() => handleSoftDelete(year.id, year.name)}
+                          disabled={actionLoading === year.id}
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors disabled:opacity-60"
+                          title="Move to Recycle Bin"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* ─── Modal ──────────────────────────────────────────────────────────── */}
+      {/* ─── Modal (Create / Edit) ──────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
@@ -414,13 +684,14 @@ const AcademicYearPage: React.FC = () => {
             onClick={() => {
               if (!submitting) {
                 setShowModal(false);
+                setEditingYear(null);
                 setFormError(null);
               }
             }}
           />
 
           {/* Modal Content */}
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
@@ -428,13 +699,14 @@ const AcademicYearPage: React.FC = () => {
                   <Calendar className="w-5 h-5 text-indigo-600" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Add Academic Year
+                  {editingYear ? "Edit Academic Year" : "Add Academic Year"}
                 </h2>
               </div>
               <button
                 onClick={() => {
                   if (!submitting) {
                     setShowModal(false);
+                    setEditingYear(null);
                     setFormError(null);
                   }
                 }}
@@ -514,6 +786,7 @@ const AcademicYearPage: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setShowModal(false);
+                    setEditingYear(null);
                     setFormError(null);
                   }}
                   disabled={submitting}
@@ -529,12 +802,16 @@ const AcademicYearPage: React.FC = () => {
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating…
+                      {editingYear ? "Updating…" : "Creating…"}
                     </>
                   ) : (
                     <>
-                      <Plus className="w-4 h-4" />
-                      Create
+                      {editingYear ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                      {editingYear ? "Update" : "Create"}
                     </>
                   )}
                 </button>

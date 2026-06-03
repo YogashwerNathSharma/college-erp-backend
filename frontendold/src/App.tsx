@@ -20,48 +20,47 @@ import TenantManagement from "./pages/TenantManagement";
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
 
-// Student
+// Student Module
 import StudentsPage from "./pages/students/StudentsPage";
-
-// ✅ YOUR STRUCTURE ACCORDING IMPORT
+import AdmissionForm from "./pages/students/AdmissionForm";
+import OldStudentEntry from "./pages/students/OldStudentEntry";
+import PromotionPage from "./pages/students/PromotionPage";
+import AgeSettings from "./pages/students/AgeSettings";
+import PrintStudents from "./pages/students/PrintStudents";
+import RecycleBinPage from "./pages/students/RecycleBinPage";
+import EditStudentPage from "./pages/students/EditStudentPage";
+// Subscriptions
 import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
 import ReportsPage from "./pages/ReportsPage";
 
 // superadmin settings
 import SettingsPage from "./pages/SettingsPage";
-//academic year 
+// academic year
 import AcademicYearPage from "./pages/academic-year/AcademicYearPage";
-//classes
+// classes
 import ClassesPage from "./pages/classes/ClassesPage";
-//sections
-import Sections from "./pages/Sections/SectionsPage"
-//subjects
-import SubjectsPage from "./pages/subjects/SubjectsPage";
-//////////////////////////////////////////////////////
-// 🔒 Protected Route
-//////////////////////////////////////////////////////
+// sections
+import Sections from "./pages/Sections/SectionsPage";
+// subjects
+import SubjectsPage from "./pages/Subjects/SubjectsPage";
 
+//////////////////////////////////////////////////////
+// Protected Route
+//////////////////////////////////////////////////////
 function ProtectedRoute() {
   const token = localStorage.getItem("token");
   const location = useLocation();
 
   if (!token) {
-    return (
-      <Navigate
-        to="/"
-        state={{ from: location }}
-        replace
-      />
-    );
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   return <Outlet />;
 }
 
 //////////////////////////////////////////////////////
-// 📦 Layout
+// Layout
 //////////////////////////////////////////////////////
-
 function Layout() {
   const [tenant, setTenant] = useState<any>(() => {
     const saved = localStorage.getItem("tenant");
@@ -82,7 +81,6 @@ function Layout() {
     };
   }, []);
 
-  // ✅ Fetch platform branding color
   useEffect(() => {
     const fetchBranding = async () => {
       try {
@@ -113,66 +111,63 @@ function Layout() {
 }
 
 //////////////////////////////////////////////////////
-// 🎯 ROLE DASHBOARD
+// Role Dashboard
 //////////////////////////////////////////////////////
-
 function RoleDashboard() {
-  const user = JSON.parse(
-    localStorage.getItem("user") || "{}"
-  );
-
-  return user?.role === "SUPER_ADMIN"
-    ? <SuperAdminDashboard />
-    : <TenantDashboard />;
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user?.role === "SUPER_ADMIN" ? <SuperAdminDashboard /> : <TenantDashboard />;
 }
 
 //////////////////////////////////////////////////////
-// 🚀 APP
+// App
 //////////////////////////////////////////////////////
-
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* 🌐 PUBLIC ROUTES */}
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* 🔒 PROTECTED ROUTES */}
+        {/* PROTECTED ROUTES */}
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-
             {/* DASHBOARD */}
             <Route path="/dashboard" element={<RoleDashboard />} />
 
             {/* TENANTS */}
             <Route path="/tenants" element={<TenantManagement />} />
 
-            {/* ✅ SUBSCRIPTIONS */}
+            {/* SUBSCRIPTIONS */}
             <Route path="/subscriptions" element={<SubscriptionsPage />} />
 
-            {/* ✅ REPORTS */}
+            {/* REPORTS */}
             <Route path="/reports" element={<ReportsPage />} />
 
-            {/* ✅ SETTINGS */}
+            {/* SETTINGS */}
             <Route path="/settings" element={<SettingsPage />} />
 
-            {/* ✅ STUDENTS */}
+            {/* STUDENT MODULE */}
+            {/* STUDENT MODULE */}
             <Route path="/students" element={<StudentsPage />} />
-{/*academic year*/}
-<Route path="/academic-years" element={<AcademicYearPage />} />
-{/*classes*/}
-<Route path="/classes" element={<ClassesPage />} />
-{/*Sections*/}
-<Route path="/Sections" element={<Sections />}/>
-<Route path="/subjects" element={<SubjectsPage />} />
+            <Route path="/students/new-admission" element={<AdmissionForm />} />
+            <Route path="/students/old-entry" element={<OldStudentEntry />} />
+            <Route path="/students/promotion" element={<PromotionPage />} />
+            <Route path="/students/age-settings" element={<AgeSettings />} />
+            <Route path="/students/print" element={<PrintStudents />} />
+            <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
+            <Route path="/students/:id/edit" element={<EditStudentPage />} />
+
+            {/* ACADEMIC */}
+            <Route path="/academic-years" element={<AcademicYearPage />} />
+            <Route path="/classes" element={<ClassesPage />} />
+            <Route path="/Sections" element={<Sections />} />
+            <Route path="/subjects" element={<SubjectsPage />} />
           </Route>
         </Route>
 
-        {/* ❌ FALLBACK */}
+        {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/dashboard" />} />
-
       </Routes>
     </BrowserRouter>
   );

@@ -39,6 +39,11 @@ const tenantMenu = [
     path: "/academic-years",
   },
   {
+  name: "Age Settings",
+  path: "/students/age-settings",
+  icon: "🎂",
+},
+  {
     name: "Classes",
     icon: <School size={20} />,
     path: "/classes",

@@ -67,26 +67,56 @@ export const login = async (req: Request, res: Response) => {
     let { email, password, tenantId } = req.body;
 
     if (!email || !password || !tenantId) {
-      return res.status(400).json({ success: false, message: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
     }
 
-    email = email.toLowerCase(); // 🔥 FIX
+    email = email.toLowerCase();
 
     const user = await prisma.user.findUnique({
       where: {
-        email_tenantId: { email, tenantId },
+        email_tenantId: {
+          email,
+          tenantId,
+        },
       },
     });
 
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid credentials" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
+
+    //////////////////////////////////////////////////////
+    // GET TENANT DETAILS
+    //////////////////////////////////////////////////////
+    const tenant = await prisma.tenant.findUnique({
+      where: {
+        id: user.tenantId,
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        logoUrl: true,
+        address: true,
+        phone: true,
+        email: true,
+      },
+    });
 
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET not defined");
@@ -109,10 +139,16 @@ export const login = async (req: Request, res: Response) => {
       message: "Login successful",
       token,
       data: safeUser,
+      tenant, // ✅ tenant data returned
     });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Login failed" });
+
+    res.status(500).json({
+      success: false,
+      message: "Login failed",
+    });
   }
 };
 

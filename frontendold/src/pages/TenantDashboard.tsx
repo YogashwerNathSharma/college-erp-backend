@@ -12,8 +12,9 @@ import RecentPayments from "../components/dashboard/RecentPayments";
 import DefaultersList from "../components/dashboard/DefaultersList";
 import Insights from "../components/dashboard/Insights";
 
+ 
 export default function Dashboard() {
-
+ console.log("TENANT DASHBOARD RENDERED");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const { setTenant }: any = useOutletContext();
 
@@ -53,19 +54,41 @@ export default function Dashboard() {
         });
 
         // Tenant data
-        const tenantData = {
-          name: d?.tenant?.name,
-          schoolName: d?.tenant?.schoolName || d?.tenant?.name,
-          type: d?.tenant?.type,
-          logoUrl: d?.tenant?.logoUrl
-            ? d.tenant.logoUrl
-            : d?.tenant?.logo
-            ? d.tenant.logo.startsWith("http") ? d.tenant.logo
-              : `http://localhost:5000/${d.tenant.logo}`
-            : null,
-        };
-        setTenant(tenantData);
-        localStorage.setItem("tenant", JSON.stringify(tenantData));
+console.log("FULL API RESPONSE =>", d);
+console.log("TENANT FROM API =>", d?.tenant);
+console.log("FULL API RESPONSE =>", d);
+console.log("TENANT FROM API =>", d?.tenant);
+
+console.log("ADDRESS =>", d?.tenant?.address);
+console.log("PHONE =>", d?.tenant?.phone);
+console.log("EMAIL =>", d?.tenant?.email);
+
+const tenantData = {
+  name: d?.tenant?.name || "",
+  schoolName: d?.tenant?.schoolName || d?.tenant?.name || "",
+  type: d?.tenant?.type || "",
+
+  logoUrl: d?.tenant?.logoUrl
+    ? d.tenant.logoUrl
+    : d?.tenant?.logo
+    ? d.tenant.logo.startsWith("http")
+      ? d.tenant.logo
+      : `http://localhost:5000/${d.tenant.logo}`
+    : null,
+
+  address: d?.tenant?.address || "",
+  phone: d?.tenant?.phone || "",
+  email: d?.tenant?.email || "",
+};
+
+setTenant(tenantData);
+
+localStorage.setItem(
+  "tenant",
+  JSON.stringify(tenantData)
+);
+
+console.log("TENANT DATA SAVED =>", tenantData);
 
         // 🔥 NEW — Fetch subscription info
         try {

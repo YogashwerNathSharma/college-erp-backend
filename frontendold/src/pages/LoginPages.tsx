@@ -1,5 +1,7 @@
+
 import { useState } from "react";
 import axios from "axios";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +14,7 @@ export default function LoginPage() {
 
       const payload = {
         email: email.toLowerCase().trim(),
-        password: password.trim(),
+        password: password,
       };
 
       console.log("LOGIN PAYLOAD:", payload);
@@ -24,7 +26,7 @@ export default function LoginPage() {
 
       console.log("LOGIN RESPONSE:", res.data);
 
-      // ✅ Save token safely
+      // ✅ Save token
       localStorage.setItem(
         "token",
         res.data?.token || res.data?.data?.token || ""
@@ -40,14 +42,12 @@ export default function LoginPage() {
 
       // ✅ Redirect
       window.location.href = "/dashboard";
-
     } catch (err: any) {
       console.log("LOGIN ERROR:", err);
-
       alert(
         err?.response?.data?.message ||
-        err?.message ||
-        "Login Failed ❌"
+          err?.message ||
+          "Login Failed ❌"
       );
     } finally {
       setLoading(false);
@@ -66,8 +66,7 @@ export default function LoginPage() {
       <div
         style={{
           width: "40%",
-          background:
-            "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
+          background: "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
           color: "white",
           display: "flex",
           flexDirection: "column",
@@ -140,9 +139,7 @@ export default function LoginPage() {
             type="email"
             placeholder="Enter Email"
             value={email}
-            onChange={(e) =>
-              setEmail(e.target.value.trimStart())
-            }
+            onChange={(e) => setEmail(e.target.value.trimStart())}
             style={inputStyle}
           />
 
@@ -176,18 +173,13 @@ export default function LoginPage() {
               <input
                 type="checkbox"
                 checked={showPassword}
-                onChange={() =>
-                  setShowPassword(!showPassword)
-                }
+                onChange={() => setShowPassword(!showPassword)}
               />
               Show Password
             </label>
 
             <span
-              onClick={() =>
-                (window.location.href =
-                  "/forgot-password")
-              }
+              onClick={() => (window.location.href = "/forgot-password")}
               style={{
                 color: "#1E90FF",
                 cursor: "pointer",
@@ -210,36 +202,13 @@ export default function LoginPage() {
               color: "white",
               fontWeight: "bold",
               fontSize: "16px",
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               opacity: loading ? 0.7 : 1,
-              background:
-                "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
+              background: "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
             }}
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
-          {/* REGISTER */}
-          <p
-            style={{
-              textAlign: "center",
-              marginTop: "18px",
-              fontSize: "15px",
-            }}
-          >
-            Don’t have an account?{" "}
-            <span
-              style={{
-                color: "#8A2BE2",
-                cursor: "pointer",
-                fontWeight: "bold",
-              }}
-            >
-              Register
-            </span>
-          </p>
         </div>
       </div>
     </div>

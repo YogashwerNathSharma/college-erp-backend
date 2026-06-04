@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -121,9 +122,7 @@ export default function ReportsPage() {
         <p className="text-slate-500 mt-1">Subscription revenue analytics</p>
       </div>
 
-      {/* ============================================ */}
       {/* 📊 STATS CARDS */}
-      {/* ============================================ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
@@ -160,9 +159,7 @@ export default function ReportsPage() {
 
       </div>
 
-      {/* ============================================ */}
       {/* 📈 MONTHLY REVENUE CHART */}
-      {/* ============================================ */}
       <div className="bg-white rounded-2xl border p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
           <TrendingUp size={20} className="text-indigo-600" />
@@ -193,9 +190,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ============================================ */}
       {/* 🏢 TENANT-WISE REVENUE */}
-      {/* ============================================ */}
       {tenantRevenue.length > 0 && (
         <div className="bg-white rounded-2xl border p-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-800 mb-4">🏢 Tenant-wise Revenue</h2>
@@ -217,9 +212,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* ============================================ */}
       {/* 📋 PAYMENT HISTORY TABLE */}
-      {/* ============================================ */}
       <div className="bg-white rounded-2xl border p-6 shadow-sm">
         <h2 className="text-xl font-bold text-slate-800 mb-4">📋 Payment History</h2>
 
@@ -307,3 +300,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+

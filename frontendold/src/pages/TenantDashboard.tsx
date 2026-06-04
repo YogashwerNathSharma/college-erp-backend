@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useOutletContext } from "react-router-dom";
@@ -12,9 +13,17 @@ import RecentPayments from "../components/dashboard/RecentPayments";
 import DefaultersList from "../components/dashboard/DefaultersList";
 import Insights from "../components/dashboard/Insights";
 
- 
+//////////////////////////////////////////////////////
+// HELPER — Full URL for logo
+//////////////////////////////////////////////////////
+const getFullUrl = (path: string | null | undefined) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `http://localhost:5000${path}`;
+};
+
 export default function Dashboard() {
- console.log("TENANT DASHBOARD RENDERED");
+  console.log("TENANT DASHBOARD RENDERED");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const { setTenant }: any = useOutletContext();
 
@@ -24,7 +33,6 @@ export default function Dashboard() {
     defaulters: [], insights: {},
   });
 
-  // 🔥 NEW — Subscription states
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlansModal, setShowPlansModal] = useState(false);
@@ -37,10 +45,8 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
 
-        // Dashboard data
         const res = await axios.get("http://localhost:5000/api/dashboard", { headers });
         const d = res.data?.data;
-        console.log("DASHBOARD RESPONSE =>", d);
 
         setData({
           totalStudents: d?.totalStudents ?? 0,
@@ -53,50 +59,26 @@ export default function Dashboard() {
           insights: d?.insights ?? {},
         });
 
-        // Tenant data
-console.log("FULL API RESPONSE =>", d);
-console.log("TENANT FROM API =>", d?.tenant);
-console.log("FULL API RESPONSE =>", d);
-console.log("TENANT FROM API =>", d?.tenant);
+        // Tenant data — LOGO FIXED ✅
+        const tenantData = {
+          name: d?.tenant?.name || "",
+          schoolName: d?.tenant?.schoolName || d?.tenant?.name || "",
+          type: d?.tenant?.type || "",
+          logoUrl: getFullUrl(d?.tenant?.logoUrl || d?.tenant?.logo),
+          address: d?.tenant?.address || "",
+          phone: d?.tenant?.phone || "",
+          email: d?.tenant?.email || "",
+        };
 
-console.log("ADDRESS =>", d?.tenant?.address);
-console.log("PHONE =>", d?.tenant?.phone);
-console.log("EMAIL =>", d?.tenant?.email);
+        setTenant(tenantData);
+        localStorage.setItem("tenant", JSON.stringify(tenantData));
 
-const tenantData = {
-  name: d?.tenant?.name || "",
-  schoolName: d?.tenant?.schoolName || d?.tenant?.name || "",
-  type: d?.tenant?.type || "",
-
-  logoUrl: d?.tenant?.logoUrl
-    ? d.tenant.logoUrl
-    : d?.tenant?.logo
-    ? d.tenant.logo.startsWith("http")
-      ? d.tenant.logo
-      : `http://localhost:5000/${d.tenant.logo}`
-    : null,
-
-  address: d?.tenant?.address || "",
-  phone: d?.tenant?.phone || "",
-  email: d?.tenant?.email || "",
-};
-
-setTenant(tenantData);
-
-localStorage.setItem(
-  "tenant",
-  JSON.stringify(tenantData)
-);
-
-console.log("TENANT DATA SAVED =>", tenantData);
-
-        // 🔥 NEW — Fetch subscription info
+        // Fetch subscription info
         try {
           const subRes = await axios.get(
             "http://localhost:5000/api/tenant/my-subscription",
             { headers }
           );
-          console.log("SUBSCRIPTION INFO =>", subRes.data);
           setSubscriptionInfo(subRes.data.data);
         } catch (subErr) {
           console.log("No active subscription:", subErr);
@@ -113,7 +95,6 @@ console.log("TENANT DATA SAVED =>", tenantData);
     fetchAll();
   }, []);
 
-  // 🔥 NEW — Fetch plans for modal
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -127,7 +108,6 @@ console.log("TENANT DATA SAVED =>", tenantData);
     }
   };
 
-  // 🔥 NEW — Buy plan
   const buyPlan = async (planId: string) => {
     try {
       setPaymentLoading(true);
@@ -204,9 +184,7 @@ console.log("TENANT DATA SAVED =>", tenantData);
         </p>
       </div>
 
-      {/* ============================================ */}
-      {/* 📋 SUBSCRIPTION INFO CARD — NEW */}
-      {/* ============================================ */}
+      {/* SUBSCRIPTION INFO CARD */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-2">
@@ -292,9 +270,7 @@ console.log("TENANT DATA SAVED =>", tenantData);
         </div>
       )}
 
-      {/* ============================================ */}
-      {/* 🛒 PLANS MODAL — NEW */}
-      {/* ============================================ */}
+      {/* PLANS MODAL */}
       {showPlansModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8">

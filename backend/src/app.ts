@@ -44,7 +44,7 @@ import feereportsRoutes from "./modules/fees/reports/reports.routes";
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
-import settingsRoutes from "./modules/super-admin/settings.routes";
+//import settingsRoutes from "./modules/super-admin/settings.routes";
 
 
 // SUBSCRIPTIONS
@@ -137,7 +137,7 @@ app.use("/api/fees", feesRoutes);
 
 app.use("/api/reports", superadminreportsRoutes);
 app.use("/api/super-admin", superAdminRoutes);
-app.use("/api/settings", settingsRoutes);
+//app.use("/api/settings", settingsRoutes);
 
 //////////////////////////////////////////////////////
 // SUBSCRIPTIONS

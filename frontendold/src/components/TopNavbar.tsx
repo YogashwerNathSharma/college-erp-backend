@@ -1,5 +1,15 @@
+
 import { LogOut, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+//////////////////////////////////////////////////////
+// HELPER — Full URL for logo
+//////////////////////////////////////////////////////
+const getFullUrl = (path: string | null | undefined) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `http://localhost:5000${path}`;
+};
 
 type TopNavbarProps = {
   tenant?: any;
@@ -14,36 +24,37 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("tenant");
     navigate("/");
   };
+
+  // ✅ FIXED — getFullUrl for tenant logo
+  const tenantLogoSrc = getFullUrl(safeTenant?.logoUrl);
 
   return (
     <div className="w-full bg-white px-6 py-3 rounded-xl shadow flex justify-between items-center mb-6">
 
-      {/* 🔥 LEFT SIDE (FIXED) */}
+      {/* LEFT SIDE */}
       <div className="flex items-center gap-3">
-
         {user?.role === "SUPER_ADMIN" ? (
           <>
-            {/* BRAND LOGO */}
             <img
               src="/ynlogo.png"
               alt="brand"
               className="w-10 h-10 object-contain"
             />
-
             <div>
-        <p className="text-gray text-xl font-bold">
+              <p className="text-gray text-xl font-bold">
                 Manage All Tenants
               </p>
             </div>
           </>
         ) : (
           <>
-            {/* TENANT LOGO */}
-            {safeTenant?.logoUrl ? (
+            {/* TENANT LOGO — FIXED ✅ */}
+            {tenantLogoSrc ? (
               <img
-                src={safeTenant.logoUrl}
+                src={tenantLogoSrc}
                 alt="tenant logo"
                 className="w-10 h-10 rounded-lg object-cover border"
                 onError={(e: any) => {
@@ -67,12 +78,10 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
             </div>
           </>
         )}
-
       </div>
 
-      {/* 🔥 RIGHT SIDE (IMPORTANT - tumse miss ho gaya tha) */}
+      {/* RIGHT SIDE */}
       <div className="flex items-center gap-4">
-
         <div className="flex items-center gap-2 text-sm">
           <UserCircle size={20} />
           <span>
@@ -87,9 +96,9 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
           <LogOut size={16} />
           Logout
         </button>
-
       </div>
 
     </div>
   );
 }
+

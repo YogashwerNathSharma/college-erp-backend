@@ -281,10 +281,31 @@ export const getAgeConfigHandler = async (req: any, res: any) => {
 
 export const seedAgeConfigHandler = async (req: any, res: any) => {
   try {
+    console.log(">>> req.tenantId:", req.tenantId);
+    console.log(">>> req.body:", JSON.stringify(req.body));
+
+    if (!req.tenantId) {
+      return res.status(400).json({ success: false, message: "tenantId is missing from request" });
+    }
+
+    // Verify tenant exists in DB
+    const { PrismaClient } = require("@prisma/client");
+    const prisma = new PrismaClient();
+    const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
+    console.log(">>> Tenant found in DB:", tenant);
+
+    if (!tenant) {
+      return res.status(404).json({ 
+        success: false, 
+        message: `Tenant '${req.tenantId}' does NOT exist in database` 
+      });
+    }
+
     const { board, classMapping } = req.body;
     const result = await seedAgeConfigForTenant(req.tenantId, board, classMapping);
     res.json({ success: true, data: result });
   } catch (err: any) {
+    console.error("SEED ERROR:", err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter,
   Routes,
@@ -11,11 +12,13 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import LoginPage from "./pages/LoginPages";
 import ForgotPassword from "./pages/ForgotPassword";
-
 import TenantDashboard from "./pages/TenantDashboard";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
-import TenantManagement from "./pages/TenantManagement";
+// SuperAdmin Pages (all in one folder)
+import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
+import TenantsPage from "./pages/superAdmin/TenantsPage";
+import ReportsPage from "./pages/superAdmin/ReportsPage";
+import SuperAdminSettings from "./pages/superAdmin/SuperAdminSettings";
 
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
@@ -29,20 +32,37 @@ import AgeSettings from "./pages/students/AgeSettings";
 import PrintStudents from "./pages/students/PrintStudents";
 import RecycleBinPage from "./pages/students/RecycleBinPage";
 import EditStudentPage from "./pages/students/EditStudentPage";
+import StudentIdCardPage from "./pages/students/StudentIdCard";
 // Subscriptions
 import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
-import ReportsPage from "./pages/ReportsPage";
 
-// superadmin settings
+// Tenant Admin Settings
 import SettingsPage from "./pages/SettingsPage";
-// academic year
+
+// Academic Year
 import AcademicYearPage from "./pages/academic-year/AcademicYearPage";
-// classes
+
+// Classes
 import ClassesPage from "./pages/classes/ClassesPage";
-// sections
+
+// Sections
 import Sections from "./pages/Sections/SectionsPage";
-// subjects
+
+// Subjects
 import SubjectsPage from "./pages/Subjects/SubjectsPage";
+
+//////////////////////////////////////////////////////
+// AXIOS GLOBAL CONFIG
+//////////////////////////////////////////////////////
+axios.defaults.baseURL = "http://localhost:5000";
+
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 //////////////////////////////////////////////////////
 // Protected Route
@@ -84,16 +104,22 @@ function Layout() {
   useEffect(() => {
     const fetchBranding = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/settings", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const color = res.data.data.platform.primaryColor;
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+        // SuperAdmin fetches platform settings, Tenant Admin fetches tenant settings
+        const url =
+          user?.role === "SUPER_ADMIN"
+            ? "/api/super-admin/settings"
+            : "/api/settings";
+
+        const res = await axios.get(url);
+
+        const color = res.data.data?.platform?.primaryColor;
         if (color) {
           document.documentElement.style.setProperty("--primary-color", color);
         }
       } catch (err) {
-        console.error("Branding fetch error");
+        console.error("Branding fetch error", err);
       }
     };
     fetchBranding();
@@ -119,6 +145,14 @@ function RoleDashboard() {
 }
 
 //////////////////////////////////////////////////////
+// Role-based Settings
+//////////////////////////////////////////////////////
+function RoleSettings() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user?.role === "SUPER_ADMIN" ? <SuperAdminSettings /> : <SettingsPage />;
+}
+
+//////////////////////////////////////////////////////
 // App
 //////////////////////////////////////////////////////
 export default function App() {
@@ -135,8 +169,8 @@ export default function App() {
             {/* DASHBOARD */}
             <Route path="/dashboard" element={<RoleDashboard />} />
 
-            {/* TENANTS */}
-            <Route path="/tenants" element={<TenantManagement />} />
+            {/* TENANTS (SuperAdmin only) */}
+            <Route path="/tenants" element={<TenantsPage />} />
 
             {/* SUBSCRIPTIONS */}
             <Route path="/subscriptions" element={<SubscriptionsPage />} />
@@ -144,10 +178,9 @@ export default function App() {
             {/* REPORTS */}
             <Route path="/reports" element={<ReportsPage />} />
 
-            {/* SETTINGS */}
-            <Route path="/settings" element={<SettingsPage />} />
+            {/* SETTINGS (role-based: SuperAdmin vs Tenant Admin) */}
+            <Route path="/settings" element={<RoleSettings />} />
 
-            {/* STUDENT MODULE */}
             {/* STUDENT MODULE */}
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/students/new-admission" element={<AdmissionForm />} />
@@ -157,7 +190,7 @@ export default function App() {
             <Route path="/students/print" element={<PrintStudents />} />
             <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/students/:id/edit" element={<EditStudentPage />} />
-
+            <Route path="/students/id-card" element={<StudentIdCardPage />} />
             {/* ACADEMIC */}
             <Route path="/academic-years" element={<AcademicYearPage />} />
             <Route path="/classes" element={<ClassesPage />} />
@@ -172,3 +205,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

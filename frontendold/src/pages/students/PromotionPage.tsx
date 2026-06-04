@@ -5,7 +5,7 @@ import axios from "axios";
 
 interface AcademicYear {
   id: string;
-  year: string;
+  name: string;
 }
 interface ClassItem {
   id: string;
@@ -268,7 +268,7 @@ const PromotionPage = () => {
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((y) => (
-                <option key={y.id} value={y.id}>{y.year}</option>
+                <option key={y.id} value={y.id}>{y.name}</option>
               ))}
             </select>
             <select
@@ -312,7 +312,7 @@ const PromotionPage = () => {
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((y) => (
-                <option key={y.id} value={y.id}>{y.year}</option>
+                <option key={y.id} value={y.id}>{y.name}</option>
               ))}
             </select>
             <select
@@ -449,3 +449,4 @@ const PromotionPage = () => {
 };
 
 export default PromotionPage;
+

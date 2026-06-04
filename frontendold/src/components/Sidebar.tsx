@@ -1,5 +1,5 @@
 
-import { NavLink} from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 import {
   LayoutDashboard,
@@ -18,145 +18,56 @@ import {
   CreditCard,
   Calendar,
   Layers,
+  IdCard,
 } from "lucide-react";
+
+//////////////////////////////////////////////////////
+// HELPER — Full URL for logo
+//////////////////////////////////////////////////////
+const getFullUrl = (path: string | null | undefined) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `http://localhost:5000${path}`;
+};
 
 //////////////////////////////////////////////////
 // 🎯 MENUS
 //////////////////////////////////////////////////
 
 const tenantMenu = [
-  {
-    name: "Dashboard",
-    icon: <LayoutDashboard size={20} />,
-    path: "/dashboard",
-  },
-
+  { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
   { section: "Master" },
-
-  {
-    name: "Academic Year",
-    icon: <Calendar size={20} />,
-    path: "/academic-years",
-  },
-  {
-  name: "Age Settings",
-  path: "/students/age-settings",
-  icon: "🎂",
-},
-  {
-    name: "Classes",
-    icon: <School size={20} />,
-    path: "/classes",
-  },
-  {
-    name: "Sections",
-    icon: <Layers size={20} />,
-    path: "/sections",
-  },
-  {
-    name: "Subjects",
-    icon: <BookOpen size={20} />,
-    path: "/subjects",
-  },
-
+  { name: "Academic Year", icon: <Calendar size={20} />, path: "/academic-years" },
+  { name: "Age Settings", path: "/students/age-settings", icon: "🎂" },
+  { name: "Classes", icon: <School size={20} />, path: "/classes" },
+  { name: "Sections", icon: <Layers size={20} />, path: "/sections" },
+  { name: "Subjects", icon: <BookOpen size={20} />, path: "/subjects" },
   { section: "Academics" },
-
-  {
-    name: "Students",
-    icon: <Users size={20} />,
-    path: "/students",
-  },
-  {
-    name: "Teachers",
-    icon: <UserCog size={20} />,
-    path: "/teachers",
-  },
-  {
-    name: "Attendance",
-    icon: <ClipboardCheck size={20} />,
-    path: "/attendance",
-  },
-  {
-    name: "Exams",
-    icon: <FileText size={20} />,
-    path: "/exams",
-  },
-
+  { name: "Students", icon: <Users size={20} />, path: "/students" },
+  {name:"Students ID Card", icon:<IdCard size={20}/>, path:"/students/id-card"},
+  { name: "Teachers", icon: <UserCog size={20} />, path: "/teachers" },
+  { name: "Attendance", icon: <ClipboardCheck size={20} />, path: "/attendance" },
+  { name: "Exams", icon: <FileText size={20} />, path: "/exams" },
   { section: "Finance" },
-
-  {
-    name: "Fees",
-    icon: <IndianRupee size={20} />,
-    path: "/fees",
-  },
-
+  { name: "Fees", icon: <IndianRupee size={20} />, path: "/fees" },
   { section: "Management" },
-
-  {
-    name: "Transport",
-    icon: <Bus size={20} />,
-    path: "/transport",
-  },
-  {
-    name: "Library",
-    icon: <Library size={20} />,
-    path: "/library",
-  },
-
+  { name: "Transport", icon: <Bus size={20} />, path: "/transport" },
+  { name: "Library", icon: <Library size={20} />, path: "/library" },
   { section: "Analytics" },
-
-  {
-    name: "Reports",
-    icon: <BarChart3 size={20} />,
-    path: "/reports",
-  },
-
+  { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
   { section: "System" },
-
-  {
-    name: "Settings",
-    icon: <Settings size={20} />,
-    path: "/settings",
-  },
+  { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
 ];
 
-//////////////////////////////////////////////////
-
 const superAdminMenu = [
-  {
-    name: "Dashboard",
-    icon: <LayoutDashboard size={20} />,
-    path: "/dashboard",
-  },
-
+  { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
   { section: "SaaS Control" },
-
-  {
-    name: "Tenants",
-    icon: <Building2 size={20} />,
-    path: "/tenants",
-  },
-  {
-    name: "Subscriptions",
-    icon: <CreditCard size={20} />,
-    path: "/subscriptions",
-  },
-
+  { name: "Tenants", icon: <Building2 size={20} />, path: "/tenants" },
+  { name: "Subscriptions", icon: <CreditCard size={20} />, path: "/subscriptions" },
   { section: "Analytics" },
-
-  {
-    name: "Reports",
-    icon: <BarChart3 size={20} />,
-    path: "/reports",
-  },
-
+  { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
   { section: "System" },
-
-  {
-    name: "Settings",
-    icon: <Settings size={20} />,
-    path: "/settings",
-  },
+  { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
 ];
 
 //////////////////////////////////////////////////
@@ -172,7 +83,6 @@ type SidebarProps = {
 //////////////////////////////////////////////////
 
 export default function Sidebar({ tenant }: SidebarProps) {
-
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
 
@@ -181,13 +91,13 @@ export default function Sidebar({ tenant }: SidebarProps) {
 
   const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
   const sidebarSubtitle = isSuperAdmin ? "System Control" : safeTenant?.type || "School";
-  const sidebarLogo = isSuperAdmin ? "/super-admin-logo.png" : safeTenant?.logoUrl;
+
+  // ✅ FIXED — getFullUrl for logo
+  const sidebarLogo = isSuperAdmin
+    ? "/super-admin-logo.png"
+    : getFullUrl(safeTenant?.logoUrl);
 
   const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
-
-  //////////////////////////////////////////////////
-  // 🚀 UI
-  //////////////////////////////////////////////////
 
   return (
     <div className="w-72 bg-gradient-to-b from-slate-950 to-slate-900 text-white min-h-screen shadow-2xl flex flex-col">
@@ -195,7 +105,6 @@ export default function Sidebar({ tenant }: SidebarProps) {
       {/* HEADER */}
       <div className="p-6 border-b border-slate-800">
         <div className="flex items-center gap-4">
-
           {sidebarLogo ? (
             <img
               src={sidebarLogo}
@@ -219,7 +128,6 @@ export default function Sidebar({ tenant }: SidebarProps) {
               {sidebarSubtitle}
             </p>
           </div>
-
         </div>
       </div>
 
@@ -234,16 +142,10 @@ export default function Sidebar({ tenant }: SidebarProps) {
               {item.section}
             </p>
           ) : (
-            <NavItem
-              key={i}
-              to={item.path}
-              icon={item.icon}
-              label={item.name}
-            />
+            <NavItem key={i} to={item.path} icon={item.icon} label={item.name} />
           )
         )}
       </div>
-
     </div>
   );
 }
@@ -267,3 +169,4 @@ const NavItem = ({ to, icon, label }: any) => (
     <span className="font-semibold text-[15px]">{label}</span>
   </NavLink>
 );
+

@@ -30,11 +30,11 @@ interface PatternProps {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-const getFullUrl = (url?: string) => {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  const base = (window as any).__API_BASE__ || "";
-  return base + url;
+const getFullUrl = (path: string | null | undefined) => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/")) return `http://localhost:5000${path}`;
+  return `http://localhost:5000/uploads/${path}`;
 };
 
 // FIX 2 (PDF): Convert an image URL to a base64 data URL for html2canvas
@@ -1426,33 +1426,38 @@ const StudentIdCardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <style>{`
-        @media print {
-          @page { size: A4 portrait; margin: 8mm; }
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible !important; }
-          .print-area {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 194mm !important;
-            display: flex !important;
-            flex-wrap: wrap !important;
-            justify-content: center !important;
-            gap: 6mm !important;
-            padding: 0 !important;
-            box-sizing: border-box !important;
-          }
-          body, html { margin: 0 !important; padding: 0 !important; background: white !important; }
-          .id-card {
-            box-shadow: none !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            flex-shrink: 0 !important;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
+   <style>{`
+  @media print {
+    @page { size: A4 portrait; margin: 8mm; }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    body * { visibility: hidden; }
+    .print-area, .print-area * { visibility: visible !important; }
+    .print-area {
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 194mm !important;
+      display: flex !important;
+      flex-wrap: wrap !important;
+      justify-content: center !important;
+      gap: 6mm !important;
+      padding: 0 !important;
+      box-sizing: border-box !important;
+    }
+    body, html { margin: 0 !important; padding: 0 !important; background: white !important; }
+    .id-card {
+      box-shadow: none !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      flex-shrink: 0 !important;
+    }
+    .no-print { display: none !important; }
+  }
+`}</style>
 
       <div className="no-print bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex items-center justify-between">

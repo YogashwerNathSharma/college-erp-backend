@@ -11,5 +11,8 @@
 
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/modules/fees old","src/modules/examold"]
+
 }
+

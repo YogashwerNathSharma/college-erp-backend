@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -79,4 +80,36 @@ code {
   background: var(--code-bg);
   padding: 4px 8px;
   border-radius: 4px;
+}
+/* ================= PRINT STYLES ================= */
+@media print {
+  aside,
+  nav,
+  header,
+  [class*="w-64"],
+  [class*="fixed"],
+  [class*="sticky"] {
+    display: none !important;
+  }
+
+  main,
+  [class*="ml-64"],
+  [class*="pl-64"] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    width: 100% !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .shadow-lg, .shadow-sm, .shadow {
+    box-shadow: none !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
 }

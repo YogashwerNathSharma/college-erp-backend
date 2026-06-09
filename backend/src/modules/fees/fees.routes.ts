@@ -1,22 +1,23 @@
-import { Router } from "express";
 
-import feeStructureRoutes from "./feeStructure/feeStructure.routes";
-import paymentRoutes from "./payment/payment.routes";
-import studentFeeRoutes from "./studentFee/studentFee.routes";
-import receiptRoutes from "./receipt/receipt.routes";
+import { Router } from "express";
+import { authMiddleware } from "../../middleware/auth.middleware";
+import feeHeadRoutes from "./feeHead.routes";
+import feeStructureRoutes from "./feeStructure.routes";
+import feeDiscountRoutes from "./feeDiscount.routes";
+import fineRuleRoutes from "./fineRule.routes";
+import feeCollectionRoutes from "./feeCollection.routes";
 
 const router = Router();
 
-// 🎯 Fee Structure
+// All routes are protected
+router.use(authMiddleware);
+
+// Sub-module routes
+router.use("/heads", feeHeadRoutes);
 router.use("/structures", feeStructureRoutes);
-
-// 💰 Payments
-router.use("/payments", paymentRoutes);
-
-// 🎓 Student Fees
-router.use("/student-fees", studentFeeRoutes);
-
-// 🧾 Receipts
-router.use("/receipts", receiptRoutes);
+router.use("/discounts", feeDiscountRoutes);
+router.use("/fine-rules", fineRuleRoutes);
+router.use("/collection", feeCollectionRoutes);
 
 export default router;
+

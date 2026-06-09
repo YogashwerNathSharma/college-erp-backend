@@ -249,24 +249,20 @@ export const getDashboard = async (
     // 💰 FEES SUMMARY
     //////////////////////////////////////////////////////
 
-    const fees =
-      await prisma.studentFee.aggregate({
+   const fees = await prisma.studentFee.aggregate({
+  _sum: {
+    paidAmount: true,
+    balanceAmount: true,
+    totalAmount: true,
+  },
+  where: {
+    tenantId: tenantId,
+    isDeleted: false,
+  },
+});
 
-        where: {
-          tenantId,
-        },
-
-        _sum: {
-          paidAmount: true,
-          pendingAmount: true,
-        },
-      });
-
-    const totalPaid =
-      fees._sum.paidAmount ?? 0;
-
-    const totalPending =
-      fees._sum.pendingAmount ?? 0;
+   const totalPaid = Math.round(fees._sum.paidAmount ?? 0);
+const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
 
     const tenant =
   await prisma.tenant.findUnique({
@@ -419,20 +415,20 @@ export const getDashboard = async (
 
           tenantId,
 
-          pendingAmount: {
+          balanceAmount: {
             gt: 0,
           },
         },
 
         orderBy: {
-          pendingAmount: "desc",
+          balanceAmount: "desc",
         },
 
         take: 5,
 
         select: {
 
-          pendingAmount: true,
+          balanceAmount: true,
 
           enrollment: {
             select: {
@@ -466,38 +462,29 @@ export const getDashboard = async (
     //////////////////////////////////////////////////////
 
     const currentMonth =
-      monthlyData[
-        monthlyData.length - 1
-      ]?.fees ?? 0;
+      monthlyData[monthlyData.length - 1]?.fees ?? 0;
 
     const prevMonth =
-      monthlyData[
-        monthlyData.length - 2
-      ]?.fees ?? 0;
+      monthlyData[monthlyData.length - 2]?.fees ?? 0;
 
     let growth = 0;
 
-    if (prevMonth > 0) {
-
-      growth =
-        ((currentMonth - prevMonth) /
-          prevMonth) *
-        100;
-
+    if (prevMonth > 0 && currentMonth > 0) {
+      growth = ((currentMonth - prevMonth) / prevMonth) * 100;
+    } else if (prevMonth === 0 && currentMonth > 0) {
+      growth = 100;
+    } else if (prevMonth > 0 && currentMonth === 0) {
+      growth = -100;
     }
 
     const insights = {
-
-      growth:
-        `${growth.toFixed(1)}%`,
-
+      growth: `${growth.toFixed(1)}%`,
       message:
         growth > 0
           ? "Fees collection increased this month 📈"
           : growth < 0
           ? "Fees collection dropped this month 📉"
           : "No change in fee collection",
-
     };
 
     //////////////////////////////////////////////////////

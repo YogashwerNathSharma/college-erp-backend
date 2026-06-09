@@ -1,14 +1,17 @@
+
 import { Request, Response } from "express";
 import {
   markAttendanceService,
+  updateAttendanceService,
   getClassAttendanceService,
   getStudentAttendanceService,
   getAttendanceReportService,
+  getAttendanceSummaryService,
 } from "./attendance.service";
-import { MarkAttendanceBody } from "./attendance.types";
+import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
 
 /////////////////////////
-// MARK ATTENDANCE
+// MARK ATTENDANCE (Bulk)
 /////////////////////////
 export const markAttendance = async (
   req: Request,
@@ -35,7 +38,34 @@ export const markAttendance = async (
 };
 
 /////////////////////////
-// CLASS ATTENDANCE
+// UPDATE ATTENDANCE (Edit)
+/////////////////////////
+export const updateAttendance = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const tenantId = (req as any).tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const result = await updateAttendanceService(
+      req.body as UpdateAttendanceBody,
+      tenantId
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error("UPDATE ATTENDANCE ERROR:", error);
+    res.status(500).json({ message: "Error updating attendance" });
+  }
+};
+
+/////////////////////////
+// GET CLASS ATTENDANCE
 /////////////////////////
 export const getClassAttendance = async (
   req: Request,
@@ -43,8 +73,12 @@ export const getClassAttendance = async (
 ): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
-
     const { classId, sectionId, date } = req.query;
+
+    if (!classId || !sectionId || !date) {
+      res.status(400).json({ message: "classId, sectionId, and date are required" });
+      return;
+    }
 
     const data = await getClassAttendanceService(
       classId as string,
@@ -61,7 +95,7 @@ export const getClassAttendance = async (
 };
 
 /////////////////////////
-// STUDENT ATTENDANCE
+// GET STUDENT ATTENDANCE
 /////////////////////////
 export const getStudentAttendance = async (
   req: Request,
@@ -69,8 +103,12 @@ export const getStudentAttendance = async (
 ): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
-
     const { studentId } = req.query;
+
+    if (!studentId) {
+      res.status(400).json({ message: "studentId is required" });
+      return;
+    }
 
     const data = await getStudentAttendanceService(
       studentId as string,
@@ -85,7 +123,7 @@ export const getStudentAttendance = async (
 };
 
 /////////////////////////
-// ATTENDANCE REPORT
+// ATTENDANCE REPORT (Monthly)
 /////////////////////////
 export const getAttendanceReport = async (
   req: Request,
@@ -93,8 +131,12 @@ export const getAttendanceReport = async (
 ): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
-
     const { studentId, month, year } = req.query;
+
+    if (!studentId || !month || !year) {
+      res.status(400).json({ message: "studentId, month, and year are required" });
+      return;
+    }
 
     const report = await getAttendanceReportService(
       studentId as string,
@@ -109,3 +151,33 @@ export const getAttendanceReport = async (
     res.status(500).json({ message: "Error generating report" });
   }
 };
+
+/////////////////////////
+// ATTENDANCE SUMMARY (Academic Year - for Report Card)
+/////////////////////////
+export const getAttendanceSummary = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const { studentId, academicYearId } = req.query;
+
+    if (!studentId || !academicYearId) {
+      res.status(400).json({ message: "studentId and academicYearId are required" });
+      return;
+    }
+
+    const summary = await getAttendanceSummaryService(
+      studentId as string,
+      academicYearId as string,
+      tenantId
+    );
+
+    res.json(summary);
+  } catch (error) {
+    console.error("ATTENDANCE SUMMARY ERROR:", error);
+    res.status(500).json({ message: "Error generating summary" });
+  }
+};
+

@@ -65,6 +65,7 @@ export default function Dashboard() {
           schoolName: d?.tenant?.schoolName || d?.tenant?.name || "",
           type: d?.tenant?.type || "",
           logoUrl: getFullUrl(d?.tenant?.logoUrl || d?.tenant?.logo),
+          backgroundUrl: d?.tenant?.backgroundUrl || null,
           address: d?.tenant?.address || "",
           phone: d?.tenant?.phone || "",
           email: d?.tenant?.email || "",

@@ -1,49 +1,79 @@
+// ═══════════════════════════════════════════════════════
+// exam.routes.ts — Full Exam Routes
+// ═══════════════════════════════════════════════════════
+
 import express from "express";
 import {
   createExam,
-  addExamSubject,
+  updateExam,
+  getExams,
+  getExamById,
+  deleteExam,
+  addExamSubjects,
+  getExamSubjects,
   enterMarks,
-  getResult,
+  getMarks,
+  generateResults,
+  getResults,
+  getReportCard,
+  getConsolidatedReport,
 } from "./exam.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
-import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 const router = express.Router();
 
-// 🎯 Create exam (only ADMIN / SUPER_ADMIN)
-router.post(
-  "/",
-  authMiddleware,
-  allowRoles("ADMIN", "SUPER_ADMIN"),
-  resolveTenant,
-  createExam
-);
+// ─────────────────────────────────────────
+// STATIC ROUTES FIRST (before :id routes)
+// ─────────────────────────────────────────
 
-// 🎯 Add subject to exam
-router.post(
-  "/subject",
-  authMiddleware,
-  allowRoles("ADMIN", "SUPER_ADMIN"),
-  resolveTenant,
-  addExamSubject
-);
+// Get all exams (filter by classId, academicYearId via query)
+router.get("/", authMiddleware, getExams);
 
-// 🎯 Enter marks (teacher/admin)
-router.post(
-  "/marks",
-  authMiddleware,
-  allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"),
-  resolveTenant,
-  enterMarks
-);
+// Create exam
+router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExam);
 
-// 🎯 Get result (all logged users)
+// Add/Update subjects for an exam
+router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), addExamSubjects);
+
+// Enter/Update marks (bulk)
+router.post("/marks", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), enterMarks);
+
+// ─────────────────────────────────────────
+// CONSOLIDATED REPORT (before :id routes!)
+// ─────────────────────────────────────────
 router.get(
-  "/result",
+  "/consolidated-report/:studentId",
   authMiddleware,
-  resolveTenant,
-  getResult
+  getConsolidatedReport
 );
+
+// ─────────────────────────────────────────
+// DYNAMIC :id ROUTES
+// ─────────────────────────────────────────
+
+// Get single exam
+router.get("/:id", authMiddleware, getExamById);
+
+// Update exam
+router.put("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), updateExam);
+
+// Delete exam (soft)
+router.delete("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), deleteExam);
+
+// Get subjects of an exam
+router.get("/:id/subjects", authMiddleware, getExamSubjects);
+
+// Get marks for marks entry page
+router.get("/:id/marks", authMiddleware, getMarks);
+
+// Generate results
+router.post("/:id/generate-results", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateResults);
+
+// Get published results
+router.get("/:id/results", authMiddleware, getResults);
+
+// Get report card for a student
+router.get("/:examId/report-card/:studentId", authMiddleware, getReportCard);
 
 export default router;

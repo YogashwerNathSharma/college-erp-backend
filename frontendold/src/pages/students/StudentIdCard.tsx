@@ -26,6 +26,7 @@ interface PatternProps {
   tenant: any;
   academicYearName: string;
   orientation: "landscape" | "portrait";
+  photoShape?: "rectangle" | "circle";
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -52,9 +53,26 @@ const imgToDataURL = (src: string): Promise<string> => {
   });
 };
 
+// ─── Shared: Capitalize Name ──────────────────────────────────────────────────
+
+const capitalizeName = (name: string | undefined) => {
+  if (!name) return "";
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+};
+
+// ─── Shared: Detail Items ─────────────────────────────────────────────────────
+
+const getDetailItems = (student: StudentData) => [
+  { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
+  { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
+  { label: "Father", value: student.fatherName || "N/A" },
+  { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
+  { label: "Phone", value: student.fatherPhone || "N/A" },
+];
+
 // ─── Pattern 1: Leadership Blue ───────────────────────────────────────────────
 
-const Pattern1: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern1: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -64,64 +82,84 @@ const Pattern1: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const ACCENT = "#ffd700";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #e8eaf6 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Diagonal gold stripe */}
-      <div style={{ position: "absolute", top: -30, left: -30, width: 100, height: h + 60, background: ACCENT, opacity: 0.15, transform: "rotate(25deg)", zIndex: 1 }} />
+      <div style={{ position: "absolute", top: -50, left: -50, width: 100, height: h + 60, background: ACCENT, opacity: 0.15, transform: "rotate(25deg)", zIndex: 0 }} />
+      <div style={{ position: "absolute", bottom: -50, right: -50, width: 100, height: h + 60, background: ACCENT, opacity: 0.15, transform: "rotate(25deg)", zIndex: 0 }} />
       {/* Corner accents */}
-      <svg style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }} width="50" height="50"><path d="M0,0 Q25,10 10,40" fill="none" stroke={ACCENT} strokeWidth="2" /></svg>
-      <svg style={{ position: "absolute", bottom: 0, right: 0, zIndex: 1 }} width="50" height="50"><path d="M50,50 Q25,40 40,10" fill="none" stroke={ACCENT} strokeWidth="2" /></svg>
+      <svg style={{ position: "absolute", top: 0, left: 0, zIndex: 1 }} width="50" height="70"><path d="M0,0 Q25,10 10,40" fill="none" stroke={ACCENT} strokeWidth="4" /></svg>
+      <svg style={{ position: "absolute", bottom: 0, right: 0, zIndex: 1 }} width="50" height="70"><path d="M50,50 Q25,40 40,10" fill="none" stroke={ACCENT} strokeWidth="4" /></svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       {/* Divider */}
       <div style={{ height: 2, background: `linear-gradient(90deg, ${PRIMARY}, ${ACCENT})`, margin: "2px 10px" }} />
 
-      {/* Photo — FIX 1: removed crossOrigin="anonymous" so browser displays the image */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-
-      {/* ID */}
-      <div style={{ textAlign: "center", fontSize: 10, color: ACCENT, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          {/* Portrait: Photo centered, name below, details below */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: ACCENT, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Landscape: Photo LEFT, Name+Details RIGHT */}
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -144,7 +182,7 @@ const Pattern1: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 2: Innovate Teal ─────────────────────────────────────────────────
 
-const Pattern2: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern2: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -154,10 +192,11 @@ const Pattern2: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const LIGHT = "#b2dfdb";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #e0f2f1 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Geometric triangles */}
       <svg style={{ position: "absolute", top: 0, right: 0, zIndex: 1 }} width="100" height="100">
         <polygon points="100,0 60,0 100,40" fill={LIGHT} opacity="0.6" />
@@ -165,52 +204,78 @@ const Pattern2: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
         <polygon points="70,10 90,10 80,30" fill={LIGHT} opacity="0.4" />
         <polygon points="50,30 70,30 60,50" fill={PRIMARY} opacity="0.15" />
       </svg>
+      <svg style={{ position: "absolute", bottom: 0, left: 0, zIndex: 1 }} width="200" height="200">
+        <polygon points="100,0 60,0 100,40" fill={LIGHT} opacity="0.6" />
+        <polygon points="100,20 80,0 100,0" fill={PRIMARY} opacity="0.2" />
+        <polygon points="70,10 90,10 80,30" fill={LIGHT} opacity="0.4" />
+        <polygon points="50,30 70,30 60,50" fill={PRIMARY} opacity="0.15" />
+      </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          {/* Portrait: Photo centered, name below, details below */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Landscape: Photo LEFT, Name+Details RIGHT */}
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -233,7 +298,7 @@ const Pattern2: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 3: Aristo Gold ───────────────────────────────────────────────────
 
-const Pattern3: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern3: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -243,69 +308,89 @@ const Pattern3: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const GOLD = "#c8a415";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fffdf5", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fffdf5", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+     <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Gold header accent */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${GOLD}, ${PRIMARY}, ${GOLD})`, zIndex: 2 }} />
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "12px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: GOLD, margin: "2px 10px" }} />
 
-      {/* Photo with laurel wreath */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ position: "relative" }}>
-          {/* Laurel SVG */}
-          <svg style={{ position: "absolute", top: -8, left: -12, width: photoW + 24, height: photoH + 16 }} viewBox="0 0 120 130">
-            <path d="M15,65 Q5,50 15,35 Q20,45 18,55 Z" fill={GOLD} opacity="0.5" />
-            <path d="M12,80 Q2,65 12,50 Q17,60 15,70 Z" fill={GOLD} opacity="0.4" />
-            <path d="M18,95 Q8,80 18,65 Q23,75 21,85 Z" fill={GOLD} opacity="0.3" />
-            <path d="M105,65 Q115,50 105,35 Q100,45 102,55 Z" fill={GOLD} opacity="0.5" />
-            <path d="M108,80 Q118,65 108,50 Q103,60 105,70 Z" fill={GOLD} opacity="0.4" />
-            <path d="M102,95 Q112,80 102,65 Q97,75 99,85 Z" fill={GOLD} opacity="0.3" />
-          </svg>
-          <div style={{ width: photoW, height: photoH, border: `2.5px solid ${GOLD}`, borderRadius: 6, overflow: "hidden", background: "#eee", position: "relative" }}>
-            {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+      {isPortrait ? (
+        <>
+          {/* Portrait: Photo with laurel wreath centered */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ position: "relative" }}>
+              <svg style={{ position: "absolute", top: -8, left: -12, width: photoW + 24, height: photoH + 16 }} viewBox="0 0 120 130">
+                <path d="M15,65 Q5,50 15,35 Q20,45 18,55 Z" fill={GOLD} opacity="0.5" />
+                <path d="M12,80 Q2,65 12,50 Q17,60 15,70 Z" fill={GOLD} opacity="0.4" />
+                <path d="M18,95 Q8,80 18,65 Q23,75 21,85 Z" fill={GOLD} opacity="0.3" />
+                <path d="M105,65 Q115,50 105,35 Q100,45 102,55 Z" fill={GOLD} opacity="0.5" />
+                <path d="M108,80 Q118,65 108,50 Q103,60 105,70 Z" fill={GOLD} opacity="0.4" />
+                <path d="M102,95 Q112,80 102,65 Q97,75 99,85 Z" fill={GOLD} opacity="0.3" />
+              </svg>
+              <div style={{ width: photoW, height: photoH, border: `2.5px solid ${GOLD}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee", position: "relative" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Landscape: Photo LEFT, Name+Details RIGHT */}
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2.5px solid ${GOLD}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: GOLD, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -328,7 +413,7 @@ const Pattern3: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 4: Wisdom Purple ─────────────────────────────────────────────────
 
-const Pattern4: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern4: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -338,11 +423,12 @@ const Pattern4: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const GOLD = "#ffd700";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
-      {/* Purple + gold blob top-right */}
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #ede7f6 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />{/* Purple + gold blob top-right */}
       <svg style={{ position: "absolute", top: -20, right: -20, zIndex: 1 }} width="120" height="120">
         <ellipse cx="80" cy="40" rx="50" ry="35" fill={PRIMARY} opacity="0.12" />
         <ellipse cx="60" cy="60" rx="30" ry="25" fill={GOLD} opacity="0.15" />
@@ -354,50 +440,68 @@ const Pattern4: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: `linear-gradient(90deg, ${PRIMARY}, ${GOLD})`, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: GOLD, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -420,7 +524,7 @@ const Pattern4: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 5: Bluebird Sky ──────────────────────────────────────────────────
 
-const Pattern5: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern5: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -429,10 +533,11 @@ const Pattern5: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const PRIMARY = "#1565c0";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #e3f2fd 0%, #fff 40%)", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #e3f2fd 0%, #fff 40%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Blue leaf/branch top-right */}
       <svg style={{ position: "absolute", top: 5, right: 40, zIndex: 1 }} width="60" height="60">
         <path d="M30,50 Q20,35 30,20 Q35,30 32,40 Z" fill={PRIMARY} opacity="0.15" />
@@ -441,50 +546,68 @@ const Pattern5: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -507,7 +630,7 @@ const Pattern5: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 6: NextGen Green ─────────────────────────────────────────────────
 
-const Pattern6: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern6: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -517,10 +640,11 @@ const Pattern6: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const ACCENT = "#ff6d00";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #e8f5e9 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+     <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Circuit-board lines */}
       <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1 }}>
         <line x1="120" y1="140" x2="120" y2="180" stroke={PRIMARY} strokeWidth="0.5" opacity="0.2" />
@@ -535,50 +659,69 @@ const Pattern6: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: `linear-gradient(90deg, ${PRIMARY}, ${ACCENT})`, margin: "2px 10px" }} />
 
-      {/* Hexagonal photo frame */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, clipPath: "polygon(50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%, 0% 10%)", overflow: "hidden", background: "#eee", border: `2px solid ${PRIMARY}` }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: ACCENT, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          {/* Hexagonal photo frame in portrait */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, clipPath: photoShape === "circle" ? "none" : "polygon(50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%, 0% 10%)", borderRadius: photoShape === "circle" ? "50%" : 0, overflow: "hidden", background: "#eee", border: `2px solid ${PRIMARY}` }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: ACCENT, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, clipPath: photoShape === "circle" ? "none" : "polygon(50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%, 0% 10%)", borderRadius: photoShape === "circle" ? "50%" : 0, overflow: "hidden", background: "#eee", border: `2px solid ${PRIMARY}` }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: ACCENT, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -601,7 +744,7 @@ const Pattern6: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 7: Shining Star Maroon ───────────────────────────────────────────
 
-const Pattern7: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern7: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -611,58 +754,76 @@ const Pattern7: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const GOLD = "#c8a415";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #efebe9 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
       {/* Gold thin border frame inside card */}
       <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${GOLD}`, borderRadius: 6, zIndex: 1 }} />
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "14px 14px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: GOLD, margin: "2px 14px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 18px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 18px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: GOLD, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 12, left: 18, right: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -685,7 +846,7 @@ const Pattern7: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 8: Emerald Green ─────────────────────────────────────────────────
 
-const Pattern8: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern8: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -694,10 +855,11 @@ const Pattern8: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const PRIMARY = "#004d40";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #fff 70%, #e0f2f1 100%)", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #fff 70%, #e0f2f1 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+       <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Dotted circles around photo area */}
       <svg style={{ position: "absolute", top: isPortrait ? 55 : 30, left: "50%", transform: "translateX(-50%)", zIndex: 1 }} width="140" height="140">
         <circle cx="70" cy="70" r="65" fill="none" stroke={PRIMARY} strokeWidth="0.8" strokeDasharray="3,3" opacity="0.2" />
@@ -705,50 +867,68 @@ const Pattern8: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -771,7 +951,7 @@ const Pattern8: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 9: Horizon Orange ────────────────────────────────────────────────
 
-const Pattern9: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern9: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -781,10 +961,11 @@ const Pattern9: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
   const BLUE = "#1565c0";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #fff3e0 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Large abstract blobs at bottom */}
       <svg style={{ position: "absolute", bottom: -20, left: -20, zIndex: 1 }} width="130" height="100">
         <ellipse cx="40" cy="60" rx="55" ry="40" fill={PRIMARY} opacity="0.12" />
@@ -796,50 +977,68 @@ const Pattern9: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: `linear-gradient(90deg, ${PRIMARY}, ${BLUE})`, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: BLUE, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: BLUE, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: BLUE, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -862,7 +1061,7 @@ const Pattern9: React.FC<PatternProps> = ({ student, tenant, academicYearName, o
 
 // ─── Pattern 10: Glorious Nature ──────────────────────────────────────────────
 
-const Pattern10: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern10: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -871,10 +1070,11 @@ const Pattern10: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
   const PRIMARY = "#1b5e20";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #e8f5e9 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Leaf illustrations top-right */}
       <svg style={{ position: "absolute", top: 0, right: 0, zIndex: 1 }} width="80" height="80">
         <path d="M70,10 Q55,20 60,35 Q65,20 70,10 Z" fill={PRIMARY} opacity="0.15" />
@@ -889,50 +1089,68 @@ const Pattern10: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -955,7 +1173,7 @@ const Pattern10: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
 
 // ─── Pattern 11: Red Classic ──────────────────────────────────────────────────
 
-const Pattern11: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern11: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -965,60 +1183,79 @@ const Pattern11: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
   const GOLD = "#c8a415";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #ffebee 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Red diagonal thick stripe top-left */}
       <div style={{ position: "absolute", top: -40, left: -40, width: 100, height: 140, background: PRIMARY, opacity: 0.12, transform: "rotate(30deg)", zIndex: 1 }} />
       {/* Gold thin border */}
       <div style={{ position: "absolute", top: 5, left: 5, right: 5, bottom: 5, border: `1px solid ${GOLD}`, borderRadius: 7, zIndex: 1, opacity: 0.6 }} />
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "12px 12px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 12px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: GOLD, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: GOLD, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -1041,7 +1278,7 @@ const Pattern11: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
 
 // ─── Pattern 12: Blue Geometric ───────────────────────────────────────────────
 
-const Pattern12: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern12: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -1050,10 +1287,11 @@ const Pattern12: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
   const PRIMARY = "#0d47a1";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #e3f2fd 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Geometric triangles scattered */}
       <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1 }}>
         <polygon points="200,20 220,20 210,40" fill={PRIMARY} opacity="0.08" />
@@ -1067,50 +1305,68 @@ const Pattern12: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -1133,7 +1389,7 @@ const Pattern12: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
 
 // ─── Pattern 13: Pink Blossom ─────────────────────────────────────────────────
 
-const Pattern13: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation }) => {
+const Pattern13: React.FC<PatternProps> = ({ student, tenant, academicYearName, orientation, photoShape }) => {
   const photoUrl = getFullUrl(student.photoUrl);
   const logoUrl = getFullUrl(tenant?.logoUrl);
   const isPortrait = orientation === "portrait";
@@ -1142,10 +1398,11 @@ const Pattern13: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
   const PRIMARY = "#880e4f";
 
   const photoW = isPortrait ? 90 : 70;
-  const photoH = isPortrait ? 110 : 85;
+  const photoH = photoShape === "circle" ? photoW : (isPortrait ? 110 : 85);
 
   return (
-    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "#fff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+    <div className="id-card" style={{ width: w, height: h, position: "relative", overflow: "hidden", background: "linear-gradient(160deg, #ffffff 0%, #fce4ec 100%)", border: `2px solid ${PRIMARY}`, borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.15)", fontFamily: "Arial, sans-serif" }}>
+      <div style={{ position: "absolute", top: 6, left: 6, right: 6, bottom: 6, border: `1.5px solid ${PRIMARY}`, borderRadius: 6, zIndex: 1 }} />
       {/* Pink circles/flowers scattered */}
       <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 1 }}>
         <circle cx="200" cy="30" r="15" fill={PRIMARY} opacity="0.06" />
@@ -1159,50 +1416,68 @@ const Pattern13: React.FC<PatternProps> = ({ student, tenant, academicYearName, 
       </svg>
 
       {/* Academic Year Badge */}
-      <div style={{ position: "absolute", top: 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
+      <div style={{ position: "absolute", top: isPortrait ? 80 : 8, right: 8, background: PRIMARY, color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700, zIndex: 3 }}>{academicYearName}</div>
 
       {/* Header */}
-      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "10px 10px 4px", gap: 6 }}>
-        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover" }} />}
+      <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", padding: "20px 20px 6px", gap: 6 }}>
+        {logoUrl && <img src={logoUrl} crossOrigin="anonymous" style={{ width: 40, height: 40, borderRadius: 4, objectFit: "cover" }} />}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
-          <div style={{ fontSize: 7, color: "#555", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: PRIMARY, lineHeight: 1.2 }}>{tenant?.name || "SCHOOL NAME"}</div>
+          <div style={{ fontSize: 9, color: "#090101", lineHeight: 1.2 }}>{tenant?.address || ""}</div>
         </div>
       </div>
 
       <div style={{ height: 2, background: PRIMARY, margin: "2px 10px" }} />
 
-      {/* Photo */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: isPortrait ? 10 : 6, position: "relative", zIndex: 2 }}>
-        <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: 6, overflow: "hidden", background: "#eee" }}>
-          {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
-        </div>
-      </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
-        {(student.firstName || "").charAt(0).toUpperCase() + (student.firstName || "").slice(1).toLowerCase()} {(student.lastName || "").charAt(0).toUpperCase() + (student.lastName || "").slice(1).toLowerCase()}
-      </div>
-      <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
-        ID No: {student.admissionNo || "N/A"}
-      </div>
-
-      {/* Details */}
-      <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
-        {[
-          { label: "Class", value: student.class?.name?.replace(/class\s*/i, "") || "N/A" },
-          { label: "Section", value: student.section?.name?.replace(/section\s*/i, "") || "N/A" },
-          { label: "Father", value: student.fatherName || "N/A" },
-          { label: "DOB", value: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "N/A" },
-          { label: "Phone", value: student.fatherPhone || "N/A" },
-        ].map((item, idx) => (
-          <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
-            <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
-            <span style={{ margin: "0 4px" }}>:</span>
-            <span>{item.value}</span>
+      {isPortrait ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10, position: "relative", zIndex: 2 }}>
+            <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+              {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+            </div>
           </div>
-        ))}
-      </div>
+          <div style={{ textAlign: "center", marginTop: 6, fontSize: 15, fontWeight: 700, color: PRIMARY, position: "relative", zIndex: 2 }}>
+            {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+          </div>
+          <div style={{ textAlign: "center", fontSize: 10, color: PRIMARY, fontWeight: 600, position: "relative", zIndex: 2 }}>
+            ID No: {student.admissionNo || "N/A"}
+          </div>
+          <div style={{ padding: "6px 14px", fontSize: 10, position: "relative", zIndex: 2 }}>
+            {getDetailItems(student).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 55 }}>• {item.label}</span>
+                <span style={{ margin: "0 4px" }}>:</span>
+                <span>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "flex", padding: "8px 14px", gap: 12, flex: 1, position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: photoW, height: photoH, border: `2px solid ${PRIMARY}`, borderRadius: photoShape === "circle" ? "50%" : 6, overflow: "hidden", background: "#eee" }}>
+                {photoUrl ? <img src={photoUrl} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 10 }}>Photo</div>}
+              </div>
+              <div style={{ fontSize: 8, color: PRIMARY, fontWeight: 600 }}>ID: {student.admissionNo || "N/A"}</div>
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: PRIMARY }}>
+                {capitalizeName(student.firstName)} {capitalizeName(student.lastName)}
+              </div>
+              <div style={{ fontSize: 9 }}>
+                {getDetailItems(student).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", marginBottom: 1 }}>
+                    <span style={{ fontWeight: 600, color: PRIMARY, minWidth: 50 }}>• {item.label}</span>
+                    <span style={{ margin: "0 3px" }}>:</span>
+                    <span>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div style={{ position: "absolute", bottom: 10, left: 14, right: 14, display: "flex", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
@@ -1284,6 +1559,7 @@ const StudentIdCardPage: React.FC = () => {
   const [students, setStudents] = useState<StudentData[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
   const [orientation, setOrientation] = useState<"landscape" | "portrait">("portrait");
+  const [photoShape, setPhotoShape] = useState<"rectangle" | "circle">("rectangle");
   const [cardsPerPage, setCardsPerPage] = useState<number>(6);
   const [selectedPattern, setSelectedPattern] = useState<number>(1);
   const [activeAcademicYear, setActiveAcademicYear] = useState<string>("");
@@ -1315,17 +1591,18 @@ const StudentIdCardPage: React.FC = () => {
       photoUrl: student.photoUrl || student.photo || null,
       class: enrollment?.class || student.class,
       section: enrollment?.section || student.section,
-      academicYear: enrollment?.academicYear || student.academicYear,
       fatherPhone: student.fatherPhone || student.phone || null,
       dob: student.dob || null,
       address: student.address || null,
     };
   };
 
+  const [activeAcademicYearId, setActiveAcademicYearId] = useState<string>("");
+
   const fetchStudentsByClass = async (classId: string, sectionId: string) => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/students?classId=${classId}&sectionId=${sectionId}&limit=100`);
+      const res = await axios.get(`/api/students?classId=${classId}&sectionId=${sectionId}&academicYearId=${activeAcademicYearId}&limit=100`);
       const raw = res.data?.data?.students || res.data?.data || [];
       setStudents(raw.map((s: any) => mapStudentData(s)));
     } catch (err) { console.error("Failed to fetch students", err); }
@@ -1348,6 +1625,7 @@ const StudentIdCardPage: React.FC = () => {
       const years = res.data.data || [];
       const active = years.find((y: any) => y.isActive);
       if (active?.name) setActiveAcademicYear(active.name);
+      if (active?.id || active?._id) setActiveAcademicYearId(active.id || active._id);
     } catch (err) { console.error("Failed to fetch academic years", err); }
   };
 
@@ -1387,7 +1665,7 @@ const StudentIdCardPage: React.FC = () => {
         await Promise.all(
           imgs.map(async (img, idx) => {
             if (origSrcs[idx]) {
-              imgs[idx].src = await imgToDataURL(origSrcs[idx]);
+              img.src = await imgToDataURL(origSrcs[idx]);
             }
           })
         );
@@ -1396,7 +1674,6 @@ const StudentIdCardPage: React.FC = () => {
           scale: 3,
           backgroundColor: "#ffffff",
           logging: false,
-          // FIX 2: Clamp capture to the card's declared pixel dimensions
           width: cardNativeW,
           height: cardNativeH,
         });
@@ -1426,38 +1703,38 @@ const StudentIdCardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-   <style>{`
-  @media print {
-    @page { size: A4 portrait; margin: 8mm; }
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-    }
-    body * { visibility: hidden; }
-    .print-area, .print-area * { visibility: visible !important; }
-    .print-area {
-      position: fixed !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 194mm !important;
-      display: flex !important;
-      flex-wrap: wrap !important;
-      justify-content: center !important;
-      gap: 6mm !important;
-      padding: 0 !important;
-      box-sizing: border-box !important;
-    }
-    body, html { margin: 0 !important; padding: 0 !important; background: white !important; }
-    .id-card {
-      box-shadow: none !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-      flex-shrink: 0 !important;
-    }
-    .no-print { display: none !important; }
-  }
-`}</style>
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 8mm; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 194mm !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            gap: 6mm !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+          }
+          body, html { margin: 0 !important; padding: 0 !important; background: white !important; }
+          .id-card {
+            box-shadow: none !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            flex-shrink: 0 !important;
+          }
+          .no-print { display: none !important; }
+        }
+      `}</style>
 
       <div className="no-print bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex items-center justify-between">
@@ -1475,6 +1752,7 @@ const StudentIdCardPage: React.FC = () => {
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Class</label><select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[140px]"><option value="">Select Class</option>{classes.map((c: any) => (<option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>))}</select></div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Section</label><select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[140px]" disabled={!selectedClass}><option value="">Select Section</option>{sections.map((s: any) => (<option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>))}</select></div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Orientation</label><div className="flex gap-1"><button onClick={() => setOrientation("portrait")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "portrait" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Portrait</button><button onClick={() => setOrientation("landscape")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "landscape" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Landscape</button></div></div>
+          <div><label className="block text-xs font-medium text-gray-600 mb-1">Photo Shape</label><div className="flex gap-1"><button onClick={() => setPhotoShape("rectangle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "rectangle" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Rectangle</button><button onClick={() => setPhotoShape("circle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "circle" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Circle</button></div></div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Cards/Page</label><select value={cardsPerPage} onChange={(e) => setCardsPerPage(Number(e.target.value))} className="border border-gray-300 rounded-md px-3 py-2 text-sm"><option value={4}>4</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option></select></div>
           {mode === "class" && <button onClick={handleGenerateClass} disabled={students.length === 0} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition disabled:opacity-50">Generate All Cards</button>}
           {showCards && cardsToDisplay.length > 0 && (<><button onClick={handleDownloadPDF} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition">Download PDF</button><button onClick={handlePrint} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition">Print</button></>)}
@@ -1512,7 +1790,7 @@ const StudentIdCardPage: React.FC = () => {
       {showCards && cardsToDisplay.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div ref={printRef} className="print-area" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, padding: 16 }}>
-            {cardsToDisplay.slice(0, cardsPerPage).map((student) => (<PatternComponent key={student.id || (student as any)._id} student={student} tenant={tenant} academicYearName={activeAcademicYear} orientation={orientation} />))}
+            {cardsToDisplay.slice(0, cardsPerPage).map((student) => (<PatternComponent key={student.id || (student as any)._id} student={student} tenant={tenant} academicYearName={activeAcademicYear} orientation={orientation} photoShape={photoShape} />))}
           </div>
           {cardsToDisplay.length > cardsPerPage && <div className="no-print text-center mt-3 text-sm text-gray-500">Showing {cardsPerPage} of {cardsToDisplay.length} cards.</div>}
         </div>
@@ -1525,3 +1803,4 @@ const StudentIdCardPage: React.FC = () => {
 };
 
 export default StudentIdCardPage;
+

@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 //////////////////////
 // TENANT
 //////////////////////
@@ -35,7 +36,14 @@ model Tenant {
   classAgeConfigs   ClassAgeConfig[]
   admissionCounters AdmissionCounter[]
 
+  // Fee Module Relations
+  feeHeads      FeeHead[]
+  feeStructures FeeStructure[]
+  feeDiscounts  FeeDiscount[]
+  fineRules     FineRule[]
+  studentFees   StudentFee[]
   payments      Payment[]
+
   subscriptions TenantSubscription[]
 
   currentSubscriptionId String? @db.ObjectId
@@ -83,15 +91,17 @@ model AcademicYear {
   tenantId String @db.ObjectId
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  enrollments Enrollment[]
-  classes     Class[]
-  students    Student[]
-  sections    Section[]
-  subjects    Subject[]
-  teachers    Teacher[]
-isDeleted Boolean @default(false)
-deletedAt DateTime?
-  createdAt DateTime @default(now())
+  enrollments   Enrollment[]
+  classes       Class[]
+  students      Student[]
+  sections      Section[]
+  subjects      Subject[]
+  teachers      Teacher[]
+  feeStructures FeeStructure[]
+  attendances   Attendance[]
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
 }
 
 //////////////////////
@@ -113,10 +123,12 @@ model Class {
   enrollments     Enrollment[]
   timetables      Timetable[]
   classAgeConfigs ClassAgeConfig[]
-isActive  Boolean  @default(true)
-  isDeleted Boolean  @default(false)
+  feeStructures   FeeStructure[]
+
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
   deletedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 //////////////////////
@@ -142,7 +154,7 @@ model Section {
 }
 
 //////////////////////
-// STUDENT (UPDATED)
+// STUDENT
 //////////////////////
 model Student {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -204,7 +216,7 @@ model Student {
 }
 
 //////////////////////
-// STUDENT DOCUMENT (NEW)
+// STUDENT DOCUMENT
 //////////////////////
 model StudentDocument {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -212,7 +224,7 @@ model StudentDocument {
   studentId String @db.ObjectId
   tenantId  String @db.ObjectId
 
-  type     String    // "aadhar_card" | "birth_certificate" | "tc" | "marksheet" | "photo" | "other"
+  type     String
   name     String
   url      String
   mimeType String?
@@ -226,8 +238,9 @@ model StudentDocument {
   @@index([studentId])
   @@index([tenantId, type])
 }
+
 //////////////////////
-// ENROLLMENT (UPDATED)
+// ENROLLMENT
 //////////////////////
 model Enrollment {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -260,7 +273,7 @@ model Enrollment {
 }
 
 //////////////////////
-// STUDENT HISTORY (UPDATED)
+// STUDENT HISTORY
 //////////////////////
 model StudentHistory {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -290,9 +303,9 @@ model StudentHistory {
 }
 
 //////////////////////
-// PROMOTION (NEW)
+// PROMOTION
 //////////////////////
- model Promotion{
+model Promotion {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   studentId String @db.ObjectId
@@ -312,15 +325,17 @@ model StudentHistory {
 
   student Student @relation(fields: [studentId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  promotedAt DateTime @default(now())
-  createdAt DateTime @default(now())
+
+  promotedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
   promotionType String
+
   @@index([tenantId, fromAcademicYearId])
   @@index([studentId])
 }
 
 //////////////////////
-// ADMISSION COUNTER (NEW)
+// ADMISSION COUNTER
 //////////////////////
 model AdmissionCounter {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -340,7 +355,7 @@ model AdmissionCounter {
 }
 
 //////////////////////
-// CLASS AGE CONFIG (NEW)
+// CLASS AGE CONFIG
 //////////////////////
 model ClassAgeConfig {
   id String @id @default(auto()) @map("_id") @db.ObjectId
@@ -374,6 +389,7 @@ enum BoardType {
   IB
   IGCSE
 }
+
 //////////////////////
 // SUBJECT
 //////////////////////
@@ -392,8 +408,9 @@ model Subject {
   teachers   TeacherSubject[]
   timetables Timetable[]
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  periodsPerWeek Int      @default(6)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
 }
 
 //////////////////////
@@ -461,21 +478,27 @@ enum AttendanceStatus {
 }
 
 model Attendance {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
-  studentId String @db.ObjectId
-  classId   String @db.ObjectId
-  sectionId String @db.ObjectId
-  tenantId  String @db.ObjectId
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
 
-  date   DateTime
-  status AttendanceStatus
+  studentId      String   @db.ObjectId
+  classId        String   @db.ObjectId
+  sectionId      String   @db.ObjectId
+  tenantId       String   @db.ObjectId
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
+  academicYearId String   @db.ObjectId
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  date           DateTime
+  status         AttendanceStatus
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  isDeleted      Boolean  @default(false)
+  deletedAt      DateTime?
 
   @@index([studentId, date])
+  @@index([classId, sectionId, date])
 }
 
 //////////////////////
@@ -519,115 +542,332 @@ model Timetable {
 // EXAM
 //////////////////////
 model Exam {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  name     String
-  type     String?
-  classId  String  @db.ObjectId
-  tenantId String  @db.ObjectId
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  type            String?
+  classId         String    @db.ObjectId
+  sectionId       String?   @db.ObjectId
+  academicYearId  String    @db.ObjectId
+  tenantId        String    @db.ObjectId
+  startDate       DateTime?
+  endDate         DateTime?
+  resultType      String    @default("BOTH")
+  isPublished     Boolean   @default(false)
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
 
+// ─────────────── REPLACE your old ExamSubject model ───────────────
+model ExamSubject {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  examId        String  @db.ObjectId
+  subjectId     String  @db.ObjectId
+  tenantId      String  @db.ObjectId
+  maxMarks      Int
+  passingMarks  Int
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+}
+
+// ─────────────── NEW — Replace old Result model ───────────────
+model MarksEntry {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  examId          String   @db.ObjectId
+  studentId       String   @db.ObjectId
+  subjectId       String   @db.ObjectId
+  tenantId        String   @db.ObjectId
+  marksObtained   Float
+  isAbsent        Boolean  @default(false)
+  isDeleted       Boolean  @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─────────────── NEW — Grade Settings ───────────────
+model GradeSetting {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String  @db.ObjectId
+  grade       String
+  minPercent  Float
+  maxPercent  Float
+  gradePoint  Float?
+  remarks     String?
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+// ─────────────── NEW — Result Summary ───────────────
+model ResultSummary {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  examId          String  @db.ObjectId
+  studentId       String  @db.ObjectId
+  tenantId        String  @db.ObjectId
+  totalMarks      Float
+  totalMaxMarks   Float
+  percentage      Float
+  grade           String?
+  rank            Int?
+  division        String?
+  status          String
+  totalSubjects   Int
+  passedSubjects  Int
+  failedSubjects  Int
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+// ═══════════════════════════════════════════════════════════════
+// 💰 FEES MODULE (Dynamic — Admin-Defined)
+// ═══════════════════════════════════════════════════════════════
+
+//////////////////////
+// FEE HEAD (Master — Admin defines fee types)
+//////////////////////
+model FeeHead {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String      @db.ObjectId
+  name        String      // "Tuition Fee", "Lab Fee", "Transport Fee"
+  code        String?     // Short code: "TF", "LF", "TR"
+  description String?
+  type        FeeHeadType @default(RECURRING)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  structureItems FeeStructureItem[]
+
+  isActive  Boolean   @default(true)
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }
 
-model ExamSubject {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
-  examId    String @db.ObjectId
-  subjectId String @db.ObjectId
-  maxMarks  Int
-
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-}
-
-model Result {
-  id            String @id @default(auto()) @map("_id") @db.ObjectId
-  studentId     String @db.ObjectId
-  examId        String @db.ObjectId
-  subjectId     String @db.ObjectId
-  marksObtained Float
-  tenantId      String @db.ObjectId
-
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
+enum FeeHeadType {
+  RECURRING
+  ONE_TIME
 }
 
 //////////////////////
-// FEE STRUCTURE
+// FEE STRUCTURE (Class + AcademicYear wise fee plan)
 //////////////////////
 model FeeStructure {
-  id             String @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId       String @db.ObjectId
-  academicYearId String @db.ObjectId
-  classId        String @db.ObjectId
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String          @db.ObjectId
+  academicYearId  String          @db.ObjectId
+  classId         String          @db.ObjectId
 
-  name      String
-  amount    Float
-  frequency String
+  name              String        // "Class 1 Fee 2025-26"
+  totalAmount       Float         // Sum of all head amounts
+  installmentType   InstallmentType @default(MONTHLY)
+  totalInstallments Int           @default(12)
+  dueDay            Int           @default(10) // Day of month fee is due
 
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  class        Class        @relation(fields: [classId], references: [id])
+
+  items       FeeStructureItem[]
   studentFees StudentFee[]
 
-  createdAt DateTime  @default(now())
+  isActive  Boolean   @default(true)
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, classId, academicYearId])
+  @@index([tenantId, academicYearId])
+}
+
+enum InstallmentType {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  YEARLY
+  ONE_TIME
+  CUSTOM
 }
 
 //////////////////////
-// STUDENT FEE
+// FEE STRUCTURE ITEM (Head-wise breakdown)
+//////////////////////
+model FeeStructureItem {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  feeStructureId String @db.ObjectId
+  feeHeadId      String @db.ObjectId
+
+  amount    Float
+  frequency String @default("PER_INSTALLMENT") // PER_INSTALLMENT or ONE_TIME
+
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  feeHead      FeeHead      @relation(fields: [feeHeadId], references: [id])
+
+  @@unique([feeStructureId, feeHeadId])
+}
+
+//////////////////////
+// FEE DISCOUNT (Master — Discount types)
+//////////////////////
+model FeeDiscount {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String       @db.ObjectId
+  name        String       // "Sibling Discount", "Merit Scholarship"
+  type        DiscountType
+  value       Float        // 10 = 10% or ₹10 based on type
+  description String?
+
+  applicableHeadIds String[] @db.ObjectId // Empty = all heads
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  studentFeeDiscounts StudentFeeDiscount[]
+
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+//////////////////////
+// FINE RULE (Late payment penalty)
+//////////////////////
+model FineRule {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String @db.ObjectId
+  name         String
+  afterDays    Int    // Fine starts X days after due
+  amountPerDay Float  // ₹/day
+  maxAmount    Float  // Cap
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  isActive  Boolean   @default(true)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+//////////////////////
+// STUDENT FEE (Assigned per student per installment)
 //////////////////////
 model StudentFee {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String @db.ObjectId
   enrollmentId   String @db.ObjectId
   feeStructureId String @db.ObjectId
-  tenantId       String @db.ObjectId
 
-  totalAmount   Float
-  paidAmount    Float  @default(0)
-  pendingAmount Float
-  status        String
-  dueDate       DateTime
+  totalAmount    Float
+  discountAmount Float     @default(0)
+  fineAmount     Float     @default(0)
+  netAmount      Float
+  paidAmount     Float     @default(0)
+  balanceAmount  Float
+
+  installmentNo  Int
+  dueDate        DateTime
+  status         FeeStatus @default(PENDING)
 
   enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id])
   feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
 
-  payments Payment[]
+  payments  Payment[]
+  discounts StudentFeeDiscount[]
 
-  createdAt DateTime  @default(now())
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([enrollmentId, feeStructureId, installmentNo])
+  @@index([tenantId, status])
+  @@index([enrollmentId])
+  @@index([tenantId, dueDate])
+}
+
+enum FeeStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
 }
 
 //////////////////////
-// PAYMENT
+// STUDENT FEE DISCOUNT (Applied discounts)
 //////////////////////
-enum PaymentMethod {
-  CASH
-  ONLINE
+model StudentFeeDiscount {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  studentFeeId  String @db.ObjectId
+  feeDiscountId String @db.ObjectId
+  amount        Float
+
+  studentFee  StudentFee  @relation(fields: [studentFeeId], references: [id])
+  feeDiscount FeeDiscount @relation(fields: [feeDiscountId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([studentFeeId, feeDiscountId])
 }
 
+//////////////////////
+// PAYMENT (Fee collection records)
+//////////////////////
 model Payment {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String        @db.ObjectId
+  studentFeeId String        @db.ObjectId
 
-  studentFeeId String     @db.ObjectId
-  studentFee   StudentFee @relation(fields: [studentFeeId], references: [id])
+  amount       Float
+  method       PaymentMethod
+  reference    String?       // Txn ID, Cheque No, UPI ref
+  remarks      String?
 
-  tenantId String @db.ObjectId
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  receiptNo    String        @unique
+  paymentDate  DateTime      @default(now())
+  collectedBy  String?       @db.ObjectId
 
-  amount    Float
-  method    PaymentMethod
-  reference String?
+  studentFee StudentFee @relation(fields: [studentFeeId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
 
-  receiptNo   String   @unique
-  paymentDate DateTime @default(now())
-  createdAt   DateTime @default(now())
-  isDeleted   Boolean  @default(false)
-  deletedAt   DateTime?
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([tenantId])
   @@index([studentFeeId])
+  @@index([tenantId, paymentDate])
+
 }
+
+enum PaymentMethod {
+  CASH
+  ONLINE
+  UPI
+  CHEQUE
+  BANK_TRANSFER
+  DD
+}
+
+// ═══════════════════════════════════════════════════════════════
+// END FEES MODULE
+// ═══════════════════════════════════════════════════════════════
 
 //////////////////////
 // AUDIT LOG

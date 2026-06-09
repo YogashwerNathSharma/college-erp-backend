@@ -1,5 +1,6 @@
 
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 import {
   LayoutDashboard,
@@ -19,7 +20,11 @@ import {
   Calendar,
   Layers,
   IdCard,
+  FileClockIcon,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
+
 
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo
@@ -27,51 +32,146 @@ import {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
+  if (path.startsWith("/")) return `http://localhost:5000${path}`;
+  return `http://localhost:5000/uploads/${path}`;
 };
 
 //////////////////////////////////////////////////
-// 🎯 MENUS
+// 🎯 MENU TYPES
 //////////////////////////////////////////////////
 
-const tenantMenu = [
-  { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
-  { section: "Master" },
-  { name: "Academic Year", icon: <Calendar size={20} />, path: "/academic-years" },
-  { name: "Age Settings", path: "/students/age-settings", icon: "🎂" },
-  { name: "Classes", icon: <School size={20} />, path: "/classes" },
-  { name: "Sections", icon: <Layers size={20} />, path: "/sections" },
-  { name: "Subjects", icon: <BookOpen size={20} />, path: "/subjects" },
-  { section: "Academics" },
-  { name: "Students", icon: <Users size={20} />, path: "/students" },
-  {name:"Students ID Card", icon:<IdCard size={20}/>, path:"/students/id-card"},
-  { name: "Teachers", icon: <UserCog size={20} />, path: "/teachers" },
-  { name: "Attendance", icon: <ClipboardCheck size={20} />, path: "/attendance" },
-  { name: "Exams", icon: <FileText size={20} />, path: "/exams" },
-  { section: "Finance" },
-  { name: "Fees", icon: <IndianRupee size={20} />, path: "/fees" },
-  { section: "Management" },
-  { name: "Transport", icon: <Bus size={20} />, path: "/transport" },
-  { name: "Library", icon: <Library size={20} />, path: "/library" },
-  { section: "Analytics" },
-  { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
-  { section: "System" },
-  { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
-];
+type MenuItem = {
+  name: string;
+  icon: any;
+  path?: string;
+  children?: { name: string; icon: any; path: string }[];
+};
 
-const superAdminMenu = [
-  { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
-  { section: "SaaS Control" },
-  { name: "Tenants", icon: <Building2 size={20} />, path: "/tenants" },
-  { name: "Subscriptions", icon: <CreditCard size={20} />, path: "/subscriptions" },
-  { section: "Analytics" },
-  { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
-  { section: "System" },
-  { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+type SectionGroup = {
+  section: string;
+  items: MenuItem[];
+};
+
+//////////////////////////////////////////////////
+// 🎯 TENANT MENU (Parent-Child Structure)
+//////////////////////////////////////////////////
+
+const tenantMenu: SectionGroup[] = [
+  {
+    section: "",
+    items: [
+      { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
+    ],
+  },
+  {
+    section: "",
+    items: [
+      {
+        name: "Master",
+        icon: <Settings size={20} />,
+        children: [
+          { name: "Academic Year", icon: <Calendar size={16} />, path: "/academic-years" },
+          { name: "Classes", icon: <School size={16} />, path: "/classes" },
+          { name: "Sections", icon: <Layers size={16} />, path: "/sections" },
+          { name: "Subjects", icon: <BookOpen size={16} />, path: "/subjects" },
+        ],
+      },
+    ],
+  },
+  {
+    section: "Academics",
+    items: [
+      {
+        name: "Students",
+        icon: <Users size={20} />,
+        path: "/students",
+        children: [
+          { name: "All Students", icon: <Users size={16} />, path: "/students" },
+          { name: "Age Settings", icon: <Calendar size={16} />, path: "/students/age-settings" },
+          { name: "ID Card", icon: <IdCard size={16} />, path: "/students/id-card" },
+        ],
+      },
+      { name: "Teachers", icon: <UserCog size={20} />, path: "/teachers" },
+      { name: "Attendance", icon: <ClipboardCheck size={20} />, path: "/attendance" },
+      { name: "Exams", icon: <FileText size={20} />, children: [
+          { name: "All Exams",  icon: <FileText size={16} />, path: "/exams" },
+          { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },
+      ]},
+      { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
+    ],
+  },
+
+  {
+    section: "Finance",
+    items: [
+      {
+        name: "Fees",
+        icon: <IndianRupee size={20} />,
+        children: [
+          { name: "Fee Collection", icon: <IndianRupee size={16} />, path: "/fees" },
+          { name: "Fee Heads", icon: <BookOpen size={16} />, path: "/fees/heads" },
+          { name: "Fee Structure", icon: <Layers size={16} />, path: "/fees/structures" },
+          { name: "Discounts", icon: <CreditCard size={16} />, path: "/fees/discounts" },
+          { name: "Fine Rules", icon: <FileText size={16} />, path: "/fees/fine-rules" },
+        ],
+      },
+    ],
+  },
+  {
+    section: "Management",
+    items: [
+      { name: "Transport", icon: <Bus size={20} />, path: "/transport" },
+      { name: "Library", icon: <Library size={20} />, path: "/library" },
+    ],
+  },
+  {
+    section: "Analytics",
+    items: [
+      { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
+    ],
+  },
+  {
+    section: "System",
+    items: [
+      { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+    ],
+  },
 ];
 
 //////////////////////////////////////////////////
-// 🚀 TYPES
+// SUPER ADMIN MENU
+//////////////////////////////////////////////////
+
+const superAdminMenu: SectionGroup[] = [
+  {
+    section: "",
+    items: [
+      { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
+    ],
+  },
+  {
+    section: "SaaS Control",
+    items: [
+      { name: "Tenants", icon: <Building2 size={20} />, path: "/tenants" },
+      { name: "Subscriptions", icon: <CreditCard size={20} />, path: "/subscriptions" },
+    ],
+  },
+  {
+    section: "Analytics",
+    items: [
+      { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
+    ],
+  },
+  {
+    section: "System",
+    items: [
+      { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+    ],
+  },
+];
+
+//////////////////////////////////////////////////
+// TYPES
 //////////////////////////////////////////////////
 
 type SidebarProps = {
@@ -79,7 +179,7 @@ type SidebarProps = {
 };
 
 //////////////////////////////////////////////////
-// 🚀 SIDEBAR
+// SIDEBAR
 //////////////////////////////////////////////////
 
 export default function Sidebar({ tenant }: SidebarProps) {
@@ -89,10 +189,10 @@ export default function Sidebar({ tenant }: SidebarProps) {
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
 
-  const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
-  const sidebarSubtitle = isSuperAdmin ? "System Control" : safeTenant?.type || "School";
+  const sidebarTitle = isSuperAdmin
+    ? "Super Admin"
+    : safeTenant?.name || "School Name";
 
-  // ✅ FIXED — getFullUrl for logo
   const sidebarLogo = isSuperAdmin
     ? "/super-admin-logo.png"
     : getFullUrl(safeTenant?.logoUrl);
@@ -100,73 +200,171 @@ export default function Sidebar({ tenant }: SidebarProps) {
   const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
 
   return (
-    <div className="w-72 bg-gradient-to-b from-slate-950 to-slate-900 text-white min-h-screen shadow-2xl flex flex-col">
+    <div className="w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen shadow-2xl flex flex-col border-r border-slate-800">
 
       {/* HEADER */}
-      <div className="p-6 border-b border-slate-800">
-        <div className="flex items-center gap-4">
-          {sidebarLogo ? (
-            <img
-              src={sidebarLogo}
-              alt="Logo"
-              className="w-16 h-16 rounded-full object-cover border-4 border-indigo-500 shadow-xl bg-white"
-              onError={(e: any) => {
-                e.target.style.display = "none";
-              }}
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-2xl font-bold border-4 border-indigo-400 shadow-xl">
-              {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
-            </div>
-          )}
+<div
+  className="p-4 border-b border-slate-800 relative overflow-hidden"
+  style={{
+    backgroundImage: getFullUrl(safeTenant?.backgroundUrl)
+      ? `url(${getFullUrl(safeTenant?.backgroundUrl)})`
+      : undefined,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+  }}
+>
+  {/* Dark overlay — sirf tab jab background image ho */}
+  {getFullUrl(safeTenant?.backgroundUrl) && (
+    <div className="absolute inset-0 bg-black/50"></div>
+  )}
 
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-white truncate">
-              {sidebarTitle}
-            </h1>
-            <p className="text-xs text-slate-400 uppercase tracking-[3px] mt-1">
-              {sidebarSubtitle}
-            </p>
-          </div>
-        </div>
+  <div className="flex flex-col items-center text-center relative z-10">
+    {sidebarLogo ? (
+      <img
+        src={sidebarLogo}
+        alt="Logo"
+        className="w-14 h-14 object-contain"
+        onError={(e: any) => {
+          e.target.style.display = "none";
+        }}
+      />
+    ) : (
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xl font-bold border-2 border-indigo-400 shadow-xl">
+        {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
       </div>
+    )}
 
+    <h1 className="mt-1 text-base font-bold text-white leading-tight">
+      {safeTenant?.name || sidebarTitle}
+    </h1>
+
+    {isSuperAdmin && (
+      <p className="text-xs text-slate-400 mt-0">System Control</p>
+    )}
+  </div>
+</div>
       {/* MENU */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {menu.map((item: any, i) =>
-          item.section ? (
-            <p
-              key={i}
-              className="text-[11px] text-slate-500 mt-6 mb-2 px-2 uppercase tracking-[3px]"
-            >
-              {item.section}
-            </p>
-          ) : (
-            <NavItem key={i} to={item.path} icon={item.icon} label={item.name} />
-          )
-        )}
+      <div className="flex-1 overflow-y-auto px-2.5 py-3 sidebar-scroll">
+        {menu.map((group, gi) => (
+          <div key={gi}>
+            {/* Section Header */}
+            {group.section && (
+              <p className="text-[10px] text-slate-500 mt-3 mb-1 px-3 uppercase tracking-[2px] font-semibold">
+                {group.section}
+              </p>
+            )}
+
+            {/* Menu Items */}
+            {group.items.map((item, i) =>
+              item.children ? (
+                <ParentNavItem key={i} item={item} />
+              ) : (
+                <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} />
+              )
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 //////////////////////////////////////////////////
-// 🚀 NAV ITEM
+// PARENT NAV ITEM (Collapsible with children)
 //////////////////////////////////////////////////
 
-const NavItem = ({ to, icon, label }: any) => (
+const ParentNavItem = ({ item }: { item: MenuItem }) => {
+  const location = useLocation();
+
+  // Auto-open if any child route is active
+  const isChildActive = item.children?.some(
+    (child) => location.pathname === child.path || location.pathname.startsWith(child.path + "/")
+  );
+
+  const [open, setOpen] = useState(!!isChildActive);
+
+  return (
+    <div className="mb-0.5">
+      {/* Parent Button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className={`group relative w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-300 ${
+          isChildActive || open
+            ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
+            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="text-lg flex items-center justify-center">
+            {item.icon}
+          </span>
+          <span className="font-medium text-[13px]">{item.name}</span>
+        </div>
+
+        <ChevronDown
+          size={16}
+          className={`${isChildActive || open ? "text-white" : "text-slate-400"} transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* Children (animated) */}
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="ml-3 pl-2.5 border-l border-slate-700/50 mt-0.5 space-y-0">
+          {item.children?.map((child, ci) => (
+            <NavLink
+              key={ci}
+              to={child.path}
+              end={child.path === "/students" || child.path === "/fees"}
+              className={({ isActive }) =>
+                `group flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all duration-200 ${
+                  isActive
+                    ? "bg-white/10 text-white font-semibold border-l-2 border-white -ml-[13px] pl-[22px]"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                }`
+              }
+            >
+              <span className="flex items-center justify-center">
+                {child.icon}
+              </span>
+              <span className="text-[12px] font-medium">{child.name}</span>
+            </NavLink>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+//////////////////////////////////////////////////
+// SIMPLE NAV ITEM (No children)
+//////////////////////////////////////////////////
+
+const NavItem = ({ to, icon, label }: { to: string; icon: any; label: string }) => (
   <NavLink
     to={to}
     className={({ isActive }) =>
-      `flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 transition-all duration-300 ${
+      `group relative flex items-center justify-between px-3 py-2 rounded-lg mb-0.5 transition-all duration-300 ${
         isActive
-          ? "bg-indigo-600 text-white shadow-lg"
+          ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-r-full before:bg-white"
           : "text-slate-300 hover:bg-slate-800 hover:text-white"
       }`
     }
   >
-    <span className="text-xl">{icon}</span>
-    <span className="font-semibold text-[15px]">{label}</span>
+    <div className="flex items-center gap-2.5">
+      <span className="text-lg flex items-center justify-center">{icon}</span>
+      <span className="font-medium text-[13px]">{label}</span>
+    </div>
+
+    <ChevronRight
+      size={16}
+      className="opacity-60 transition-all duration-300 group-hover:translate-x-1"
+    />
   </NavLink>
 );
 

@@ -27,19 +27,16 @@ import teacherRoutes from "./modules/teacher/teacher.routes";
 import subjectRoutes from "./modules/subject/subject.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import timetableRoutes from "./modules/timetable/timetable.routes";
-import examRoutes from "./modules/exam/exam.routes";
+
 
 // ADMISSION
 import admissionRoutes from "./modules/admission/admission.routes";
 import enrollmentRoutes from "./modules/enrollment/enrollment.routes";
 
 // FEES
-import feeStructureRoutes from "./modules/fees/feeStructure/feeStructure.routes";
-import paymentRoutes from "./modules/fees/payment/payment.routes";
-import studentFeeRoutes from "./modules/fees/studentFee/studentFee.routes";
-import defaulterRoutes from "./modules/fees/defaulters/defaulters.routes";
+// ✅ KEEP only this:
 import feesRoutes from "./modules/fees/fees.routes";
-import feereportsRoutes from "./modules/fees/reports/reports.routes";
+
 
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
@@ -50,6 +47,13 @@ import superadminreportsRoutes from "./modules/super-admin/reports.routes";
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
 import subscriptionPaymentRoutes from "./modules/subscription-payment/subscriptionPayment.routes";
+
+//exam module 
+import examRoutes from "./modules/exam/exam.routes";
+import gradeRoutes from "./modules/grade/grade.routes";
+
+
+
 
 const app = express();
 
@@ -110,7 +114,7 @@ app.use("/api/students", studentRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api/timetable", timetableRoutes);
+//app.use("/api/timetable", timetableRoutes);
 app.use("/api/exam", examRoutes);
 
 //////////////////////////////////////////////////////
@@ -124,11 +128,6 @@ app.use("/api/enrollment", enrollmentRoutes);
 // FEES MODULE
 //////////////////////////////////////////////////////
 
-app.use("/api/fees/reports", feereportsRoutes);
-app.use("/api/fees/fee-structure", feeStructureRoutes);
-app.use("/api/fees/student-fee", studentFeeRoutes);
-app.use("/api/fees/payment", paymentRoutes);
-app.use("/api/fees/defaulters", defaulterRoutes);
 app.use("/api/fees", feesRoutes);
 
 //////////////////////////////////////////////////////
@@ -145,7 +144,16 @@ app.use("/api/super-admin", superAdminRoutes);
 
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/subscription-payments", subscriptionPaymentRoutes);
+///////////////////////////////
+/////time table 
+////////////////////////
+app.use("/api/timetable", timetableRoutes);
 
+//////////////////
+//exam module
+/////////////////////////
+app.use("/api/exam", examRoutes);
+app.use("/api/grade", gradeRoutes);
 //////////////////////////////////////////////////////
 // SWAGGER DOCS
 //////////////////////////////////////////////////////

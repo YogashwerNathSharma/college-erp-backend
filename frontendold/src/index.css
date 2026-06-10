@@ -83,33 +83,47 @@ code {
 }
 /* ================= PRINT STYLES ================= */
 @media print {
-  aside,
-  nav,
-  header,
+  /* FORCE hide everything except main content */
+  body > #root > div > div:first-child,
+  body > #root > div > nav,
+  body > #root > div > header,
   [class*="w-64"],
-  [class*="fixed"],
-  [class*="sticky"] {
+  [class*="w-[250px]"],
+  [class*="w-[260px]"],
+  [class*="sidebar"],
+  [class*="Sidebar"],
+  [class*="TopNavbar"],
+  [class*="top-nav"],
+  [class*="fixed left"],
+  [class*="bg-white px-6 py-3 rounded-xl shadow flex justify-between"] {
     display: none !important;
+    width: 0 !important;
   }
 
-  main,
+  /* Main content — full width, no margin */
   [class*="ml-64"],
-  [class*="pl-64"] {
+  [class*="ml-[250px]"],
+  [class*="ml-[260px]"],
+  [class*="flex-1"],
+  main {
     margin-left: 0 !important;
     padding-left: 0 !important;
+    padding: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
   }
 
-  body {
+  body, html, #root {
     margin: 0 !important;
     padding: 0 !important;
-  }
-
-  .shadow-lg, .shadow-sm, .shadow {
-    box-shadow: none !important;
+    overflow: visible !important;
   }
 
   .print\:hidden {
     display: none !important;
+  }
+
+  .hidden.print\:block {
+    display: block !important;
   }
 }

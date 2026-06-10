@@ -92,7 +92,15 @@ const tenantMenu: SectionGroup[] = [
         ],
       },
       { name: "Teachers", icon: <UserCog size={20} />, path: "/teachers" },
-      { name: "Attendance", icon: <ClipboardCheck size={20} />, path: "/attendance" },
+      {
+        name: "Attendance",
+        icon: <ClipboardCheck size={20} />,
+        children: [
+          { name: "Mark Attendance", path: "/attendance", icon: <ClipboardCheck size={16} /> },
+          { name: "Reports", path: "/attendance-report", icon: <BarChart3 size={16} /> },
+        ],
+      },
+
       { name: "Exams", icon: <FileText size={20} />, children: [
           { name: "All Exams",  icon: <FileText size={16} />, path: "/exams" },
           { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },

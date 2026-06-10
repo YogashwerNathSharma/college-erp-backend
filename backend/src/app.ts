@@ -26,6 +26,8 @@ import studentRoutes from "./modules/students/student.routes";
 import teacherRoutes from "./modules/teacher/teacher.routes";
 import subjectRoutes from "./modules/subject/subject.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes";
+import attendanceReportRoutes from "./modules/attendance/attendance-report.routes";
+
 import timetableRoutes from "./modules/timetable/timetable.routes";
 
 
@@ -114,7 +116,7 @@ app.use("/api/students", studentRoutes);
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/attendance", attendanceRoutes);
-//app.use("/api/timetable", timetableRoutes);
+app.use("/api/attendance/report", attendanceReportRoutes);
 app.use("/api/exam", examRoutes);
 
 //////////////////////////////////////////////////////

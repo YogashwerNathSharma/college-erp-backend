@@ -77,6 +77,8 @@ import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 ///attendance
 // App.tsx ya routes file mein
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
+import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
+
 
 
 //////////////////////////////////////////////////////
@@ -219,6 +221,8 @@ export default function App() {
 
             {/*attendence*/}
             <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/attendance-report" element={<AttendanceReportPage />} />
+            
             {/* STUDENT MODULE */}
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/students/new-admission" element={<AdmissionForm />} />

@@ -1,5 +1,5 @@
 import prisma from "../../utils/prisma";
-
+import { normalizeClass } from "../../utils/classNormalizer";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface AgeLimit {
@@ -189,18 +189,24 @@ export async function seedAgeConfigForTenant(
   board: "UP_BOARD" | "CBSE" | "ICSE",
   classMapping: { className: string; classId: string }[]
 ): Promise<{ matched: number; skipped: number; total: number }> {
+
   const ageLimits =
     board === "UP_BOARD"
       ? UP_BOARD_AGE_LIMITS
       : board === "CBSE"
-        ? CBSE_AGE_LIMITS
-        : ICSE_AGE_LIMITS;
+      ? CBSE_AGE_LIMITS
+      : ICSE_AGE_LIMITS;
 
   let matched = 0;
   let skipped = 0;
 
   for (const mapping of classMapping) {
-    const ageLimit = ageLimits.find((al) => matchClassName(mapping.className, al.className));
+
+    const ageLimit = ageLimits.find(
+      (al) =>
+        normalizeClass(mapping.className) ===
+        normalizeClass(al.className)
+    );
 
     if (ageLimit) {
       await prisma.classAgeConfig.upsert({
@@ -227,15 +233,19 @@ export async function seedAgeConfigForTenant(
           isActive: true,
         },
       });
+
       matched++;
     } else {
       skipped++;
     }
   }
 
-  return { matched, skipped, total: classMapping.length };
+  return {
+    matched,
+    skipped,
+    total: classMapping.length,
+  };
 }
-
 // ─── Get Age Configs (with optional board filter) ────────────────────────────
 
 export async function getAgeConfigs(tenantId: string, board?: string) {

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -23,6 +22,20 @@ import {
   FileClockIcon,
   ChevronRight,
   ChevronDown,
+  Receipt,
+  Bell,
+  BookOpenCheck,
+  PieChart,
+  UserCheck,
+  // Teacher Module Icons
+  GraduationCap,
+  CalendarClock,
+  Briefcase,
+  Star,
+  FolderOpen,
+  MessageSquare,
+  Clock,
+  Wallet,
 } from "lucide-react";
 
 
@@ -91,7 +104,24 @@ const tenantMenu: SectionGroup[] = [
           { name: "ID Card", icon: <IdCard size={16} />, path: "/students/id-card" },
         ],
       },
-      { name: "Teachers", icon: <UserCog size={20} />, path: "/teachers" },
+      {
+        name: "Teachers",
+        icon: <UserCog size={20} />,
+        children: [
+          { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/teacher-dashboard" },
+          { name: "All Teachers", icon: <UserCog size={16} />, path: "/teachers" },
+          { name: "Assign Subject", icon: <BookOpen size={16} />, path: "/assign-subject" },
+          { name: "Timetable", icon: <CalendarClock size={16} />, path: "/teacher-timetable" },
+          { name: "Attendance", icon: <ClipboardCheck size={16} />, path: "/teacher-attendance" },
+          { name: "Leave", icon: <Clock size={16} />, path: "/teacher-leave" },
+          { name: "Payroll / Salary", icon: <Wallet size={16} />, path: "/teacher-salary" },
+          { name: "Performance", icon: <Star size={16} />, path: "/teacher-performance" },
+          { name: "Documents", icon: <FolderOpen size={16} />, path: "/teacher-documents" },
+          { name: "Communication", icon: <MessageSquare size={16} />, path: "/teacher-communication" },
+          { name: "Reports", icon: <BarChart3 size={16} />, path: "/teacher-reports" },
+          { name: "Settings", icon: <Settings size={16} />, path: "/teacher-settings" },
+        ],
+      },
       {
         name: "Attendance",
         icon: <ClipboardCheck size={20} />,
@@ -100,15 +130,17 @@ const tenantMenu: SectionGroup[] = [
           { name: "Reports", path: "/attendance-report", icon: <BarChart3 size={16} /> },
         ],
       },
-
-      { name: "Exams", icon: <FileText size={20} />, children: [
-          { name: "All Exams",  icon: <FileText size={16} />, path: "/exams" },
+      {
+        name: "Exams",
+        icon: <FileText size={20} />,
+        children: [
+          { name: "All Exams", icon: <FileText size={16} />, path: "/exams" },
           { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },
-      ]},
+        ],
+      },
       { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
     ],
   },
-
   {
     section: "Finance",
     items: [
@@ -116,11 +148,17 @@ const tenantMenu: SectionGroup[] = [
         name: "Fees",
         icon: <IndianRupee size={20} />,
         children: [
-          { name: "Fee Collection", icon: <IndianRupee size={16} />, path: "/fees" },
+          { name: "Fee Dashboard", icon: <PieChart size={16} />, path: "/fees/dashboard" },
+          { name: "Fee Collection", icon: <IndianRupee size={16} />, path: "/fees/collection" },
           { name: "Fee Heads", icon: <BookOpen size={16} />, path: "/fees/heads" },
           { name: "Fee Structure", icon: <Layers size={16} />, path: "/fees/structures" },
+          { name: "Assign Structure", icon: <UserCheck size={16} />, path: "/fees/assign" },
           { name: "Discounts", icon: <CreditCard size={16} />, path: "/fees/discounts" },
           { name: "Fine Rules", icon: <FileText size={16} />, path: "/fees/fine-rules" },
+          { name: "Reports", icon: <BarChart3 size={16} />, path: "/fees/reports" },
+          { name: "Student Ledger", icon: <BookOpenCheck size={16} />, path: "/fees/ledger" },
+          { name: "Reminders", icon: <Bell size={16} />, path: "/fees/reminders" },
+          { name: "Settings", icon: <Settings size={16} />, path: "/fees/settings" },
         ],
       },
     ],
@@ -375,4 +413,3 @@ const NavItem = ({ to, icon, label }: { to: string; icon: any; label: string }) 
     />
   </NavLink>
 );
-

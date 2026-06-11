@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter,
   Routes,
@@ -52,9 +51,25 @@ import Sections from "./pages/Sections/SectionsPage";
 // Subjects
 import SubjectsPage from "./pages/Subjects/SubjectsPage";
 
-// Teachers
+// Teachers (Existing)
 import Teachers from "./pages/teachers/Teachers";
 import AddEditTeacher from "./pages/teachers/AddEditTeacher";
+
+// Teacher Module (New Pages)
+import TeacherDashboard from "./pages/teachers/TeacherDashboard";
+import TeacherProfile from "./pages/teachers/TeacherProfile";
+import AssignSubjectToTeacher from "./pages/teachers/AssignSubjectToTeacher";
+import TeacherTimetable from "./pages/teachers/TeacherTimetable";
+import TeacherAttendance from "./pages/teachers/TeacherAttendance";
+import LeaveManagement from "./pages/teachers/LeaveManagement";
+import TeacherSalary from "./pages/teachers/TeacherSalary";
+import TeacherPerformance from "./pages/teachers/TeacherPerformance";
+import TeacherDocuments from "./pages/teachers/TeacherDocuments";
+import Communication from "./pages/teachers/Communication";
+import TeacherReports from "./pages/teachers/TeacherReports";
+import TeacherSettings from "./pages/teachers/TeacherSettings";
+
+// Timetable
 import TimetablePage from "./pages/timeTable/TimetablePage";
 
 // Fees Module
@@ -63,6 +78,12 @@ import FeeStructurePage from "./pages/fees/FeeStructurePage";
 import FeeDiscountPage from "./pages/fees/FeeDiscountPage";
 import FineRulePage from "./pages/fees/FineRulePage";
 import FeeCollectionPage from "./pages/fees/FeeCollectionPage";
+import FeeDashboardPage from "./pages/fees/FeeDashboardPage";
+import AssignFeeStructurePage from "./pages/fees/AssignFeeStructurePage";
+import FeeReportsPage from "./pages/fees/FeeReportsPage";
+import StudentLedgerPage from "./pages/fees/StudentLedgerPage";
+import FeeReminderPage from "./pages/fees/FeeReminderPage";
+import FeeSettingsPage from "./pages/fees/FeeSettingsPage";
 
 // Exam Module
 import ExamList from "./pages/exams/ExamList";
@@ -74,11 +95,9 @@ import Results from "./pages/exams/Results";
 import ReportCard from "./pages/exams/ReportCard";
 import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 
-///attendance
-// App.tsx ya routes file mein
+// Attendance
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
-
 
 
 //////////////////////////////////////////////////////
@@ -195,7 +214,6 @@ export default function App() {
 
           {/* ─────────────────────────────────────────── */}
           {/* PRINT ROUTES — No Sidebar, No Navbar       */}
-          {/* (Outside Layout, so clean print)           */}
           {/* ─────────────────────────────────────────── */}
           <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
           <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
@@ -219,10 +237,10 @@ export default function App() {
             {/* SETTINGS */}
             <Route path="/settings" element={<RoleSettings />} />
 
-            {/*attendence*/}
+            {/* ATTENDANCE */}
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/attendance-report" element={<AttendanceReportPage />} />
-            
+
             {/* STUDENT MODULE */}
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/students/new-admission" element={<AdmissionForm />} />
@@ -240,23 +258,43 @@ export default function App() {
             <Route path="/Sections" element={<Sections />} />
             <Route path="/subjects" element={<SubjectsPage />} />
 
-            {/* TEACHERS */}
+            {/* ─────────────────────────────────────────── */}
+            {/* TEACHER MODULE (Complete)                   */}
+            {/* ─────────────────────────────────────────── */}
+            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/teachers/add" element={<AddEditTeacher />} />
             <Route path="/teachers/edit/:id" element={<AddEditTeacher />} />
+            <Route path="/teachers/profile/:id" element={<TeacherProfile />} />
+            <Route path="/assign-subject" element={<AssignSubjectToTeacher />} />
+            <Route path="/teacher-timetable" element={<TeacherTimetable />} />
+            <Route path="/teacher-attendance" element={<TeacherAttendance />} />
+            <Route path="/teacher-leave" element={<LeaveManagement />} />
+            <Route path="/teacher-salary" element={<TeacherSalary />} />
+            <Route path="/teacher-performance" element={<TeacherPerformance />} />
+            <Route path="/teacher-documents" element={<TeacherDocuments />} />
+            <Route path="/teacher-communication" element={<Communication />} />
+            <Route path="/teacher-reports" element={<TeacherReports />} />
+            <Route path="/teacher-settings" element={<TeacherSettings />} />
 
             {/* TIMETABLE */}
             <Route path="/timeTable" element={<TimetablePage />} />
 
             {/* FEES MODULE */}
             <Route path="/fees" element={<FeeCollectionPage />} />
+            <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
+            <Route path="/fees/collection" element={<FeeCollectionPage />} />
             <Route path="/fees/heads" element={<FeeHeadPage />} />
             <Route path="/fees/structures" element={<FeeStructurePage />} />
+            <Route path="/fees/assign" element={<AssignFeeStructurePage />} />
             <Route path="/fees/discounts" element={<FeeDiscountPage />} />
             <Route path="/fees/fine-rules" element={<FineRulePage />} />
-            <Route path="/fees/collection" element={<FeeCollectionPage />} />
+            <Route path="/fees/reports" element={<FeeReportsPage />} />
+            <Route path="/fees/ledger" element={<StudentLedgerPage />} />
+            <Route path="/fees/reminders" element={<FeeReminderPage />} />
+            <Route path="/fees/settings" element={<FeeSettingsPage />} />
 
-            {/* EXAM MODULE — Static routes FIRST */}
+            {/* EXAM MODULE */}
             <Route path="/grade-settings" element={<GradeSettings />} />
             <Route path="/exams/consolidated-report/:studentId" element={<ConsolidatedReportCard />} />
             <Route path="/exams/create" element={<CreateEditExam />} />
@@ -275,4 +313,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-

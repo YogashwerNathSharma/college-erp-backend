@@ -51,6 +51,13 @@ model Tenant {
   maxTeachers           Int     @default(0)
   maxAdmins             Int     @default(0)
   maxStorageInGB        Int     @default(0)
+    // Teacher Module Relations
+  teacherLeaves       TeacherLeave[]
+  teacherSalaries     TeacherSalary[]
+  teacherPerformances TeacherPerformance[]
+  teacherDocuments    TeacherDocument[]
+  communications      Communication[]
+  teacherSettings     TeacherSettings?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -98,6 +105,13 @@ model AcademicYear {
   subjects      Subject[]
   teachers      Teacher[]
   feeStructures FeeStructure[]
+
+    // Teacher Module Relations
+  teacherLeaves       TeacherLeave[]
+  teacherSalaries     TeacherSalary[]
+  teacherPerformances TeacherPerformance[]
+  teacherSettings     TeacherSettings[]
+  isCurrent Boolean @default(false)
   attendances   Attendance[]
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
@@ -431,7 +445,10 @@ model Teacher {
   subjects   TeacherSubject[]
   classes    TeacherClass[]
   timetables Timetable[]
-
+  leaves         TeacherLeave[]
+  salaries       TeacherSalary[]
+  performances   TeacherPerformance[]
+  documents      TeacherDocument[]
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -499,6 +516,226 @@ model Attendance {
 
   @@index([studentId, date])
   @@index([classId, sectionId, date])
+}
+// ======================
+// ENUMS
+// ======================
+
+enum LeaveType {
+  CASUAL
+  MEDICAL
+  EARNED
+  MATERNITY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SalaryStatus {
+  PENDING
+  PAID
+}
+
+enum DocumentType {
+  PERSONAL
+  IDENTITY
+  ACADEMIC
+  EXPERIENCE
+}
+
+enum SenderType {
+  ADMIN
+  PRINCIPAL
+  SYSTEM
+}
+
+// ======================
+// TEACHER LEAVE
+// ======================
+
+model TeacherLeave {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId      String        @db.ObjectId
+  leaveType      LeaveType
+  fromDate       DateTime
+  toDate         DateTime
+  days           Int
+  reason         String
+  status         LeaveStatus   @default(PENDING)
+  approvedBy     String?       @db.ObjectId
+  tenantId       String        @db.ObjectId
+  academicYearId String        @db.ObjectId
+
+  teacher        Teacher       @relation(fields: [teacherId], references: [id])
+  tenant         Tenant        @relation(fields: [tenantId], references: [id])
+  academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id])
+
+  isDeleted      Boolean       @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([teacherId, status])
+  @@index([tenantId, academicYearId])
+}
+
+// ======================
+// TEACHER SALARY
+// ======================
+
+model TeacherSalary {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId        String        @db.ObjectId
+  month            Int
+  year             Int
+
+  basicSalary      Float
+
+  allowances       Json
+  deductions       Json
+
+  totalAllowances  Float
+  totalDeductions  Float
+  netSalary        Float
+
+  status           SalaryStatus @default(PENDING)
+  paidAt           DateTime?
+
+  tenantId         String        @db.ObjectId
+  academicYearId   String        @db.ObjectId
+
+  teacher          Teacher       @relation(fields: [teacherId], references: [id])
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  academicYear     AcademicYear  @relation(fields: [academicYearId], references: [id])
+
+  isDeleted        Boolean       @default(false)
+  deletedAt        DateTime?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([teacherId, month, year])
+  @@index([tenantId, academicYearId])
+}
+
+// ======================
+// TEACHER PERFORMANCE
+// ======================
+
+model TeacherPerformance {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId        String        @db.ObjectId
+  academicYearId   String        @db.ObjectId
+  tenantId         String        @db.ObjectId
+
+  parameters       Json
+  overallRating    Float
+  remarks          String?
+
+  evaluatedBy      String?       @db.ObjectId
+
+  teacher          Teacher       @relation(fields: [teacherId], references: [id])
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  academicYear     AcademicYear  @relation(fields: [academicYearId], references: [id])
+
+  isDeleted        Boolean       @default(false)
+  deletedAt        DateTime?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([teacherId, academicYearId])
+}
+
+// ======================
+// TEACHER DOCUMENT
+// ======================
+
+model TeacherDocument {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  teacherId     String       @db.ObjectId
+
+  name          String
+  type          DocumentType
+  fileUrl       String
+
+  uploadDate    DateTime     @default(now())
+
+  tenantId      String       @db.ObjectId
+
+  teacher       Teacher      @relation(fields: [teacherId], references: [id])
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+
+  isDeleted     Boolean      @default(false)
+  deletedAt     DateTime?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// ======================
+// COMMUNICATION
+// ======================
+
+model Communication {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+
+  title         String
+  message       String
+
+  senderType    SenderType
+  senderName    String
+
+  tenantId      String       @db.ObjectId
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+
+  isDeleted     Boolean      @default(false)
+  deletedAt     DateTime?
+
+  createdAt     DateTime     @default(now())
+}
+
+// ======================
+// TEACHER SETTINGS
+// ======================
+
+model TeacherSettings {
+  id                     String        @id @default(auto()) @map("_id") @db.ObjectId
+
+  tenantId               String        @unique @db.ObjectId
+  academicYearId         String        @db.ObjectId
+
+  // General Settings
+  dateFormat             String        @default("DD/MM/YYYY")
+  timeFormat             String        @default("24 Hour")
+
+  // Attendance Settings
+  attendanceRequired     Boolean       @default(true)
+  lateMarkTime           String        @default("09:30")
+  halfDayTime            String        @default("13:00")
+
+  // Leave Settings
+  casualLeavePerYear     Int           @default(12)
+  medicalLeavePerYear    Int           @default(10)
+  earnedLeavePerYear     Int           @default(15)
+
+  // Salary Settings
+  payDay                 Int           @default(1)
+  salarySlipTemplate     String        @default("default")
+
+  // Notification Settings
+  emailNotifications     Boolean       @default(true)
+  smsNotifications       Boolean       @default(false)
+
+  tenant                Tenant         @relation(fields: [tenantId], references: [id])
+  academicYear          AcademicYear   @relation(fields: [academicYearId], references: [id])
+
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 }
 
 //////////////////////

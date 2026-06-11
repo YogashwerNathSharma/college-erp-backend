@@ -1,6 +1,13 @@
 
 // Fee Receipt Print — Dual Copy (Student + School)
-// Portrait A4 — 2 copies side by side, scaled to fit 4 per page
+// Portrait A4 — 2 copies side by side
+// Shows all fee head entries in SEPARATE ROWS with amounts, discount, after discount
+
+interface FeeHeadEntry {
+  name: string;
+  amount: number;
+  code?: string;
+}
 
 interface ReceiptData {
   receiptNo: string;
@@ -13,6 +20,7 @@ interface ReceiptData {
   rollNumber?: string;
   session?: string;
   feeHead: string;
+  feeItems?: FeeHeadEntry[]; // Individual fee head entries with amounts
   installmentNo: number;
   amount: number;
   method: string;
@@ -20,6 +28,7 @@ interface ReceiptData {
   totalDue?: number;
   balance?: number;
   collectedBy?: string;
+  discountAmount?: number;
 }
 
 const numberToWords = (num: number): string => {
@@ -59,7 +68,28 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
 
   const session = data.session || new Date().getFullYear() + "-" + (new Date().getFullYear() + 1).toString().slice(-2);
   const balance = data.balance || 0;
+  const discount = data.discountAmount || 0;
   const paidWords = numberToWords(data.amount);
+
+  // Build fee rows from feeItems (preferred) or fallback to comma-separated feeHead
+  let feeRows: { name: string; amount: number | null }[] = [];
+
+  if (data.feeItems && data.feeItems.length > 0) {
+    // Use backend-provided feeItems with individual amounts
+    feeRows = data.feeItems.map((item) => ({ name: item.name, amount: item.amount }));
+  } else {
+    // Fallback: split comma-separated feeHead string
+    const feeHeadNames = (data.feeHead || "Fee")
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    feeRows = feeHeadNames.map((name) => ({ name, amount: null }));
+  }
+
+  // Calculate sub-total
+  const subTotal = feeRows.some((r) => r.amount !== null)
+    ? feeRows.reduce((sum, r) => sum + (r.amount || 0), 0)
+    : data.amount + discount;
 
   const generateCopy = (copyType: string) => `
     <div class="receipt-copy">
@@ -117,38 +147,57 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
         </tr>
       </table>
 
-      <!-- Fee Table -->
+      <!-- Fee Table - Each fee head in SEPARATE ROW -->
       <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px;">
         <thead>
           <tr style="background: #f0f0f0;">
+            <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 8px; width: 25px;">S.No</th>
             <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px;">Particulars</th>
             <th style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 8px; width: 70px;">Amount (Rs)</th>
           </tr>
         </thead>
         <tbody>
+          ${feeRows.map((row, index) => `
           <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px;">${data.feeHead}</td>
-            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px;">${data.amount.toLocaleString("en-IN")}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; text-align: center;">${index + 1}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px;">${row.name}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px;">${row.amount !== null ? row.amount.toLocaleString("en-IN") : ""}</td>
           </tr>
-          <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; font-size: 9px;">Total Amount</td>
-            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-weight: bold; font-size: 9px;">${data.amount.toLocaleString("en-IN")}</td>
+          `).join("")}
+          <tr style="background: #f9f9f9;">
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">Sub Total</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 9px;">${subTotal.toLocaleString("en-IN")}</td>
           </tr>
+          ${discount > 0 ? `
           <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-weight: bold; font-size: 9px;">Total Payable</td>
-            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-weight: bold; font-size: 9px;">${data.amount.toLocaleString("en-IN")}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #6b21a8;"><strong>Discount</strong></td>
+            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #6b21a8;">- ${discount.toLocaleString("en-IN")}</td>
+          </tr>
+          <tr style="background: #f9f9f9;">
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">After Discount</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 9px;">${(subTotal - discount).toLocaleString("en-IN")}</td>
+          </tr>
+          ` : ""}
+          <tr style="background: #e8f5e9;">
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 10px;">Total Paid</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 10px;">${data.amount.toLocaleString("en-IN")}</td>
           </tr>
         </tbody>
       </table>
 
       <!-- Paid in words -->
       <div style="margin-bottom: 3px; font-size: 8px;">
-        <strong>Paid: ${paidWords}</strong>
+        <strong>In Words: Rs. ${paidWords}</strong>
       </div>
 
       <!-- Balance -->
       <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 9px;">
         <div><strong>Balance:</strong> ₹${balance.toLocaleString("en-IN")}</div>
+        ${data.reference ? `<div><strong>Ref:</strong> ${data.reference}</div>` : ""}
       </div>
 
       ${data.totalDue ? `<div style="border-top: 1px solid #000; padding-top: 2px; margin-top: 2px; font-weight: bold; font-size: 9px;">Total Due - ₹${data.totalDue.toLocaleString("en-IN")}</div>` : ""}
@@ -194,20 +243,6 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
           padding: 8px 10px;
           font-size: 9px;
         }
-        
-        .cut-line {
-          border-top: 1px dashed #999;
-          margin: 6px 0;
-          position: relative;
-        }
-        .cut-line::before {
-          content: "✂";
-          position: absolute;
-          top: -8px;
-          left: 5px;
-          font-size: 10px;
-          color: #999;
-        }
 
         @media print {
           .no-print { display: none !important; }
@@ -227,13 +262,11 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
         </button>
       </div>
 
-      <!-- Row 1: Student Copy + School Copy -->
+      <!-- Student Copy + School Copy -->
       <div class="receipt-row">
         ${generateCopy("Student Copy")}
         ${generateCopy("School Copy")}
       </div>
-
-
     </body>
     </html>
   `);

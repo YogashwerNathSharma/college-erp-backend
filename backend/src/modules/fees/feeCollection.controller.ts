@@ -1,4 +1,5 @@
 
+
 import {
   assignFeesToStudent,
   assignFeesToClass,
@@ -58,8 +59,6 @@ export const getStudentFeesController = async (req: any, res: any) => {
   }
 };
 
-// GET /search?admissionNo=XXX
-// GET /search?q=name/admNo/class
 // GET /search?q=name/admNo/class
 export const searchStudentFeesController = async (req: any, res: any) => {
   try {
@@ -77,29 +76,44 @@ export const searchStudentFeesController = async (req: any, res: any) => {
     res.status(400).json({ error: error.message });
   }
 };
-// POST /collect
+
+// POST /collect — Updated with discount support + 100% discount allowed
 export const collectPaymentController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.userId;
-    const { studentFeeId, amount, method, reference, remarks } = req.body;
+    const { studentFeeId, amount, method, reference, remarks, discountAmount, discountId } = req.body;
 
-    if (!studentFeeId || !amount || !method) {
-      return res.status(400).json({ error: "studentFeeId, amount, and method are required" });
+    if (!studentFeeId || !method) {
+      return res.status(400).json({ error: "studentFeeId and method are required" });
     }
 
-    if (amount <= 0) {
-      return res.status(400).json({ error: "Amount must be greater than zero" });
+    const parsedAmount = parseFloat(amount) || 0;
+    const parsedDiscount = parseFloat(discountAmount) || 0;
+
+    // Validation: At least amount or discount must be > 0
+    if (parsedAmount <= 0 && parsedDiscount <= 0) {
+      return res.status(400).json({ error: "Amount or discount must be greater than zero" });
+    }
+
+    if (parsedAmount < 0) {
+      return res.status(400).json({ error: "Amount cannot be negative" });
+    }
+
+    if (parsedDiscount < 0) {
+      return res.status(400).json({ error: "Discount cannot be negative" });
     }
 
     const result = await collectPayment({
       studentFeeId,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       method,
       reference,
       remarks,
       collectedBy: userId,
       tenantId,
+      discountAmount: parsedDiscount,
+      discountId: discountId || undefined,
     });
 
     res.status(201).json(result);

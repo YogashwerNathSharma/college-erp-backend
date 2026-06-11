@@ -1,4 +1,5 @@
 
+
 import prisma from "../../utils/prisma";
 
 // Generate auto-increment receipt number per tenant: RCP/YYYY/XXXXX
@@ -6,7 +7,6 @@ export const generateReceiptNo = async (tenantId: string): Promise<string> => {
   const year = new Date().getFullYear();
   const prefix = `RCP/${year}/`;
 
-  // Find the last receipt for this tenant in the current year
   const lastPayment = await prisma.payment.findFirst({
     where: {
       tenantId,
@@ -30,28 +30,19 @@ export const assignFeesToStudent = async (
   enrollmentId: string,
   tenantId: string
 ) => {
-  // Get enrollment details
   const enrollment = await prisma.enrollment.findFirst({
     where: { id: enrollmentId, tenantId, isDeleted: false },
-    include: {
-      academicYear: true,
-    },
+    include: { academicYear: true },
   });
 
-  if (!enrollment) {
-    throw new Error("Enrollment not found");
-  }
+  if (!enrollment) throw new Error("Enrollment not found");
 
-  // Check if fees are already assigned
   const existingFees = await prisma.studentFee.findFirst({
     where: { enrollmentId, tenantId, isDeleted: false },
   });
 
-  if (existingFees) {
-    throw new Error("Fees already assigned for this enrollment");
-  }
+  if (existingFees) throw new Error("Fees already assigned for this enrollment");
 
-  // Get fee structures for the class
   const feeStructures = await prisma.feeStructure.findMany({
     where: {
       tenantId,
@@ -60,10 +51,7 @@ export const assignFeesToStudent = async (
       isDeleted: false,
     },
   });
-  console.log("Enrollment:", { classId: enrollment.classId, academicYearId: enrollment.academicYearId });
-  console.log("Fee Structures found:", feeStructures.length, feeStructures.map(s => ({ id: s.id, classId: s.classId, academicYearId: s.academicYearId })));
-    console.log("Enrollment:", { classId: enrollment.classId, academicYearId: enrollment.academicYearId });
-  console.log("Structures found:", feeStructures.length);
+
   if (feeStructures.length === 0) {
     throw new Error("No fee structure found for this class");
   }
@@ -77,7 +65,6 @@ export const assignFeesToStudent = async (
     const dueDay = structure.dueDay || 10;
 
     for (let i = 1; i <= totalInstallments; i++) {
-      // Calculate due date: month offset from academic year start
       const dueDate = new Date(academicYearStart);
       dueDate.setMonth(dueDate.getMonth() + (i - 1));
       dueDate.setDate(dueDay);
@@ -99,10 +86,7 @@ export const assignFeesToStudent = async (
     }
   }
 
-  // Bulk create student fees
-  const created = await prisma.studentFee.createMany({
-    data: studentFees,
-  });
+  const created = await prisma.studentFee.createMany({ data: studentFees });
 
   return {
     message: `${created.count} fee installments assigned successfully`,
@@ -116,7 +100,6 @@ export const assignFeesToClass = async (
   academicYearId: string,
   tenantId: string
 ) => {
-  // Get all active enrollments in the class
   const enrollments = await prisma.enrollment.findMany({
     where: {
       classId,
@@ -177,9 +160,7 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
     },
   });
 
-  if (!enrollment) {
-    throw new Error("Enrollment not found");
-  }
+  if (!enrollment) throw new Error("Enrollment not found");
 
   const fees = await prisma.studentFee.findMany({
     where: { enrollmentId, tenantId, isDeleted: false },
@@ -191,7 +172,7 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
       discounts: {
         include: { feeDiscount: true },
       },
-          feeStructure: {
+      feeStructure: {
         include: { items: { include: { feeHead: true } } },
       },
     },
@@ -221,7 +202,7 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
   };
 };
 
-// Find student by admission number, return their fees
+// Find student by admission number
 export const getStudentFeesByAdmissionNo = async (
   admissionNo: string,
   tenantId: string
@@ -231,11 +212,8 @@ export const getStudentFeesByAdmissionNo = async (
     select: { id: true },
   });
 
-  if (!student) {
-    throw new Error("Student not found with this admission number");
-  }
+  if (!student) throw new Error("Student not found with this admission number");
 
-  // Get the latest active enrollment
   const enrollment = await prisma.enrollment.findFirst({
     where: {
       studentId: student.id,
@@ -246,13 +224,11 @@ export const getStudentFeesByAdmissionNo = async (
     orderBy: { createdAt: "desc" },
   });
 
-  if (!enrollment) {
-    throw new Error("No active enrollment found for this student");
-  }
+  if (!enrollment) throw new Error("No active enrollment found for this student");
 
   return getStudentFees(enrollment.id, tenantId);
 };
-//student search
+
 // Universal search — by name, admission number, class, or section
 export const searchStudents = async (query: string, tenantId: string) => {
   const exactStudent = await prisma.student.findFirst({
@@ -307,7 +283,9 @@ export const searchStudents = async (query: string, tenantId: string) => {
   };
 };
 
-// Collect payment for a student fee
+// ═══════════════════════════════════════════════════════════════
+// COLLECT PAYMENT — With Discount Support + feeItems in response
+// ═══════════════════════════════════════════════════════════════
 export const collectPayment = async (data: {
   studentFeeId: string;
   amount: number;
@@ -316,10 +294,22 @@ export const collectPayment = async (data: {
   remarks?: string;
   collectedBy?: string;
   tenantId: string;
+  discountAmount?: number;
+  discountId?: string;
 }) => {
-  const { studentFeeId, amount, method, reference, remarks, collectedBy, tenantId } = data;
+  const {
+    studentFeeId,
+    amount,
+    method,
+    reference,
+    remarks,
+    collectedBy,
+    tenantId,
+    discountAmount = 0,
+    discountId,
+  } = data;
 
-  // Get the student fee
+  // Get the student fee with structure items
   const studentFee = await prisma.studentFee.findFirst({
     where: { id: studentFeeId, tenantId, isDeleted: false },
     include: {
@@ -332,65 +322,114 @@ export const collectPayment = async (data: {
           section: { select: { name: true } },
         },
       },
-            feeStructure: {
+      feeStructure: {
         include: { items: { include: { feeHead: true } } },
       },
     },
   });
 
-  if (!studentFee) {
-    throw new Error("Student fee record not found");
-  }
+  if (!studentFee) throw new Error("Student fee record not found");
+  if (studentFee.status === "PAID") throw new Error("This fee is already fully paid");
 
-  if (studentFee.status === "PAID") {
-    throw new Error("This fee is already fully paid");
-  }
-
-  if (amount <= 0) {
-    throw new Error("Payment amount must be greater than zero");
-  }
-
-  if (amount > studentFee.balanceAmount) {
+  // Validate: amount + discount should not exceed balance
+  const totalSettlement = amount + discountAmount;
+  if (totalSettlement > studentFee.balanceAmount + 0.01) {
     throw new Error(
-      `Payment amount (${amount}) exceeds balance amount (${studentFee.balanceAmount})`
+      `Payment (${amount}) + Discount (${discountAmount}) exceeds balance (${studentFee.balanceAmount})`
     );
+  }
+
+  // Allow amount=0 only if discount > 0 (100% discount case)
+  if (amount < 0) throw new Error("Payment amount cannot be negative");
+  if (amount === 0 && discountAmount <= 0) {
+    throw new Error("Payment amount must be greater than zero");
   }
 
   // Generate receipt number
   const receiptNo = await generateReceiptNo(tenantId);
 
-  // Create payment
-  const payment = await prisma.payment.create({
-    data: {
-      tenantId,
-      studentFeeId,
-      amount,
-      method: method as any,
-      reference: reference || null,
-      remarks: remarks || null,
-      receiptNo,
-      collectedBy: collectedBy || null,
-      paymentDate: new Date(),
-    },
+  // Transaction: create payment + apply discount + update student fee
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Create payment record (even if amount is 0 for 100% discount — it's a valid receipt)
+    const payment = await tx.payment.create({
+      data: {
+        tenantId,
+        studentFeeId,
+        amount,
+        method: method as any,
+        reference: reference || null,
+        remarks: remarks || null,
+        receiptNo,
+        collectedBy: collectedBy || null,
+        paymentDate: new Date(),
+      },
+    });
+
+    // 2. Apply discount if discountId provided
+    if (discountId && discountAmount > 0) {
+      // Check if already applied
+      const existingDiscount = await tx.studentFeeDiscount.findFirst({
+        where: { studentFeeId, feeDiscountId: discountId },
+      });
+
+      if (!existingDiscount) {
+        await tx.studentFeeDiscount.create({
+          data: {
+            studentFeeId,
+            feeDiscountId: discountId,
+            amount: discountAmount,
+          },
+        });
+      }
+    }
+
+    // 3. Update student fee amounts
+    const newDiscountAmount = studentFee.discountAmount + discountAmount;
+    const newNetAmount = studentFee.totalAmount - newDiscountAmount + studentFee.fineAmount;
+    const newPaidAmount = studentFee.paidAmount + amount;
+    const newBalanceAmount = newNetAmount - newPaidAmount;
+    const newStatus = newBalanceAmount <= 0 ? "PAID" : newPaidAmount > 0 ? "PARTIAL" : "PENDING";
+
+    await tx.studentFee.update({
+      where: { id: studentFeeId },
+      data: {
+        discountAmount: newDiscountAmount,
+        netAmount: newNetAmount,
+        paidAmount: newPaidAmount,
+        balanceAmount: Math.max(0, newBalanceAmount),
+        status: newStatus,
+      },
+    });
+
+    return {
+      payment,
+      newPaidAmount,
+      newBalanceAmount: Math.max(0, newBalanceAmount),
+      newStatus,
+      newDiscountAmount,
+    };
   });
 
-  // Update student fee
-  const newPaidAmount = studentFee.paidAmount + amount;
-  const newBalanceAmount = studentFee.netAmount - newPaidAmount;
-  const newStatus = newBalanceAmount <= 0 ? "PAID" : "PARTIAL";
+  // Build feeItems array from structure items (for receipt)
+  const feeItems = studentFee.feeStructure.items?.map((item: any) => ({
+    name: item.feeHead?.name || "Fee",
+    code: item.feeHead?.code || "",
+    amount: item.amount || 0,
+  })) || [];
 
-  await prisma.studentFee.update({
-    where: { id: studentFeeId },
-    data: {
-      paidAmount: newPaidAmount,
-      balanceAmount: newBalanceAmount,
-      status: newStatus,
-    },
-  });
+  // Build feeHead string (comma-separated names)
+  const feeHeadStr = feeItems.map((i: any) => i.name).join(", ") || studentFee.feeStructure.name;
 
   return {
-    payment,
     receiptNo,
+    payment: {
+      id: result.payment.id,
+      amount: result.payment.amount,
+      method: result.payment.method,
+      reference: result.payment.reference,
+      paymentDate: result.payment.paymentDate,
+      discountAmount: discountAmount,
+    },
     studentInfo: {
       name: `${studentFee.enrollment.student.firstName} ${studentFee.enrollment.student.lastName}`,
       admissionNo: studentFee.enrollment.student.admissionNo,
@@ -399,18 +438,20 @@ export const collectPayment = async (data: {
       section: studentFee.enrollment.section?.name || "",
     },
     feeInfo: {
-      feeHead: studentFee.feeStructure.items?.map((i: any) => i.feeHead?.name).join(", ") || studentFee.feeStructure.name,
+      feeHead: feeHeadStr,
+      feeItems: feeItems,
       installmentNo: studentFee.installmentNo,
       totalAmount: studentFee.totalAmount,
-      netAmount: studentFee.netAmount,
-      paidAmount: newPaidAmount,
-      balanceAmount: newBalanceAmount,
-      status: newStatus,
+      discountAmount: result.newDiscountAmount,
+      netAmount: studentFee.totalAmount - result.newDiscountAmount + studentFee.fineAmount,
+      paidAmount: result.newPaidAmount,
+      balanceAmount: result.newBalanceAmount,
+      status: result.newStatus,
     },
   };
 };
 
-// Apply a discount to a student fee
+// Apply a discount to a student fee (standalone — without payment)
 export const applyDiscount = async (
   studentFeeId: string,
   feeDiscountId: string,
@@ -420,27 +461,19 @@ export const applyDiscount = async (
     where: { id: studentFeeId, tenantId, isDeleted: false },
   });
 
-  if (!studentFee) {
-    throw new Error("Student fee record not found");
-  }
+  if (!studentFee) throw new Error("Student fee record not found");
 
-  // Get the discount details
   const feeDiscount = await prisma.feeDiscount.findFirst({
     where: { id: feeDiscountId, tenantId, isDeleted: false },
   });
 
-  if (!feeDiscount) {
-    throw new Error("Fee discount not found");
-  }
+  if (!feeDiscount) throw new Error("Fee discount not found");
 
-  // Check if already applied
   const existing = await prisma.studentFeeDiscount.findFirst({
     where: { studentFeeId, feeDiscountId },
   });
 
-  if (existing) {
-    throw new Error("This discount is already applied to this fee");
-  }
+  if (existing) throw new Error("This discount is already applied to this fee");
 
   // Calculate discount amount
   let discountAmount: number;
@@ -450,16 +483,10 @@ export const applyDiscount = async (
     discountAmount = feeDiscount.value;
   }
 
-  // Create the discount record
   await prisma.studentFeeDiscount.create({
-    data: {
-      studentFeeId,
-      feeDiscountId,
-      amount: discountAmount,
-    },
+    data: { studentFeeId, feeDiscountId, amount: discountAmount },
   });
 
-  // Update student fee amounts
   const newDiscountAmount = studentFee.discountAmount + discountAmount;
   const newNetAmount = studentFee.totalAmount - newDiscountAmount + studentFee.fineAmount;
   const newBalanceAmount = newNetAmount - studentFee.paidAmount;
@@ -471,16 +498,12 @@ export const applyDiscount = async (
     data: {
       discountAmount: newDiscountAmount,
       netAmount: newNetAmount,
-      balanceAmount: newBalanceAmount,
+      balanceAmount: Math.max(0, newBalanceAmount),
       status: newStatus,
     },
   });
 
-  return {
-    message: "Discount applied successfully",
-    discountAmount,
-    updatedFee: updated,
-  };
+  return { message: "Discount applied successfully", discountAmount, updatedFee: updated };
 };
 
 // Get students with PENDING/OVERDUE fees
@@ -494,19 +517,14 @@ export const getDefaulters = async (
     status: { in: ["PENDING", "OVERDUE"] },
   };
 
-  // Filter by due date range
   if (filters?.fromDate || filters?.toDate) {
     where.dueDate = {};
     if (filters.fromDate) where.dueDate.gte = new Date(filters.fromDate);
     if (filters.toDate) where.dueDate.lte = new Date(filters.toDate);
   }
 
-  // Filter by class through enrollment
   if (filters?.classId) {
-    where.enrollment = {
-      classId: filters.classId,
-      isDeleted: false,
-    };
+    where.enrollment = { classId: filters.classId, isDeleted: false };
   }
 
   const defaulterFees = await prisma.studentFee.findMany({
@@ -515,13 +533,7 @@ export const getDefaulters = async (
       enrollment: {
         include: {
           student: {
-            select: {
-              firstName: true,
-              lastName: true,
-              admissionNo: true,
-              phone: true,
-              fatherName: true,
-            },
+            select: { firstName: true, lastName: true, admissionNo: true, phone: true, fatherName: true },
           },
           class: { select: { name: true } },
           section: { select: { name: true } },
@@ -532,7 +544,6 @@ export const getDefaulters = async (
     orderBy: { dueDate: "asc" },
   });
 
-  // Group by student
   const groupedByStudent: Record<string, any> = {};
   for (const fee of defaulterFees) {
     const key = fee.enrollmentId;
@@ -576,11 +587,10 @@ export const getDefaulters = async (
   };
 };
 
-// Get daily collection report grouped by payment method
+// Get daily collection report
 export const getDailyCollection = async (tenantId: string, date: string) => {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
-
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
 
@@ -588,19 +598,14 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
     where: {
       tenantId,
       isDeleted: false,
-      paymentDate: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
+      paymentDate: { gte: startOfDay, lte: endOfDay },
     },
     include: {
       studentFee: {
         include: {
           enrollment: {
             include: {
-              student: {
-                select: { firstName: true, lastName: true, admissionNo: true },
-              },
+              student: { select: { firstName: true, lastName: true, admissionNo: true } },
               class: { select: { name: true } },
             },
           },
@@ -611,42 +616,32 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
     orderBy: { paymentDate: "desc" },
   });
 
-  // Group by method
   const byMethod: Record<string, { count: number; total: number }> = {};
-  const methods = ["CASH", "ONLINE", "UPI", "CHEQUE", "BANK_TRANSFER", "DD"];
-  for (const m of methods) {
-    byMethod[m] = { count: 0, total: 0 };
-  }
+  let grandTotal = 0;
 
   for (const p of payments) {
     if (!byMethod[p.method]) byMethod[p.method] = { count: 0, total: 0 };
     byMethod[p.method].count++;
     byMethod[p.method].total += p.amount;
+    grandTotal += p.amount;
   }
-
-  const totalCollection = payments.reduce((sum, p) => sum + p.amount, 0);
 
   return {
     date,
-    totalCollection,
-    totalTransactions: payments.length,
-    byMethod,
     payments: payments.map((p) => ({
-      id: p.id,
       receiptNo: p.receiptNo,
       amount: p.amount,
       method: p.method,
       reference: p.reference,
       paymentDate: p.paymentDate,
-      student: p.studentFee?.enrollment
-        ? {
-            name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
-            admissionNo: p.studentFee.enrollment.student.admissionNo,
-            class: p.studentFee.enrollment.class.name,
-          }
-        : null,
-      feeHead: p.studentFee?.feeStructure?.name || "",
+      student: {
+        name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+        admissionNo: p.studentFee.enrollment.student.admissionNo,
+        class: p.studentFee.enrollment.class.name,
+      },
+      feeStructure: p.studentFee.feeStructure.name,
     })),
+    summary: { byMethod, grandTotal, totalReceipts: payments.length },
   };
 };
 

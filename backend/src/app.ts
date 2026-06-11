@@ -30,31 +30,34 @@ import attendanceReportRoutes from "./modules/attendance/attendance-report.route
 
 import timetableRoutes from "./modules/timetable/timetable.routes";
 
+// TEACHER MODULE
+import teacherDashboardRoutes from "./modules/teacher/dashboard.routes";
+import teacherLeaveRoutes from "./modules/teacher/leave.routes";
+import teacherSalaryRoutes from "./modules/teacher/salary.routes";
+import teacherPerformanceRoutes from "./modules/teacher/performance.routes";
+import teacherDocumentRoutes from "./modules/teacher/document.routes";
+import communicationRoutes from "./modules/teacher/communication.routes";
+import teacherReportRoutes from "./modules/teacher/report.routes";
+import teacherSettingsRoutes from "./modules/teacher/settings.routes";
 
 // ADMISSION
 import admissionRoutes from "./modules/admission/admission.routes";
 import enrollmentRoutes from "./modules/enrollment/enrollment.routes";
 
 // FEES
-// ✅ KEEP only this:
 import feesRoutes from "./modules/fees/fees.routes";
-
 
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
-//import settingsRoutes from "./modules/super-admin/settings.routes";
-
 
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
 import subscriptionPaymentRoutes from "./modules/subscription-payment/subscriptionPayment.routes";
 
-//exam module 
+// EXAM MODULE
 import examRoutes from "./modules/exam/exam.routes";
 import gradeRoutes from "./modules/grade/grade.routes";
-
-
 
 
 const app = express();
@@ -117,7 +120,25 @@ app.use("/api/teacher", teacherRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/attendance/report", attendanceReportRoutes);
-app.use("/api/exam", examRoutes);
+
+//////////////////////////////////////////////////////
+// TEACHER MODULE (Extended)
+//////////////////////////////////////////////////////
+
+app.use("/api/teacher-dashboard", teacherDashboardRoutes);
+app.use("/api/teacher-leave", teacherLeaveRoutes);
+app.use("/api/teacher-salary", teacherSalaryRoutes);
+app.use("/api/teacher-performance", teacherPerformanceRoutes);
+app.use("/api/teacher-document", teacherDocumentRoutes);
+app.use("/api/communication", communicationRoutes);
+app.use("/api/teacher-report", teacherReportRoutes);
+app.use("/api/teacher-settings", teacherSettingsRoutes);
+
+//////////////////////////////////////////////////////
+// TIMETABLE
+//////////////////////////////////////////////////////
+
+app.use("/api/timetable", timetableRoutes);
 
 //////////////////////////////////////////////////////
 // ADMISSION FLOW
@@ -138,7 +159,6 @@ app.use("/api/fees", feesRoutes);
 
 app.use("/api/reports", superadminreportsRoutes);
 app.use("/api/super-admin", superAdminRoutes);
-//app.use("/api/settings", settingsRoutes);
 
 //////////////////////////////////////////////////////
 // SUBSCRIPTIONS
@@ -146,16 +166,14 @@ app.use("/api/super-admin", superAdminRoutes);
 
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/subscription-payments", subscriptionPaymentRoutes);
-///////////////////////////////
-/////time table 
-////////////////////////
-app.use("/api/timetable", timetableRoutes);
 
-//////////////////
-//exam module
-/////////////////////////
+//////////////////////////////////////////////////////
+// EXAM MODULE
+//////////////////////////////////////////////////////
+
 app.use("/api/exam", examRoutes);
 app.use("/api/grade", gradeRoutes);
+
 //////////////////////////////////////////////////////
 // SWAGGER DOCS
 //////////////////////////////////////////////////////

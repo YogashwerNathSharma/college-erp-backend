@@ -1,4 +1,5 @@
 
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +25,36 @@ interface Plan {
   isActive: boolean;
 }
 
+// 🔥 Device Fingerprint Generator
+const getDeviceFingerprint = (): string => {
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx?.fillText("fingerprint", 10, 10);
+    const canvasData = canvas.toDataURL();
+
+    const data = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + "x" + screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      navigator.hardwareConcurrency || "unknown",
+      canvasData.slice(0, 50),
+    ].join("|");
+
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return "FP-" + Math.abs(hash).toString(36);
+  } catch {
+    return "FP-unknown";
+  }
+};
+
 export default function SubscriptionExpired() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,8 +65,19 @@ export default function SubscriptionExpired() {
 
   const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const token = localStorage.getItem("token");
+
+  // 🔥 FIX: Auth headers — har API call me token bhejna zaroori
+  const getHeaders = () => ({
+    Authorization: `Bearer ${token}`,
+    "X-Device-Fingerprint": getDeviceFingerprint(),
+  });
 
   useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
     fetchPlans();
     checkFreeTrialUsed();
     loadRazorpayScript();
@@ -50,25 +92,36 @@ export default function SubscriptionExpired() {
     document.body.appendChild(script);
   };
 
-  // 🔥 Check if tenant already used free trial
+  // 🔥 FIX: Better free trial check — check via tenant subscription API
   const checkFreeTrialUsed = async () => {
     try {
-      const res = await axios.get(`/api/subscriptions/tenant/${tenant.id}`);
-      const subscriptions = res.data?.data;
+      const res = await axios.get(
+        `http://localhost:5000/api/subscriptions/tenant/${tenant.id}`,
+        { headers: getHeaders() }
+      );
+      const subscription = res.data?.data;
 
-      // If there's any subscription history, free trial was already used
-      if (subscriptions && (Array.isArray(subscriptions) ? subscriptions.length > 0 : subscriptions)) {
+      // If any subscription exists (active or expired), free trial was used
+      if (subscription) {
         setUsedFreeTrial(true);
       }
     } catch (error) {
-      // If error, assume free trial was used (safer)
-      setUsedFreeTrial(true);
+      // If 404 = no subscription, free trial NOT used
+      // If other error = assume used (safer)
+      const status = (error as any)?.response?.status;
+      if (status !== 404) {
+        setUsedFreeTrial(true);
+      }
     }
   };
 
+  // 🔥 FIX: Token included in fetchPlans
   const fetchPlans = async () => {
     try {
-      const res = await axios.get("/api/subscriptions/plans");
+      const res = await axios.get(
+        "http://localhost:5000/api/subscriptions/plans",
+        { headers: getHeaders() }
+      );
       setPlans(res.data?.data || []);
     } catch (error) {
       console.error("Error fetching plans:", error);
@@ -78,104 +131,119 @@ export default function SubscriptionExpired() {
     }
   };
 
+  // 🔥 FIX: Complete subscribe flow with auth + fraud data
   const handleSubscribe = async (planId: string) => {
     try {
       setPaying(true);
       setSelectedPlan(planId);
 
-      // Check if trying to subscribe to free plan after already using it
       const selectedPlanData = plans.find((p) => p.id === planId);
+
+      // Client-side check (backend will also verify)
       if (selectedPlanData && selectedPlanData.price === 0 && usedFreeTrial) {
-        toast.error("You are not eligible for Free Trial");
+        toast.error("You have already used your Free Trial. Please choose a paid plan.");
         return;
       }
 
-      // Step 1: Assign subscription (creates PENDING subscription)
-      const assignRes = await axios.post("/api/subscriptions/assign", {
-        tenantId: tenant.id,
-        planId,
-      });
-
-      const subscriptionId = assignRes.data?.data?.id;
-
-      if (!subscriptionId) {
-        toast.error("Failed to create subscription");
-        return;
-      }
-
-      // 🔥 If Free Plan (price = 0), directly activate without payment
       if (selectedPlanData && selectedPlanData.price === 0) {
-        toast.success("Free Trial activated! 🎉 Redirecting...");
-        localStorage.removeItem("subscriptionExpired");
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 1500);
-        return;
-      }
+        //////////////////////////////////////////////////
+        // 🔥 FREE PLAN — Use self-subscribe endpoint
+        // Backend will do STRICT fraud check (email, phone, IP, device, name+address)
+        //////////////////////////////////////////////////
 
-      // Step 2: Create Razorpay order (only for paid plans)
-      const orderRes = await axios.post("/api/subscription-payments/create-order", {
-        subscriptionId,
-      });
-
-      const order = orderRes.data?.data;
-
-      if (!order) {
-        toast.error("Failed to create payment order");
-        return;
-      }
-
-      // Step 3: Open Razorpay checkout
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_xxxxx",
-        amount: order.amount,
-        currency: order.currency,
-        name: tenant.name || "School ERP",
-        description: "Subscription Payment",
-        order_id: order.id,
-        handler: async (response: any) => {
-          try {
-            // Step 4: Verify payment
-            await axios.post("/api/subscription-payments/verify", {
-              subscriptionId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            toast.success("Payment successful! 🎉 Redirecting...");
-            localStorage.removeItem("subscriptionExpired");
-
-            setTimeout(() => {
-              navigate("/dashboard");
-            }, 1500);
-
-          } catch (verifyErr: any) {
-            toast.error(verifyErr?.response?.data?.message || "Payment verification failed");
-          }
-        },
-        prefill: {
-          email: user?.email || "",
-          name: user?.name || "",
-        },
-        theme: {
-          color: "#4F46E5",
-        },
-        modal: {
-          ondismiss: () => {
-            setPaying(false);
-            setSelectedPlan("");
-            toast.error("Payment cancelled");
+        const res = await axios.post(
+          "http://localhost:5000/api/tenant/self-subscribe",
+          {
+            planId,
+            deviceFingerprint: getDeviceFingerprint(),
           },
-        },
-      };
+          { headers: getHeaders() }
+        );
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+        if (res.data.success) {
+          toast.success("Free Trial activated! 🎉 Redirecting...");
+          localStorage.removeItem("subscriptionExpired");
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 1500);
+        }
+
+      } else {
+        //////////////////////////////////////////////////
+        // 💰 PAID PLAN — Razorpay flow via self-subscribe
+        //////////////////////////////////////////////////
+
+        const res = await axios.post(
+          "http://localhost:5000/api/tenant/self-subscribe",
+          { planId },
+          { headers: getHeaders() }
+        );
+
+        const { order, subscriptionId } = res.data.data;
+
+        if (!order) {
+          toast.error("Failed to create payment order");
+          return;
+        }
+
+        // Open Razorpay checkout
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SufLEYxZg1RUP2",
+          amount: order.amount,
+          currency: order.currency,
+          name: tenant.name || "School ERP",
+          description: `${selectedPlanData?.name || "Plan"} - ${selectedPlanData?.durationInDays || ""} Days`,
+          order_id: order.id,
+          handler: async (response: any) => {
+            try {
+              await axios.post(
+                "http://localhost:5000/api/subscription-payments/verify",
+                {
+                  subscriptionId,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                },
+                { headers: getHeaders() }
+              );
+
+              toast.success("Payment successful! 🎉 Redirecting...");
+              localStorage.removeItem("subscriptionExpired");
+
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 1500);
+
+            } catch (verifyErr: any) {
+              toast.error(verifyErr?.response?.data?.message || "Payment verification failed");
+            }
+          },
+          prefill: {
+            email: user?.email || "",
+            name: user?.name || "",
+          },
+          theme: {
+            color: "#4F46E5",
+          },
+          modal: {
+            ondismiss: () => {
+              setPaying(false);
+              setSelectedPlan("");
+              toast.error("Payment cancelled");
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
 
     } catch (error: any) {
       console.error("Subscribe error:", error);
-      toast.error(error?.response?.data?.message || "Something went wrong");
+      toast.error(
+        error?.response?.data?.message ||
+        "Something went wrong. Please try a paid plan."
+      );
     } finally {
       setPaying(false);
       setSelectedPlan("");

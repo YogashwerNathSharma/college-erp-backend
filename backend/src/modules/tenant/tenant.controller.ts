@@ -1,3 +1,4 @@
+
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
 import {
@@ -8,18 +9,24 @@ import {
   getAllPlansService,
   tenantSelfSubscribeService,
 } from "./tenant.service";
+import {
+  selfSubscribeService,
+  checkFreePlanAlreadyUsed,
+  saveFreeTrialRecord,
+} from "../subscription/subscription.service";
 import bcrypt from "bcrypt";
 
 // BASE URL (ENV SAFE)
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 /////////////////////////
-// CREATE TENANT
+// CREATE TENANT (SUPER ADMIN)
+// 🔥 FIXED: Free plan auto-assign with STRICT fraud check
 /////////////////////////
 
 export const create = async (req: any, res: Response) => {
   try {
-    const { name, type } = req.body;
+    const { name, type, phone, address, city } = req.body;
 
     if (!name || !type) {
       return res.status(400).json({
@@ -42,16 +49,15 @@ export const create = async (req: any, res: Response) => {
       },
     });
 
-    
-
     // 2. AUTO ADMIN EMAIL
     const email = name.toLowerCase().replace(/\s/g, "") + "@admin.com";
 
     // 3. AUTO DEFAULT CREDENTIALS
-    const rawPwd = "Admin@123";
+    const rawPwd = "123456";
     const hashedPwd = await bcrypt.hash(rawPwd, 10);
+
     // 4. CREATE ADMIN USER
-    await prisma.user.create({
+    const adminUser = await prisma.user.create({
       data: {
         name: "Admin",
         email,
@@ -60,45 +66,87 @@ export const create = async (req: any, res: Response) => {
         tenantId: tenant.id,
       },
     });
-    
-    // 5. AUTO ASSIGN FREE PLAN (status: ACTIVE, isActive: true)
+
+    // 5. 🔥 AUTO ASSIGN FREE PLAN — WITH STRICT FRAUD CHECK
     const freePlan = await prisma.subscriptionPlan.findFirst({
       where: { price: 0, isActive: true },
     });
-console.log("FREE PLAN =", freePlan);
+    console.log("FREE PLAN =", freePlan);
+
+    let freeTrialAssigned = false;
+
     if (freePlan) {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + freePlan.durationInDays);
+      // 🔥 Get IP from request
+      const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || null;
+      const userAgent = req.headers["user-agent"] || null;
+      const deviceFingerprint = req.headers["x-device-fingerprint"] || null;
 
-      await prisma.tenantSubscription.create({
-        data: {
+      // 🔥 STRICT FRAUD CHECK
+      const fraudResult = await checkFreePlanAlreadyUsed({
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        email: email,
+        phone: phone || null,
+        name: name || null,
+        address: address || null,
+        ipAddress: typeof ipAddress === "string" ? ipAddress : (Array.isArray(ipAddress) ? ipAddress[0] : null),
+        deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
+      });
+
+      if (!fraudResult.used) {
+        // ✅ SAFE — Assign free plan
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + freePlan.durationInDays);
+
+        await prisma.tenantSubscription.create({
+          data: {
+            tenantId: tenant.id,
+            planId: freePlan.id,
+            subscriptionCode: `SUB-FREE-${Date.now()}`,
+            startDate,
+            endDate,
+            status: "ACTIVE",
+            isActive: true,
+            amount: 0,
+            paymentStatus: "PAID",
+            maxStudents: freePlan.maxStudents,
+            maxTeachers: freePlan.maxTeachers,
+            maxAdmins: freePlan.maxAdmins,
+            maxStorageInGB: freePlan.maxStorageInGB,
+          },
+        });
+
+        // Update tenant limits
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: {
+            maxStudents: freePlan.maxStudents,
+            maxTeachers: freePlan.maxTeachers,
+            maxAdmins: freePlan.maxAdmins,
+            maxStorageInGB: freePlan.maxStorageInGB,
+          },
+        });
+
+        // 🔥 SAVE FREE TRIAL RECORD
+        await saveFreeTrialRecord({
           tenantId: tenant.id,
+          userId: adminUser.id,
+          email: email,
+          phone: phone || null,
+          name: name || null,
+          address: address || null,
+          ipAddress: typeof ipAddress === "string" ? ipAddress : null,
+          deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
+          userAgent: typeof userAgent === "string" ? userAgent : null,
           planId: freePlan.id,
-          subscriptionCode: `SUB-FREE-${Date.now()}`,
-          startDate,
-          endDate,
-          status: "ACTIVE",
-          isActive: true,
-          amount: 0,
-          paymentStatus: "PAID",
-          maxStudents: freePlan.maxStudents,
-          maxTeachers: freePlan.maxTeachers,
-          maxAdmins: freePlan.maxAdmins,
-          maxStorageInGB: freePlan.maxStorageInGB,
-        },
-      });
+          planName: freePlan.name,
+        });
 
-      // Also update tenant limits
-      await prisma.tenant.update({
-        where: { id: tenant.id },
-        data: {
-          maxStudents: freePlan.maxStudents,
-          maxTeachers: freePlan.maxTeachers,
-          maxAdmins: freePlan.maxAdmins,
-          maxStorageInGB: freePlan.maxStorageInGB,
-        },
-      });
+        freeTrialAssigned = true;
+      } else {
+        console.log(`⚠️ FREE PLAN BLOCKED for tenant ${tenant.id}: ${fraudResult.reason}`);
+      }
     }
 
     // 6. RESPONSE WITH CREDENTIALS
@@ -109,7 +157,8 @@ console.log("FREE PLAN =", freePlan);
         email,
         defaultPassword: rawPwd,
       },
-      freeTrial: freePlan ? true : false,
+      freeTrial: freeTrialAssigned,
+      freeTrialBlocked: freePlan && !freeTrialAssigned ? true : false,
     });
 
   } catch (error: any) {
@@ -306,13 +355,14 @@ export const getAllPlans = async (req: Request, res: Response) => {
 };
 
 //////////////////////////////////////////////////////
-// SELF SUBSCRIBE (Tenant buys plan + creates order)
+// 🔥 SELF SUBSCRIBE — WITH STRICT FREE PLAN FRAUD CHECK
 //////////////////////////////////////////////////////
 
 export const selfSubscribe = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { planId } = req.body;
+    const userId = req.user?.userId;
+    const { planId, phone, address, deviceFingerprint } = req.body;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -328,12 +378,56 @@ export const selfSubscribe = async (req: any, res: Response) => {
       });
     }
 
-    const data = await tenantSelfSubscribeService(tenantId, planId);
+    // Check if plan is free → need strict check
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+    });
 
-    return res.status(200).json({ success: true, data });
+    if (!plan) {
+      return res.status(404).json({ success: false, message: "Plan not found" });
+    }
+
+    if (plan.price === 0) {
+      // 🔥 FREE PLAN — Get user info for fraud check
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || null;
+      const userAgent = req.headers["user-agent"] || null;
+      const clientFingerprint = deviceFingerprint || req.headers["x-device-fingerprint"] || null;
+
+      // Use selfSubscribeService with fraud check data
+      const data = await selfSubscribeService(
+        tenantId,
+        planId,
+        {
+          userId: userId,
+          email: user?.email || "",
+          phone: phone || tenant?.phone || null,
+          name: user?.name || tenant?.name || null,
+          address: address || tenant?.address || null,
+          ipAddress: typeof ipAddress === "string" ? ipAddress : (Array.isArray(ipAddress) ? ipAddress[0] : null),
+          deviceFingerprint: typeof clientFingerprint === "string" ? clientFingerprint : null,
+          userAgent: typeof userAgent === "string" ? userAgent : null,
+        }
+      );
+
+      return res.status(200).json({ success: true, data });
+
+    } else {
+      // PAID PLAN — Normal Razorpay flow
+      const data = await tenantSelfSubscribeService(tenantId, planId);
+      return res.status(200).json({ success: true, data });
+    }
 
   } catch (error: any) {
     console.error("SELF SUBSCRIBE ERROR:", error);
     return res.status(400).json({ success: false, message: error.message });
   }
 };
+

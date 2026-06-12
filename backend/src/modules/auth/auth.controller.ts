@@ -1,4 +1,3 @@
-
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
@@ -6,6 +5,10 @@ import {
   loginService,
   registerService,
 } from "./auth.service";
+import {
+  autoAssignFreePlanService,
+  checkFreePlanAlreadyUsed,
+} from "../subscription/subscription.service";
 
 /////////////////////////
 // LOGIN
@@ -22,18 +25,6 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const result = await loginService(email, password);
-
-    // ✅ If subscription expired → send special response
-    if (result.subscriptionExpired) {
-      return res.json({
-        success: true,
-        subscriptionExpired: true,
-        token: result.token,
-        tenant: result.tenant,
-        data: result.user,
-        message: "Your subscription has expired. Please renew to continue.",
-      });
-    }
 
     return res.json({
       success: true,
@@ -75,7 +66,7 @@ export const register = async (req: Request, res: Response) => {
 /////////////////////////
 export const registerTenant = async (req: Request, res: Response) => {
   try {
-    let { schoolName, name, email } = req.body;
+    let { schoolName, name, email, phone, address } = req.body;
 
     if (!schoolName || !name || !email) {
       return res.status(400).json({
@@ -84,6 +75,7 @@ export const registerTenant = async (req: Request, res: Response) => {
       });
     }
 
+    // 🔥 FIX 1: Email normalize
     email = email.toLowerCase().trim();
 
     const existing = await prisma.user.findUnique({
@@ -107,9 +99,18 @@ export const registerTenant = async (req: Request, res: Response) => {
         },
       });
 
+      // 🔥 PASSWORD SET
       const defaultPassword = "123456";
       const cleanPassword = defaultPassword.trim();
+
       const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+
+      // 🔥 DEBUG 1: HASH CHECK
+      console.log("STEP 1 - HASH CREATED:", {
+        email,
+        plain: cleanPassword,
+        hash: hashedPassword,
+      });
 
       const user = await tx.user.create({
         data: {
@@ -122,9 +123,71 @@ export const registerTenant = async (req: Request, res: Response) => {
         },
       });
 
+      // 🔥 DEBUG 2: DB SAVE CHECK
+      const savedUser = await tx.user.findUnique({
+        where: { email },
+      });
+
+      console.log("STEP 2 - DB STORED:", {
+        dbEmail: savedUser?.email,
+        dbPassword: savedUser?.password,
+      });
+
+      // 🔥 DEBUG 3: COMPARE TEST
+      const matchTest = await bcrypt.compare(
+        cleanPassword,
+        savedUser!.password
+      );
+
+      console.log("STEP 3 - COMPARE RESULT:", matchTest);
+
       return { tenant, user };
     });
+// ──────────────────────────────────────────────
+    // 🔥 FRAUD CHECK BLOCK — YAHAN AAYEGA ($transaction ke BAAD)
+    // ──────────────────────────────────────────────
+ // TOP PE (pehle se hai):
 
+
+// $TRANSACTION KE BAAD:
+let freeTrialAssigned = false;
+
+const freePlan = await prisma.subscriptionPlan.findFirst({
+  where: { price: 0, isActive: true },
+});
+
+    if (freePlan) {
+      const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || null;
+      const deviceFingerprint = req.headers["x-device-fingerprint"] || null;
+      const userAgent = req.headers["user-agent"] || null;
+
+      const fraudResult = await checkFreePlanAlreadyUsed({
+        tenantId: result.tenant.id,
+        userId: result.user.id,
+        email: email,
+        phone: phone || null,
+        name: name || null,
+        address: address || null,
+        ipAddress: typeof ipAddress === "string" ? ipAddress : null,
+        deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
+      });
+
+      if (!fraudResult.used) {
+        await autoAssignFreePlanService(result.tenant.id, {
+          userId: result.user.id,
+          email: email,
+          phone: phone || null,
+          name: name || null,
+          address: address || null,
+          ipAddress: typeof ipAddress === "string" ? ipAddress : null,
+          deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
+          userAgent: typeof userAgent === "string" ? userAgent : null,
+        });
+        freeTrialAssigned = true;
+      } else {
+        console.log(`⚠️ FREE PLAN BLOCKED: ${fraudResult.reason}`);
+      }
+    }
     const { password: _, ...safeUser } = result.user;
 
     return res.status(201).json({
@@ -142,63 +205,12 @@ export const registerTenant = async (req: Request, res: Response) => {
       success: false,
       message: "Tenant creation failed",
     });
+    
   }
+  
+  
 };
 
-/////////////////////////
-// REGISTER SUPER ADMIN
-/////////////////////////
-export const registerSuperAdmin = async (req: Request, res: Response) => {
-  try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields required",
-      });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const existing = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered",
-      });
-    }
-
-    const hashed = await bcrypt.hash(password.trim(), 10);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email: normalizedEmail,
-        password: hashed,
-        role: "SUPER_ADMIN",
-        tenantId: "SYSTEM",
-        isFirstLogin: false,
-      },
-    });
-
-    const { password: __, ...safeUser } = user;
-
-    return res.status(201).json({
-      success: true,
-      data: safeUser,
-    });
-
-  } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
 
 /////////////////////////
 // CHANGE PASSWORD
@@ -238,68 +250,145 @@ export const changePassword = async (req: Request, res: Response) => {
     });
 
   } catch (error: any) {
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Password update failed",
     });
   }
 };
 
 /////////////////////////
-// FORGOT PASSWORD
+// REGISTER SUPER ADMIN
 /////////////////////////
-export const forgotPassword = async (req: Request, res: Response) => {
+export const registerSuperAdmin = async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    let { name, email, password } = req.body;
 
-    if (!email) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email required",
+        message: "All fields required",
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+    email = email.toLowerCase().trim();
+
+    const existing = await prisma.user.findUnique({
+      where: { email },
     });
 
-    if (!user) {
-      return res.json({
-        success: true,
-        message: "If email exists, reset link will be sent",
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
       });
     }
 
-    // TODO: Send actual email with reset link
-    return res.json({
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: "SUPER_ADMIN",
+        tenantId: null,
+        isFirstLogin: false,
+      },
+    });
+
+    const { password: _, ...safeUser } = user;
+
+    return res.status(201).json({
       success: true,
-      message: "If email exists, reset link will be sent",
+      message: "Super admin created",
+      data: safeUser,
     });
 
   } catch (error: any) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Super admin creation failed",
+    });
+  }
+};
+/////////////////////////
+// FORGOT PASSWORD - SEND OTP
+/////////////////////////
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    let { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    email = email.toLowerCase().trim();
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found with this email",
+      });
+    }
+
+    // 🔥 Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+    // Save OTP in DB
+    await prisma.user.update({
+      where: { email },
+      data: {
+        resetOtp: otp,
+        resetOtpExpiry: otpExpiry,
+      },
+    });
+
+    // 🔥 Send OTP via email (or console for now)
+    console.log(`📧 OTP for ${email}: ${otp}`);
+
+    // TODO: Integrate nodemailer here
+    // await sendEmail(email, "Password Reset OTP", `Your OTP is: ${otp}`);
+// Response mein OTP bhi bhejo (DEV mode only)
+return res.json({
+  success: true,
+  message: "OTP sent to your email",
+  otp: otp,  // 🔥 ADD THIS — sirf development ke liye
+});
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send OTP",
     });
   }
 };
 
 /////////////////////////
-// RESET PASSWORD
+// VERIFY OTP & RESET PASSWORD
 /////////////////////////
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { email, newPassword } = req.body;
+    let { email, otp, newPassword } = req.body;
 
-    if (!email || !newPassword) {
+    if (!email || !otp || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Email and new password required",
+        message: "Email, OTP, and new password are required",
       });
     }
 
+    email = email.toLowerCase().trim();
+
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email },
     });
 
     if (!user) {
@@ -309,26 +398,44 @@ export const resetPassword = async (req: Request, res: Response) => {
       });
     }
 
-    const hashed = await bcrypt.hash(newPassword.trim(), 10);
+    // 🔒 Verify OTP
+    if (user.resetOtp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // 🔒 Check expiry
+    if (!user.resetOtpExpiry || new Date() > user.resetOtpExpiry) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired. Please request a new one",
+      });
+    }
+
+    // ✅ Hash new password & update
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
 
     await prisma.user.update({
-      where: { id: user.id },
+      where: { email },
       data: {
-        password: hashed,
+        password: hashedPassword,
+        resetOtp: null,
+        resetOtpExpiry: null,
         isFirstLogin: false,
       },
     });
 
     return res.json({
       success: true,
-      message: "Password reset successfully",
+      message: "Password reset successful",
     });
 
   } catch (error: any) {
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Password reset failed",
     });
   }
 };
-

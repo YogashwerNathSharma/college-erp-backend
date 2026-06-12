@@ -50,7 +50,7 @@ model Tenant {
   fineRules     FineRule[]
   studentFees   StudentFee[]
   payments      Payment[]
-
+freeTrialRecords FreeTrialRecord[]
   // Teacher Module Relations
   teacherLeaves       TeacherLeave[]
   teacherSalaries     TeacherSalary[]
@@ -96,7 +96,7 @@ model User {
 
   tenantId String? @db.ObjectId
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
-
+freeTrialRecords FreeTrialRecord[]
   isFirstLogin   Boolean   @default(true)
   resetOtp       String?
   resetOtpExpiry DateTime?
@@ -1335,7 +1335,7 @@ model SubscriptionPlan {
   maxStorageInGB Int @default(5)
 
   features String[]
-
+freeTrialRecords FreeTrialRecord[]
   isTrial   Boolean @default(false)
   isPopular Boolean @default(false)
   isActive  Boolean @default(true)
@@ -1452,6 +1452,47 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+//////////////////////
+// FREE TRIAL RECORD — Anti-fraud tracking
+// Ek user dobara free plan na le sake
+// ✅ Prisma 6.19.3 Compatible
+//////////////////////
+model FreeTrialRecord {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  // User Identity Fields (sabko track karo)
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  email   String
+  phone   String?
+  name    String?
+  address String?
+  city    String?
+
+  // Technical Fingerprints
+  ipAddress         String?
+  deviceFingerprint String?
+  userAgent         String?
+
+  // Plan info
+  planId   String           @db.ObjectId
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  planName String
+
+  usedAt DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+  @@index([ipAddress])
+  @@index([deviceFingerprint])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([name, address])
 }
 
 //////////////////////

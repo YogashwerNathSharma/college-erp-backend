@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +9,33 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // 🔥 Generate device fingerprint (basic browser fingerprint)
+  const getDeviceFingerprint = (): string => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx?.fillText("fingerprint", 10, 10);
+    const canvasData = canvas.toDataURL();
+
+    const data = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + "x" + screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      navigator.hardwareConcurrency || "unknown",
+      canvasData.slice(0, 50),
+    ].join("|");
+
+    // Simple hash
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return "FP-" + Math.abs(hash).toString(36);
+  };
 
   const handleLogin = async () => {
     try {
@@ -20,7 +48,12 @@ export default function LoginPage() {
 
       const res = await axios.post(
         "http://localhost:5000/api/auth/login",
-        payload
+        payload,
+        {
+          headers: {
+            "X-Device-Fingerprint": getDeviceFingerprint(),
+          },
+        }
       );
 
       console.log("LOGIN RESPONSE:", res.data);
@@ -255,3 +288,4 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
 };
+

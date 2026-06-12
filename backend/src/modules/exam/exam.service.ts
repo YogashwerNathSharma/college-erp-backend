@@ -1,4 +1,5 @@
 
+
 // ═══════════════════════════════════════════════════════
 // exam.service.ts — Full Professional Exam Service (FINAL FIXED)
 // ═══════════════════════════════════════════════════════
@@ -880,5 +881,679 @@ export const getConsolidatedReportService = async (
       rank,
     },
   };
+};
+
+
+
+// ═══════════════════════════════════════════════════════════════
+// ========= NEW FEATURES (ADDED — original code above) =========
+// ═══════════════════════════════════════════════════════════════
+
+import {
+  ExamScheduleInput,
+  UpdateExamScheduleInput,
+  SeatingInput,
+  AdmitCardInput,
+  QuestionPaperInput,
+  InvigilatorInput,
+} from "./exam.types";
+
+// ─────────────────────────────────────────────────────
+// 14. CREATE EXAM SCHEDULE
+// ─────────────────────────────────────────────────────
+export const createExamScheduleService = async (
+  data: ExamScheduleInput,
+  tenantId: string
+) => {
+  return prisma.examSchedule.create({
+    data: {
+      examId: data.examId,
+      subjectId: data.subjectId,
+      tenantId,
+      examDate: new Date(data.examDate),
+      startTime: data.startTime,
+      endTime: data.endTime,
+      roomId: data.roomId,
+      isDeleted: false,
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 15. GET EXAM SCHEDULE
+// ─────────────────────────────────────────────────────
+export const getExamScheduleService = async (
+  examId: string,
+  tenantId: string
+) => {
+  const schedules = await prisma.examSchedule.findMany({
+    where: { examId, tenantId, isDeleted: false },
+    orderBy: { examDate: "asc" },
+  });
+
+  const subjectIds = [...new Set(schedules.map((s) => s.subjectId))];
+  const roomIds = [...new Set(schedules.map((s) => s.roomId))];
+
+  const [subjects, rooms] = await Promise.all([
+    subjectIds.length > 0 ? prisma.subject.findMany({ where: { id: { in: subjectIds } } }) : [],
+    roomIds.length > 0 ? prisma.room.findMany({ where: { id: { in: roomIds } } }) : [],
+  ]);
+
+  return schedules.map((sch) => {
+    const sub = subjects.find((s: any) => s.id === sch.subjectId);
+    const room = rooms.find((r: any) => r.id === sch.roomId);
+    return {
+      ...sch,
+      subjectName: (sub as any)?.name || "Unknown",
+      roomName: (room as any)?.name || "Unknown",
+      roomCapacity: (room as any)?.capacity || 0,
+    };
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 16. UPDATE EXAM SCHEDULE
+// ─────────────────────────────────────────────────────
+export const updateExamScheduleService = async (
+  scheduleId: string,
+  data: UpdateExamScheduleInput,
+  tenantId: string
+) => {
+  return prisma.examSchedule.update({
+    where: { id: scheduleId },
+    data: {
+      ...(data.examDate && { examDate: new Date(data.examDate) }),
+      ...(data.startTime && { startTime: data.startTime }),
+      ...(data.endTime && { endTime: data.endTime }),
+      ...(data.roomId && { roomId: data.roomId }),
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 17. DELETE EXAM SCHEDULE (soft)
+// ─────────────────────────────────────────────────────
+export const deleteExamScheduleService = async (
+  scheduleId: string,
+  tenantId: string
+) => {
+  await prisma.examSchedule.update({
+    where: { id: scheduleId },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+  return { message: "Schedule deleted successfully" };
+};
+
+// ─────────────────────────────────────────────────────
+// 18. GENERATE SEATING ARRANGEMENT (Auto by room capacity)
+// ─────────────────────────────────────────────────────
+export const generateSeatingService = async (
+  data: SeatingInput,
+  tenantId: string
+) => {
+  const { examScheduleId, roomId } = data;
+
+  const schedule = await prisma.examSchedule.findFirst({
+    where: { id: examScheduleId, tenantId, isDeleted: false },
+  });
+  if (!schedule) throw new Error("Schedule not found");
+
+  const room = await prisma.room.findFirst({
+    where: { id: roomId, tenantId, isDeleted: false },
+  });
+  if (!room) throw new Error("Room not found");
+
+  const exam = await prisma.exam.findFirst({
+    where: { id: schedule.examId, tenantId, isDeleted: false },
+  });
+  if (!exam) throw new Error("Exam not found");
+
+  // Get students via enrollment
+  const enrollmentWhere: any = {
+    classId: exam.classId,
+    academicYearId: exam.academicYearId,
+    tenantId,
+    isDeleted: false,
+  };
+  if (exam.sectionId) enrollmentWhere.sectionId = exam.sectionId;
+
+  const enrollments = await prisma.enrollment.findMany({ where: enrollmentWhere });
+  const studentIds = enrollments.map((e: any) => e.studentId);
+
+  const students = studentIds.length > 0
+    ? await prisma.student.findMany({ where: { id: { in: studentIds }, isDeleted: false }, orderBy: { firstName: "asc" } })
+    : [];
+
+  if (students.length === 0) throw new Error("No students found");
+  if (students.length > (room as any).capacity) {
+    throw new Error(`Room capacity (${(room as any).capacity}) is less than students (${students.length})`);
+  }
+
+  // Soft delete old seating
+  await prisma.seatingArrangement.updateMany({
+    where: { examScheduleId, roomId, tenantId },
+    data: { isDeleted: true },
+  });
+
+  // Auto assign: A1, A2, A3... B1, B2...
+  const seatingData = students.map((student: any, index: number) => {
+    const row = String.fromCharCode(65 + Math.floor(index / 6));
+    const col = (index % 6) + 1;
+    return {
+      examScheduleId,
+      studentId: student.id,
+      tenantId,
+      seatNo: `${row}${col}`,
+      roomId,
+      isDeleted: false,
+    };
+  });
+
+  await prisma.seatingArrangement.createMany({ data: seatingData });
+
+  return {
+    message: "Seating generated successfully",
+    totalSeats: (room as any).capacity,
+    assignedSeats: students.length,
+    availableSeats: (room as any).capacity - students.length,
+  };
+};
+
+// ─────────────────────────────────────────────────────
+// 19. GET SEATING BY SCHEDULE
+// ─────────────────────────────────────────────────────
+export const getSeatingByScheduleService = async (
+  scheduleId: string,
+  tenantId: string
+) => {
+  const seatings = await prisma.seatingArrangement.findMany({
+    where: { examScheduleId: scheduleId, tenantId, isDeleted: false },
+    orderBy: { seatNo: "asc" },
+  });
+
+  const studentIds = seatings.map((s: any) => s.studentId);
+  const students = studentIds.length > 0
+    ? await prisma.student.findMany({ where: { id: { in: studentIds } } })
+    : [];
+
+  const room = seatings.length > 0
+    ? await prisma.room.findFirst({ where: { id: seatings[0].roomId } })
+    : null;
+
+  return {
+    room: room ? { id: (room as any).id, name: (room as any).name, capacity: (room as any).capacity } : null,
+    totalCapacity: (room as any)?.capacity || 0,
+    assigned: seatings.length,
+    available: ((room as any)?.capacity || 0) - seatings.length,
+    seats: seatings.map((seat: any) => {
+      const student = students.find((s: any) => s.id === seat.studentId);
+      return {
+        ...seat,
+        studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+        admissionNo: (student as any)?.admissionNo || "",
+      };
+    }),
+  };
+};
+
+// ─────────────────────────────────────────────────────
+// 20. GENERATE ADMIT CARDS (Bulk)
+// ─────────────────────────────────────────────────────
+export const generateAdmitCardsService = async (
+  data: AdmitCardInput,
+  tenantId: string
+) => {
+  const exam = await prisma.exam.findFirst({
+    where: { id: data.examId, tenantId, isDeleted: false },
+  });
+  if (!exam) throw new Error("Exam not found");
+
+  // Get students via enrollment
+  const enrollmentWhere: any = {
+    classId: exam.classId,
+    academicYearId: exam.academicYearId,
+    tenantId,
+    isDeleted: false,
+  };
+  if (exam.sectionId) enrollmentWhere.sectionId = exam.sectionId;
+
+  const enrollments = await prisma.enrollment.findMany({ where: enrollmentWhere });
+  let studentIds = enrollments.map((e: any) => e.studentId);
+
+  if (data.studentIds && data.studentIds.length > 0) {
+    studentIds = studentIds.filter((id: string) => data.studentIds!.includes(id));
+  }
+
+  const students = studentIds.length > 0
+    ? await prisma.student.findMany({ where: { id: { in: studentIds }, isDeleted: false }, orderBy: { firstName: "asc" } })
+    : [];
+
+  if (students.length === 0) throw new Error("No students found");
+
+  // Soft delete old admit cards
+  await prisma.admitCard.updateMany({
+    where: { examId: data.examId, tenantId },
+    data: { isDeleted: true },
+  });
+
+  // Generate new
+  const admitCards = await Promise.all(
+    students.map((student: any, index: number) =>
+      prisma.admitCard.create({
+        data: {
+          examId: data.examId,
+          studentId: student.id,
+          tenantId,
+          rollNo: student.rollNumber || `${index + 1}`,
+          isGenerated: true,
+          generatedAt: new Date(),
+          isDeleted: false,
+        },
+      })
+    )
+  );
+
+  return { message: "Admit cards generated successfully", count: admitCards.length };
+};
+
+// ─────────────────────────────────────────────────────
+// 21. GET ADMIT CARD (Single Student with full details)
+// ─────────────────────────────────────────────────────
+export const getAdmitCardService = async (
+  examId: string,
+  studentId: string,
+  tenantId: string
+) => {
+  const admitCard = await prisma.admitCard.findFirst({
+    where: { examId, studentId, tenantId, isDeleted: false },
+  });
+  if (!admitCard) throw new Error("Admit card not found. Please generate first.");
+
+  const exam = await prisma.exam.findFirst({ where: { id: examId, tenantId, isDeleted: false } });
+  const student = await prisma.student.findFirst({ where: { id: studentId, isDeleted: false } });
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+
+  if (!exam || !student) throw new Error("Exam or Student not found");
+
+  const cls = await prisma.class.findFirst({ where: { id: exam.classId } });
+  const sec = exam.sectionId ? await prisma.section.findFirst({ where: { id: exam.sectionId } }) : null;
+
+  // Get schedule
+  const schedules = await prisma.examSchedule.findMany({
+    where: { examId, tenantId, isDeleted: false },
+    orderBy: { examDate: "asc" },
+  });
+
+  const subjectIds = schedules.map((s: any) => s.subjectId);
+  const roomIds = schedules.map((s: any) => s.roomId);
+  const [subjects, rooms] = await Promise.all([
+    subjectIds.length > 0 ? prisma.subject.findMany({ where: { id: { in: subjectIds } } }) : [],
+    roomIds.length > 0 ? prisma.room.findMany({ where: { id: { in: roomIds } } }) : [],
+  ]);
+
+  const schedule = schedules.map((sch: any) => {
+    const sub = subjects.find((s: any) => s.id === sch.subjectId);
+    const room = rooms.find((r: any) => r.id === sch.roomId);
+    return {
+      examDate: sch.examDate,
+      startTime: sch.startTime,
+      endTime: sch.endTime,
+      subject: { name: (sub as any)?.name || "Unknown" },
+      room: { name: (room as any)?.name || "Unknown" },
+    };
+  });
+
+  return {
+    admitCard,
+    exam: {
+      name: exam.name,
+      type: exam.type,
+      class: { name: cls?.name || "" },
+      section: sec ? { name: sec.name } : null,
+    },
+    student: {
+      name: `${student.firstName} ${student.lastName}`,
+      rollNo: admitCard.rollNo,
+      admissionNo: student.admissionNo || "",
+      fatherName: student.fatherName || "",
+      motherName: student.motherName || "",
+      dob: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "",
+      photoUrl: student.photoUrl || "",
+      class: { name: cls?.name || "" },
+      section: sec ? { name: sec.name } : null,
+    },
+    schedule,
+    tenant: {
+      name: (tenant as any)?.name || "",
+      address: (tenant as any)?.address || "",
+      phone: (tenant as any)?.phone || "",
+      email: (tenant as any)?.email || "",
+      logoUrl: (tenant as any)?.logoUrl || "",
+    },
+  };
+};
+
+// ─────────────────────────────────────────────────────
+// 22. GET ALL ADMIT CARDS (for an Exam)
+// ─────────────────────────────────────────────────────
+export const getAdmitCardsService = async (
+  examId: string,
+  tenantId: string
+) => {
+  const admitCards = await prisma.admitCard.findMany({
+    where: { examId, tenantId, isDeleted: false },
+    orderBy: { rollNo: "asc" },
+  });
+
+  const studentIds = admitCards.map((ac: any) => ac.studentId);
+  const students = studentIds.length > 0
+    ? await prisma.student.findMany({ where: { id: { in: studentIds } } })
+    : [];
+
+  return admitCards.map((ac: any) => {
+    const student = students.find((s: any) => s.id === ac.studentId);
+    return {
+      ...ac,
+      student: {
+        id: (student as any)?.id || "",
+        name: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+        rollNo: ac.rollNo,
+        photoUrl: (student as any)?.photoUrl || "",
+        fatherName: (student as any)?.fatherName || "",
+      },
+    };
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 23. UPLOAD QUESTION PAPER
+// ─────────────────────────────────────────────────────
+export const uploadQuestionPaperService = async (
+  data: QuestionPaperInput,
+  tenantId: string,
+  userId: string
+) => {
+  return prisma.questionPaper.create({
+    data: {
+      examId: data.examId,
+      subjectId: data.subjectId,
+      tenantId,
+      title: data.title,
+      fileUrl: data.fileUrl,
+      uploadedBy: userId,
+      isDeleted: false,
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 24. GET QUESTION PAPERS
+// ─────────────────────────────────────────────────────
+export const getQuestionPapersService = async (
+  examId: string,
+  tenantId: string
+) => {
+  const papers = await prisma.questionPaper.findMany({
+    where: { examId, tenantId, isDeleted: false },
+    orderBy: { uploadedAt: "desc" },
+  });
+
+  const subjectIds = papers.map((p: any) => p.subjectId);
+  const subjects = subjectIds.length > 0
+    ? await prisma.subject.findMany({ where: { id: { in: subjectIds } } })
+    : [];
+
+  return papers.map((p: any) => {
+    const sub = subjects.find((s: any) => s.id === p.subjectId);
+    return { ...p, subjectName: (sub as any)?.name || "Unknown" };
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 25. DELETE QUESTION PAPER
+// ─────────────────────────────────────────────────────
+export const deleteQuestionPaperService = async (
+  paperId: string,
+  tenantId: string
+) => {
+  await prisma.questionPaper.update({
+    where: { id: paperId },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+  return { message: "Question paper deleted successfully" };
+};
+
+// ─────────────────────────────────────────────────────
+// 26. ASSIGN INVIGILATOR
+// ─────────────────────────────────────────────────────
+export const assignInvigilatorService = async (
+  data: InvigilatorInput,
+  tenantId: string
+) => {
+  const existing = await prisma.invigilatorAssignment.findFirst({
+    where: {
+      examScheduleId: data.examScheduleId,
+      teacherId: data.teacherId,
+      tenantId,
+      isDeleted: false,
+    },
+  });
+  if (existing) throw new Error("Teacher already assigned to this schedule");
+
+  return prisma.invigilatorAssignment.create({
+    data: {
+      examScheduleId: data.examScheduleId,
+      teacherId: data.teacherId,
+      tenantId,
+      role: data.role,
+      isDeleted: false,
+    },
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 27. GET INVIGILATORS
+// ─────────────────────────────────────────────────────
+export const getInvigilatorsService = async (
+  scheduleId: string,
+  tenantId: string
+) => {
+  const assignments = await prisma.invigilatorAssignment.findMany({
+    where: { examScheduleId: scheduleId, tenantId, isDeleted: false },
+  });
+
+  const teacherIds = assignments.map((a: any) => a.teacherId);
+  const teachers = teacherIds.length > 0
+    ? await prisma.teacher.findMany({ where: { id: { in: teacherIds } } })
+    : [];
+
+  return assignments.map((a: any) => {
+    const teacher = teachers.find((t: any) => t.id === a.teacherId);
+    return { ...a, teacherName: (teacher as any)?.name || "Unknown" };
+  });
+};
+
+// ─────────────────────────────────────────────────────
+// 28. REMOVE INVIGILATOR
+// ─────────────────────────────────────────────────────
+export const removeInvigilatorService = async (
+  assignmentId: string,
+  tenantId: string
+) => {
+  await prisma.invigilatorAssignment.update({
+    where: { id: assignmentId },
+    data: { isDeleted: true },
+  });
+  return { message: "Invigilator removed successfully" };
+};
+
+// ─────────────────────────────────────────────────────
+// 29. EXAM DASHBOARD STATS
+// ─────────────────────────────────────────────────────
+export const getExamDashboardService = async (
+  tenantId: string,
+  academicYearId?: string,
+  classId?: string
+) => {
+  const examWhere: any = { tenantId, isDeleted: false };
+  if (academicYearId) examWhere.academicYearId = academicYearId;
+  if (classId) examWhere.classId = classId;
+
+  const [totalExams, totalStudents, totalSubjects, publishedResults] = await Promise.all([
+    prisma.exam.count({ where: examWhere }),
+    prisma.student.count({ where: { tenantId, isDeleted: false } }),
+    prisma.subject.count({ where: { tenantId, isDeleted: false } }),
+    prisma.exam.count({ where: { ...examWhere, isPublished: true } }),
+  ]);
+
+  // Upcoming exams
+  const upcomingExams = await prisma.exam.findMany({
+    where: { ...examWhere, startDate: { gte: new Date() } },
+    orderBy: { startDate: "asc" },
+    take: 5,
+  });
+
+  const classIds = [...new Set(upcomingExams.map((e) => e.classId))];
+  const classes = await prisma.class.findMany({ where: { id: { in: classIds } } });
+
+  const enrichedUpcoming = upcomingExams.map((exam) => {
+    const cls = classes.find((c: any) => c.id === exam.classId);
+    return { ...exam, className: cls?.name || "N/A" };
+  });
+
+  return {
+    stats: { totalExams, totalStudents, totalSubjects, publishedResults },
+    upcomingExams: enrichedUpcoming,
+  };
+};
+
+// ─────────────────────────────────────────────────────
+// 30. EXAM REPORTS
+// ─────────────────────────────────────────────────────
+export const getExamReportsService = async (
+  tenantId: string,
+  examId: string,
+  reportType: string,
+  options?: { subjectId?: string }
+) => {
+  switch (reportType) {
+    case "result_summary": {
+      const results = await prisma.resultSummary.findMany({
+        where: { examId, tenantId, isDeleted: false },
+        orderBy: { rank: "asc" },
+      });
+      const studentIds = results.map((r) => r.studentId);
+      const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
+      return results.map((r) => {
+        const s = students.find((st: any) => st.id === r.studentId);
+        return { ...r, studentName: s ? `${(s as any).firstName} ${(s as any).lastName}` : "", admissionNo: (s as any)?.admissionNo || "" };
+      });
+    }
+
+    case "topper_list": {
+      const results = await prisma.resultSummary.findMany({
+        where: { examId, tenantId, isDeleted: false, status: "PASS" },
+        orderBy: { percentage: "desc" },
+        take: 10,
+      });
+      const studentIds = results.map((r) => r.studentId);
+      const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
+      return results.map((r, i) => {
+        const s = students.find((st: any) => st.id === r.studentId);
+        const { rank: _oldRank, ...rest } = r;
+        return { ...rest, rank: i + 1, studentName: s ? `${(s as any).firstName} ${(s as any).lastName}` : "", admissionNo: (s as any)?.admissionNo || "" };
+      });
+    }
+
+    case "pass_fail": {
+      const results = await prisma.resultSummary.findMany({
+        where: { examId, tenantId, isDeleted: false },
+      });
+      const total = results.length;
+      const passed = results.filter((r) => r.status === "PASS").length;
+      return { total, passed, failed: total - passed, passPercentage: total > 0 ? parseFloat(((passed / total) * 100).toFixed(2)) : 0 };
+    }
+
+    case "subject_wise": {
+      const examSubjects = await prisma.examSubject.findMany({ where: { examId, tenantId, isDeleted: false } });
+      const subIds = examSubjects.map((es) => es.subjectId);
+      const subjects = await prisma.subject.findMany({ where: { id: { in: subIds } } });
+      const marks = await prisma.marksEntry.findMany({ where: { examId, tenantId, isDeleted: false } });
+
+      return examSubjects.map((es) => {
+        const sub = subjects.find((s: any) => s.id === es.subjectId);
+        const subMarks = marks.filter((m) => m.subjectId === es.subjectId);
+        const totalStudents = subMarks.length;
+        const passed = subMarks.filter((m) => !m.isAbsent && m.marksObtained >= es.passingMarks).length;
+        const highest = subMarks.length > 0 ? Math.max(...subMarks.map((m) => m.marksObtained)) : 0;
+        const avg = subMarks.length > 0 ? subMarks.reduce((sum, m) => sum + m.marksObtained, 0) / subMarks.length : 0;
+        return {
+          subjectName: (sub as any)?.name || "Unknown",
+          maxMarks: es.maxMarks,
+          totalStudents,
+          passed,
+          failed: totalStudents - passed,
+          passPercentage: totalStudents > 0 ? parseFloat(((passed / totalStudents) * 100).toFixed(2)) : 0,
+          highest,
+          average: parseFloat(avg.toFixed(2)),
+        };
+      });
+    }
+
+    case "grade_report": {
+      const results = await prisma.resultSummary.findMany({ where: { examId, tenantId, isDeleted: false } });
+      const gradeMap: Record<string, number> = {};
+      results.forEach((r) => { gradeMap[r.grade || "Ungraded"] = (gradeMap[r.grade || "Ungraded"] || 0) + 1; });
+      return Object.entries(gradeMap).map(([grade, count]) => ({ grade, count }));
+    }
+
+    case "attendance": {
+      const marks = await prisma.marksEntry.findMany({ where: { examId, tenantId, isDeleted: false } });
+      const studentIds = [...new Set(marks.map((m) => m.studentId))];
+      const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
+      const examSubjects = await prisma.examSubject.findMany({ where: { examId, tenantId, isDeleted: false } });
+
+      return studentIds.map((sid) => {
+        const student = students.find((s: any) => s.id === sid);
+        const studentMarks = marks.filter((m) => m.studentId === sid);
+        const absentCount = studentMarks.filter((m) => m.isAbsent).length;
+        const presentCount = examSubjects.length - absentCount;
+        return {
+          studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+          admissionNo: (student as any)?.admissionNo || "",
+          totalSubjects: examSubjects.length,
+          present: presentCount,
+          absent: absentCount,
+          attendancePercentage: examSubjects.length > 0 ? parseFloat(((presentCount / examSubjects.length) * 100).toFixed(2)) : 0,
+        };
+      });
+    }
+
+    case "marks": {
+      const marks = await prisma.marksEntry.findMany({
+        where: { examId, tenantId, isDeleted: false, ...(options?.subjectId && { subjectId: options.subjectId }) },
+      });
+      const studentIds = [...new Set(marks.map((m) => m.studentId))];
+      const subIds = [...new Set(marks.map((m) => m.subjectId))];
+      const [students, subjects] = await Promise.all([
+        prisma.student.findMany({ where: { id: { in: studentIds } } }),
+        prisma.subject.findMany({ where: { id: { in: subIds } } }),
+      ]);
+      return marks.map((m) => {
+        const student = students.find((s: any) => s.id === m.studentId);
+        const sub = subjects.find((s: any) => s.id === m.subjectId);
+        return {
+          studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+          admissionNo: (student as any)?.admissionNo || "",
+          subjectName: (sub as any)?.name || "Unknown",
+          marksObtained: m.marksObtained,
+          isAbsent: m.isAbsent,
+        };
+      });
+    }
+
+    default:
+      throw new Error("Invalid report type");
+  }
 };
 

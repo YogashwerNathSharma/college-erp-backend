@@ -1,5 +1,8 @@
 
+
 import { Request, Response } from "express";
+import multer from "multer";
+import path from "path";
 import {
   createTeacher,
   getTeachers,
@@ -8,7 +11,37 @@ import {
   deleteTeacher,
 } from "./teacher.service";
 
+//////////////////////////////////////////////////////
+// MULTER CONFIG (photo upload)
+//////////////////////////////////////////////////////
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../../../uploads/teachers"));
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `teacher-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+
+export const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files (jpg, png, webp) are allowed"));
+    }
+  },
+});
+
+//////////////////////////////////////////////////////
 // ✅ CREATE
+//////////////////////////////////////////////////////
 export const create = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -20,7 +53,26 @@ export const create = async (req: any, res: Response) => {
       });
     }
 
-    const teacher = await createTeacher(req.body, tenantId);
+    // Handle photo URL
+    const data = { ...req.body };
+    if (req.file) {
+      data.photoUrl = `/uploads/teachers/${req.file.filename}`;
+    }
+
+    // Parse array fields from FormData
+    if (typeof data["subjectIds[]"] === "string") {
+      data.subjectIds = [data["subjectIds[]"]];
+    } else if (Array.isArray(data["subjectIds[]"])) {
+      data.subjectIds = data["subjectIds[]"];
+    }
+
+    if (typeof data["classIds[]"] === "string") {
+      data.classIds = [data["classIds[]"]];
+    } else if (Array.isArray(data["classIds[]"])) {
+      data.classIds = data["classIds[]"];
+    }
+
+    const teacher = await createTeacher(data, tenantId);
 
     return res.status(201).json({
       success: true,
@@ -36,7 +88,9 @@ export const create = async (req: any, res: Response) => {
   }
 };
 
+//////////////////////////////////////////////////////
 // ✅ GET ALL
+//////////////////////////////////////////////////////
 export const getAll = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -64,7 +118,9 @@ export const getAll = async (req: any, res: Response) => {
   }
 };
 
+//////////////////////////////////////////////////////
 // ✅ GET BY ID
+//////////////////////////////////////////////////////
 export const getById = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -100,7 +156,9 @@ export const getById = async (req: any, res: Response) => {
   }
 };
 
+//////////////////////////////////////////////////////
 // ✅ UPDATE
+//////////////////////////////////////////////////////
 export const update = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -113,7 +171,26 @@ export const update = async (req: any, res: Response) => {
       });
     }
 
-    const teacher = await updateTeacher(id, req.body, tenantId);
+    // Handle photo URL
+    const data = { ...req.body };
+    if (req.file) {
+      data.photoUrl = `/uploads/teachers/${req.file.filename}`;
+    }
+
+    // Parse array fields from FormData
+    if (typeof data["subjectIds[]"] === "string") {
+      data.subjectIds = [data["subjectIds[]"]];
+    } else if (Array.isArray(data["subjectIds[]"])) {
+      data.subjectIds = data["subjectIds[]"];
+    }
+
+    if (typeof data["classIds[]"] === "string") {
+      data.classIds = [data["classIds[]"]];
+    } else if (Array.isArray(data["classIds[]"])) {
+      data.classIds = data["classIds[]"];
+    }
+
+    const teacher = await updateTeacher(id, data, tenantId);
 
     return res.json({
       success: true,
@@ -129,7 +206,9 @@ export const update = async (req: any, res: Response) => {
   }
 };
 
+//////////////////////////////////////////////////////
 // ✅ DELETE (soft)
+//////////////////////////////////////////////////////
 export const remove = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;

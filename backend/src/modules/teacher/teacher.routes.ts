@@ -1,18 +1,20 @@
 
+
 import express from "express";
-import { create, getAll, getById, update, remove } from "./teacher.controller";
+import { create, getAll, getById, update, remove, upload } from "./teacher.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 const router = express.Router();
 
-// CREATE
+// CREATE (with photo upload)
 router.post(
   "/",
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  upload.single("photo"),
   create
 );
 
@@ -32,12 +34,13 @@ router.get(
   getById
 );
 
-// UPDATE
+// UPDATE (with photo upload)
 router.put(
   "/:id",
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  upload.single("photo"),
   update
 );
 

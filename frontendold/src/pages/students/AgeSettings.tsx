@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
@@ -17,7 +18,7 @@ import {
   Info,
 } from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
 
 interface AgeConfig {
   id: string;
@@ -43,7 +44,7 @@ interface Toast {
   message: string;
 }
 
-// ─── API Config ──────────────────────────────────────────────────────────────
+// ─── API Config ────────────────────────────────────────────────────────────
 
 const API_BASE = "http://localhost:5000";
 
@@ -53,7 +54,7 @@ const getAuthHeaders = () => ({
   },
 });
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ─────────────────────────────────────────────────────────────
 
 const AgeSettings: React.FC = () => {
   const [configs, setConfigs] = useState<AgeConfig[]>([]);
@@ -74,7 +75,7 @@ const AgeSettings: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastIdRef = React.useRef(0);
 
-  // ─── Toast Helper ──────────────────────────────────────────────────────────
+  // ─── Toast Helper ──────────────────────────────────────────────────────
 
   const showToast = useCallback((type: "success" | "error", message: string) => {
     const id = ++toastIdRef.current;
@@ -84,7 +85,7 @@ const AgeSettings: React.FC = () => {
     }, 4000);
   }, []);
 
-  // ─── Fetch Data ────────────────────────────────────────────────────────────
+  // ─── Fetch Data ────────────────────────────────────────────────────────
 
   const fetchConfigs = useCallback(async () => {
     try {
@@ -116,7 +117,7 @@ const AgeSettings: React.FC = () => {
     loadData();
   }, [fetchConfigs, fetchClasses]);
 
-  // ─── Seed Defaults ─────────────────────────────────────────────────────────
+  // ─── Seed Defaults ────────────────────────────────────────────────────
 
   const handleSeedDefaults = async () => {
     if (classes.length === 0) {
@@ -161,7 +162,7 @@ const AgeSettings: React.FC = () => {
     }
   };
 
-  // ─── Edit Config ───────────────────────────────────────────────────────────
+  // ─── Edit Config ────────────────────────────────────────────────────
 
   const handleEdit = (config: AgeConfig) => {
     setEditingId(config.id);
@@ -200,7 +201,7 @@ const AgeSettings: React.FC = () => {
     }
   };
 
-  // ─── Toggle Active/Inactive ────────────────────────────────────────────────
+  // ─── Toggle Active/Inactive ────────────────────────────────────────
 
   const handleToggleStatus = async (config: AgeConfig) => {
     try {
@@ -226,7 +227,7 @@ const AgeSettings: React.FC = () => {
     }
   };
 
-  // ─── Board Colors ──────────────────────────────────────────────────────────
+  // ─── Board Colors ──────────────────────────────────────────────────
 
   const boardColors: Record<string, string> = {
     UP_BOARD: "bg-orange-100 text-orange-800",
@@ -240,7 +241,7 @@ const AgeSettings: React.FC = () => {
     ICSE: "ICSE",
   };
 
-  // ─── Loading ───────────────────────────────────────────────────────────────
+  // ─── Loading ───────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -262,7 +263,7 @@ const AgeSettings: React.FC = () => {
     );
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -498,15 +499,17 @@ const AgeSettings: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            {/* Toggle */}
+                            <button
+                              onClick={() => handleEdit(config)}
+                              className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleToggleStatus(config)}
                               disabled={actionLoading === config.id}
-                              className={`p-2 rounded-lg transition-colors ${
-                                config.isActive
-                                  ? "hover:bg-orange-50 text-orange-500"
-                                  : "hover:bg-green-50 text-green-500"
-                              }`}
+                              className="p-2 rounded-lg hover:bg-amber-50 text-amber-600 transition-colors disabled:opacity-50"
                               title={config.isActive ? "Deactivate" : "Activate"}
                             >
                               {actionLoading === config.id ? (
@@ -514,14 +517,6 @@ const AgeSettings: React.FC = () => {
                               ) : (
                                 <Power className="w-4 h-4" />
                               )}
-                            </button>
-                            {/* Edit */}
-                            <button
-                              onClick={() => handleEdit(config)}
-                              className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
-                              title="Edit"
-                            >
-                              <Edit3 className="w-4 h-4" />
                             </button>
                           </>
                         )}
@@ -534,37 +529,28 @@ const AgeSettings: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Empty State */
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-          <div className="mx-auto w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-            <Settings className="w-8 h-8 text-indigo-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-1">
-            No Age Configuration Found
-          </h3>
-          <p className="text-sm text-gray-500 max-w-sm mx-auto">
-            Use "Load Defaults" above to set up board-wise age limits for your classes.
-          </p>
+        <div className="bg-white rounded-2xl shadow-sm border p-12 text-center text-gray-500">
+          <p className="text-4xl mb-3">📋</p>
+          <p className="text-lg font-medium">No age configurations yet</p>
+          <p className="text-sm mt-1">Load defaults from a board to get started</p>
         </div>
       )}
 
-      {/* Toast Messages */}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 space-y-2 z-50">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${
-              toast.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                : "bg-red-50 text-red-800 border border-red-200"
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white ${
+              toast.type === "success" ? "bg-green-600" : "bg-red-600"
             }`}
           >
             {toast.type === "success" ? (
-              <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <XCircle className="w-5 h-5" />
             )}
-            <span>{toast.message}</span>
+            {toast.message}
           </div>
         ))}
       </div>
@@ -573,3 +559,4 @@ const AgeSettings: React.FC = () => {
 };
 
 export default AgeSettings;
+

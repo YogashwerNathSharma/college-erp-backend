@@ -1,7 +1,7 @@
+
 import { Router } from "express";
 
-import * as controller
-from "./subscription.controller";
+import * as controller from "./subscription.controller";
 
 import {
   authMiddleware,
@@ -10,7 +10,45 @@ import {
 const router = Router();
 
 //////////////////////////////////////////////////////////////
-// 🚀 SUPER ADMIN ONLY
+// 🔥 GET PLANS — Accessible to logged-in users (even expired)
+// (authMiddleware only, no superAdminOnly for GET plans)
+//////////////////////////////////////////////////////////////
+
+router.get(
+  "/plans",
+  authMiddleware,
+  controller.getPlans
+);
+
+router.get(
+  "/plans/:id",
+  authMiddleware,
+  controller.getSinglePlan
+);
+
+//////////////////////////////////////////////////////////////
+// 🔥 ASSIGN SUBSCRIPTION — Accessible to logged-in users
+// (so expired users can subscribe to a new plan)
+//////////////////////////////////////////////////////////////
+
+router.post(
+  "/assign",
+  authMiddleware,
+  controller.assignSubscription
+);
+
+//////////////////////////////////////////////////////////////
+// 🔥 GET TENANT SUBSCRIPTION — Accessible to logged-in users
+//////////////////////////////////////////////////////////////
+
+router.get(
+  "/tenant/:tenantId",
+  authMiddleware,
+  controller.getTenantSubscription
+);
+
+//////////////////////////////////////////////////////////////
+// 🚀 SUPER ADMIN ONLY ROUTES BELOW
 //////////////////////////////////////////////////////////////
 
 const superAdminOnly = (
@@ -18,90 +56,60 @@ const superAdminOnly = (
   res: any,
   next: any
 ) => {
-
-  if (
-    req.user?.role !== "SUPER_ADMIN"
-  ) {
-
+  if (req.user?.role !== "SUPER_ADMIN") {
     return res.status(403).json({
       success: false,
       message: "Access denied",
     });
-
   }
-
   next();
 };
 
-//////////////////////////////////////////////////////////////
-// 🚀 GLOBAL MIDDLEWARES
-//////////////////////////////////////////////////////////////
-
-router.use(authMiddleware);
-
-router.use(superAdminOnly);
-
-//////////////////////////////////////////////////////////////
-// 🚀 PLAN ROUTES
-//////////////////////////////////////////////////////////////
-
+// CREATE/UPDATE/DELETE PLANS — SuperAdmin only
 router.post(
   "/plans",
+  authMiddleware,
+  superAdminOnly,
   controller.createPlan
-);
-
-router.get(
-  "/plans",
-  controller.getPlans
-);
-
-router.get(
-  "/plans/:id",
-  controller.getSinglePlan
 );
 
 router.put(
   "/plans/:id",
+  authMiddleware,
+  superAdminOnly,
   controller.updatePlan
 );
 
 router.delete(
   "/plans/:id",
+  authMiddleware,
+  superAdminOnly,
   controller.deletePlan
 );
 
-//////////////////////////////////////////////////////////////
-// 🚀 SUBSCRIPTION ROUTES
-//////////////////////////////////////////////////////////////
-
-// ASSIGN PLAN
-router.post(
-  "/assign",
-  controller.assignSubscription
-);
-
-// GET ALL SUBSCRIPTIONS
+// GET ALL SUBSCRIPTIONS — SuperAdmin only
 router.get(
   "/",
+  authMiddleware,
+  superAdminOnly,
   controller.getSubscriptions
 );
 
-// GET TENANT ACTIVE SUBSCRIPTION
-router.get(
-  "/tenant/:tenantId",
-  controller.getTenantSubscription
-);
-
-// CANCEL SUBSCRIPTION
+// CANCEL SUBSCRIPTION — SuperAdmin only
 router.put(
   "/cancel/:id",
+  authMiddleware,
+  superAdminOnly,
   controller.cancelSubscription
 );
 
-// RENEW SUBSCRIPTION
-router.post(
+// RENEW SUBSCRIPTION — SuperAdmin only
+router.put(
   "/renew/:id",
+  authMiddleware,
+  superAdminOnly,
   controller.renewSubscription
 );
 
 export default router;
+

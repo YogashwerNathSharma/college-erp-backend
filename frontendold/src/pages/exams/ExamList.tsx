@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -10,21 +9,24 @@ import {
   BookOpen,
   ClipboardList,
   BarChart3,
-  Eye,
   Loader2,
   FileSpreadsheet,
+  Calendar,
+  Users,
+  IdCard,
+  FileText,
+  UserCog,
 } from "lucide-react";
 
 interface Exam {
   id: string;
   name: string;
   type: string;
-  class: { id: string; name: string };
-  section?: { id: string; name: string };
-  academicYear: { id: string; name : string };
+  className?: string;
+  sectionName?: string;
   startDate: string;
   endDate: string;
-  status: string;
+  isPublished: boolean;
   resultType: string;
 }
 
@@ -35,7 +37,7 @@ interface ClassItem {
 
 interface AcademicYear {
   id: string;
-  name : string;
+  name: string;
 }
 
 const ExamList: React.FC = () => {
@@ -85,7 +87,8 @@ const ExamList: React.FC = () => {
         headers,
         params,
       });
-      setExams(res.data?.data || res.data || []);
+      const raw = res.data?.data || res.data || [];
+      setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch (error) {
       toast.error("Failed to fetch exams");
     } finally {
@@ -107,8 +110,7 @@ const ExamList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const isPublished = status?.toLowerCase() === "published";
+  const getStatusBadge = (isPublished: boolean) => {
     return (
       <span
         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -253,9 +255,9 @@ const ExamList: React.FC = () => {
                         <div className="text-sm font-medium text-gray-900">
                           {exam.name}
                         </div>
-                        {exam.section && (
+                        {exam.sectionName && (
                           <div className="text-xs text-gray-500">
-                            Section: {exam.section.name}
+                            Section: {exam.sectionName}
                           </div>
                         )}
                       </td>
@@ -263,60 +265,109 @@ const ExamList: React.FC = () => {
                         {getTypeBadge(exam.type)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {(exam as any).className || "N/A"}
+                        {exam.className || "N/A"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        <div>
-                          {new Date(exam.startDate).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          to {new Date(exam.endDate).toLocaleDateString()}
-                        </div>
+                        {exam.startDate && (
+                          <>
+                            <div>{new Date(exam.startDate).toLocaleDateString("en-IN")}</div>
+                            <div className="text-xs text-gray-500">
+                              to {new Date(exam.endDate).toLocaleDateString("en-IN")}
+                            </div>
+                          </>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(exam.status)}
+                        {getStatusBadge(exam.isPublished)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Edit */}
                           <button
                             onClick={() => navigate(`/exams/edit/${exam.id}`)}
-                            className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             title="Edit Exam"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
+
+                          {/* Subjects */}
                           <button
                             onClick={() => navigate(`/exams/${exam.id}/subjects`)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Add Subjects"
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Subjects"
                           >
                             <BookOpen className="w-4 h-4" />
                           </button>
+
+                          {/* Schedule */}
+                          <button
+                            onClick={() => navigate(`/exam-schedule/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
+                            title="Schedule"
+                          >
+                            <Calendar className="w-4 h-4" />
+                          </button>
+
+                          {/* Marks Entry */}
                           <button
                             onClick={() => navigate(`/exams/${exam.id}/marks`)}
-                            className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                             title="Marks Entry"
                           >
                             <ClipboardList className="w-4 h-4" />
                           </button>
+
+                          {/* Results */}
                           <button
                             onClick={() => navigate(`/exams/${exam.id}/results`)}
-                            className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                             title="Results"
                           >
                             <BarChart3 className="w-4 h-4" />
                           </button>
+
+                          {/* Admit Card */}
                           <button
-                            onClick={() => navigate(`/exams/${exam.id}/results`)}
-                            className="p-2 text-gray-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="View Results"
+                            onClick={() => navigate(`/exam-admit-cards/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Admit Cards"
                           >
-                            <Eye className="w-4 h-4" />
+                            <IdCard className="w-4 h-4" />
                           </button>
+
+                          {/* Question Papers */}
+                          <button
+                            onClick={() => navigate(`/exam-question-papers/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                            title="Question Papers"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+
+                          {/* Seating */}
+                          <button
+                            onClick={() => navigate(`/exam-seating/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Seating Arrangement"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
+
+                          {/* Invigilators */}
+                          <button
+                            onClick={() => navigate(`/exam-invigilators/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors"
+                            title="Invigilators"
+                          >
+                            <UserCog className="w-4 h-4" />
+                          </button>
+
+                          {/* Delete */}
                           <button
                             onClick={() => handleDelete(exam.id)}
                             disabled={deleting === exam.id}
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                             title="Delete Exam"
                           >
                             {deleting === exam.id ? (
@@ -340,4 +391,3 @@ const ExamList: React.FC = () => {
 };
 
 export default ExamList;
-

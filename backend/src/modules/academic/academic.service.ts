@@ -8,12 +8,19 @@ export const createAcademicYear = async (data: any, tenantId: string) => {
     throw new Error("TenantId missing");
   }
 
+  // Deactivate all other years when creating new one as current
+  await prisma.academicYear.updateMany({
+    where: { tenantId },
+    data: { isActive: false, isCurrent: false },
+  });
+
   return prisma.academicYear.create({
     data: {
       name: data.name,
       startDate: new Date(data.startDate),
       endDate: new Date(data.endDate),
       isActive: true,
+      isCurrent: true,
       tenantId,
     },
   });
@@ -43,13 +50,13 @@ export const setActiveYear = async (id: string, tenantId: string) => {
   // Deactivate all first
   await prisma.academicYear.updateMany({
     where: { tenantId },
-    data: { isActive: false },
+    data: { isActive: false, isCurrent: false },
   });
 
   // Activate selected
   return prisma.academicYear.update({
     where: { id },
-    data: { isActive: true },
+    data: { isActive: true, isCurrent: true },
   });
 };
 
@@ -69,18 +76,18 @@ export const toggleAcademicYearStatus = async (id: string, tenantId: string) => 
   if (year.isActive) {
     return prisma.academicYear.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, isCurrent: false },
     });
   } else {
     // Deactivate all others first
     await prisma.academicYear.updateMany({
       where: { tenantId },
-      data: { isActive: false },
+      data: { isActive: false, isCurrent: false },
     });
 
     return prisma.academicYear.update({
       where: { id },
-      data: { isActive: true },
+      data: { isActive: true, isCurrent: true },
     });
   }
 };
@@ -106,6 +113,7 @@ export const softDeleteAcademicYear = async (id: string, tenantId: string) => {
       isDeleted: true,
       deletedAt: new Date(),
       isActive: false,
+      isCurrent: false,
     },
   });
 };
@@ -150,3 +158,4 @@ export const updateAcademicYear = async (id: string, tenantId: string, data: any
     },
   });
 };
+

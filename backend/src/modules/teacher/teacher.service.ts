@@ -7,7 +7,7 @@ import { buildPaginationMeta } from "../../utils/pagination";
 // CREATE TEACHER
 //////////////////////////////////////////////////////
 export const createTeacher = async (data: any, tenantId: string) => {
-  // 🔒 DUPLICATE CHECK (tenant-safe)
+  // 🔐 DUPLICATE CHECK (tenant-safe)
   const existing = await prisma.teacher.findFirst({
     where: {
       email: data.email,
@@ -20,7 +20,7 @@ export const createTeacher = async (data: any, tenantId: string) => {
     throw new Error("Teacher already exists with this email");
   }
 
-  // 🔒 VALIDATE ACADEMIC YEAR
+  // 🔐 VALIDATE ACADEMIC YEAR
   if (!data.academicYearId) {
     throw new Error("Academic year is required");
   }
@@ -36,7 +36,7 @@ export const createTeacher = async (data: any, tenantId: string) => {
     throw new Error("Invalid academic year");
   }
 
-  // 🔒 VALIDATE SUBJECTS
+  // 🔐 VALIDATE SUBJECTS
   if (data.subjectIds?.length) {
     const subjects = await prisma.subject.findMany({
       where: {
@@ -50,7 +50,7 @@ export const createTeacher = async (data: any, tenantId: string) => {
     }
   }
 
-  // 🔒 VALIDATE CLASSES
+  // 🔐 VALIDATE CLASSES
   if (data.classIds?.length) {
     const classes = await prisma.class.findMany({
       where: {
@@ -68,9 +68,16 @@ export const createTeacher = async (data: any, tenantId: string) => {
   return await prisma.$transaction(async (tx) => {
     const teacher = await tx.teacher.create({
       data: {
-        name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        name: `${data.firstName} ${data.lastName}`,
         email: data.email,
         phone: data.phone,
+        gender: data.gender || null,
+        dob: data.dob ? new Date(data.dob) : null,
+        employeeId: data.employeeId || null,
+        maritalStatus: data.maritalStatus || null,
+        photoUrl: data.photoUrl || null,
         tenantId,
         academicYearId: data.academicYearId,
       },
@@ -110,15 +117,18 @@ export const getTeachers = async (query: any, tenantId: string) => {
 
   const whereClause: any = {
     tenantId,
-    isDeleted: false, // ✅ FIXED: filter soft-deleted
+    isDeleted: false,
   };
 
   // Search filter
   if (search) {
     whereClause.OR = [
       { name: { contains: search, mode: "insensitive" } },
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
       { phone: { contains: search, mode: "insensitive" } },
+      { employeeId: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -254,22 +264,29 @@ export const updateTeacher = async (
     const teacher = await tx.teacher.update({
       where: { id },
       data: {
-        name: data.name || existing.name,
+        firstName: data.firstName || existing.firstName,
+        lastName: data.lastName || existing.lastName,
+        name: data.firstName && data.lastName
+          ? `${data.firstName} ${data.lastName}`
+          : existing.name,
         email: data.email || existing.email,
         phone: data.phone || existing.phone,
+        gender: data.gender !== undefined ? data.gender : existing.gender,
+        dob: data.dob ? new Date(data.dob) : existing.dob,
+        employeeId: data.employeeId !== undefined ? data.employeeId : existing.employeeId,
+        maritalStatus: data.maritalStatus !== undefined ? data.maritalStatus : existing.maritalStatus,
+        photoUrl: data.photoUrl !== undefined ? data.photoUrl : existing.photoUrl,
         academicYearId: data.academicYearId || existing.academicYearId,
       },
     });
 
     // ✅ Replace subjects (soft-delete old, create new)
     if (data.subjectIds !== undefined) {
-      // Soft-delete existing
       await tx.teacherSubject.updateMany({
         where: { teacherId: id, isDeleted: false },
         data: { isDeleted: true, deletedAt: new Date() },
       });
 
-      // Create new
       if (data.subjectIds.length > 0) {
         await tx.teacherSubject.createMany({
           data: data.subjectIds.map((subId: string) => ({
@@ -314,13 +331,11 @@ export const deleteTeacher = async (id: string, tenantId: string) => {
   }
 
   await prisma.$transaction(async (tx) => {
-    // Soft-delete teacher
     await tx.teacher.update({
       where: { id },
       data: { isDeleted: true, deletedAt: new Date() },
     });
 
-    // Soft-delete related subjects & classes
     await tx.teacherSubject.updateMany({
       where: { teacherId: id, isDeleted: false },
       data: { isDeleted: true, deletedAt: new Date() },

@@ -1,4 +1,5 @@
 
+
 import { Request, Response } from "express";
 import {
   markAttendanceService,
@@ -7,8 +8,37 @@ import {
   getStudentAttendanceService,
   getAttendanceReportService,
   getAttendanceSummaryService,
+  getDashboardStatsService,
 } from "./attendance.service";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
+
+/////////////////////////
+// DASHBOARD STATS
+/////////////////////////
+export const getDashboardStats = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const { academicYearId } = req.query;
+
+    if (!academicYearId) {
+      res.status(400).json({ message: "academicYearId is required" });
+      return;
+    }
+
+    const stats = await getDashboardStatsService(
+      tenantId,
+      academicYearId as string
+    );
+
+    res.json(stats);
+  } catch (error) {
+    console.error("DASHBOARD STATS ERROR:", error);
+    res.status(500).json({ message: "Error fetching dashboard stats" });
+  }
+};
 
 /////////////////////////
 // MARK ATTENDANCE (Bulk)
@@ -153,7 +183,7 @@ export const getAttendanceReport = async (
 };
 
 /////////////////////////
-// ATTENDANCE SUMMARY (Academic Year - for Report Card)
+// ATTENDANCE SUMMARY (Academic Year)
 /////////////////////////
 export const getAttendanceSummary = async (
   req: Request,

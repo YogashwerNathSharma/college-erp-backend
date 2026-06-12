@@ -12,7 +12,7 @@ export const getMonthlyReportService = async (
   tenantId: string
 ) => {
   const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0); // last day of month
+  const endDate = new Date(year, month, 0);
   const daysInMonth = endDate.getDate();
 
   // Get all students in this class/section
@@ -73,7 +73,7 @@ export const getMonthlyReportService = async (
         days.push("A");
         absentDays++;
       } else {
-        days.push(""); // no record
+        days.push("");
       }
     }
 
@@ -118,7 +118,6 @@ export const getDatewiseReportService = async (
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
-  // Get all students
   const enrollments = await prisma.enrollment.findMany({
     where: { classId, sectionId, tenantId, isDeleted: false },
     include: {
@@ -135,7 +134,6 @@ export const getDatewiseReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
-  // Get attendance for this date
   const records = await prisma.attendance.findMany({
     where: {
       classId,
@@ -180,10 +178,9 @@ export const getYearlyReportService = async (
   year: number,
   tenantId: string
 ) => {
-  const startDate = new Date(year, 0, 1); // Jan 1
-  const endDate = new Date(year, 11, 31); // Dec 31
+  const startDate = new Date(year, 0, 1);
+  const endDate = new Date(year, 11, 31);
 
-  // Get all students
   const enrollments = await prisma.enrollment.findMany({
     where: { classId, sectionId, tenantId, isDeleted: false },
     include: {
@@ -194,7 +191,6 @@ export const getYearlyReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
-  // Get all records for the year
   const records = await prisma.attendance.findMany({
     where: {
       classId,
@@ -209,7 +205,7 @@ export const getYearlyReportService = async (
   const studentMonthMap = new Map<string, Map<number, { present: number; total: number }>>();
 
   for (const r of records) {
-    const month = r.date.getMonth(); // 0-11
+    const month = r.date.getMonth();
     if (!studentMonthMap.has(r.studentId)) {
       studentMonthMap.set(r.studentId, new Map());
     }
@@ -260,7 +256,6 @@ export const getClasswiseReportService = async (
   sectionId: string,
   tenantId: string
 ) => {
-  // Get all students
   const enrollments = await prisma.enrollment.findMany({
     where: { classId, sectionId, tenantId, isDeleted: false },
     include: {
@@ -277,7 +272,6 @@ export const getClasswiseReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
-  // Get all attendance records for this class/section
   const records = await prisma.attendance.findMany({
     where: { classId, sectionId, tenantId, isDeleted: false },
   });
@@ -324,7 +318,6 @@ export const getSchoolReportService = async (
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
 
-  // Get all classes with sections
   const allClasses = await prisma.class.findMany({
     where: { tenantId, isDeleted: false, isActive: true },
     orderBy: { name: "asc" },
@@ -334,7 +327,6 @@ export const getSchoolReportService = async (
     where: { tenantId, isDeleted: false },
   });
 
-  // Get all attendance for this month
   const records = await prisma.attendance.findMany({
     where: {
       tenantId,
@@ -343,12 +335,10 @@ export const getSchoolReportService = async (
     },
   });
 
-  // Get all enrollments
   const enrollments = await prisma.enrollment.findMany({
     where: { tenantId, isDeleted: false },
   });
 
-  // Build class-section map
   const classesReport: any[] = [];
   let totalStudents = 0;
   let totalPresentSum = 0;
@@ -389,7 +379,6 @@ export const getSchoolReportService = async (
   const avgPresent = totalRecordsSum === 0 ? "0" : ((totalPresentSum / totalRecordsSum) * 100).toFixed(1);
   const avgAbsent = totalRecordsSum === 0 ? "0" : (((totalRecordsSum - totalPresentSum) / totalRecordsSum) * 100).toFixed(1);
 
-  // Working days = unique dates where attendance was marked
   const uniqueDates = new Set(records.map((r) => r.date.toISOString().split("T")[0]));
   const workingDays = uniqueDates.size;
 

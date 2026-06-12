@@ -8,29 +8,36 @@ datasource db {
 }
 
 
-//////////////////////
-// TENANT
-//////////////////////
+
+
+// ══════════════════════════════════
+// TENANT (Fixed)
+// ══════════════════════════════════
 model Tenant {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
+  // Basic Info
   name          String
   type          String
   logoUrl       String?
   backgroundUrl String?
-  address String?
-  phone   String?
-  email   String?
+  address       String?
+  phone         String?
+  email         String?
+
+  // Core Relations
   users         User[]
   academicYears AcademicYear[]
   classes       Class[]
   sections      Section[]
-  students      Student[]
   subjects      Subject[]
   teachers      Teacher[]
   timetables    Timetable[]
-  enrollments   Enrollment[]
-  isDeleted Boolean @default(false)
+
+  // Student Module Relations
+  students          Student[]
+  studentDocuments  StudentDocument[]   // ← ADDED (was missing)
+  enrollments       Enrollment[]
   studentHistories  StudentHistory[]
   promotions        Promotion[]
   classAgeConfigs   ClassAgeConfig[]
@@ -44,24 +51,37 @@ model Tenant {
   studentFees   StudentFee[]
   payments      Payment[]
 
-  subscriptions TenantSubscription[]
-
-  currentSubscriptionId String? @db.ObjectId
-  maxStudents           Int     @default(0)
-  maxTeachers           Int     @default(0)
-  maxAdmins             Int     @default(0)
-  maxStorageInGB        Int     @default(0)
-    // Teacher Module Relations
+  // Teacher Module Relations
   teacherLeaves       TeacherLeave[]
   teacherSalaries     TeacherSalary[]
   teacherPerformances TeacherPerformance[]
   teacherDocuments    TeacherDocument[]
   communications      Communication[]
-  teacherSettings     TeacherSettings?
+  teacherSettings     TeacherSettings?    // 1:1 (ek tenant ka ek hi settings)
 
+  // Attendance
+  attendances Attendance[]
+
+  // Subscription
+  subscriptions         TenantSubscription[]
+  currentSubscriptionId String? @db.ObjectId
+  maxStudents           Int     @default(0)
+  maxTeachers           Int     @default(0)
+  maxAdmins             Int     @default(0)
+  maxStorageInGB        Int     @default(0)
+ /////exam
+ examSchedules          ExamSchedule[]
+seatingArrangements    SeatingArrangement[]
+admitCards             AdmitCard[]
+questionPapers         QuestionPaper[]
+invigilatorAssignments InvigilatorAssignment[]
+
+  // Status
   isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  rooms               Room[]
 }
 
 //////////////////////
@@ -85,37 +105,50 @@ model User {
   @@map("User")
 }
 
-//////////////////////
-// ACADEMIC YEAR
-//////////////////////
+// ══════════════════════════════════
+// ACADEMIC YEAR (Fixed)
+// ══════════════════════════════════
 model AcademicYear {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   startDate DateTime
   endDate   DateTime
-  isActive  Boolean  @default(false)
+
+  isActive  Boolean @default(false)
+  isCurrent Boolean @default(false)
 
   tenantId String @db.ObjectId
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  enrollments   Enrollment[]
-  classes       Class[]
-  students      Student[]
-  sections      Section[]
-  subjects      Subject[]
-  teachers      Teacher[]
+  // Core Relations
+  classes     Class[]
+  sections    Section[]
+  subjects    Subject[]
+  students    Student[]
+  teachers    Teacher[]
+  enrollments Enrollment[]
+
+  // Fee Module
   feeStructures FeeStructure[]
 
-    // Teacher Module Relations
+  // Teacher Module
   teacherLeaves       TeacherLeave[]
   teacherSalaries     TeacherSalary[]
   teacherPerformances TeacherPerformance[]
   teacherSettings     TeacherSettings[]
-  isCurrent Boolean @default(false)
-  attendances   Attendance[]
+
+  // Student Module
+  admissionCounters AdmissionCounter[]
+
+  // Attendance
+  attendances Attendance[]
+
+  // Soft Delete
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
-  createdAt DateTime  @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 //////////////////////
@@ -170,27 +203,32 @@ model Section {
 //////////////////////
 // STUDENT
 //////////////////////
+
 model Student {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  firstName   String
-  lastName    String
-  gender      String
-  dob         DateTime
-  bloodGroup  String?
-  religion    String?
-  caste       String?
-  category    String?
-  nationality String   @default("Indian")
-  aadharNo    String?
+  firstName String
+  lastName  String
+  gender    String
+  dob       DateTime
 
-  email   String?
-  phone   String?
+  bloodGroup String?
+  religion   String?
+  caste      String?
+  category   String?
+
+  nationality String @default("Indian")
+
+  aadharNo String?
+  email    String?
+  phone    String?
+
   address String
 
-  admissionNo   String
-  srNo          String?
-  rollNumber    String?
+  admissionNo String
+  srNo        String?
+  rollNumber  String?
+
   admissionDate DateTime @default(now())
 
   fatherName       String
@@ -199,14 +237,18 @@ model Student {
   motherPhone      String?
   fatherOccupation String?
   motherOccupation String?
+
   guardianName     String?
   guardianPhone    String?
   guardianRelation String?
 
-  photoUrl    String?
-  documents   StudentDocument[]
+  photoUrl String?
 
-  status   String  @default("active")
+  // Relations
+  documents        StudentDocument[]
+  enrollments      Enrollment[]
+  studentHistories StudentHistory[]
+  promotions       Promotion[]
 
   tenantId       String @db.ObjectId
   academicYearId String @db.ObjectId
@@ -214,15 +256,15 @@ model Student {
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  enrollments      Enrollment[]
-  studentHistories StudentHistory[]
-  promotions       Promotion[]
+  status String @default("active")
 
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  seatingArrangements    SeatingArrangement[]
+  admitCards             AdmitCard[]
   @@unique([admissionNo, tenantId])
   @@index([srNo, tenantId])
   @@index([tenantId, status])
@@ -238,16 +280,19 @@ model StudentDocument {
   studentId String @db.ObjectId
   tenantId  String @db.ObjectId
 
-  type     String
-  name     String
-  url      String
+  type String
+  name String
+  url  String
+
   mimeType String?
   size     Int?
 
   student Student @relation(fields: [studentId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
 
   uploadedAt DateTime @default(now())
-  isDeleted  Boolean  @default(false)
+
+  isDeleted Boolean @default(false)
 
   @@index([studentId])
   @@index([tenantId, type])
@@ -266,7 +311,7 @@ model Enrollment {
   tenantId       String @db.ObjectId
 
   rollNumber String?
-  status     String  @default("active")
+  status     String @default("active")
 
   student      Student      @relation(fields: [studentId], references: [id])
   class        Class        @relation(fields: [classId], references: [id])
@@ -276,8 +321,9 @@ model Enrollment {
 
   studentFees StudentFee[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
 
@@ -296,13 +342,14 @@ model StudentHistory {
   tenantId  String @db.ObjectId
 
   action  String
-  details String  @default("{}")
+  details String @default("{}")
   message String?
 
-  fromClassId    String?
-  toClassId      String?
-  fromSectionId  String?
-  toSectionId    String?
+  fromClassId   String?
+  toClassId     String?
+  fromSectionId String?
+  toSectionId   String?
+
   academicYearId String?
 
   performedBy String
@@ -316,9 +363,6 @@ model StudentHistory {
   @@index([tenantId, action])
 }
 
-//////////////////////
-// PROMOTION
-//////////////////////
 model Promotion {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
@@ -329,20 +373,22 @@ model Promotion {
   fromSectionId      String
   fromAcademicYearId String
 
-  toClassId        String
-  toSectionId      String
-  toAcademicYearId String
+  toClassId          String
+  toSectionId        String
+  toAcademicYearId   String
 
-  type       String
-  remarks    String?
+  promotionType String
+  type          String
+
+  remarks String?
+
   promotedBy String
 
   student Student @relation(fields: [studentId], references: [id])
   tenant  Tenant  @relation(fields: [tenantId], references: [id])
 
-  promotedAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  promotionType String
+  promotedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@index([tenantId, fromAcademicYearId])
   @@index([studentId])
@@ -356,10 +402,13 @@ model AdmissionCounter {
 
   tenantId       String @db.ObjectId
   academicYearId String @db.ObjectId
-  prefix         String @default("ADM")
-  lastNumber     Int    @default(0)
-  format         String @default("PREFIX/YEAR/SERIAL")
 
+  prefix String @default("ADM")
+
+  lastNumber Int @default(0)
+
+  format String @default("PREFIX/YEAR/SERIAL")
+  academicYear AcademicYear @relation(fields: [academicYearId],references: [id])
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
@@ -367,23 +416,26 @@ model AdmissionCounter {
 
   @@unique([tenantId, academicYearId])
 }
-
 //////////////////////
 // CLASS AGE CONFIG
 //////////////////////
 model ClassAgeConfig {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  tenantId  String    @db.ObjectId
-  classId   String    @db.ObjectId
-  board     BoardType
-  className String
-  minAge    Float
-  maxAge    Float
+  tenantId String @db.ObjectId
+  classId  String @db.ObjectId
 
-  ageCalcRefMonth Int     @default(3)
-  ageCalcRefDay   Int     @default(31)
-  isActive        Boolean @default(true)
+  board BoardType
+
+  className String
+
+  minAge Float
+  maxAge Float
+
+  ageCalcRefMonth Int @default(3)
+  ageCalcRefDay   Int @default(31)
+
+  isActive Boolean @default(true)
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   class  Class  @relation(fields: [classId], references: [id])
@@ -421,37 +473,65 @@ model Subject {
 
   teachers   TeacherSubject[]
   timetables Timetable[]
-
+  examSchedules          ExamSchedule[]
+  questionPapers         QuestionPaper[]
   periodsPerWeek Int      @default(6)
   isActive       Boolean  @default(true)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   createdAt      DateTime @default(now())
 }
 
 //////////////////////
 // TEACHER
 //////////////////////
+
 model Teacher {
   id    String @id @default(auto()) @map("_id") @db.ObjectId
-  name  String
+
+  // Basic Information
+  firstName String
+  lastName  String
+  name      String // Auto: firstName + " " + lastName
+
   email String @unique
   phone String
 
+  // Personal Information
+  gender        String? // Male | Female | Other
+  dob           DateTime?
+  employeeId    String? // TCH001
+  maritalStatus String? // Single | Married | Divorced | Widowed
+  photoUrl      String?
+
+  // Multi-Tenant Fields
   tenantId       String @db.ObjectId
   academicYearId String @db.ObjectId
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  subjects   TeacherSubject[]
-  classes    TeacherClass[]
-  timetables Timetable[]
-  leaves         TeacherLeave[]
-  salaries       TeacherSalary[]
-  performances   TeacherPerformance[]
-  documents      TeacherDocument[]
+  // Relations
+  subjects      TeacherSubject[]
+  classes       TeacherClass[]
+  timetables    Timetable[]
+
+  leaves        TeacherLeave[]
+  salaries      TeacherSalary[]
+  performances  TeacherPerformance[]
+  documents     TeacherDocument[]
+  invigilatorAssignments InvigilatorAssignment[]
+  // Soft Delete
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
-  createdAt DateTime  @default(now())
+
+  // Audit
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([academicYearId])
+  @@index([employeeId])
 }
 
 //////////////////////
@@ -501,7 +581,7 @@ model Attendance {
   classId        String   @db.ObjectId
   sectionId      String   @db.ObjectId
   tenantId       String   @db.ObjectId
-
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
   academicYearId String   @db.ObjectId
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
@@ -789,6 +869,9 @@ model Exam {
   startDate       DateTime?
   endDate         DateTime?
   resultType      String    @default("BOTH")
+  examSchedules          ExamSchedule[]
+  admitCards             AdmitCard[]
+  questionPapers         QuestionPaper[]
   isPublished     Boolean   @default(false)
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?
@@ -855,6 +938,118 @@ model ResultSummary {
   isDeleted       Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ExamSchedule {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  examId    String   @db.ObjectId
+  subjectId String   @db.ObjectId
+  tenantId  String   @db.ObjectId
+  examDate  DateTime
+  startTime String
+  endTime   String
+  roomId    String   @db.ObjectId
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  exam     Exam    @relation(fields: [examId], references: [id])
+  subject  Subject @relation(fields: [subjectId], references: [id])
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  room     Room    @relation(fields: [roomId], references: [id])
+
+  seatingArrangements    SeatingArrangement[]
+  invigilatorAssignments InvigilatorAssignment[]
+
+  @@map("exam_schedules")
+}
+
+model SeatingArrangement {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  examScheduleId String @db.ObjectId
+  studentId      String @db.ObjectId
+  tenantId       String @db.ObjectId
+  seatNo         String
+  roomId         String @db.ObjectId
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  examSchedule ExamSchedule @relation(fields: [examScheduleId], references: [id])
+  student      Student      @relation(fields: [studentId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  room         Room         @relation(fields: [roomId], references: [id])
+
+  @@map("seating_arrangements")
+}
+
+model AdmitCard {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  examId    String @db.ObjectId
+  studentId String @db.ObjectId
+  tenantId  String @db.ObjectId
+  rollNo    String
+
+  isGenerated Boolean   @default(false)
+  generatedAt DateTime?
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  exam    Exam    @relation(fields: [examId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@map("admit_cards")
+}
+
+model QuestionPaper {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  examId     String @db.ObjectId
+  subjectId  String @db.ObjectId
+  tenantId   String @db.ObjectId
+  title      String
+  fileUrl    String
+  uploadedBy String @db.ObjectId
+
+  uploadedAt DateTime  @default(now())
+  isDeleted  Boolean   @default(false)
+  deletedAt  DateTime?
+
+  exam    Exam    @relation(fields: [examId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+
+  @@map("question_papers")
+}
+
+model InvigilatorAssignment {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  examScheduleId String @db.ObjectId
+  teacherId      String @db.ObjectId
+  tenantId       String @db.ObjectId
+  role           String // "Chief" or "Assistant"
+
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  examSchedule ExamSchedule @relation(fields: [examScheduleId], references: [id])
+  teacher      Teacher      @relation(fields: [teacherId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+
+  @@map("invigilator_assignments")
+}
+model Room {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  capacity  Int
+  location  String?
+  tenantId  String   @db.ObjectId
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tenant              Tenant                @relation(fields: [tenantId], references: [id])
+  examSchedules       ExamSchedule[]
+  seatingArrangements SeatingArrangement[]
 }
 // ═══════════════════════════════════════════════════════════════
 // 💰 FEES MODULE (Dynamic — Admin-Defined)

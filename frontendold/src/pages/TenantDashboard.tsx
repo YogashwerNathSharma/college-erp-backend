@@ -4,7 +4,7 @@ import axios from "axios";
 import { useOutletContext } from "react-router-dom";
 import {
   Users, School, IndianRupee, AlertCircle,
-  CreditCard, Crown, Clock, Zap,
+  CreditCard, Crown, Clock, Zap, CheckCircle, Gift,
 } from "lucide-react";
 
 import StatsCard from "../components/dashboard/StatsCard";
@@ -164,11 +164,14 @@ export default function Dashboard() {
       rzp.open();
 
     } catch (error: any) {
-      alert("❌ " + (error.response?.data?.message || "Something went wrong"));
+      alert("❌ " + (error.response?.data?.message || " This is not valid plan, You alredy use free trial plan , Now purchase a valid paid plan to continue "));
     } finally {
       setPaymentLoading(false);
     }
   };
+
+  // 🔥 Helper: Check if current plan is free
+  const isFreePlan = subscriptionInfo?.amount === 0 || subscriptionInfo?.planName?.toLowerCase().includes("free");
 
   if (loading) {
     return <div className="p-6 text-gray-500">Loading dashboard...</div>;
@@ -186,9 +189,15 @@ export default function Dashboard() {
       </div>
 
       {/* SUBSCRIPTION INFO CARD */}
-      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-6 shadow-sm">
+      <div className={`rounded-2xl border p-6 shadow-sm ${
+        isFreePlan
+          ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
+          : "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200"
+      }`}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-2">
+          <h2 className={`text-xl font-bold flex items-center gap-2 ${
+            isFreePlan ? "text-green-800" : "text-indigo-800"
+          }`}>
             <CreditCard size={22} />
             Subscription
           </h2>
@@ -203,14 +212,38 @@ export default function Dashboard() {
 
         {subscriptionInfo ? (
           <>
+            {/* 🔥 Free Plan Active Badge */}
+            {isFreePlan && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-xl flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                  <Gift className="text-white" size={20} />
+                </div>
+                <div>
+                  <p className="text-green-800 font-bold text-sm">🎉 Free Trial Activated!</p>
+                  <p className="text-green-600 text-xs">
+                    You are on a free trial. {subscriptionInfo.daysRemaining} days remaining. Upgrade anytime for more features.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl p-4 shadow-sm">
                 <p className="text-sm text-gray-500">Current Plan</p>
-                <p className="text-lg font-bold text-slate-800">{subscriptionInfo.planName}</p>
+                <p className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  {subscriptionInfo.planName}
+                  {isFreePlan && (
+                    <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                      FREE
+                    </span>
+                  )}
+                </p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm">
                 <p className="text-sm text-gray-500">Amount Paid</p>
-                <p className="text-lg font-bold text-green-600">₹{subscriptionInfo.amount}</p>
+                <p className="text-lg font-bold text-green-600">
+                  {subscriptionInfo.amount === 0 ? "Free" : `₹${subscriptionInfo.amount}`}
+                </p>
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm">
                 <p className="text-sm text-gray-500 flex items-center gap-1"><Clock size={14} /> Days Left</p>
@@ -227,9 +260,9 @@ export default function Dashboard() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
-              <span>👨🎓 Students: <b>{subscriptionInfo.maxStudents}</b></span>
-              <span>👨🏫 Teachers: <b>{subscriptionInfo.maxTeachers}</b></span>
-              <span>👨💼 Admins: <b>{subscriptionInfo.maxAdmins}</b></span>
+              <span>👨‍🎓 Students: <b>{subscriptionInfo.maxStudents}</b></span>
+              <span>👨‍🏫 Teachers: <b>{subscriptionInfo.maxTeachers}</b></span>
+              <span>👨‍💼 Admins: <b>{subscriptionInfo.maxAdmins}</b></span>
               <span>💾 Storage: <b>{subscriptionInfo.maxStorageInGB} GB</b></span>
             </div>
 
@@ -281,38 +314,63 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {plans.map((plan) => (
-                <div key={plan.id} className={`rounded-2xl border-2 p-6 relative ${plan.isPopular ? "border-indigo-500 shadow-lg" : "border-gray-200"}`}>
-                  {plan.isPopular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">⭐ Popular</span>
-                  )}
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
-                  {plan.description && <p className="text-gray-500 text-sm mt-1">{plan.description}</p>}
-                  <p className="text-3xl font-bold text-indigo-600 mt-4">₹{plan.price}</p>
-                  <p className="text-gray-500 text-sm">{plan.durationInDays} Days</p>
-                  <div className="mt-4 space-y-2 text-sm text-gray-600">
-                    <p>👨🎓 Students: <b>{plan.maxStudents}</b></p>
-                    <p>👨🏫 Teachers: <b>{plan.maxTeachers}</b></p>
-                    <p>👨💼 Admins: <b>{plan.maxAdmins}</b></p>
-                    <p>💾 Storage: <b>{plan.maxStorageInGB} GB</b></p>
-                  </div>
-                  {plan.features?.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {plan.features.map((f: string, i: number) => (
-                        <span key={i} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{f}</span>
-                      ))}
+              {plans.map((plan) => {
+                const isFree = plan.price === 0;
+                const isCurrentPlan = subscriptionInfo?.planName === plan.name;
+
+                return (
+                  <div key={plan.id} className={`rounded-2xl border-2 p-6 relative ${
+                    isCurrentPlan
+                      ? "border-green-500 bg-green-50"
+                      : plan.isPopular
+                      ? "border-indigo-500 shadow-lg"
+                      : "border-gray-200"
+                  }`}>
+                    {isCurrentPlan && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1">
+                        <CheckCircle size={12} /> Current Plan
+                      </span>
+                    )}
+                    {!isCurrentPlan && plan.isPopular && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">⭐ Popular</span>
+                    )}
+                    <h3 className="text-xl font-bold">{plan.name}</h3>
+                    {plan.description && <p className="text-gray-500 text-sm mt-1">{plan.description}</p>}
+                    <p className="text-3xl font-bold text-indigo-600 mt-4">
+                      {isFree ? "Free" : `₹${plan.price}`}
+                    </p>
+                    <p className="text-gray-500 text-sm">{plan.durationInDays} Days</p>
+                    <div className="mt-4 space-y-2 text-sm text-gray-600">
+                      <p>👨‍🎓 Students: <b>{plan.maxStudents}</b></p>
+                      <p>👨‍🏫 Teachers: <b>{plan.maxTeachers}</b></p>
+                      <p>👨‍💼 Admins: <b>{plan.maxAdmins}</b></p>
+                      <p>💾 Storage: <b>{plan.maxStorageInGB} GB</b></p>
                     </div>
-                  )}
-                  <button
-                    onClick={() => buyPlan(plan.id)}
-                    disabled={paymentLoading}
-                    className="w-full mt-5 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Zap size={16} />
-                    {paymentLoading ? "Processing..." : "Buy & Activate"}
-                  </button>
-                </div>
-              ))}
+                    {plan.features?.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {plan.features.map((f: string, i: number) => (
+                          <span key={i} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{f}</span>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      onClick={() => !isCurrentPlan && buyPlan(plan.id)}
+                      disabled={paymentLoading || isCurrentPlan}
+                      className={`w-full mt-5 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${
+                        isCurrentPlan
+                          ? "bg-green-100 text-green-700 cursor-not-allowed"
+                          : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                      }`}
+                    >
+                      {isCurrentPlan ? (
+                        <><CheckCircle size={16} /> Active Plan</>
+                      ) : (
+                        <><Zap size={16} /> {paymentLoading ? "Processing..." : "Buy & Activate"}</>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -321,3 +379,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

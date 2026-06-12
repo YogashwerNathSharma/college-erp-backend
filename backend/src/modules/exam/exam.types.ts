@@ -1,6 +1,9 @@
+
 // ═══════════════════════════════════════════════════════
-// exam.types.ts
+// exam.types.ts — Original + New Feature Types
 // ═══════════════════════════════════════════════════════
+
+// ─────────────── ORIGINAL TYPES (UNTOUCHED) ───────────────
 
 export interface CreateExamInput {
   name: string;
@@ -45,3 +48,53 @@ export interface EnterMarksInput {
 export interface GenerateResultInput {
   examId: string;
 }
+
+// ─────────────── NEW TYPES (ADDED) ───────────────
+
+export interface ExamScheduleInput {
+  examId: string;
+  subjectId: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  roomId: string;
+}
+
+export interface UpdateExamScheduleInput {
+  examDate?: string;
+  startTime?: string;
+  endTime?: string;
+  roomId?: string;
+}
+
+export interface SeatingInput {
+  examScheduleId: string;
+  roomId: string;
+}
+
+export interface AdmitCardInput {
+  examId: string;
+  studentIds?: string[];
+}
+
+export interface QuestionPaperInput {
+  examId: string;
+  subjectId: string;
+  title: string;
+  fileUrl: string;
+}
+
+export interface InvigilatorInput {
+  examScheduleId: string;
+  teacherId: string;
+  role: "Chief" | "Assistant";
+}
+
+export interface GradeSettingInput {
+  grade: string;
+  minPercent: number;
+  maxPercent: number;
+  gradePoint: number;
+  remarks?: string;
+}
+

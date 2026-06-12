@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -310,9 +311,7 @@ const AttendanceReportPage = () => {
       {/* Print Header — only visible on print */}
       {reportData && (
         <div className="hidden print:block mb-4">
-          {/* Row 1: Logo + School Name + Print Info */}
           <div className="flex items-start justify-between">
-            {/* Logo Left */}
             <img
               src={(() => {
                 const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
@@ -323,43 +322,38 @@ const AttendanceReportPage = () => {
               alt="logo"
               className="w-12 h-12 object-contain"
             />
-
-            {/* Center — School Name + Address */}
-           <div className="text-center flex-1">
-  <h1 className="text-lg font-bold uppercase">
-    {JSON.parse(localStorage.getItem("tenant") || "{}").name || "SCHOOL NAME"}
-  </h1>
+            <div className="text-center flex-1 leading-tight">
+              <h1 className="text-lg font-bold uppercase leading-tight">
+                {JSON.parse(localStorage.getItem("tenant") || "{}").name || "SCHOOL NAME"}
+              </h1>
+              <p className="text-xs text-gray-600 leading-tight">
+                {JSON.parse(localStorage.getItem("tenant") || "{}").address || ""}
+              </p>
+              <p className="text-xs text-gray-600 leading-tight">
+                Ph: {JSON.parse(localStorage.getItem("tenant") || "{}").phone || ""} | Email: {JSON.parse(localStorage.getItem("tenant") || "{}").email || ""}
+              </p>
+              <p className="font-bold text-sm mt-1 underline leading-tight">
+                {reportType === "monthly" && "Monthly Attendance Report"}
+                {reportType === "datewise" && "Date-wise Attendance Report"}
+                {reportType === "yearly" && "Yearly Attendance Report"}
+                {reportType === "classwise" && "Class-wise Attendance Summary"}
+                {reportType === "school" && "Full School Attendance Report"}
+              </p>
+              <p className="text-xs text-gray-600 leading-tight">
+                {reportType !== "school" && `Class: ${getClassName()} ${getSectionName()} | `}
+                {reportType === "monthly" && `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
+                {reportType === "datewise" && `Date: ${new Date(selectedDate).toLocaleDateString("en-IN")}`}
+                {reportType === "yearly" && `Year: ${selectedYear}`}
+                {reportType === "classwise" && "Overall Summary"}
+                {reportType === "school" && `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
+              </p>
             </div>
-
-            {/* Right — Print Info */}
             <div className="text-right text-[10px] text-gray-500">
               <p><strong>Print By:</strong> {JSON.parse(localStorage.getItem("user") || "{}").name || "Admin"}</p>
               <p><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</p>
               <p><strong>Time:</strong> {new Date().toLocaleTimeString("en-IN")}</p>
             </div>
           </div>
-          {/* Report Title — BELOW address, ABOVE black line */}
-            <p className="font-bold text-sm mt-2 underline">
-                {reportType === "monthly" && "Monthly Attendance Report"}
-                {reportType === "datewise" && "Date-wise Attendance Report"}
-                {reportType === "yearly" && "Yearly Attendance Report"}
-                {reportType === "classwise" && "Class-wise Attendance Summary"}
-                {reportType === "school" && "Full School Attendance Report"}
-            </p>
-          <p className="text-xs text-gray-600 mt-0.5">
-            {reportType !== "school" &&
-            `Class: ${getClassName()} ${getSectionName()} | `}
-            {reportType === "monthly" &&
-            `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
-            {reportType === "datewise" &&
-            `Date: ${new Date(selectedDate).toLocaleDateString("en-IN")}`}
-            {reportType === "yearly" && `Year: ${selectedYear}`}
-            {reportType === "classwise" && "Overall Summary"}
-            {reportType === "school" &&
-            `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
-        </p>
-
-          {/* BLACK LINE — AFTER title */}
           <hr className="border-t-2 border-black mt-1 mb-2" />
         </div>
       )}
@@ -367,7 +361,6 @@ const AttendanceReportPage = () => {
       {/* MONTHLY REPORT — Day-wise Grid */}
       {reportType === "monthly" && reportData && (
         <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          {/* Heading — HIDE on print (already in print header) */}
           <div className="text-center mb-1 print:hidden">
             <h2 className="text-lg font-bold">Monthly Attendance Report</h2>
             <p className="text-sm text-gray-600">
@@ -424,7 +417,6 @@ const AttendanceReportPage = () => {
                   </tr>
                 ))}
               </tbody>
-              {/* Summary Row */}
               <tfoot>
                 <tr className="bg-gray-100 font-bold">
                   <td colSpan={3} className="border border-gray-400 px-2 py-1.5 text-right">
@@ -448,7 +440,6 @@ const AttendanceReportPage = () => {
       {/* DATE-WISE REPORT */}
       {reportType === "datewise" && reportData && (
         <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          {/* Heading — HIDE on print */}
           <div className="text-center mb-4 print:hidden">
             <h2 className="text-lg font-bold">Date-wise Attendance Report</h2>
             <p className="text-sm text-gray-600">
@@ -456,7 +447,7 @@ const AttendanceReportPage = () => {
             </p>
           </div>
 
-          {/* Summary */}
+          {/* Summary Cards */}
           <div className="grid grid-cols-4 gap-4 mb-4 print:hidden">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Total</p>
@@ -476,7 +467,6 @@ const AttendanceReportPage = () => {
             </div>
           </div>
 
-          {/* Print-only summary line */}
           <div className="hidden print:flex print:justify-between print:text-xs print:mb-2">
             <span>Total: {reportData.total}</span>
             <span>Present: {reportData.present}</span>
@@ -516,7 +506,6 @@ const AttendanceReportPage = () => {
       {/* YEARLY REPORT */}
       {reportType === "yearly" && reportData && (
         <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          {/* Heading — HIDE on print */}
           <div className="text-center mb-4 print:hidden">
             <h2 className="text-lg font-bold">Yearly Attendance Report</h2>
             <p className="text-sm text-gray-600">
@@ -524,53 +513,54 @@ const AttendanceReportPage = () => {
             </p>
           </div>
 
-          <table className="w-full text-sm border-collapse border border-gray-400">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 px-3 py-2 text-left">#</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Roll No</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Student Name</th>
-                {monthNames.map((m, i) => (
-                  <th key={i} className="border border-gray-400 px-2 py-2 text-center text-xs">
-                    {m.slice(0, 3)}
-                  </th>
-                ))}
-                <th className="border border-gray-400 px-2 py-2 text-center bg-green-50">Total P</th>
-                <th className="border border-gray-400 px-2 py-2 text-center bg-red-50">Total A</th>
-                <th className="border border-gray-400 px-2 py-2 text-center bg-blue-50">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.students?.map((student: any, index: number) => (
-                <tr key={student.studentId} className="hover:bg-gray-50">
-                  <td className="border border-gray-400 px-3 py-1.5">{index + 1}</td>
-                  <td className="border border-gray-400 px-3 py-1.5">{student.rollNumber || "—"}</td>
-                  <td className="border border-gray-400 px-3 py-1.5 font-medium">{student.name}</td>
-                  {student.months?.map((m: any, i: number) => (
-                    <td key={i} className="border border-gray-400 px-2 py-1.5 text-center text-xs">
-                      {m.present}/{m.total}
-                    </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse border border-gray-400">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-400 px-3 py-2 text-left">#</th>
+                  <th className="border border-gray-400 px-3 py-2 text-left">Roll No</th>
+                  <th className="border border-gray-400 px-3 py-2 text-left">Student Name</th>
+                  {monthNames.map((m, i) => (
+                    <th key={i} className="border border-gray-400 px-2 py-2 text-center text-xs">
+                      {m.slice(0, 3)}
+                    </th>
                   ))}
-                  <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-green-600 bg-green-50">
-                    {student.totalPresent}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-red-600 bg-red-50">
-                    {student.totalAbsent}
-                  </td>
-                  <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-blue-600 bg-blue-50">
-                    {student.percentage}%
-                  </td>
+                  <th className="border border-gray-400 px-2 py-2 text-center bg-green-50">Total P</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center bg-red-50">Total A</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center bg-blue-50">%</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {reportData.students?.map((student: any, index: number) => (
+                  <tr key={student.studentId} className="hover:bg-gray-50">
+                    <td className="border border-gray-400 px-3 py-1.5">{index + 1}</td>
+                    <td className="border border-gray-400 px-3 py-1.5">{student.rollNumber || "—"}</td>
+                    <td className="border border-gray-400 px-3 py-1.5 font-medium">{student.name}</td>
+                    {student.months?.map((m: any, i: number) => (
+                      <td key={i} className="border border-gray-400 px-2 py-1.5 text-center text-xs">
+                        {m.total > 0 ? `${m.present}/${m.total}` : "—"}
+                      </td>
+                    ))}
+                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-green-600 bg-green-50">
+                      {student.totalPresent}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-red-600 bg-red-50">
+                      {student.totalAbsent}
+                    </td>
+                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-blue-600 bg-blue-50">
+                      {student.percentage}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* CLASS-WISE SUMMARY */}
       {reportType === "classwise" && reportData && (
         <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          {/* Heading — HIDE on print */}
           <div className="text-center mb-4 print:hidden">
             <h2 className="text-lg font-bold">Class-wise Attendance Summary</h2>
             <p className="text-sm text-gray-600">
@@ -630,7 +620,6 @@ const AttendanceReportPage = () => {
       {/* FULL SCHOOL REPORT */}
       {reportType === "school" && reportData && (
         <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          {/* Heading — HIDE on print */}
           <div className="text-center mb-4 print:hidden">
             <h2 className="text-lg font-bold">Full School Attendance Report</h2>
             <p className="text-sm text-gray-600">
@@ -658,7 +647,6 @@ const AttendanceReportPage = () => {
             </div>
           </div>
 
-          {/* Print-only summary line */}
           <div className="hidden print:flex print:justify-between print:text-xs print:mb-2">
             <span>Total Students: {reportData.totalStudents}</span>
             <span>Avg Present: {reportData.avgPresent}%</span>
@@ -716,7 +704,6 @@ const AttendanceReportPage = () => {
           <p className="text-gray-500">Select filters and click "Generate Report" to view attendance data</p>
         </div>
       )}
-
     </div>
   );
 };

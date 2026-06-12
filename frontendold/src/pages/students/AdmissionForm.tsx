@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -11,7 +12,6 @@ import {
   FiUpload,
   FiX,
   FiFileText,
-  FiCalendar,
   FiShield,
 } from "react-icons/fi";
 
@@ -516,11 +516,6 @@ export default function AdmissionForm() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Mother's Occupation</label>
                   <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
-
-                {/* Divider */}
-                <div className="md:col-span-3 border-t pt-4 mt-2">
-                  <p className="text-sm font-medium text-gray-500 mb-4">Guardian (if different from parents)</p>
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Guardian Name</label>
                   <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
@@ -530,144 +525,85 @@ export default function AdmissionForm() {
                   <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Relation</label>
-                  <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Uncle, Grandfather" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Relation to Student</label>
+                  <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Uncle, Aunt" />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Step 4: Documents & Admission */}
+          {/* Step 4: Documents */}
           <div className={activeStep === 4 ? "block" : "hidden"}>
-            <div className="space-y-6">
-              {/* Admission Details */}
-              <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <FiCalendar className="text-indigo-600 text-lg" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-800">Admission Details</h2>
+            <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                  <FiFileText className="text-indigo-600 text-lg" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Admission Date</label>
-                    <input type="date" name="admissionDate" value={formData.admissionDate} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-                      <input type="checkbox" name="isCustomAdmissionNo" checked={formData.isCustomAdmissionNo} onChange={handleChange} className="rounded" />
-                      Custom Admission No?
-                    </label>
-                    <input type="text" name="admissionNo" value={formData.admissionNo} onChange={handleChange} disabled={!formData.isCustomAdmissionNo} placeholder={formData.isCustomAdmissionNo ? "Enter custom no" : "Auto-generated"} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 disabled:bg-gray-50 disabled:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Roll Number</label>
-                    <input type="text" name="rollNumber" value={formData.rollNumber} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Optional" />
-                  </div>
-                </div>
+                <h2 className="text-xl font-bold text-gray-800">Upload Documents</h2>
               </div>
 
-              {/* Document Upload */}
-              <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
-                      <FiFileText className="text-rose-600 text-lg" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-800">Documents</h2>
-                      <p className="text-sm text-gray-500">Upload Aadhar card, TC, Birth certificate etc.</p>
-                    </div>
+              <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FiUpload className="text-blue-600 text-xl" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => docInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all font-medium text-sm"
-                  >
-                    <FiUpload /> Upload Files
-                  </button>
+                  <div>
+                    <p className="font-medium text-gray-700">Upload Supporting Documents</p>
+                    <p className="text-sm text-gray-500">Birth Certificate, Aadhar, Transfer Certificate, etc.</p>
+                  </div>
                   <input ref={docInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={handleDocUpload} className="hidden" />
-                </div>
+                </label>
+              </div>
 
-                {documents.length === 0 ? (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-                    <FiUpload className="mx-auto text-3xl text-gray-300 mb-2" />
-                    <p className="text-gray-400 font-medium">No documents uploaded yet</p>
-                    <p className="text-sm text-gray-300 mt-1">PDF, JPG, PNG, DOC • Max 5MB each</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {documents.map((doc, i) => (
-                      <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
-                        <div className="w-10 h-10 bg-white rounded-lg border flex items-center justify-center">
-                          <FiFileText className="text-gray-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-700 truncate">{doc.name}</p>
-                          <p className="text-xs text-gray-400">{(doc.file.size / 1024).toFixed(1)} KB</p>
-                        </div>
-                        <select
-                          value={doc.type}
-                          onChange={(e) => updateDocType(i, e.target.value)}
-                          className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500"
-                        >
+              {documents.length > 0 && (
+                <div className="space-y-3">
+                  {documents.map((doc, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{doc.name}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <select value={doc.type} onChange={(e) => updateDocType(idx, e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
+                          <option value="other">Other</option>
                           <option value="aadhar_card">Aadhar Card</option>
                           <option value="birth_certificate">Birth Certificate</option>
-                          <option value="tc">Transfer Certificate (TC)</option>
+                          <option value="tc">Transfer Certificate</option>
                           <option value="marksheet">Marksheet</option>
-                          <option value="photo">Photo</option>
-                          <option value="other">Other</option>
                         </select>
-                        <button type="button" onClick={() => removeDocument(i)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                          <FiX />
-                        </button>
+                        <button type="button" onClick={() => removeDocument(idx)} className="text-red-600 hover:text-red-700">Remove</button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Navigation + Submit */}
-          <div className="flex justify-between items-center mt-8 bg-white rounded-2xl p-4 shadow-sm border">
+          {/* Navigation & Submit */}
+          <div className="flex justify-between gap-4 mt-8">
             <button
               type="button"
-              onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
+              onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
               disabled={activeStep === 0}
-              className="px-5 py-2.5 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium"
+              className="px-6 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 disabled:opacity-50 font-medium"
             >
               ← Previous
             </button>
-
-            <div className="flex items-center gap-2">
-              {steps.map((_, i) => (
-                <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${i === activeStep ? "bg-blue-600 w-6" : "bg-gray-200"}`} />
-              ))}
-            </div>
-
-            {activeStep < steps.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => setActiveStep((prev) => Math.min(steps.length - 1, prev + 1))}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-medium shadow-lg shadow-blue-200"
-              >
-                Next →
-              </button>
-            ) : (
+            {activeStep === steps.length - 1 ? (
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 transition-all font-medium shadow-lg shadow-blue-200"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium"
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Admitting...
-                  </span>
-                ) : (
-                  "✓ Admit Student"
-                )}
+                {loading ? "Creating..." : "Complete Admission"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveStep(Math.min(steps.length - 1, activeStep + 1))}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
+              >
+                Next →
               </button>
             )}
           </div>

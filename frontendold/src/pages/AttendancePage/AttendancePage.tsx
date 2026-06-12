@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -26,7 +27,7 @@ interface SectionOption {
 interface AcademicYear {
   id: string;
   name: string;
-  isActive: boolean;
+  isCurrent: boolean;
 }
 
 const AttendancePage = () => {
@@ -75,8 +76,7 @@ const AttendancePage = () => {
       });
       const years = res.data.data || [];
       setAcademicYears(years);
-      // Auto-select active year
-      const active = years.find((y: AcademicYear) => y.isActive);
+      const active = years.find((y: AcademicYear) => y.isCurrent);
       if (active) {
         setSelectedAcademicYear(active.id);
       }
@@ -222,7 +222,7 @@ const AttendancePage = () => {
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">📋 Attendance Register</h1>
+        <h1 className="text-2xl font-bold text-gray-800">📋 Mark Attendance</h1>
         <p className="text-gray-500 mt-1">Mark daily attendance class-wise</p>
       </div>
 
@@ -242,7 +242,7 @@ const AttendancePage = () => {
               <option value="">Select Year</option>
               {academicYears.map((ay) => (
                 <option key={ay.id} value={ay.id}>
-                  {ay.name} {ay.isActive ? "(Active)" : ""}
+                  {ay.name} {ay.isCurrent ? "(Current)" : ""}
                 </option>
               ))}
             </select>

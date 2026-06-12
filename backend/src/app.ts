@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
@@ -5,6 +6,7 @@ import path from "path";
 
 import { swaggerSpec } from "./config/swagger";
 import { rateLimiter } from "./middleware/rateLimit";
+import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
 
 //////////////////////////////////////////////////////
 // ROUTES
@@ -58,6 +60,7 @@ import subscriptionPaymentRoutes from "./modules/subscription-payment/subscripti
 // EXAM MODULE
 import examRoutes from "./modules/exam/exam.routes";
 import gradeRoutes from "./modules/grade/grade.routes";
+import roomRoutes from "./modules/room/room.routes";
 
 
 const app = express();
@@ -95,13 +98,24 @@ app.use(
 );
 
 //////////////////////////////////////////////////////
-// CORE ROUTES
+// 🔓 ROUTES THAT SKIP SUBSCRIPTION CHECK
+// (Auth, Subscriptions, Payments, Settings, SuperAdmin)
 //////////////////////////////////////////////////////
 
 app.use("/api", siteRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/tenant", tenantRoutes);
-app.use("/api/academic", academicRoutes);
+app.use("/api/super-admin", superAdminRoutes);
+app.use("/api/reports", superadminreportsRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/subscription-payments", subscriptionPaymentRoutes);
+
+//////////////////////////////////////////////////////
+// 🔥 SUBSCRIPTION CHECK MIDDLEWARE
+// All routes BELOW this will be blocked if expired
+//////////////////////////////////////////////////////
+
+app.use(subscriptionCheckMiddleware);
 
 //////////////////////////////////////////////////////
 // DASHBOARD
@@ -113,6 +127,7 @@ app.use("/api/dashboard", dashboardRoutes);
 // ACADEMIC FLOW
 //////////////////////////////////////////////////////
 
+app.use("/api/academic", academicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
 app.use("/api/students", studentRoutes);
@@ -154,25 +169,12 @@ app.use("/api/enrollment", enrollmentRoutes);
 app.use("/api/fees", feesRoutes);
 
 //////////////////////////////////////////////////////
-// SUPER ADMIN
-//////////////////////////////////////////////////////
-
-app.use("/api/reports", superadminreportsRoutes);
-app.use("/api/super-admin", superAdminRoutes);
-
-//////////////////////////////////////////////////////
-// SUBSCRIPTIONS
-//////////////////////////////////////////////////////
-
-app.use("/api/subscriptions", subscriptionRoutes);
-app.use("/api/subscription-payments", subscriptionPaymentRoutes);
-
-//////////////////////////////////////////////////////
 // EXAM MODULE
 //////////////////////////////////////////////////////
 
 app.use("/api/exam", examRoutes);
 app.use("/api/grade", gradeRoutes);
+app.use("/api/room", roomRoutes);
 
 //////////////////////////////////////////////////////
 // SWAGGER DOCS
@@ -181,3 +183,4 @@ app.use("/api/grade", gradeRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 export default app;
+

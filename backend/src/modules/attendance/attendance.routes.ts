@@ -1,6 +1,7 @@
 
 import express from "express";
 import {
+  getDashboardStats,
   markAttendance,
   updateAttendance,
   getClassAttendance,
@@ -12,6 +13,9 @@ import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 
 const router = express.Router();
+
+// GET /api/attendance/dashboard?academicYearId= — Dashboard stats
+router.get("/dashboard", authMiddleware, resolveTenant, getDashboardStats);
 
 // POST /api/attendance/mark — Bulk mark attendance (first time)
 router.post("/mark", authMiddleware, resolveTenant, markAttendance);

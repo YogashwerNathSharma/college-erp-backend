@@ -25,6 +25,7 @@ interface AcademicYear {
   startDate: string;
   endDate: string;
   isActive: boolean;
+  isCurrent: boolean;
   isDeleted: boolean;
   deletedAt: string | null;
   tenantId: string;
@@ -177,7 +178,6 @@ const AcademicYearPage: React.FC = () => {
       setSubmitting(true);
 
       if (editingYear) {
-        // Update existing
         const response = await api.put<ApiResponse<AcademicYear>>(
           `/api/academic/${editingYear.id}`,
           {
@@ -190,7 +190,6 @@ const AcademicYearPage: React.FC = () => {
           setSuccessMsg(`Academic year "${formData.name}" updated successfully!`);
         }
       } else {
-        // Create new
         const response = await api.post<ApiResponse<AcademicYear>>(
           "/api/academic",
           {
@@ -341,10 +340,7 @@ const AcademicYearPage: React.FC = () => {
   const LoadingSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm animate-pulse"
-        >
+        <div key={i} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm animate-pulse">
           <div className="flex items-center justify-between mb-4">
             <div className="h-6 w-24 bg-gray-200 rounded-lg" />
             <div className="h-6 w-16 bg-gray-200 rounded-full" />
@@ -366,17 +362,11 @@ const AcademicYearPage: React.FC = () => {
       <div className="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center mb-5">
         <GraduationCap className="w-10 h-10 text-indigo-400" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">
-        No Academic Years Found
-      </h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-2">No Academic Years Found</h3>
       <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
-        Get started by creating your first academic year. This will be used
-        across the ERP for organizing semesters, exams, and more.
+        Get started by creating your first academic year.
       </p>
-      <button
-        onClick={openCreateModal}
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-      >
+      <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
         <Plus className="w-4 h-4" />
         Add Academic Year
       </button>
@@ -387,40 +377,28 @@ const AcademicYearPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 lg:p-8">
-      {/* ─── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Academic Year
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage academic years and set the currently active session.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Academic Year</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage academic years and set the currently active session.</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
-          {/* Recycle Bin Toggle */}
           <button
             onClick={() => setShowRecycleBin(!showRecycleBin)}
             className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-              showRecycleBin
-                ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
-                : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              showRecycleBin ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
             }`}
           >
             <Archive className="w-4 h-4" />
             Recycle Bin
             {deletedYears.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                {deletedYears.length}
-              </span>
+              <span className="ml-1 px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">{deletedYears.length}</span>
             )}
           </button>
 
           {!loading && academicYears.length > 0 && !showRecycleBin && (
-            <button
-              onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-            >
+            <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
               <Plus className="w-4 h-4" />
               Add Academic Year
             </button>
@@ -428,17 +406,12 @@ const AcademicYearPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── Toast Messages ─────────────────────────────────────────────────── */}
+      {/* Toast Messages */}
       {successMsg && (
         <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm">
           <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
           <span className="font-medium">{successMsg}</span>
-          <button
-            onClick={() => setSuccessMsg(null)}
-            className="ml-auto text-green-600 hover:text-green-800"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={() => setSuccessMsg(null)} className="ml-auto text-green-600 hover:text-green-800"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -446,26 +419,17 @@ const AcademicYearPage: React.FC = () => {
         <div className="mb-6 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
           <span className="font-medium">{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-600 hover:text-red-800"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <button onClick={() => setError(null)} className="ml-auto text-red-600 hover:text-red-800"><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* ─── Recycle Bin View ───────────────────────────────────────────────── */}
+      {/* Recycle Bin View */}
       {showRecycleBin ? (
         <div>
           <div className="flex items-center gap-3 mb-6">
             <Archive className="w-5 h-5 text-orange-500" />
-            <h2 className="text-lg font-semibold text-gray-800">
-              Recycle Bin
-            </h2>
-            <span className="text-sm text-gray-500">
-              ({deletedYears.length} items)
-            </span>
+            <h2 className="text-lg font-semibold text-gray-800">Recycle Bin</h2>
+            <span className="text-sm text-gray-500">({deletedYears.length} items)</span>
           </div>
 
           {deletedYears.length === 0 ? (
@@ -478,63 +442,38 @@ const AcademicYearPage: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {deletedYears.map((year) => (
-                <div
-                  key={year.id}
-                  className="rounded-2xl border border-orange-200 bg-orange-50/50 p-6 shadow-sm"
-                >
+                <div key={year.id} className="rounded-2xl border border-orange-200 bg-orange-50/50 p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-orange-500" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-700">
-                        {year.name}
-                      </h3>
+                      <h3 className="text-lg font-semibold text-gray-700">{year.name}</h3>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      Deleted
-                    </span>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">Deleted</span>
                   </div>
-
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">Start Date</span>
-                      <span className="font-medium text-gray-600">
-                        {formatDate(year.startDate)}
-                      </span>
+                      <span className="font-medium text-gray-600">{formatDate(year.startDate)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500">End Date</span>
-                      <span className="font-medium text-gray-600">
-                        {formatDate(year.endDate)}
-                      </span>
+                      <span className="font-medium text-gray-600">{formatDate(year.endDate)}</span>
                     </div>
                     {year.deletedAt && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Deleted On</span>
-                        <span className="font-medium text-red-600">
-                          {formatDate(year.deletedAt)}
-                        </span>
+                        <span className="font-medium text-red-600">{formatDate(year.deletedAt)}</span>
                       </div>
                     )}
                   </div>
-
                   <button
                     onClick={() => handleRestore(year.id, year.name)}
                     disabled={actionLoading === year.id}
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors disabled:opacity-60"
                   >
-                    {actionLoading === year.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Restoring…
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw className="w-4 h-4" />
-                        Restore
-                      </>
-                    )}
+                    {actionLoading === year.id ? (<><Loader2 className="w-4 h-4 animate-spin" />Restoring…</>) : (<><RotateCcw className="w-4 h-4" />Restore</>)}
                   </button>
                 </div>
               ))}
@@ -542,7 +481,6 @@ const AcademicYearPage: React.FC = () => {
           )}
         </div>
       ) : (
-        /* ─── Main Content ──────────────────────────────────────────────────── */
         <>
           {loading ? (
             <LoadingSkeleton />
@@ -552,27 +490,26 @@ const AcademicYearPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {academicYears
                 .sort((a, b) => {
+                  if (a.isCurrent && !b.isCurrent) return -1;
+                  if (!a.isCurrent && b.isCurrent) return 1;
                   if (a.isActive && !b.isActive) return -1;
                   if (!a.isActive && b.isActive) return 1;
-                  return (
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime()
-                  );
+                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                 })
                 .map((year) => (
                   <div
                     key={year.id}
                     className={`relative rounded-2xl border p-6 shadow-sm transition-all duration-200 ${
-                      year.isActive
+                      year.isCurrent || year.isActive
                         ? "bg-gradient-to-br from-indigo-50/80 to-white border-indigo-300 ring-1 ring-indigo-200"
                         : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
                     }`}
                   >
-                    {/* Active indicator ribbon */}
-                    {year.isActive && (
+                    {/* Current Year Ribbon */}
+                    {(year.isCurrent || year.isActive) && (
                       <div className="absolute top-0 right-6 -translate-y-0">
                         <div className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-b-lg shadow-sm">
-                          Current
+                          {year.isCurrent ? "Current" : "Active"}
                         </div>
                       </div>
                     )}
@@ -580,32 +517,18 @@ const AcademicYearPage: React.FC = () => {
                     {/* Card Header */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            year.isActive
-                              ? "bg-indigo-100 text-indigo-600"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          year.isCurrent || year.isActive ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-500"
+                        }`}>
                           <Calendar className="w-5 h-5" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {year.name}
-                        </h3>
+                        <h3 className="text-lg font-semibold text-gray-900">{year.name}</h3>
                       </div>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          year.isActive
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            year.isActive ? "bg-green-500" : "bg-gray-400"
-                          }`}
-                        />
-                        {year.isActive ? "Active" : "Inactive"}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        year.isCurrent || year.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${year.isCurrent || year.isActive ? "bg-green-500" : "bg-gray-400"}`} />
+                        {year.isCurrent ? "Current" : year.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
 
@@ -613,25 +536,18 @@ const AcademicYearPage: React.FC = () => {
                     <div className="space-y-2 mb-5">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Start Date</span>
-                        <span className="font-medium text-gray-700">
-                          {formatDate(year.startDate)}
-                        </span>
+                        <span className="font-medium text-gray-700">{formatDate(year.startDate)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">End Date</span>
-                        <span className="font-medium text-gray-700">
-                          {formatDate(year.endDate)}
-                        </span>
+                        <span className="font-medium text-gray-700">{formatDate(year.endDate)}</span>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                      {/* Toggle Status Button */}
                       <button
-                        onClick={() =>
-                          handleToggleStatus(year.id, year.name, year.isActive)
-                        }
+                        onClick={() => handleToggleStatus(year.id, year.name, year.isActive)}
                         disabled={actionLoading === year.id}
                         className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                           year.isActive
@@ -639,15 +555,10 @@ const AcademicYearPage: React.FC = () => {
                             : "text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100"
                         }`}
                       >
-                        {actionLoading === year.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Power className="w-4 h-4" />
-                        )}
-                        {year.isActive ? "Deactivate" : "Activate"}
+                        {actionLoading === year.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+                        {year.isActive ? "Deactivate" : "Set Current"}
                       </button>
 
-                      {/* Edit Button */}
                       <button
                         onClick={() => handleEdit(year)}
                         className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
@@ -656,8 +567,7 @@ const AcademicYearPage: React.FC = () => {
                         <Edit3 className="w-4 h-4" />
                       </button>
 
-                      {/* Delete Button (only if not active) */}
-                      {!year.isActive && (
+                      {!year.isActive && !year.isCurrent && (
                         <button
                           onClick={() => handleSoftDelete(year.id, year.name)}
                           disabled={actionLoading === year.id}
@@ -675,24 +585,11 @@ const AcademicYearPage: React.FC = () => {
         </>
       )}
 
-      {/* ─── Modal (Create / Edit) ──────────────────────────────────────────── */}
+      {/* Modal (Create / Edit) */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => {
-              if (!submitting) {
-                setShowModal(false);
-                setEditingYear(null);
-                setFormError(null);
-              }
-            }}
-          />
-
-          {/* Modal Content */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!submitting) { setShowModal(false); setEditingYear(null); setFormError(null); } }} />
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -702,21 +599,11 @@ const AcademicYearPage: React.FC = () => {
                   {editingYear ? "Edit Academic Year" : "Add Academic Year"}
                 </h2>
               </div>
-              <button
-                onClick={() => {
-                  if (!submitting) {
-                    setShowModal(false);
-                    setEditingYear(null);
-                    setFormError(null);
-                  }
-                }}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-              >
+              <button onClick={() => { if (!submitting) { setShowModal(false); setEditingYear(null); setFormError(null); } }} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Body */}
             <form onSubmit={handleCreate} className="px-6 py-5 space-y-5">
               {formError && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -725,95 +612,27 @@ const AcademicYearPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Academic Year Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  placeholder="e.g. 2025-26"
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow placeholder:text-gray-400"
-                  disabled={submitting}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Academic Year Name</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g. 2025-26" className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow placeholder:text-gray-400" disabled={submitting} />
               </div>
 
-              {/* Start Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      startDate: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                  disabled={submitting}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
+                <input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" disabled={submitting} />
               </div>
 
-              {/* End Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      endDate: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
-                  disabled={submitting}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">End Date</label>
+                <input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" disabled={submitting} />
               </div>
 
-              {/* Actions */}
               <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingYear(null);
-                    setFormError(null);
-                  }}
-                  disabled={submitting}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-60"
-                >
+                <button type="button" onClick={() => { setShowModal(false); setEditingYear(null); setFormError(null); }} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-60">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {editingYear ? "Updating…" : "Creating…"}
-                    </>
-                  ) : (
-                    <>
-                      {editingYear ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Plus className="w-4 h-4" />
-                      )}
-                      {editingYear ? "Update" : "Create"}
-                    </>
-                  )}
+                <button type="submit" disabled={submitting} className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                  {submitting ? (<><Loader2 className="w-4 h-4 animate-spin" />{editingYear ? "Updating…" : "Creating…"}</>) : (<>{editingYear ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}{editingYear ? "Update" : "Create"}</>)}
                 </button>
               </div>
             </form>
@@ -825,3 +644,4 @@ const AcademicYearPage: React.FC = () => {
 };
 
 export default AcademicYearPage;
+

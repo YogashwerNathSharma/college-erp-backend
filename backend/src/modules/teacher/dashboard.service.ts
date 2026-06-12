@@ -1,6 +1,7 @@
 
 import prisma from "../../utils/prisma";
 
+
 //////////////////////////////////////////////////////
 // GET DASHBOARD STATS
 //////////////////////////////////////////////////////
@@ -110,3 +111,5 @@ export const getRecentTeachers = async (tenantId: string) => {
     createdAt: t.createdAt,
   }));
 };
+
+

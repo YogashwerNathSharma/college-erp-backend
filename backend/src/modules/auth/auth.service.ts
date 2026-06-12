@@ -1,3 +1,5 @@
+
+
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/jwt";
@@ -23,18 +25,9 @@ export const registerService = async (data: any) => {
     role = "ADMIN";
   }
 
-  // 🔥 FIX: clean password always
   const finalPassword = (password || "123456").trim();
 
   const hashed = await bcrypt.hash(finalPassword, 10);
-
-  console.log("REGISTER DEBUG:", {
-    email,
-    role,
-    tenantId,
-    password: finalPassword,
-    hash: hashed,
-  });
 
   const user = await prisma.user.create({
     data: {
@@ -53,7 +46,7 @@ export const registerService = async (data: any) => {
 };
 
 /////////////////////////
-// LOGIN SERVICE
+// LOGIN SERVICE (WITH SUBSCRIPTION CHECK — FIXED)
 /////////////////////////
 export const loginService = async (email: string, password: string) => {
   const normalizedEmail = email.toLowerCase().trim();
@@ -69,6 +62,54 @@ export const loginService = async (email: string, password: string) => {
 
   if (!isMatch) throw new Error("Invalid credentials");
 
+  // ✅ SUBSCRIPTION CHECK (Skip for SUPER_ADMIN)
+  if (user.role !== "SUPER_ADMIN") {
+
+    // 🔥 FIX: query by tenantId field, NOT by id
+    const activeSubscription = await prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId: user.tenantId!,
+        isActive: true,
+        status: "ACTIVE",
+      },
+    });
+
+    // Check if subscription exists and is not expired
+    if (!activeSubscription || new Date(activeSubscription.endDate) < new Date()) {
+      // If subscription exists but expired, mark it
+      if (activeSubscription) {
+        await prisma.tenantSubscription.update({
+          where: { id: activeSubscription.id },
+          data: {
+            isActive: false,
+            status: "EXPIRED",
+          },
+        });
+      }
+
+      // Get tenant info for the expiry page
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: user.tenantId as string },
+        select: { id: true, name: true },
+      });
+
+      // Still generate token (needed for payment page API calls)
+      const token = generateToken({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: user.role,
+      });
+
+      return {
+        user: { ...user, password: undefined },
+        token,
+        forcePasswordChange: false,
+        subscriptionExpired: true,
+        tenant,
+      };
+    }
+  }
+
   const token = generateToken({
     userId: user.id,
     tenantId: user.tenantId,
@@ -81,5 +122,7 @@ export const loginService = async (email: string, password: string) => {
     user: safeUser,
     token,
     forcePasswordChange: user.isFirstLogin || false,
+    subscriptionExpired: false,
   };
 };
+

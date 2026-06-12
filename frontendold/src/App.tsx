@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter,
   Routes,
@@ -5,6 +6,7 @@ import {
   Navigate,
   Outlet,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 
 import { useState, useEffect } from "react";
@@ -32,10 +34,15 @@ import PrintStudents from "./pages/students/PrintStudents";
 import RecycleBinPage from "./pages/students/RecycleBinPage";
 import EditStudentPage from "./pages/students/EditStudentPage";
 import StudentIdCardPage from "./pages/students/StudentIdCard";
+import StudentReportsPage from "./pages/students/StudentReportsPage";
+import AdminStudentDashboard from "./pages/students/AdminStudentDashboard";
+import StudentDashboard from "./pages/students/StudentDashboard";
 
 // Subscriptions
 import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
-
+// 🔥 NEW: Subscription Expired Page
+import SubscriptionExpired from "./pages/subscriptions/SubscriptionExpired";
+import RegisterSchool from "./pages/RegisterSchool";
 // Tenant Admin Settings
 import SettingsPage from "./pages/SettingsPage";
 
@@ -94,11 +101,19 @@ import MarksEntry from "./pages/exams/MarksEntry";
 import Results from "./pages/exams/Results";
 import ReportCard from "./pages/exams/ReportCard";
 import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
+// Exam Module (NEW Pages)
+import ExamSchedule from "./pages/exams/ExamSchedule";
+import SeatingArrangement from "./pages/exams/SeatingArrangement";
+import AdmitCard from "./pages/exams/AdmitCard";
+import QuestionPaper from "./pages/exams/QuestionPaper";
+import InvigilatorAssignment from "./pages/exams/InvigilatorAssignment";
+import ExamDashboard from "./pages/exams/ExamDashboard";
+import ExamReports from "./pages/exams/ExamReports";
 
 // Attendance
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
-
+import AttendanceDashboardPage from "./pages/AttendancePage/AttendanceDashboardPage";
 
 //////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
@@ -113,6 +128,22 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+// 🔥 NEW: Response interceptor — auto-redirect on subscription expired
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (
+      error?.response?.status === 403 &&
+      error?.response?.data?.subscriptionExpired === true
+    ) {
+      // Set flag and redirect
+      localStorage.setItem("subscriptionExpired", "true");
+      window.location.href = "/subscription-expired";
+    }
+    return Promise.reject(error);
+  }
+);
+
 //////////////////////////////////////////////////////
 // Protected Route
 //////////////////////////////////////////////////////
@@ -122,6 +153,12 @@ function ProtectedRoute() {
 
   if (!token) {
     return <Navigate to="/" state={{ from: location }} replace />;
+  }
+
+  // 🔥 If subscription expired, only allow /subscription-expired
+  const isExpired = localStorage.getItem("subscriptionExpired") === "true";
+  if (isExpired && location.pathname !== "/subscription-expired") {
+    return <Navigate to="/subscription-expired" replace />;
   }
 
   return <Outlet />;
@@ -208,19 +245,27 @@ export default function App() {
         {/* ===== PUBLIC ROUTES ===== */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-
+        <Route path="/register-school" element={<RegisterSchool />} />
         {/* ===== PROTECTED ROUTES ===== */}
         <Route element={<ProtectedRoute />}>
 
-          {/* ─────────────────────────────────────────── */}
+          {/* 🔥 SUBSCRIPTION EXPIRED PAGE (No Sidebar/Navbar) */}
+          <Route path="/subscription-expired" element={<SubscriptionExpired />} />
+
+          {/* ─────────────────────────────────────────────── */}
           {/* PRINT ROUTES — No Sidebar, No Navbar       */}
-          {/* ─────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────── */}
           <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
           <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
-          {/* ─────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────── */}
+          {/* STUDENT PORTAL — Separate Layout (own sidebar) */}
+          {/* ─────────────────────────────────────────────── */}
+          <Route path="/student-portal" element={<StudentDashboard />} />
+
+          {/* ─────────────────────────────────────────────── */}
           {/* NORMAL ROUTES — With Sidebar + Navbar      */}
-          {/* ─────────────────────────────────────────── */}
+          {/* ─────────────────────────────────────────────── */}
           <Route element={<Layout />}>
             {/* DASHBOARD */}
             <Route path="/dashboard" element={<RoleDashboard />} />
@@ -238,10 +283,12 @@ export default function App() {
             <Route path="/settings" element={<RoleSettings />} />
 
             {/* ATTENDANCE */}
+            <Route path="/attendance-dashboard" element={<AttendanceDashboardPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/attendance-report" element={<AttendanceReportPage />} />
 
             {/* STUDENT MODULE */}
+            <Route path="/student-dashboard" element={<AdminStudentDashboard />} />
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/students/new-admission" element={<AdmissionForm />} />
             <Route path="/students/old-entry" element={<OldStudentEntry />} />
@@ -250,6 +297,7 @@ export default function App() {
             <Route path="/students/print" element={<PrintStudents />} />
             <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
             <Route path="/students/:id/edit" element={<EditStudentPage />} />
+            <Route path="/students/reports" element={<StudentReportsPage />} />
             <Route path="/students/id-card" element={<StudentIdCardPage />} />
 
             {/* ACADEMIC */}
@@ -258,9 +306,9 @@ export default function App() {
             <Route path="/Sections" element={<Sections />} />
             <Route path="/subjects" element={<SubjectsPage />} />
 
-            {/* ─────────────────────────────────────────── */}
+            {/* ─────────────────────────────────────────────── */}
             {/* TEACHER MODULE (Complete)                   */}
-            {/* ─────────────────────────────────────────── */}
+            {/* ─────────────────────────────────────────────── */}
             <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/teachers/add" element={<AddEditTeacher />} />
@@ -304,6 +352,14 @@ export default function App() {
             <Route path="/exams/:id/results" element={<Results />} />
             <Route path="/exams/:examId/report-card/:studentId" element={<ReportCard />} />
             <Route path="/exams" element={<ExamList />} />
+            <Route path="/exam-dashboard" element={<ExamDashboard />} />
+            <Route path="/exam-schedule/:id" element={<ExamSchedule />} />
+            <Route path="/exam-seating/:id" element={<SeatingArrangement />} />
+            <Route path="/exam-admit-cards/:id" element={<AdmitCard />} />
+            <Route path="/exam-question-papers/:id" element={<QuestionPaper />} />
+            <Route path="/exam-invigilators/:id" element={<InvigilatorAssignment />} />
+            <Route path="/exam-reports" element={<ExamReports />} />
+
           </Route>
         </Route>
 
@@ -313,3 +369,4 @@ export default function App() {
     </BrowserRouter>
   );
 }
+

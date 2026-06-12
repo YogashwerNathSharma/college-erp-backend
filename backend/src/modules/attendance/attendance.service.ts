@@ -1,4 +1,5 @@
 
+
 import prisma from "../../config/prisma";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
 
@@ -11,8 +12,6 @@ export const markAttendanceService = async (
 ) => {
   const { classId, sectionId, academicYearId, date, students } = data;
   const attendanceDate = new Date(date);
-
-  // Set time to start of day for consistent comparison
   attendanceDate.setHours(0, 0, 0, 0);
 
   const attendanceData: any[] = [];
@@ -79,20 +78,18 @@ export const updateAttendanceService = async (
     });
 
     if (existing) {
-      // Update existing record
       await prisma.attendance.update({
         where: { id: existing.id },
         data: { status: s.status, updatedAt: new Date() },
       });
       updatedCount++;
     } else {
-      // If no record exists, create new one (edge case)
       await prisma.attendance.create({
         data: {
           studentId: s.studentId,
           classId,
           sectionId,
-          academicYearId: "", // will need academicYearId from body
+          academicYearId: "",
           tenantId,
           date: attendanceDate,
           status: s.status,
@@ -110,7 +107,6 @@ export const updateAttendanceService = async (
 
 // ========================================
 // GET CLASS ATTENDANCE (for a specific date)
-// Returns students list with their attendance status
 // ========================================
 export const getClassAttendanceService = async (
   classId: string,
@@ -167,7 +163,7 @@ export const getClassAttendanceService = async (
     name: `${e.student.firstName} ${e.student.lastName}`,
     rollNumber: e.student.rollNumber || "",
     admissionNo: e.student.admissionNo || "",
-    status: attendanceMap.get(e.student.id) || null, // null = not marked yet
+    status: attendanceMap.get(e.student.id) || null,
   }));
 
   return {
@@ -176,7 +172,7 @@ export const getClassAttendanceService = async (
     sectionId,
     totalStudents: students.length,
     markedCount: attendanceRecords.length,
-    isMarked: attendanceRecords.length > 0, // attendance already done for this date?
+    isMarked: attendanceRecords.length > 0,
     students,
   };
 };
@@ -199,7 +195,7 @@ export const getStudentAttendanceService = async (
 };
 
 // ========================================
-// ATTENDANCE REPORT (Monthly - for report card)
+// ATTENDANCE REPORT (Monthly - for student)
 // ========================================
 export const getAttendanceReportService = async (
   studentId: string,
@@ -208,7 +204,7 @@ export const getAttendanceReportService = async (
   tenantId: string
 ) => {
   const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 0); // last day of month
+  const endDate = new Date(year, month, 0);
 
   const records = await prisma.attendance.findMany({
     where: {
@@ -234,7 +230,7 @@ export const getAttendanceReportService = async (
     presentDays: present,
     absentDays: absent,
     percentage: percentage.toFixed(2),
-    records, // day-wise records
+    records,
   };
 };
 
@@ -265,6 +261,79 @@ export const getAttendanceSummaryService = async (
     presentDays: present,
     absentDays: absent,
     percentage: percentage.toFixed(2),
+  };
+};
+
+// ========================================
+// DASHBOARD STATS (like image #1 - Dashboard)
+// ========================================
+export const getDashboardStatsService = async (
+  tenantId: string,
+  academicYearId: string
+) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Total students (from enrollments for this academic year)
+  const totalStudents = await prisma.enrollment.count({
+    where: { tenantId, academicYearId, isDeleted: false },
+  });
+
+  // Today's attendance
+  const todayRecords = await prisma.attendance.findMany({
+    where: {
+      tenantId,
+      date: today,
+      isDeleted: false,
+    },
+  });
+
+  const presentToday = todayRecords.filter((r) => r.status === "PRESENT").length;
+  const absentToday = todayRecords.filter((r) => r.status === "ABSENT").length;
+
+  // Monthly trend (last 30 days)
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const monthRecords = await prisma.attendance.findMany({
+    where: {
+      tenantId,
+      isDeleted: false,
+      date: { gte: thirtyDaysAgo, lte: today },
+    },
+  });
+
+  // Group by date
+  const dateMap = new Map<string, { present: number; absent: number }>();
+  for (const r of monthRecords) {
+    const dateKey = r.date.toISOString().split("T")[0];
+    if (!dateMap.has(dateKey)) {
+      dateMap.set(dateKey, { present: 0, absent: 0 });
+    }
+    const data = dateMap.get(dateKey)!;
+    if (r.status === "PRESENT") data.present++;
+    else data.absent++;
+  }
+
+  const monthlyTrend = Array.from(dateMap.entries())
+    .map(([date, data]) => ({ date, ...data }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Overall attendance % for this academic year
+  const allRecords = await prisma.attendance.count({
+    where: { tenantId, academicYearId, isDeleted: false },
+  });
+  const allPresent = await prisma.attendance.count({
+    where: { tenantId, academicYearId, isDeleted: false, status: "PRESENT" },
+  });
+  const attendancePercentage = allRecords === 0 ? "0" : ((allPresent / allRecords) * 100).toFixed(1);
+
+  return {
+    totalStudents,
+    presentToday,
+    absentToday,
+    attendancePercentage,
+    monthlyTrend,
   };
 };
 

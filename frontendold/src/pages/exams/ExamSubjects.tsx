@@ -42,40 +42,52 @@ const ExamSubjects: React.FC = () => {
   }, [id]);
 
   const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [examRes, subjectRes, examSubjectsRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/exam/${id}`, { headers }),
-        axios.get("http://localhost:5000/api/subjects", { headers }),
-        axios
-          .get(`http://localhost:5000/api/exam/${id}/subjects`, { headers })
-          .catch(() => ({ data: { data: [] } })),
-      ]);
+  setLoading(true);
+  try {
+    // 1. Exam fetch karo
+    const examRes = await axios.get(`http://localhost:5000/api/exam/${id}`, { headers });
+    const examData = examRes.data?.data || examRes.data;
+    setExam(examData);
 
-      setExam(examRes.data?.data || examRes.data);
-      setSubjects(subjectRes.data?.data || subjectRes.data || []);
+    // 2. Saare subjects fetch karo
+    const subjectRes = await axios.get(
+      `http://localhost:5000/api/subjects`,
+      { headers }
+    );
+    const allSubjects = subjectRes.data?.data || subjectRes.data || [];
+    
+    // ✅ Client-side filter — sirf exam ki class ke subjects
+    const filteredSubjects = allSubjects.filter(
+      (s: any) => s.classId === examData.classId || s.class?.id === examData.classId
+    );
+    setSubjects(filteredSubjects);
 
-      const existingSubjects =
-        examSubjectsRes.data?.data || examSubjectsRes.data || [];
-      if (existingSubjects.length > 0) {
-        setExamSubjects(
-          existingSubjects.map((s: any) => ({
-            id: s.id,
-            subjectId: s.subject?.id || s.subjectId,
-            subjectName: s.subject?.name || s.subjectName,
-            maxMarks: s.maxMarks,
-            passingMarks: s.passingMarks,
-          }))
-        );
-      } else {
-        setExamSubjects([{ subjectId: "", maxMarks: 100, passingMarks: 33 }]);
-      }
-    } catch (error) {
-      toast.error("Failed to load data");
-    } finally {
-      setLoading(false);
+    // 3. Existing exam subjects
+    const examSubjectsRes = await axios
+      .get(`http://localhost:5000/api/exam/${id}/subjects`, { headers })
+      .catch(() => ({ data: { data: [] } }));
+
+    const existingSubjects =
+      examSubjectsRes.data?.data || examSubjectsRes.data || [];
+    if (existingSubjects.length > 0) {
+      setExamSubjects(
+        existingSubjects.map((s: any) => ({
+          id: s.id,
+          subjectId: s.subject?.id || s.subjectId,
+          subjectName: s.subject?.name || s.subjectName,
+          maxMarks: s.maxMarks,
+          passingMarks: s.passingMarks,
+        }))
+      );
+    } else {
+      setExamSubjects([{ subjectId: "", maxMarks: 100, passingMarks: 33 }]);
     }
-  };
+  } catch (error) {
+    toast.error("Failed to load data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const addRow = () => {
     setExamSubjects((prev) => [

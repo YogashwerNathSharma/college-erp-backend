@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
@@ -14,10 +15,8 @@ export default function LoginPage() {
 
       const payload = {
         email: email.toLowerCase().trim(),
-        password: password,
+        password: password.trim(),
       };
-
-      console.log("LOGIN PAYLOAD:", payload);
 
       const res = await axios.post(
         "http://localhost:5000/api/auth/login",
@@ -26,22 +25,28 @@ export default function LoginPage() {
 
       console.log("LOGIN RESPONSE:", res.data);
 
-      // ✅ Save token
-      localStorage.setItem(
-        "token",
-        res.data?.token || res.data?.data?.token || ""
-      );
+      // ✅ Check if subscription is expired
+      if (res.data?.subscriptionExpired) {
+        localStorage.setItem("token", res.data?.token || "");
+        localStorage.setItem("user", JSON.stringify(res.data?.data || {}));
+        localStorage.setItem("tenant", JSON.stringify(res.data?.tenant || {}));
+        localStorage.setItem("subscriptionExpired", "true");
+        navigate("/subscription-expired");
+        return;
+      }
 
-      // ✅ Save user
-      localStorage.setItem(
-        "user",
-        JSON.stringify(res.data?.data || {})
-      );
-
-      alert("Login successful 🚀");
+      // ✅ Normal login flow
+      localStorage.setItem("token", res.data?.token || res.data?.data?.token || "");
+      localStorage.setItem("user", JSON.stringify(res.data?.data || {}));
+      localStorage.removeItem("subscriptionExpired");
 
       // ✅ Redirect
-      window.location.href = "/dashboard";
+      if (res.data?.forcePasswordChange) {
+        navigate("/change-password");
+      } else {
+        navigate("/dashboard");
+      }
+
     } catch (err: any) {
       console.log("LOGIN ERROR:", err);
       alert(
@@ -150,6 +155,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={inputStyle}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
           />
 
           {/* SHOW + FORGOT */}
@@ -179,7 +185,7 @@ export default function LoginPage() {
             </label>
 
             <span
-              onClick={() => (window.location.href = "/forgot-password")}
+              onClick={() => navigate("/forgot-password")}
               style={{
                 color: "#1E90FF",
                 cursor: "pointer",
@@ -198,30 +204,54 @@ export default function LoginPage() {
               width: "100%",
               padding: "13px",
               borderRadius: "8px",
-              border: "none",
-              color: "white",
-              fontWeight: "bold",
+              background: loading
+                ? "#999"
+                : "linear-gradient(135deg, #1E90FF, #8A2BE2)",
+              color: "#fff",
               fontSize: "16px",
+              fontWeight: "600",
+              border: "none",
               cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
-              background: "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
             }}
           >
             {loading ? "Logging in..." : "Login"}
           </button>
+
+          {/* 🔥 REGISTER LINK */}
+          <p
+            style={{
+              textAlign: "center",
+              marginTop: "20px",
+              fontSize: "14px",
+              color: "#64748b",
+            }}
+          >
+            Don't have an account?{" "}
+            <span
+              onClick={() => navigate("/register-school")}
+              style={{
+                color: "#8A2BE2",
+                fontWeight: "600",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Register Your School
+            </span>
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-const inputStyle = {
+const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "12px",
-  marginBottom: "14px",
+  padding: "12px 14px",
+  marginBottom: "15px",
+  border: "1px solid #e2e8f0",
   borderRadius: "8px",
-  border: "1px solid #ccc",
-  outline: "none",
   fontSize: "15px",
-  boxSizing: "border-box" as const,
+  outline: "none",
+  boxSizing: "border-box",
 };

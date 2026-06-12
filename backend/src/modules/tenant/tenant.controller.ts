@@ -10,7 +10,7 @@ import {
 } from "./tenant.service";
 import bcrypt from "bcrypt";
 
-// 🔥 BASE URL (ENV SAFE)
+// BASE URL (ENV SAFE)
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 /////////////////////////
@@ -42,32 +42,74 @@ export const create = async (req: any, res: Response) => {
       },
     });
 
+    
+
     // 2. AUTO ADMIN EMAIL
     const email = name.toLowerCase().replace(/\s/g, "") + "@admin.com";
 
-    // 3. AUTO PASSWORD
-    const rawPassword = "Admin@123";
-    const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
+    // 3. AUTO DEFAULT CREDENTIALS
+    const rawPwd = "Admin@123";
+    const hashedPwd = await bcrypt.hash(rawPwd, 10);
     // 4. CREATE ADMIN USER
     await prisma.user.create({
       data: {
         name: "Admin",
         email,
-        password: hashedPassword,
+        password: hashedPwd,
         role: "ADMIN",
         tenantId: tenant.id,
       },
     });
+    
+    // 5. AUTO ASSIGN FREE PLAN (status: ACTIVE, isActive: true)
+    const freePlan = await prisma.subscriptionPlan.findFirst({
+      where: { price: 0, isActive: true },
+    });
+console.log("FREE PLAN =", freePlan);
+    if (freePlan) {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + freePlan.durationInDays);
 
-    // 5. RESPONSE WITH CREDENTIALS
+      await prisma.tenantSubscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: freePlan.id,
+          subscriptionCode: `SUB-FREE-${Date.now()}`,
+          startDate,
+          endDate,
+          status: "ACTIVE",
+          isActive: true,
+          amount: 0,
+          paymentStatus: "PAID",
+          maxStudents: freePlan.maxStudents,
+          maxTeachers: freePlan.maxTeachers,
+          maxAdmins: freePlan.maxAdmins,
+          maxStorageInGB: freePlan.maxStorageInGB,
+        },
+      });
+
+      // Also update tenant limits
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          maxStudents: freePlan.maxStudents,
+          maxTeachers: freePlan.maxTeachers,
+          maxAdmins: freePlan.maxAdmins,
+          maxStorageInGB: freePlan.maxStorageInGB,
+        },
+      });
+    }
+
+    // 6. RESPONSE WITH CREDENTIALS
     return res.status(201).json({
       success: true,
       data: tenant,
       admin: {
         email,
-        password: rawPassword,
+        defaultPassword: rawPwd,
       },
+      freeTrial: freePlan ? true : false,
     });
 
   } catch (error: any) {
@@ -187,7 +229,7 @@ export const uploadTenantImages = async (req: any, res: Response) => {
 };
 
 //////////////////////////////////////////////////////
-// 📋 GET MY SUBSCRIPTION (Tenant Dashboard)
+// GET MY SUBSCRIPTION (Tenant Dashboard)
 //////////////////////////////////////////////////////
 
 export const getMySubscription = async (req: any, res: Response) => {
@@ -201,7 +243,45 @@ export const getMySubscription = async (req: any, res: Response) => {
       });
     }
 
-    const data = await getMySubscriptionService(tenantId);
+    // Find active subscription for this tenant
+    const subscription = await prisma.tenantSubscription.findFirst({
+      where: {
+        tenantId,
+        isActive: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!subscription) {
+      return res.status(200).json({ success: true, data: null });
+    }
+
+    // Get plan name
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { id: subscription.planId },
+    });
+
+    // Calculate days remaining
+    const now = new Date();
+    const end = new Date(subscription.endDate);
+    const diffTime = end.getTime() - now.getTime();
+    const daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    const data = {
+      id: subscription.id,
+      planName: plan?.name || "Unknown Plan",
+      amount: subscription.amount || 0,
+      status: subscription.status,
+      startDate: subscription.startDate,
+      endDate: subscription.endDate,
+      daysRemaining,
+      maxStudents: subscription.maxStudents,
+      maxTeachers: subscription.maxTeachers,
+      maxAdmins: subscription.maxAdmins,
+      maxStorageInGB: subscription.maxStorageInGB,
+    };
 
     return res.status(200).json({ success: true, data });
 
@@ -212,7 +292,7 @@ export const getMySubscription = async (req: any, res: Response) => {
 };
 
 //////////////////////////////////////////////////////
-// 🛒 GET ALL PLANS (For tenant to browse & buy)
+// GET ALL PLANS (For tenant to browse and buy)
 //////////////////////////////////////////////////////
 
 export const getAllPlans = async (req: Request, res: Response) => {
@@ -226,7 +306,7 @@ export const getAllPlans = async (req: Request, res: Response) => {
 };
 
 //////////////////////////////////////////////////////
-// 🔥 SELF SUBSCRIBE (Tenant buys plan + creates order)
+// SELF SUBSCRIBE (Tenant buys plan + creates order)
 //////////////////////////////////////////////////////
 
 export const selfSubscribe = async (req: any, res: Response) => {

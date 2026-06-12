@@ -1,4 +1,5 @@
 
+
 import prisma from "../../utils/prisma";
 import { DayOfWeek } from "@prisma/client";
 import { CreateTimetableInput } from "./timetable.types";
@@ -40,7 +41,7 @@ export const createTimetableService = async (
     throw new Error("This slot already has a subject assigned");
   }
 
-  // ❌ TEACHER CONFLICT — ek teacher ek time ek class only
+  // ❌ TEACHER CONFLICT
   const teacherConflict = await prisma.timetable.findFirst({
     where: { teacherId, day, period, tenantId, isDeleted: false },
     include: { class: true, section: true },
@@ -84,6 +85,24 @@ export const getTimetableService = async (
 };
 
 //////////////////////////////////////////////////////
+// GET TIMETABLE BY TEACHER (for Teacher Timetable page)
+//////////////////////////////////////////////////////
+export const getTimetableByTeacherService = async (
+  teacherId: string,
+  tenantId: string
+) => {
+  return prisma.timetable.findMany({
+    where: { teacherId, tenantId, isDeleted: false },
+    orderBy: [{ day: "asc" }, { period: "asc" }],
+    include: {
+      subject: { select: { id: true, name: true } },
+      class: { select: { id: true, name: true } },
+      section: { select: { id: true, name: true } },
+    },
+  });
+};
+
+//////////////////////////////////////////////////////
 // DELETE (SOFT DELETE)
 //////////////////////////////////////////////////////
 export const deleteTimetableService = async (id: string, tenantId: string) => {
@@ -119,6 +138,66 @@ export const getTeachersBySubjectService = async (
   });
 
   return teachers;
+};
+
+//////////////////////////////////////////////////////
+// BULK SAVE TIMETABLE (Teacher Timetable Inline Editing)
+//////////////////////////////////////////////////////
+export const bulkSaveTimetableService = async (
+  teacherId: string,
+  entries: any[],
+  clearedEntries: any[],
+  tenantId: string
+) => {
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete cleared entries
+    if (clearedEntries?.length) {
+      for (const cleared of clearedEntries) {
+        await tx.timetable.updateMany({
+          where: {
+            teacherId,
+            tenantId,
+            day: cleared.day,
+            period: cleared.period,
+            isDeleted: false,
+          },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+      }
+    }
+
+    // 2. Upsert new entries
+    if (entries?.length) {
+      for (const entry of entries) {
+        // Soft-delete existing entry for this day+period+teacher
+        await tx.timetable.updateMany({
+          where: {
+            teacherId,
+            tenantId,
+            day: entry.day,
+            period: entry.period,
+            isDeleted: false,
+          },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+
+        // Create new entry
+        await tx.timetable.create({
+          data: {
+            classId: entry.classId,
+            sectionId: entry.sectionId,
+            subjectId: entry.subjectId,
+            teacherId: entry.teacherId,
+            tenantId,
+            day: entry.day,
+            period: entry.period,
+          },
+        });
+      }
+    }
+  });
+
+  return { message: "Timetable saved successfully" };
 };
 
 //////////////////////////////////////////////////////
@@ -227,7 +306,7 @@ export const autoGenerateTimetableService = async (
     }
   }
 
-  // Global teacher busy slots (prevents double booking across ALL classes)
+  // Global teacher busy slots
   const globalTeacherBusy = await prisma.timetable.findMany({
     where: { tenantId, isDeleted: false },
     select: { teacherId: true, day: true, period: true },

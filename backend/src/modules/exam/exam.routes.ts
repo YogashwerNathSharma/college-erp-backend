@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// exam.routes.ts — Full Exam Routes
+// exam.routes.ts — Full Exam Routes (FIXED)
 // ═══════════════════════════════════════════════════════
 
 import express from "express";
@@ -17,21 +17,42 @@ import {
   getResults,
   getReportCard,
   getConsolidatedReport,
+  createExamSchedule,
+  getExamSchedule,
+  updateExamSchedule,
+  deleteExamSchedule,
+  generateSeating,
+  getSeatingBySchedule,
+  generateAdmitCards,
+  getAdmitCard,
+  getAdmitCards,
+  uploadQuestionPaper,
+  getQuestionPapers,
+  deleteQuestionPaper,
+  assignInvigilator,
+  getInvigilators,
+  removeInvigilator,
+  getExamDashboard,
+  getExamReports,
 } from "./exam.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 const router = express.Router();
 
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
 // STATIC ROUTES FIRST (before :id routes)
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
 
-// Get all exams (filter by classId, academicYearId via query)
+// Get all exams
 router.get("/", authMiddleware, getExams);
 
 // Create exam
 router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExam);
+
+// Dashboard & Reports
+router.get("/dashboard", authMiddleware, getExamDashboard);
+router.get("/reports", authMiddleware, getExamReports);
 
 // Add/Update subjects for an exam
 router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), addExamSubjects);
@@ -39,18 +60,33 @@ router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), add
 // Enter/Update marks (bulk)
 router.post("/marks", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), enterMarks);
 
-// ─────────────────────────────────────────
-// CONSOLIDATED REPORT (before :id routes!)
-// ─────────────────────────────────────────
-router.get(
-  "/consolidated-report/:studentId",
-  authMiddleware,
-  getConsolidatedReport
-);
+// Consolidated Report
+router.get("/consolidated-report/:studentId", authMiddleware, getConsolidatedReport);
 
-// ─────────────────────────────────────────
-// DYNAMIC :id ROUTES
-// ─────────────────────────────────────────
+// Exam Schedule (static paths)
+router.post("/schedule", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExamSchedule);
+router.put("/schedule/:scheduleId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), updateExamSchedule);
+router.delete("/schedule/:scheduleId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), deleteExamSchedule);
+
+// Seating Arrangement
+router.post("/seating/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateSeating);
+router.get("/seating/:scheduleId", authMiddleware, getSeatingBySchedule);
+
+// Admit Cards
+router.post("/admit-cards/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateAdmitCards);
+
+// Question Papers
+router.post("/question-papers", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), uploadQuestionPaper);
+router.delete("/question-papers/:paperId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), deleteQuestionPaper);
+
+// Invigilators
+router.post("/invigilators", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), assignInvigilator);
+router.get("/invigilators/:scheduleId", authMiddleware, getInvigilators);
+router.delete("/invigilators/:assignmentId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), removeInvigilator);
+
+// ═══════════════════════════════════════════════════════
+// DYNAMIC :id ROUTES (AFTER all static routes)
+// ═══════════════════════════════════════════════════════
 
 // Get single exam
 router.get("/:id", authMiddleware, getExamById);
@@ -64,16 +100,26 @@ router.delete("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), delete
 // Get subjects of an exam
 router.get("/:id/subjects", authMiddleware, getExamSubjects);
 
-// Get marks for marks entry page
+// Get marks
 router.get("/:id/marks", authMiddleware, getMarks);
 
 // Generate results
 router.post("/:id/generate-results", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateResults);
 
-// Get published results
+// Get results
 router.get("/:id/results", authMiddleware, getResults);
 
-// Get report card for a student
+// Report card
 router.get("/:examId/report-card/:studentId", authMiddleware, getReportCard);
+
+// Exam Schedule (dynamic)
+router.get("/:id/schedule", authMiddleware, getExamSchedule);
+
+// Admit Cards (dynamic)
+router.get("/:id/admit-cards", authMiddleware, getAdmitCards);
+router.get("/:examId/admit-card/:studentId", authMiddleware, getAdmitCard);
+
+// Question Papers (dynamic)
+router.get("/:id/question-papers", authMiddleware, getQuestionPapers);
 
 export default router;

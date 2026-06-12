@@ -1,3 +1,4 @@
+
 import { PrismaClient } from "@prisma/client";
 import { generateSrNumber, generateAdmissionNumber } from "./admission-number.service";
 const prisma = new PrismaClient();

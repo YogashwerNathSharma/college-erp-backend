@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -258,7 +259,6 @@ export default function StudentList() {
                     <td className="px-4 py-3 text-sm text-gray-600">{(filters.page - 1) * 50 + index + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {/* ✅ FIXED: Photo dikhega agar uploaded hai, warna initials */}
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white shadow-sm overflow-hidden">
                           {student.photoUrl ? (
                             <img
@@ -342,7 +342,6 @@ export default function StudentList() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
               <div className="flex items-center gap-4">
-                {/* ✅ FIXED: Modal me bhi photo dikhega */}
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shadow-lg overflow-hidden">
                   {viewStudent.photoUrl ? (
                     <img
@@ -415,4 +414,5 @@ export default function StudentList() {
     </div>
   );
 }
+
 

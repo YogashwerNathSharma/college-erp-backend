@@ -1,3 +1,5 @@
+
+
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -36,7 +38,9 @@ import {
   MessageSquare,
   Clock,
   Wallet,
+  ClipboardEdit,
 } from "lucide-react";
+import AdmitCard from "../pages/exams/AdmitCard";
 
 
 //////////////////////////////////////////////////////
@@ -97,11 +101,17 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Students",
         icon: <Users size={20} />,
-        path: "/students",
         children: [
+          { name: "Student Dashboard", icon: <LayoutDashboard size={16} />, path: "/student-dashboard" },
           { name: "All Students", icon: <Users size={16} />, path: "/students" },
+          { name: "New Admission", icon: <UserCheck size={16} />, path: "/students/new-admission" },
+          { name: "Old Student Entry", icon: <FileText size={16} />, path: "/students/old-entry" },
+          { name: "Promotion", icon: <GraduationCap size={16} />, path: "/students/promotion" },
           { name: "Age Settings", icon: <Calendar size={16} />, path: "/students/age-settings" },
+          { name: "Print List", icon: <FileText size={16} />, path: "/students/print" },
+          { name: "Reports", icon: <BarChart3 size={16} />, path: "/students/reports" },
           { name: "ID Card", icon: <IdCard size={16} />, path: "/students/id-card" },
+          { name: "Recycle Bin", icon: <FolderOpen size={16} />, path: "/students/recycle-bin" },
         ],
       },
       {
@@ -126,6 +136,8 @@ const tenantMenu: SectionGroup[] = [
         name: "Attendance",
         icon: <ClipboardCheck size={20} />,
         children: [
+
+          { name: "Dashboard", path: "/attendance-dashboard", icon: <ClipboardEdit size={16}/> },
           { name: "Mark Attendance", path: "/attendance", icon: <ClipboardCheck size={16} /> },
           { name: "Reports", path: "/attendance-report", icon: <BarChart3 size={16} /> },
         ],
@@ -134,8 +146,11 @@ const tenantMenu: SectionGroup[] = [
         name: "Exams",
         icon: <FileText size={20} />,
         children: [
+          { name: "Exam Dashboard", icon: <LayoutDashboard size={16} />, path: "/exam-dashboard" },
           { name: "All Exams", icon: <FileText size={16} />, path: "/exams" },
           { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },
+          { name: "Reports", icon: <BarChart3 size={16} />, path: "/exam-reports" },
+          //{ name: "Admit Card",icon: <CreditCard size={16} />,path: "/admitcard"}
         ],
       },
       { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
@@ -246,49 +261,50 @@ export default function Sidebar({ tenant }: SidebarProps) {
   const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
 
   return (
-    <div className="w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen shadow-2xl flex flex-col border-r border-slate-800">
+    <div className="w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen shadow-2xl flex flex-col border-r border-slate-800 print:hidden">
 
       {/* HEADER */}
-<div
-  className="p-4 border-b border-slate-800 relative overflow-hidden"
-  style={{
-    backgroundImage: getFullUrl(safeTenant?.backgroundUrl)
-      ? `url(${getFullUrl(safeTenant?.backgroundUrl)})`
-      : undefined,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-  }}
->
-  {/* Dark overlay — sirf tab jab background image ho */}
-  {getFullUrl(safeTenant?.backgroundUrl) && (
-    <div className="absolute inset-0 bg-black/50"></div>
-  )}
-
-  <div className="flex flex-col items-center text-center relative z-10">
-    {sidebarLogo ? (
-      <img
-        src={sidebarLogo}
-        alt="Logo"
-        className="w-14 h-14 object-contain"
-        onError={(e: any) => {
-          e.target.style.display = "none";
+      <div
+        className="p-4 border-b border-slate-800 relative overflow-hidden"
+        style={{
+          backgroundImage: getFullUrl(safeTenant?.backgroundUrl)
+            ? `url(${getFullUrl(safeTenant?.backgroundUrl)})`
+            : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
-      />
-    ) : (
-      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xl font-bold border-2 border-indigo-400 shadow-xl">
-        {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+      >
+        {/* Dark overlay — sirf tab jab background image ho */}
+        {getFullUrl(safeTenant?.backgroundUrl) && (
+          <div className="absolute inset-0 bg-black/50"></div>
+        )}
+
+        <div className="flex flex-col items-center text-center relative z-10">
+          {sidebarLogo ? (
+            <img
+              src={sidebarLogo}
+              alt="Logo"
+              className="w-14 h-14 object-contain"
+              onError={(e: any) => {
+                e.target.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xl font-bold border-2 border-indigo-400 shadow-xl">
+              {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+            </div>
+          )}
+
+          <h1 className="mt-1 text-base font-bold text-white leading-tight">
+            {safeTenant?.name || sidebarTitle}
+          </h1>
+
+          {isSuperAdmin && (
+            <p className="text-xs text-slate-400 mt-0">System Control</p>
+          )}
+        </div>
       </div>
-    )}
 
-    <h1 className="mt-1 text-base font-bold text-white leading-tight">
-      {safeTenant?.name || sidebarTitle}
-    </h1>
-
-    {isSuperAdmin && (
-      <p className="text-xs text-slate-400 mt-0">System Control</p>
-    )}
-  </div>
-</div>
       {/* MENU */}
       <div className="flex-1 overflow-y-auto px-2.5 py-3 sidebar-scroll">
         {menu.map((group, gi) => (
@@ -358,7 +374,7 @@ const ParentNavItem = ({ item }: { item: MenuItem }) => {
       {/* Children (animated) */}
       <div
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          open ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div className="ml-3 pl-2.5 border-l border-slate-700/50 mt-0.5 space-y-0">
@@ -413,3 +429,4 @@ const NavItem = ({ to, icon, label }: { to: string; icon: any; label: string }) 
     />
   </NavLink>
 );
+

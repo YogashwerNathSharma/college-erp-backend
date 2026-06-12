@@ -1,4 +1,5 @@
 
+
 import express from "express";
 import {
   getMonthlyReport,
@@ -28,4 +29,3 @@ router.get("/classwise", authMiddleware, resolveTenant, getClasswiseReport);
 router.get("/school", authMiddleware, resolveTenant, getSchoolReport);
 
 export default router;
-

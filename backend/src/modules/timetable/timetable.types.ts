@@ -1,4 +1,5 @@
 
+
 import { DayOfWeek } from "@prisma/client";
 
 export interface CreateTimetableInput {

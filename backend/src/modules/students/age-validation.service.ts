@@ -1,6 +1,7 @@
+
 import prisma from "../../utils/prisma";
 import { normalizeClass } from "../../utils/classNormalizer";
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─────── Types ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export interface AgeLimit {
   className: string;
@@ -8,7 +9,7 @@ export interface AgeLimit {
   maxAge: number;
 }
 
-// ─── Board-wise Age Limits ───────────────────────────────────────────────────
+// ─────── Board-wise Age Limits ──────────────────────────────────────────────────────────────────────────────────
 
 export const UP_BOARD_AGE_LIMITS: AgeLimit[] = [
   { className: "Play Group", minAge: 2.0, maxAge: 3.0 },
@@ -67,7 +68,7 @@ export const ICSE_AGE_LIMITS: AgeLimit[] = [
   { className: "Class 12", minAge: 16.5, maxAge: 18.0 },
 ];
 
-// ─── Age Calculation ─────────────────────────────────────────────────────────
+// ─────── Age Calculation ────────────────────────────────────────────────────────────────────────────────────────────
 
 export function calculatePreciseAge(dob: Date, referenceDate: Date): number {
   const years = referenceDate.getFullYear() - dob.getFullYear();
@@ -104,7 +105,7 @@ export function getAgeReferenceDate(
   return new Date(academicYearStart + 1, refMonth - 1, refDay);
 }
 
-// ─── Validation Result Type ──────────────────────────────────────────────────
+// ─────── Validation Result Type ────────────────────────────────────────────────────────────────────────────────────
 
 export interface AgeValidationResult {
   isValid: boolean;
@@ -117,7 +118,7 @@ export interface AgeValidationResult {
   referenceDate: Date;
 }
 
-// ─── Validate Student Age ────────────────────────────────────────────────────
+// ─────── Validate Student Age ──────────────────────────────────────────────────────────────────────────────────────
 
 export async function validateStudentAge(
   tenantId: string,
@@ -167,7 +168,7 @@ export async function validateStudentAge(
   };
 }
 
-// ─── Flexible Class Name Matching ────────────────────────────────────────────
+// ─────── Flexible Class Name Matching ───────────────────────────────────────────────────────────────────────────────
 
 function matchClassName(dbName: string, limitName: string): boolean {
   const a = dbName.toLowerCase().trim();
@@ -182,7 +183,7 @@ function matchClassName(dbName: string, limitName: string): boolean {
   return false;
 }
 
-// ─── Seed Age Config ─────────────────────────────────────────────────────────
+// ─────── Seed Age Config ───────────────────────────────────────────────────────────────────────────────────────────
 
 export async function seedAgeConfigForTenant(
   tenantId: string,
@@ -246,7 +247,7 @@ export async function seedAgeConfigForTenant(
     total: classMapping.length,
   };
 }
-// ─── Get Age Configs (with optional board filter) ────────────────────────────
+// ─────── Get Age Configs (with optional board filter) ────────────────────────────────────────────────────────────
 
 export async function getAgeConfigs(tenantId: string, board?: string) {
   const where: any = { tenantId, isActive: true };
@@ -258,7 +259,7 @@ export async function getAgeConfigs(tenantId: string, board?: string) {
   });
 }
 
-// ─── Update Age Config ───────────────────────────────────────────────────────
+// ─────── Update Age Config ────────────────────────────────────────────────────────────────────────────────────────
 
 export async function updateAgeConfig(
   id: string,
@@ -279,7 +280,7 @@ export async function updateAgeConfig(
   });
 }
 
-// ─── Toggle Age Config Active/Inactive ───────────────────────────────────────
+// ─────── Toggle Age Config Active/Inactive ────────────────────────────────────────────────────────────────────────
 
 export async function toggleAgeConfigStatus(id: string, tenantId: string) {
   const config = await prisma.classAgeConfig.findFirst({
@@ -296,7 +297,7 @@ export async function toggleAgeConfigStatus(id: string, tenantId: string) {
   });
 }
 
-// ─── Delete Age Config (soft — just deactivate) ─────────────────────────────
+// ─────── Delete Age Config (soft — just deactivate) ──────────────────────────────────────────────────────────────
 
 export async function deleteAgeConfig(id: string, tenantId: string) {
   const config = await prisma.classAgeConfig.findFirst({
@@ -313,7 +314,7 @@ export async function deleteAgeConfig(id: string, tenantId: string) {
   });
 }
 
-// ─── Get All Configs (including inactive for admin view) ─────────────────────
+// ─────── Get All Configs (including inactive for admin view) ──────────────────────────────────────────────────────
 
 export async function getAllAgeConfigs(tenantId: string) {
   return prisma.classAgeConfig.findMany({

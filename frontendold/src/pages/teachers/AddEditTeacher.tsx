@@ -1,9 +1,12 @@
 
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FiArrowLeft, FiSave } from "react-icons/fi";
+import { FiArrowLeft, FiSave, FiUpload } from "react-icons/fi";
+
+
 
 interface SubjectOption {
   id: string;
@@ -27,24 +30,35 @@ const AddEditTeacher = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
 
-  // Form state
-  const [name, setName] = useState("");
+  // Form state — Personal Info
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [gender, setGender] = useState("");
+  const [dob, setDob] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // Academic
   const [academicYearId, setAcademicYearId] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   // Options from DB
-  const [allSubjects, setAllSubjects] = useState<SubjectOption[]>([]); // all subjects from API
-  const [filteredSubjects, setFilteredSubjects] = useState<SubjectOption[]>([]); // filtered by selected classes
+  const [allSubjects, setAllSubjects] = useState<SubjectOption[]>([]);
+  const [filteredSubjects, setFilteredSubjects] = useState<SubjectOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
 
-  // Fetch dropdown options from database
+
+
+  // Fetch dropdown options
   const fetchOptions = async () => {
     try {
       const [subRes, classRes, yearRes] = await Promise.all([
@@ -53,20 +67,16 @@ const AddEditTeacher = () => {
         axios.get("/api/academic"),
       ]);
 
-      // Subjects (store all, filter later based on selected classes)
       const subs = subRes.data.data?.data || subRes.data.data || [];
       setAllSubjects(Array.isArray(subs) ? subs : []);
 
-      // Classes
       const cls = classRes.data.data?.data || classRes.data.data || [];
       setClasses(Array.isArray(cls) ? cls : []);
 
-      // Academic Years
       const years = yearRes.data.data?.data || yearRes.data.data || [];
       const yearArray = Array.isArray(years) ? years : [];
       setAcademicYears(yearArray);
 
-      // Auto-select active year if creating new teacher
       if (!isEdit && yearArray.length > 0) {
         const current = yearArray.find(
           (y: any) =>
@@ -84,7 +94,7 @@ const AddEditTeacher = () => {
     }
   };
 
-  // Filter subjects whenever selected classes change
+  // Filter subjects when classes change
   useEffect(() => {
     if (selectedClasses.length === 0) {
       setFilteredSubjects([]);
@@ -95,7 +105,6 @@ const AddEditTeacher = () => {
     );
     setFilteredSubjects(filtered);
 
-    // Remove any selected subjects that are no longer in filtered list
     setSelectedSubjects((prev) =>
       prev.filter((id) => filtered.some((s) => s.id === id))
     );
@@ -110,9 +119,14 @@ const AddEditTeacher = () => {
 
       if (res.data.success) {
         const t = res.data.data;
-        setName(t.name || "");
+        setFirstName(t.firstName || "");
+        setLastName(t.lastName || "");
+        setEmployeeId(t.employeeId || "");
         setEmail(t.email || "");
         setPhone(t.phone || "");
+        setGender(t.gender || "");
+        setDob(t.dob ? t.dob.split("T")[0] : "");
+        setMaritalStatus(t.maritalStatus || "");
         setAcademicYearId(t.academicYearId || "");
         setSelectedSubjects(
           t.subjects?.map((s: any) => s.id || s.subjectId) || []
@@ -120,6 +134,12 @@ const AddEditTeacher = () => {
         setSelectedClasses(
           t.classes?.map((c: any) => c.id || c.classId) || []
         );
+        if (t.photoUrl) {
+          const fullUrl = t.photoUrl.startsWith("http")
+            ? t.photoUrl
+            : `http://localhost:5000${t.photoUrl}`;
+          setPhotoPreview(fullUrl);
+        }
       }
     } catch (err: any) {
       toast.error("Failed to fetch teacher data");
@@ -134,34 +154,63 @@ const AddEditTeacher = () => {
     if (isEdit) fetchTeacher();
   }, [id]);
 
+  // Handle photo change
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (!name.trim()) return toast.error("Name is required");
+    if (!firstName.trim()) return toast.error("First Name is required");
+    if (!lastName.trim()) return toast.error("Last Name is required");
     if (!email.trim()) return toast.error("Email is required");
     if (!phone.trim()) return toast.error("Phone is required");
+    if (!gender) return toast.error("Gender is required");
+    if (!dob) return toast.error("Date of Birth is required");
     if (!academicYearId) return toast.error("Academic Year is required");
     if (selectedClasses.length === 0)
       return toast.error("Please assign at least one class");
 
     setLoading(true);
 
-    const payload = {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      academicYearId,
-      subjectIds: selectedSubjects,
-      classIds: selectedClasses,
-    };
+    // Use FormData for file upload
+    const formData = new FormData();
+    formData.append("firstName", firstName.trim());
+    formData.append("lastName", lastName.trim());
+    formData.append("name", `${firstName.trim()} ${lastName.trim()}`);
+    formData.append("email", email.trim());
+    formData.append("phone", phone.trim());
+    formData.append("gender", gender);
+    formData.append("dob", dob);
+    formData.append("maritalStatus", maritalStatus);
+    formData.append("academicYearId", academicYearId);
+    if (employeeId.trim()) formData.append("employeeId", employeeId.trim());
+
+    // Arrays
+    selectedSubjects.forEach((id) => formData.append("subjectIds[]", id));
+    selectedClasses.forEach((id) => formData.append("classIds[]", id));
+
+    // Photo
+    if (photo) {
+      formData.append("photo", photo);
+    }
 
     try {
       let res;
       if (isEdit) {
-        res = await axios.put(`/api/teacher/${id}`, payload);
+        res = await axios.put(`/api/teacher/${id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-        res = await axios.post("/api/teacher", payload);
+        res = await axios.post("/api/teacher", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
 
       if (res.data.success) {
@@ -218,7 +267,7 @@ const AddEditTeacher = () => {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
@@ -235,192 +284,313 @@ const AddEditTeacher = () => {
       {/* Form */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-lg shadow p-6 space-y-5"
+        className="bg-white rounded-lg shadow p-6 space-y-6"
       >
-        {/* Name */}
+        {/* ─────────── Personal Information ─────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter teacher's full name"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          />
-        </div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Personal Information
+          </h2>
 
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter email address"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          />
-        </div>
-
-        {/* Phone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Enter phone number"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          />
-        </div>
-
-        {/* Academic Year */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Academic Year <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={academicYearId}
-            onChange={(e) => setAcademicYearId(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-          >
-            <option value="">Select Academic Year</option>
-            {academicYears.map((year) => (
-              <option key={year.id} value={year.id}>
-                {year.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Classes - Multi Select (SELECT FIRST) */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Assign Classes <span className="text-red-500">*</span>
-              <span className="text-xs text-gray-400 ml-1">
-                (Select classes first, then subjects will appear)
-              </span>
-            </label>
-            {classes.length > 0 && (
-              <button
-                type="button"
-                onClick={selectAllClasses}
-                className="text-xs text-green-600 hover:underline"
-              >
-                {selectedClasses.length === classes.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </button>
-            )}
-          </div>
-          <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
-            {classes.length === 0 ? (
-              <p className="text-sm text-gray-400">No classes available</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {classes.map((cls) => (
-                  <label
-                    key={cls.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition ${
-                      selectedClasses.includes(cls.id)
-                        ? "bg-green-50 border-green-300"
-                        : "bg-white border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedClasses.includes(cls.id)}
-                      onChange={() => toggleClass(cls.id)}
-                      className="rounded text-green-600"
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Photo Upload - Right Side */}
+            <div className="md:col-span-3 flex justify-end">
+              <div className="flex flex-col items-center">
+                <div className="w-28 h-28 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
                     />
-                    <span className="text-sm">{cls.name}</span>
-                  </label>
-                ))}
+                  ) : (
+                    <div className="text-center text-gray-400">
+                      <FiUpload size={24} className="mx-auto mb-1" />
+                      <p className="text-xs">Choose Photo</p>
+                    </div>
+                  )}
+                </div>
+                <label className="mt-2 text-xs text-blue-600 hover:underline cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
+                  {photoPreview ? "Change Photo" : "Upload Photo"}
+                </label>
               </div>
-            )}
-          </div>
-          {selectedClasses.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
-              {selectedClasses.length} class(es) assigned
-            </p>
-          )}
-        </div>
+            </div>
 
-        {/* Subjects - Multi Select (DEPENDENT ON CLASSES) */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Subjects
-              <span className="text-xs text-gray-400 ml-1">
-                (Shows subjects for selected classes)
-              </span>
-            </label>
-            {filteredSubjects.length > 0 && (
-              <button
-                type="button"
-                onClick={selectAllSubjects}
-                className="text-xs text-blue-600 hover:underline"
+            {/* First Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                First Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Enter first name"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Last Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Last Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Enter last name"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Employee ID */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Employee ID
+              </label>
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                placeholder="Auto-generated or enter manually"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Gender <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                {selectedSubjects.length === filteredSubjects.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </button>
-            )}
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Mobile No */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile No. <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Enter mobile number"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Marital Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Marital Status
+              </label>
+              <select
+                value={maritalStatus}
+                onChange={(e) => setMaritalStatus(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">Select Status</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+                <option value="Divorced">Divorced</option>
+                <option value="Widowed">Widowed</option>
+              </select>
+            </div>
           </div>
-          <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
-            {selectedClasses.length === 0 ? (
-              <p className="text-sm text-gray-400">
-                Select classes first to see subjects
-              </p>
-            ) : filteredSubjects.length === 0 ? (
-              <p className="text-sm text-gray-400">
-                No subjects available for selected classes
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {filteredSubjects.map((sub) => (
-                  <label
-                    key={sub.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition ${
-                      selectedSubjects.includes(sub.id)
-                        ? "bg-blue-50 border-blue-300"
-                        : "bg-white border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedSubjects.includes(sub.id)}
-                      onChange={() => toggleSubject(sub.id)}
-                      className="rounded text-blue-600"
-                    />
-                    <span className="text-sm">
-                      {sub.name}
-                      {sub.class?.name && (
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({sub.class.name})
-                        </span>
-                      )}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          {selectedSubjects.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
-              {selectedSubjects.length} subject(s) selected
-            </p>
-          )}
         </div>
 
-        {/* Submit */}
-        <div className="flex gap-3 pt-4">
+        {/* ─────────── Academic Information ─────────── */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            Academic Information
+          </h2>
+
+          {/* Academic Year */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Academic Year <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={academicYearId}
+              onChange={(e) => setAcademicYearId(e.target.value)}
+              className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            >
+              <option value="">Select Academic Year</option>
+              {academicYears.map((year) => (
+                <option key={year.id} value={year.id}>
+                  {year.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Classes */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Assign Classes <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-400 ml-1">
+                  (Select classes first, then subjects will appear)
+                </span>
+              </label>
+              {classes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={selectAllClasses}
+                  className="text-xs text-green-600 hover:underline"
+                >
+                  {selectedClasses.length === classes.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
+              )}
+            </div>
+            <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+              {classes.length === 0 ? (
+                <p className="text-sm text-gray-400">No classes available</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {classes.map((cls) => (
+                    <label
+                      key={cls.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition ${
+                        selectedClasses.includes(cls.id)
+                          ? "bg-green-50 border-green-300"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClasses.includes(cls.id)}
+                        onChange={() => toggleClass(cls.id)}
+                        className="rounded text-green-600"
+                      />
+                      <span className="text-sm">{cls.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedClasses.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                {selectedClasses.length} class(es) assigned
+              </p>
+            )}
+          </div>
+
+          {/* Subjects */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Subjects
+                <span className="text-xs text-gray-400 ml-1">
+                  (Shows subjects for selected classes)
+                </span>
+              </label>
+              {filteredSubjects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={selectAllSubjects}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  {selectedSubjects.length === filteredSubjects.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
+              )}
+            </div>
+            <div className="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+              {selectedClasses.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  Select classes first to see subjects
+                </p>
+              ) : filteredSubjects.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  No subjects available for selected classes
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {filteredSubjects.map((sub) => (
+                    <label
+                      key={sub.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition ${
+                        selectedSubjects.includes(sub.id)
+                          ? "bg-blue-50 border-blue-300"
+                          : "bg-white border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSubjects.includes(sub.id)}
+                        onChange={() => toggleSubject(sub.id)}
+                        className="rounded text-blue-600"
+                      />
+                      <span className="text-sm">
+                        {sub.name}
+                        {sub.class?.name && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({sub.class.name})
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedSubjects.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                {selectedSubjects.length} subject(s) selected
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ─────────── Submit Buttons ─────────── */}
+        <div className="flex gap-3 pt-4 border-t">
           <button
             type="submit"
             disabled={loading}
@@ -431,7 +601,7 @@ const AddEditTeacher = () => {
               ? "Saving..."
               : isEdit
               ? "Update Teacher"
-              : "Create Teacher"}
+              : "Save Teacher"}
           </button>
           <button
             type="button"

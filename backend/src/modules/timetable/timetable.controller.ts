@@ -1,14 +1,17 @@
 
+
 import { Response } from "express";
 import {
   createTimetableService,
   getTimetableService,
+  getTimetableByTeacherService,
   deleteTimetableService,
   getTeachersBySubjectService,
   autoGenerateTimetableService,
   clearTimetableService,
   bulkGenerateTimetableService,
   bulkClearTimetableService,
+  bulkSaveTimetableService,
 } from "./timetable.service";
 import { CreateTimetableInput } from "./timetable.types";
 
@@ -31,15 +34,24 @@ export const createTimetable = async (req: any, res: Response): Promise<void> =>
   }
 };
 
-// ✅ GET TIMETABLE
+// ✅ GET TIMETABLE (supports classId+sectionId OR teacherId)
 export const getTimetable = async (req: any, res: Response): Promise<void> => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) { res.status(401).json({ message: "Unauthorized" }); return; }
 
-    const { classId, sectionId } = req.query;
+    const { classId, sectionId, teacherId } = req.query;
+
+    // If teacherId is provided, get teacher's timetable
+    if (teacherId) {
+      const data = await getTimetableByTeacherService(teacherId as string, tenantId);
+      res.json({ success: true, data });
+      return;
+    }
+
+    // Otherwise, require classId + sectionId
     if (!classId || !sectionId) {
-      res.status(400).json({ message: "classId and sectionId are required" }); return;
+      res.status(400).json({ message: "classId and sectionId (or teacherId) are required" }); return;
     }
 
     const data = await getTimetableService(classId as string, sectionId as string, tenantId);
@@ -157,6 +169,25 @@ export const bulkClearTimetable = async (req: any, res: Response): Promise<void>
   } catch (error: any) {
     console.error("BULK CLEAR ERROR:", error.message);
     res.status(400).json({ message: error.message });
+  }
+};
+
+// ✅ BULK SAVE TIMETABLE (Teacher Timetable Inline Editing)
+export const bulkSaveTimetable = async (req: any, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) { res.status(401).json({ success: false, message: "Unauthorized" }); return; }
+
+    const { teacherId, entries, clearedEntries } = req.body;
+    if (!teacherId) {
+      res.status(400).json({ success: false, message: "Teacher ID is required" }); return;
+    }
+
+    const result = await bulkSaveTimetableService(teacherId, entries, clearedEntries, tenantId);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("BULK SAVE TIMETABLE ERROR:", error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -219,7 +219,7 @@ const AcademicYearPage: React.FC = () => {
 
   // ─── Set Active ────────────────────────────────────────────────────────────
 
-  const handleSetActive = async (id: string, name: string) => {
+  /*const handleSetActive = async (id: string, name: string) => {
     try {
       setActionLoading(id);
       setError(null);
@@ -238,7 +238,7 @@ const AcademicYearPage: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
-  };
+  };*/
 
   // ─── Toggle Status ─────────────────────────────────────────────────────────
 

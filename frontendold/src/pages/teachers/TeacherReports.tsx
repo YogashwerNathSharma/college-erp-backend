@@ -1,8 +1,8 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FiFileText, FiDownload, FiEye } from "react-icons/fi";
+import { FiFileText, FiDownload } from "react-icons/fi";
 
 const API = import.meta.env.VITE_API_URL;
 

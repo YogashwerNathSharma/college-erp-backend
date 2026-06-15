@@ -96,8 +96,8 @@ const AdminStudentDashboard: React.FC = () => {
   const [classStrength, setClassStrength] = useState<ClassStrength[]>([]);
   const [recentAdmissions, setRecentAdmissions] = useState<RecentAdmission[]>([]);
   const [categoryDistribution, setCategoryDistribution] = useState<CategoryDistribution[]>([]);
-  const [feePending, setFeePending] = useState<FeePendingStudent[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceOverview | null>(null);
+const [feePending] = useState<FeePendingStudent[]>([]);
+const [attendance] = useState<AttendanceOverview | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch academic years from database

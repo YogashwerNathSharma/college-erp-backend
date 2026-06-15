@@ -24,7 +24,6 @@ import {
   FileClockIcon,
   ChevronRight,
   ChevronDown,
-  Receipt,
   Bell,
   BookOpenCheck,
   PieChart,
@@ -32,7 +31,6 @@ import {
   // Teacher Module Icons
   GraduationCap,
   CalendarClock,
-  Briefcase,
   Star,
   FolderOpen,
   MessageSquare,
@@ -40,7 +38,6 @@ import {
   Wallet,
   ClipboardEdit,
 } from "lucide-react";
-import AdmitCard from "../pages/exams/AdmitCard";
 
 
 //////////////////////////////////////////////////////

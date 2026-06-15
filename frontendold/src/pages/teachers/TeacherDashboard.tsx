@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FiUsers, FiUserCheck, FiUser, FiActivity } from "react-icons/fi";
+import { FiUsers, FiUserCheck, FiUser } from "react-icons/fi";
 
 const API = import.meta.env.VITE_API_URL;
 

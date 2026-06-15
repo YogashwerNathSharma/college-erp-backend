@@ -7,12 +7,7 @@ import { FiCheckCircle, FiXCircle, FiPercent, FiCalendar } from "react-icons/fi"
 
 const API = import.meta.env.VITE_API_URL;
 
-interface AttendanceRecord {
-  class: string;
-  subject: string;
-  time: string;
-  status: "Present" | "Absent";
-}
+
 
 const TeacherAttendance = () => {
   const [teachers, setTeachers] = useState<any[]>([]);

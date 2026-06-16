@@ -87,23 +87,25 @@ export const createAdmission = async (body: any, user: any) => {
     ////////////////////////////
     // 🔒 6. ASSIGN FEE
     ////////////////////////////
-    const fee = await tx.studentFee.create({
-      data: {
-        enrollmentId: enrollment.id,
-        feeStructureId,
+const fee = await tx.studentFee.create({
+  data: {
+    tenantId,
 
-        totalAmount: Number(feeAmount),
-        paidAmount: 0,
-        pendingAmount: Number(feeAmount),
+    enrollmentId: enrollment.id,
+    feeStructureId,
 
-        status: "PENDING",
-        dueDate: new Date(),
+    totalAmount: Number(feeAmount),
+    netAmount: Number(feeAmount),
 
-        tenantId,
-      },
-    });
+    paidAmount: 0,
+    balanceAmount: Number(feeAmount),
 
-    ////////////////////////////
+    installmentNo: 1,
+
+    status: "PENDING",
+    dueDate: new Date(),
+  },
+});    ////////////////////////////
     // ✅ FINAL RESPONSE
     ////////////////////////////
     return {

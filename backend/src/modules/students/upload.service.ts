@@ -68,16 +68,20 @@ export const uploadStudentDocument = async (
 
   // Create document record
   const document = await prisma.studentDocument.create({
-    data: {
-      student: { connect: { id: studentId } },
-      tenantId,
-      type,
-      name: name || file.originalname,
-      url: docUrl,
-      mimeType: file.mimetype,
-      size: file.size,
+  data: {
+    student: {
+      connect: { id: studentId }
     },
-  });
+    tenant: {
+      connect: { id: tenantId }
+    },
+    type,
+    name: name || file.originalname,
+    url: docUrl,
+    mimeType: file.mimetype,
+    size: file.size,
+  },
+});
 
   return document;
 };

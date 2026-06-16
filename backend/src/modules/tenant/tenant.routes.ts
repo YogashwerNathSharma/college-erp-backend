@@ -8,6 +8,7 @@ import {
   getMySubscription,
   getAllPlans,
   selfSubscribe,
+  getTenantUsage,
 } from "./tenant.controller";
 import { upload } from "../../middleware/upload.middleware";
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -100,5 +101,5 @@ router.get(
   allowRoles("SUPER_ADMIN"),
   getOne
 );
-
+router.get("/usage", authMiddleware, getTenantUsage);
 export default router;

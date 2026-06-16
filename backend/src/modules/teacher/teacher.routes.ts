@@ -5,6 +5,9 @@ import { create, getAll, getById, update, remove, upload } from "./teacher.contr
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import { checkLimit } from "../../middleware/subscriptionLimit.middleware";
+import { createTeacher } from "./teacher.service";
+import { teacherList } from "./report.controller";
 
 const router = express.Router();
 
@@ -53,5 +56,6 @@ router.delete(
   remove
 );
 
+router.post("/", authMiddleware, checkLimit("teachers"), teacherList);
 export default router;
 

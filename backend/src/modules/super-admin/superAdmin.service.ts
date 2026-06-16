@@ -1,4 +1,5 @@
 
+
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 
@@ -112,7 +113,8 @@ export const getTenantByIdService = async (id: string) => {
 
 
 //////////////////////////////////////////////////////
-// ✅ CREATE TENANT + AUTO CREATE ADMIN
+// ✅ CREATE TENANT + AUTO CREATE ADMIN + AUTO FREE PLAN
+// 🔥 FIXED: Now assigns free plan automatically (NO fraud check)
 //////////////////////////////////////////////////////
 
 export const createTenantService = async (data: any) => {
@@ -178,7 +180,57 @@ export const createTenantService = async (data: any) => {
     return { tenant, adminUser, adminEmail, defaultPassword };
   });
 
-  return result;
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🔥 AUTO ASSIGN FREE PLAN — NO FRAUD CHECK (Super Admin is GOD)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  let freeTrialAssigned = false;
+
+  const freePlan = await prisma.subscriptionPlan.findFirst({
+    where: { price: 0, isActive: true },
+  });
+
+  if (freePlan) {
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + freePlan.durationInDays);
+
+    await prisma.tenantSubscription.create({
+      data: {
+        tenantId: result.tenant.id,
+        planId: freePlan.id,
+        subscriptionCode: `SUB-FREE-${Date.now()}`,
+        startDate,
+        endDate,
+        status: "ACTIVE",
+        isActive: true,
+        amount: 0,
+        paymentStatus: "PAID",
+        paymentGateway: "FREE",
+        maxStudents: freePlan.maxStudents,
+        maxTeachers: freePlan.maxTeachers,
+        maxAdmins: freePlan.maxAdmins,
+        maxStorageInGB: freePlan.maxStorageInGB,
+      },
+    });
+
+    // Update tenant limits with plan limits
+    await prisma.tenant.update({
+      where: { id: result.tenant.id },
+      data: {
+        maxStudents: freePlan.maxStudents,
+        maxTeachers: freePlan.maxTeachers,
+        maxAdmins: freePlan.maxAdmins,
+        maxStorageInGB: freePlan.maxStorageInGB,
+      },
+    });
+
+    freeTrialAssigned = true;
+    console.log(`✅ FREE PLAN auto-assigned to tenant: ${result.tenant.id}`);
+  } else {
+    console.log("⚠️ No free plan found in SubscriptionPlan table!");
+  }
+
+  return { ...result, freeTrialAssigned };
 };
 
 //////////////////////////////////////////////////////
@@ -317,29 +369,12 @@ export const updatePlatformSettingsService = async (data: any) => {
 //////////////////////////////////////////////////////
 
 export const updateSuperAdminProfileService = async (userId: string, data: any) => {
-  const updateData: any = {};
-
-  if (data.name) updateData.name = data.name;
-  if (data.email) updateData.email = data.email;
-
-  if (data.newPassword) {
-    if (!data.currentPassword) {
-      throw new Error("Current password is required");
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new Error("User not found");
-
-    const isValid = await bcrypt.compare(data.currentPassword, user.password);
-    if (!isValid) throw new Error("Current password is incorrect");
-
-    updateData.password = await bcrypt.hash(data.newPassword, 10);
-  }
-
   return prisma.user.update({
     where: { id: userId },
-    data: updateData,
-    select: { id: true, name: true, email: true, role: true },
+    data: {
+      ...(data.name && { name: data.name }),
+      ...(data.email && { email: data.email }),
+    },
   });
 };
 
@@ -349,12 +384,8 @@ export const updateSuperAdminProfileService = async (userId: string, data: any) 
 
 export const getSystemConfigService = async () => {
   return {
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID
-      ? "***" + process.env.RAZORPAY_KEY_ID.slice(-6)
-      : "Not Set",
-    smtpHost: process.env.SMTP_HOST || "Not Set",
-    smtpPort: process.env.SMTP_PORT || "Not Set",
-    smtpEmail: process.env.SMTP_EMAIL || "Not Set",
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID ? "Configured" : "Not Set",
+    smtpConfigured: !!process.env.SMTP_HOST,
     baseUrl: process.env.BASE_URL || "http://localhost:5000",
   };
 };

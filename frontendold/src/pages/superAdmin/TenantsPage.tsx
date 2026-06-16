@@ -1,4 +1,5 @@
 
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -133,6 +134,7 @@ export default function TenantsPage() {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-slate-600">Type</th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">Students</th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">Teachers</th>
+                <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">Subscription</th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">Status</th>
                 <th className="px-6 py-4 text-center text-sm font-semibold text-slate-600">Actions</th>
               </tr>
@@ -142,7 +144,7 @@ export default function TenantsPage() {
               {filteredTenants.length > 0 ? (
                 filteredTenants.map((tenant) => (
                   <tr key={tenant.id} className="hover:bg-slate-50 transition-colors">
-                    {/* TENANT INFO — LOGO FIXED ✅ */}
+                    {/* TENANT INFO */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {getFullUrl(tenant.logoUrl) ? (
@@ -193,6 +195,40 @@ export default function TenantsPage() {
                       </div>
                     </td>
 
+                    {/* 🔥 NEW: SUBSCRIPTION COLUMN */}
+                   {/* 🔥 SUBSCRIPTION COLUMN */}
+<td className="px-6 py-4 text-center">
+  {tenant.subscriptions?.[0] ? (
+    <div>
+      <span
+        className={`px-3 py-1 text-xs font-semibold rounded-full ${
+          tenant.subscriptions[0].status === "ACTIVE"
+            ? tenant.subscriptions[0].plan?.price === 0
+              ? "bg-green-100 text-green-700"
+              : "bg-indigo-100 text-indigo-700"
+            : "bg-yellow-100 text-yellow-700"
+        }`}
+      >
+        {tenant.subscriptions[0].plan?.name || "Unknown"}
+      </span>
+      <p className="text-xs text-slate-400 mt-1">
+        {tenant.subscriptions[0].status === "ACTIVE"
+          ? `${Math.max(
+              0,
+              Math.ceil(
+                (new Date(tenant.subscriptions[0].endDate).getTime() - Date.now()) / 86400000
+              )
+            )} days left`
+          : tenant.subscriptions[0].status}
+      </p>
+    </div>
+  ) : (
+    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+      No Plan
+    </span>
+  )}
+</td>
+
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`px-3 py-1 text-xs font-semibold rounded-full ${
@@ -232,9 +268,10 @@ export default function TenantsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <Building2 size={40} className="mx-auto text-slate-300 mb-3" />
-                    <p className="text-slate-500">No tenants found</p>
+                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                    <Building2 size={40} className="mx-auto mb-3 opacity-50" />
+                    <p className="text-lg font-medium">No tenants found</p>
+                    <p className="text-sm mt-1">Create your first tenant to get started</p>
                   </td>
                 </tr>
               )}
@@ -243,6 +280,7 @@ export default function TenantsPage() {
         </div>
       </div>
 
+      {/* CREATE TENANT MODAL */}
       <CreateTenant
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

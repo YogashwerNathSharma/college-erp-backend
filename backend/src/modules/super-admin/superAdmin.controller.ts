@@ -1,4 +1,5 @@
 
+
 import { Response } from "express";
 import {
   getSuperAdminDashboardService,
@@ -55,7 +56,8 @@ export const getTenantById = async (req: any, res: Response) => {
 };
 
 //////////////////////////////////////////////////////
-// ✅ CREATE TENANT (with file upload)
+// ✅ CREATE TENANT (with file upload + FREE PLAN AUTO-ASSIGN)
+// 🔥 FIXED: Now returns freeTrialAssigned info
 //////////////////////////////////////////////////////
 
 export const createTenant = async (req: any, res: Response) => {
@@ -81,8 +83,17 @@ export const createTenant = async (req: any, res: Response) => {
       backgroundUrl,
     };
 
-    const tenant = await createTenantService(tenantData);
-    res.status(201).json({ success: true, data: tenant });
+    const result = await createTenantService(tenantData);
+
+    res.status(201).json({
+      success: true,
+      data: result.tenant,
+      admin: {
+        email: result.adminEmail,
+        defaultPassword: result.defaultPassword,
+      },
+      freeTrialAssigned: result.freeTrialAssigned, // ✅ NEW
+    });
   } catch (error: any) {
     console.log("❌ CREATE TENANT ERROR:", error.message);
     res.status(400).json({ success: false, message: error.message });
@@ -195,3 +206,4 @@ export const getSystemConfig = async (req: any, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+

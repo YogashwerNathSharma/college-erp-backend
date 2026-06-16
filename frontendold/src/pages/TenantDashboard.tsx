@@ -6,7 +6,7 @@ import {
   Users, School, IndianRupee, AlertCircle,
   CreditCard, Crown, Clock, Zap, CheckCircle, Gift,
 } from "lucide-react";
-
+import UsageCard from "../components/dashboard/UsageCard";
 import StatsCard from "../components/dashboard/StatsCard";
 import RevenueChart from "../components/dashboard/RevenueChart";
 import RecentPayments from "../components/dashboard/RecentPayments";
@@ -257,21 +257,21 @@ export default function Dashboard() {
                   {new Date(subscriptionInfo.endDate).toLocaleDateString("en-IN")}
                 </p>
               </div>
-            </div>
-
+            </div>        
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
               <span>👨‍🎓 Students: <b>{subscriptionInfo.maxStudents}</b></span>
               <span>👨‍🏫 Teachers: <b>{subscriptionInfo.maxTeachers}</b></span>
               <span>👨‍💼 Admins: <b>{subscriptionInfo.maxAdmins}</b></span>
               <span>💾 Storage: <b>{subscriptionInfo.maxStorageInGB} GB</b></span>
             </div>
-
+            
             {subscriptionInfo.daysRemaining <= 5 && (
               <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2">
                 <AlertCircle size={16} />
                 Your plan expires in {subscriptionInfo.daysRemaining} days! Renew now.
               </div>
             )}
+            <UsageCard />
           </>
         ) : (
           <div className="text-center py-6">

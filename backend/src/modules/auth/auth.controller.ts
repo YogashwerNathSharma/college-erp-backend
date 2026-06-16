@@ -90,14 +90,24 @@ export const registerTenant = async (req: Request, res: Response) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      const files = (req as any).files || {};
+      const logoFile = files?.logo?.[0]?.filename || null;
+      const bgFile = files?.background?.[0]?.filename || null;
+  
+      const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
+
       const tenant = await tx.tenant.create({
-        data: {
-          name: schoolName,
-          type: "SCHOOL",
-          isDeleted: false,
-          isActive: true,
-        },
-      });
+       data: {
+       name: schoolName,
+       type: "SCHOOL",
+        isDeleted: false,
+        isActive: true,
+      // 🔥 NEW: Logo + Background save
+        logoUrl: logoFile ? `${BASE_URL}/uploads/${logoFile}` : null,
+       backgroundUrl: bgFile ? `${BASE_URL}/uploads/${bgFile}` : null,
+    },
+  });
+     
 
       // 🔥 PASSWORD SET
       const defaultPassword = "123456";

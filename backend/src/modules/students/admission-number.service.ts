@@ -40,12 +40,16 @@ export const generateAdmissionNumber = async (
     nextSerial = existingCount + 1;
 
     await prisma.admissionCounter.create({
-      data: {
-        tenant: { connect: { id: tenantId } },
-        academicYearId,
-        prefix: "ADM",
-        lastNumber: nextSerial,
-      },
+    data: {
+          tenant: {
+            connect: { id: tenantId }
+          },
+          academicYear: {
+            connect: { id: academicYearId }
+          },
+          prefix: "ADM",
+          lastNumber: nextSerial,
+          }
     });
   }
 
@@ -113,12 +117,16 @@ export const syncAdmissionCounter = async (
     });
   } else {
     await prisma.admissionCounter.create({
-      data: {
-        tenant: { connect: { id: tenantId } },
-        academicYearId,
-        prefix: "ADM",
-        lastNumber: maxSerial,
+    data: {
+      tenant: {
+        connect: { id: tenantId }
       },
+      academicYear: {
+        connect: { id: academicYearId }
+      },
+      prefix: "ADM",
+      lastNumber: maxSerial,
+      }   
     });
   }
 

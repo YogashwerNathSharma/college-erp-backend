@@ -32,12 +32,26 @@ export const createTenant = async (data: any) => {
 };
 
 /////////////////////////
-// GET ALL TENANTS
+// GET ALL TENANTS (🔥 FIXED — Subscription Include)
 /////////////////////////
 
 export const getTenants = async () => {
   return prisma.tenant.findMany({
     orderBy: { name: "asc" },
+    include: {
+      subscriptions: {
+        where: { isActive: true },
+        include: { plan: true },
+        take: 1,
+        orderBy: { createdAt: "desc" },
+      },
+      _count: {
+        select: {
+          students: true,
+          teachers: true,
+        },
+      },
+    },
   });
 };
 
@@ -169,30 +183,31 @@ export const tenantSelfSubscribeService = async (
   }
 
   // Create subscription
-const subscriptionCode = `SUB-${Date.now()}`;
+  const subscriptionCode = `SUB-${Date.now()}`;
 
-// ✅ Calculate endDate
-const startDate = new Date();
-const endDate = new Date(startDate);
-endDate.setDate(endDate.getDate() + plan.durationInDays);
+  // ✅ Calculate endDate
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + plan.durationInDays);
 
-const subscription = await prisma.tenantSubscription.create({
-  data: {
-    tenantId,
-    planId,
-    subscriptionCode,
-    amount: plan.price,
-    currency: "INR",
-    maxStudents: plan.maxStudents,
-    maxTeachers: plan.maxTeachers,
-    maxAdmins: plan.maxAdmins,
-    maxStorageInGB: plan.maxStorageInGB,
-    startDate,          // ✅ add
-    endDate,            // ✅ add — ye missing tha
-    status: "PENDING",
-    isActive: false,
-  },
-});
+  const subscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId,
+      planId,
+      subscriptionCode,
+      amount: plan.price,
+      currency: "INR",
+      maxStudents: plan.maxStudents,
+      maxTeachers: plan.maxTeachers,
+      maxAdmins: plan.maxAdmins,
+      maxStorageInGB: plan.maxStorageInGB,
+      startDate,
+      endDate,
+      status: "PENDING",
+      isActive: false,
+    },
+  });
+
   // Create Razorpay order
   const order = await razorpay.orders.create({
     amount: Math.round(plan.price * 100),

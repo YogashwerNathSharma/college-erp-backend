@@ -1,4 +1,5 @@
 
+
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
 import {
@@ -9,11 +10,6 @@ import {
   getAllPlansService,
   tenantSelfSubscribeService,
 } from "./tenant.service";
-import {
-  selfSubscribeService,
-  checkFreePlanAlreadyUsed,
-  saveFreeTrialRecord,
-} from "../subscription/subscription.service";
 import bcrypt from "bcrypt";
 
 // BASE URL (ENV SAFE)
@@ -21,11 +17,12 @@ const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 /////////////////////////
 // CREATE TENANT (SUPER ADMIN)
-// 🔥 FIXED: Free plan auto-assign with STRICT fraud check
+// ✅ FIXED: NO fraud check — Super Admin is GOD
 /////////////////////////
 
 export const create = async (req: any, res: Response) => {
   try {
+    console.log("🚀🚀🚀 CREATE FUNCTION CALLED! Body:", req.body);  // 🔥 ADD THIS
     const { name, type, phone, address, city } = req.body;
 
     if (!name || !type) {
@@ -40,6 +37,7 @@ export const create = async (req: any, res: Response) => {
     const bgFile = files?.background?.[0]?.filename || null;
 
     // 1. CREATE TENANT
+    
     const tenant = await prisma.tenant.create({
       data: {
         name,
@@ -53,7 +51,7 @@ export const create = async (req: any, res: Response) => {
     const email = name.toLowerCase().replace(/\s/g, "") + "@admin.com";
 
     // 3. AUTO DEFAULT CREDENTIALS
-    const rawPwd = "123456";
+    const rawPwd = "Admin@123";
     const hashedPwd = await bcrypt.hash(rawPwd, 10);
 
     // 4. CREATE ADMIN USER
@@ -67,7 +65,7 @@ export const create = async (req: any, res: Response) => {
       },
     });
 
-    // 5. 🔥 AUTO ASSIGN FREE PLAN — WITH STRICT FRAUD CHECK
+        // 5. ✅ AUTO ASSIGN FREE PLAN — NO FRAUD CHECK (Super Admin is GOD)
     const freePlan = await prisma.subscriptionPlan.findFirst({
       where: { price: 0, isActive: true },
     });
@@ -76,79 +74,43 @@ export const create = async (req: any, res: Response) => {
     let freeTrialAssigned = false;
 
     if (freePlan) {
-      // 🔥 Get IP from request
-      const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || null;
-      const userAgent = req.headers["user-agent"] || null;
-      const deviceFingerprint = req.headers["x-device-fingerprint"] || null;
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + freePlan.durationInDays);
 
-      // 🔥 STRICT FRAUD CHECK
-      const fraudResult = await checkFreePlanAlreadyUsed({
-        tenantId: tenant.id,
-        userId: adminUser.id,
-        email: email,
-        phone: phone || null,
-        name: name || null,
-        address: address || null,
-        ipAddress: typeof ipAddress === "string" ? ipAddress : (Array.isArray(ipAddress) ? ipAddress[0] : null),
-        deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
+      await prisma.tenantSubscription.create({
+        data: {
+          tenantId: tenant.id,
+          planId: freePlan.id,
+          subscriptionCode: `SUB-FREE-${Date.now()}`,
+          startDate,
+          endDate,
+          status: "ACTIVE",
+          isActive: true,
+          amount: 0,
+          paymentStatus: "PAID",
+          maxStudents: freePlan.maxStudents,
+          maxTeachers: freePlan.maxTeachers,
+          maxAdmins: freePlan.maxAdmins,
+          maxStorageInGB: freePlan.maxStorageInGB,
+        },
       });
 
-      if (!fraudResult.used) {
-        // ✅ SAFE — Assign free plan
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + freePlan.durationInDays);
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          maxStudents: freePlan.maxStudents,
+          maxTeachers: freePlan.maxTeachers,
+          maxAdmins: freePlan.maxAdmins,
+          maxStorageInGB: freePlan.maxStorageInGB,
+        },
+      });
 
-        await prisma.tenantSubscription.create({
-          data: {
-            tenantId: tenant.id,
-            planId: freePlan.id,
-            subscriptionCode: `SUB-FREE-${Date.now()}`,
-            startDate,
-            endDate,
-            status: "ACTIVE",
-            isActive: true,
-            amount: 0,
-            paymentStatus: "PAID",
-            maxStudents: freePlan.maxStudents,
-            maxTeachers: freePlan.maxTeachers,
-            maxAdmins: freePlan.maxAdmins,
-            maxStorageInGB: freePlan.maxStorageInGB,
-          },
-        });
-
-        // Update tenant limits
-        await prisma.tenant.update({
-          where: { id: tenant.id },
-          data: {
-            maxStudents: freePlan.maxStudents,
-            maxTeachers: freePlan.maxTeachers,
-            maxAdmins: freePlan.maxAdmins,
-            maxStorageInGB: freePlan.maxStorageInGB,
-          },
-        });
-
-        // 🔥 SAVE FREE TRIAL RECORD
-        await saveFreeTrialRecord({
-          tenantId: tenant.id,
-          userId: adminUser.id,
-          email: email,
-          phone: phone || null,
-          name: name || null,
-          address: address || null,
-          ipAddress: typeof ipAddress === "string" ? ipAddress : null,
-          deviceFingerprint: typeof deviceFingerprint === "string" ? deviceFingerprint : null,
-          userAgent: typeof userAgent === "string" ? userAgent : null,
-          planId: freePlan.id,
-          planName: freePlan.name,
-        });
-
-        freeTrialAssigned = true;
-      } else {
-        console.log(`⚠️ FREE PLAN BLOCKED for tenant ${tenant.id}: ${fraudResult.reason}`);
-      }
+      freeTrialAssigned = true;
+      console.log(`✅ FREE PLAN ASSIGNED to tenant ${tenant.id}`);
+    } else {
+      console.log("⚠️ No free plan found in SubscriptionPlan table!");
     }
-
     // 6. RESPONSE WITH CREDENTIALS
     return res.status(201).json({
       success: true,
@@ -158,7 +120,6 @@ export const create = async (req: any, res: Response) => {
         defaultPassword: rawPwd,
       },
       freeTrial: freeTrialAssigned,
-      freeTrialBlocked: freePlan && !freeTrialAssigned ? true : false,
     });
 
   } catch (error: any) {
@@ -196,6 +157,61 @@ export const update = async (req: Request, res: Response) => {
       success: false,
       message: error.message || "Error updating tenant",
     });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 📊 GET TENANT USAGE (Current count vs Plan limits)
+//////////////////////////////////////////////////////
+
+export const getTenantUsage = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant ID not found",
+      });
+    }
+
+    // Get tenant limits
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        maxStudents: true,
+        maxTeachers: true,
+        maxAdmins: true,
+        maxStorageInGB: true,
+      },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant not found",
+      });
+    }
+
+    // Count current usage
+    const [studentCount, teacherCount, adminCount] = await Promise.all([
+      prisma.student.count({ where: { tenantId, isDeleted: false } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+      prisma.user.count({ where: { tenantId, role: "ADMIN" } }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        students: { current: studentCount, max: tenant.maxStudents },
+        teachers: { current: teacherCount, max: tenant.maxTeachers },
+        admins: { current: adminCount, max: tenant.maxAdmins },
+        storage: { current: 0, max: tenant.maxStorageInGB }, // TODO: calculate actual storage
+      },
+    });
+  } catch (error: any) {
+    console.error("USAGE ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -284,7 +300,14 @@ export const uploadTenantImages = async (req: any, res: Response) => {
 export const getMySubscription = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+console.log("🔍 MY-SUB CHECK tenantId:", tenantId);
 
+
+// 🔥 DEBUG
+const allSubs = await prisma.tenantSubscription.findMany({
+  where: { tenantId },
+});
+console.log("ALL SUBS:", allSubs);
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -297,12 +320,13 @@ export const getMySubscription = async (req: any, res: Response) => {
       where: {
         tenantId,
         isActive: true,
+       // status: "ACTIVE",
       },
       orderBy: {
         createdAt: "desc",
       },
     });
-
+    console.log("🔍 FILTERED SUB:", subscription);
     if (!subscription) {
       return res.status(200).json({ success: true, data: null });
     }
@@ -332,102 +356,50 @@ export const getMySubscription = async (req: any, res: Response) => {
       maxStorageInGB: subscription.maxStorageInGB,
     };
 
-    return res.status(200).json({ success: true, data });
+    return res.json({ success: true, data });
 
   } catch (error: any) {
-    console.error("GET MY SUBSCRIPTION ERROR:", error);
-    return res.status(400).json({ success: false, message: error.message });
+    console.error("MY SUBSCRIPTION ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 //////////////////////////////////////////////////////
-// GET ALL PLANS (For tenant to browse and buy)
+// GET ALL PLANS
 //////////////////////////////////////////////////////
 
 export const getAllPlans = async (req: Request, res: Response) => {
   try {
-    const data = await getAllPlansService();
-    return res.status(200).json({ success: true, data });
+    const plans = await getAllPlansService();
+    return res.json({ success: true, data: plans });
   } catch (error: any) {
-    console.error("GET PLANS ERROR:", error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 //////////////////////////////////////////////////////
-// 🔥 SELF SUBSCRIBE — WITH STRICT FREE PLAN FRAUD CHECK
+// SELF SUBSCRIBE (Tenant buys a plan)
 //////////////////////////////////////////////////////
 
 export const selfSubscribe = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const userId = req.user?.userId;
-    const { planId, phone, address, deviceFingerprint } = req.body;
+    const { planId } = req.body;
 
-    if (!tenantId) {
+    if (!tenantId || !planId) {
       return res.status(400).json({
         success: false,
-        message: "Tenant ID not found in token",
+        message: "tenantId and planId required",
       });
     }
 
-    if (!planId) {
-      return res.status(400).json({
-        success: false,
-        message: "Plan ID is required",
-      });
-    }
+    const result = await tenantSelfSubscribeService(tenantId, planId);
 
-    // Check if plan is free → need strict check
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
-    });
-
-    if (!plan) {
-      return res.status(404).json({ success: false, message: "Plan not found" });
-    }
-
-    if (plan.price === 0) {
-      // 🔥 FREE PLAN — Get user info for fraud check
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-      });
-
-      const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || null;
-      const userAgent = req.headers["user-agent"] || null;
-      const clientFingerprint = deviceFingerprint || req.headers["x-device-fingerprint"] || null;
-
-      // Use selfSubscribeService with fraud check data
-      const data = await selfSubscribeService(
-        tenantId,
-        planId,
-        {
-          userId: userId,
-          email: user?.email || "",
-          phone: phone || tenant?.phone || null,
-          name: user?.name || tenant?.name || null,
-          address: address || tenant?.address || null,
-          ipAddress: typeof ipAddress === "string" ? ipAddress : (Array.isArray(ipAddress) ? ipAddress[0] : null),
-          deviceFingerprint: typeof clientFingerprint === "string" ? clientFingerprint : null,
-          userAgent: typeof userAgent === "string" ? userAgent : null,
-        }
-      );
-
-      return res.status(200).json({ success: true, data });
-
-    } else {
-      // PAID PLAN — Normal Razorpay flow
-      const data = await tenantSelfSubscribeService(tenantId, planId);
-      return res.status(200).json({ success: true, data });
-    }
+    return res.json({ success: true, data: result });
 
   } catch (error: any) {
     console.error("SELF SUBSCRIBE ERROR:", error);
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

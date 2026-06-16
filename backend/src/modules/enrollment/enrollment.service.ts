@@ -124,19 +124,26 @@ export const createEnrollment = async (body: any, user: any) => {
       },
     });
 
-    const totalAmount = Number(feeStructure.amount);
+    const totalAmount = Number(feeStructure.totalAmount);
 
     const studentFee = await tx.studentFee.create({
       data: {
+        tenantId,
+
         enrollmentId: enrollment.id,
         feeStructureId: feeStructure.id,
+
         totalAmount,
+        netAmount: totalAmount,
+
         paidAmount: 0,
-        pendingAmount: totalAmount,
-        status: "UNPAID",
+        balanceAmount: totalAmount,
+
+        installmentNo: 1,
+
+        status: "PENDING",
         dueDate: new Date(),
-        tenantId,
-      },
+      }
     });
 
     console.log("✅ Enrollment + StudentFee created");

@@ -2,6 +2,9 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+
+import { checkLimit } from "../../middleware/subscriptionLimit.middleware";
+
 import { allowRoles } from "../../middleware/role.middleware";
 import { validateStudentAge } from "./age-validation.service";
 import { uploadPhoto, uploadDocument } from "../../utils/upload";
@@ -155,6 +158,8 @@ router.get("/age-config/validate", async (req: any, res: any) => {
 router.post("/age-config/seed", allowRoles("ADMIN"), seedAgeConfigHandler);
 router.put("/age-config/:configId", allowRoles("ADMIN"), updateAgeConfigHandler);
 router.patch("/age-config/:configId/toggle", allowRoles("ADMIN"), toggleAgeConfigHandler);
+
+router.post("/", authMiddleware, checkLimit("students"), createStudentHandler);
 
 // --- Promotion ---
 router.get("/promotion/eligible", getEligibleStudentsHandler);

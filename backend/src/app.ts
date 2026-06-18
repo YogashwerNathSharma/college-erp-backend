@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
+// Other route imports ke saath:
+import settingsRoutes from "./modules/settings/settings.routes";
+
 
 import { swaggerSpec } from "./config/swagger";
 import { rateLimiter } from "./middleware/rateLimit";
@@ -61,6 +64,17 @@ import subscriptionPaymentRoutes from "./modules/subscription-payment/subscripti
 import examRoutes from "./modules/exam/exam.routes";
 import gradeRoutes from "./modules/grade/grade.routes";
 import roomRoutes from "./modules/room/room.routes";
+
+// libraray
+// app.ts mein — routes register karo
+import libraryRoutes from "./modules/libraryManagement/library.routes";
+///transport
+// Import (top of file, with other imports)
+import transportRoutes from "./modules/transport/transport.routes";
+
+
+
+
 
 
 const app = express();
@@ -122,7 +136,8 @@ app.use(subscriptionCheckMiddleware);
 //////////////////////////////////////////////////////
 
 app.use("/api/dashboard", dashboardRoutes);
-
+// Other app.use ke saath:
+app.use("/api/settings", settingsRoutes);
 //////////////////////////////////////////////////////
 // ACADEMIC FLOW
 //////////////////////////////////////////////////////
@@ -154,7 +169,13 @@ app.use("/api/teacher-settings", teacherSettingsRoutes);
 //////////////////////////////////////////////////////
 
 app.use("/api/timetable", timetableRoutes);
+//////////////////
+// library management
+/////////////////////////
 
+// Route registration (subscription check ke NEECHE)
+app.use("/api/transport", transportRoutes);
+app.use("/api/library", libraryRoutes);
 //////////////////////////////////////////////////////
 // ADMISSION FLOW
 //////////////////////////////////////////////////////
@@ -167,6 +188,7 @@ app.use("/api/enrollment", enrollmentRoutes);
 //////////////////////////////////////////////////////
 
 app.use("/api/fees", feesRoutes);
+
 
 //////////////////////////////////////////////////////
 // EXAM MODULE

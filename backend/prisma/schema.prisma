@@ -82,6 +82,21 @@ invigilatorAssignments InvigilatorAssignment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   rooms               Room[]
+  ///library
+  books            Book[]
+bookCategories   BookCategory[]
+libraryMembers   LibraryMember[]
+bookIssues       BookIssue[]
+librarySetting   LibrarySetting?
+
+////////transport
+vehicles                Vehicle[]
+routes                  Route[]
+routeStops              RouteStop[]
+transportAssignments    TransportAssignment[]
+transportAttendances    TransportAttendance[]
+transportSetting        TransportSetting?
+
 }
 
 //////////////////////
@@ -93,7 +108,8 @@ model User {
   email    String @unique
   password String
   role     String
-
+  phone    String?          
+  status   String  @default("ACTIVE")  
   tenantId String? @db.ObjectId
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 freeTrialRecords FreeTrialRecord[]
@@ -1507,4 +1523,364 @@ model PlatformSettings {
   faviconUrl   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+////////////////
+//library management
+/////////////////////
+model BookCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  tenantId    String   @db.ObjectId
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  books  Book[]
+
+  @@index([tenantId])
+  @@map("book_categories")
+}
+model Book {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  author          String
+  isbn            String?
+  publisher       String?
+  edition         String?
+  categoryId      String   @db.ObjectId
+  language        String   @default("English")
+  totalCopies     Int      @default(1)
+  availableCopies Int      @default(1)
+  shelfLocation   String?
+  coverImageUrl   String?
+  description     String?
+  price           Float?
+  pages           Int?
+  publishYear     Int?
+  tenantId        String   @db.ObjectId
+  isDeleted       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  category BookCategory @relation(fields: [categoryId], references: [id])
+  issues   BookIssue[]
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([title])
+  @@index([author])
+  @@map("books")
+}
+model LibraryMember {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String?  @db.ObjectId
+  membershipId       String
+  memberType         String
+  name               String
+  email              String?
+  phone              String?
+  class              String?
+  maxBooksAllowed    Int      @default(3)
+  currentBooksIssued Int      @default(0)
+  status             String   @default("ACTIVE")
+  tenantId           String   @db.ObjectId
+  isDeleted          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  issues BookIssue[]
+
+  @@unique([membershipId, tenantId])
+  @@index([tenantId])
+  @@index([memberType])
+  @@map("library_members")
+}
+model BookIssue {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  bookId     String    @db.ObjectId
+  memberId   String    @db.ObjectId
+  memberType String
+  issueDate  DateTime  @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  status     String    @default("ISSUED")
+  fineAmount Float     @default(0)
+  fineStatus String?
+  remarks    String?
+  issuedBy   String
+  returnedBy String?
+  tenantId   String    @db.ObjectId
+  isDeleted  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id])
+  book   Book          @relation(fields: [bookId], references: [id])
+  member LibraryMember @relation(fields: [memberId], references: [id])
+
+  @@index([tenantId])
+  @@index([bookId])
+  @@index([memberId])
+  @@index([status])
+  @@map("book_issues")
+}
+model LibrarySetting {
+  id                       String   @id @default(auto()) @map("_id") @db.ObjectId
+  maxBooksPerStudent       Int      @default(3)
+  maxBooksPerTeacher       Int      @default(5)
+  maxBooksPerStaff         Int      @default(3)
+  issueDurationDays        Int      @default(14)
+  finePerDay               Float    @default(2)
+  allowRenewal             Boolean  @default(true)
+  maxRenewals              Int      @default(2)
+  lostBookFineMultiplier   Float    @default(2)
+  workingDaysOnly          Boolean  @default(false)
+  tenantId                 String   @unique @db.ObjectId
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("library_settings")
+}
+
+// ======================================================
+// TRANSPORT MODULE
+// Prisma Version : 6.19.3
+// Database : MongoDB
+// ======================================================
+
+enum VehicleType {
+  BUS
+  VAN
+  AUTO
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum RouteStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssignmentType {
+  PICKUP
+  DROP
+  BOTH
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceType {
+  PICKUP
+  DROP
+}
+
+enum FuelType {
+  DIESEL
+  PETROL
+  CNG
+  ELECTRIC
+}
+
+model Vehicle {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  vehicleNo         String
+  type              VehicleType
+
+  capacity          Int
+
+  driverName        String
+  driverPhone       String
+  driverLicense     String
+
+  conductorName     String?
+  conductorPhone    String?
+
+  insuranceExpiry   DateTime
+  fitnessExpiry     DateTime
+  permitExpiry      DateTime
+
+  fuelType          FuelType
+
+  status            VehicleStatus @default(ACTIVE)
+
+  tenantId          String @db.ObjectId
+  tenant            Tenant @relation(fields: [tenantId], references: [id])
+
+  assignments       TransportAssignment[]
+
+  isDeleted         Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([vehicleNo])
+}
+
+model Route {
+
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name              String
+  code              String
+
+  startLocation     String
+  endLocation       String
+
+  distance          Float
+
+  estimatedTime     Int
+
+  monthlyFee        Float
+
+  status            RouteStatus @default(ACTIVE)
+
+  tenantId          String @db.ObjectId
+  tenant            Tenant @relation(fields: [tenantId], references: [id])
+
+  stops             RouteStop[]
+
+  assignments       TransportAssignment[]
+
+  isDeleted         Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([code])
+}
+
+model RouteStop {
+
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+
+  routeId         String @db.ObjectId
+  route           Route @relation(fields: [routeId], references: [id])
+
+  name            String
+
+  pickupTime      String
+  dropTime        String
+
+  sequence        Int
+
+  latitude        Float?
+  longitude       Float?
+
+  tenantId        String @db.ObjectId
+  tenant          Tenant @relation(fields: [tenantId], references: [id])
+
+  assignments     TransportAssignment[]
+
+  isDeleted       Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([routeId])
+}
+
+model TransportAssignment {
+
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId         String
+  studentName       String
+  classInfo         String
+
+  routeId           String @db.ObjectId
+  route             Route @relation(fields: [routeId], references: [id])
+
+  stopId    String?    @db.ObjectId       // ? add karo
+  stop      RouteStop? @relation(fields: [stopId], references: [id])   // ? add karo
+
+  vehicleId         String @db.ObjectId
+  vehicle           Vehicle @relation(fields: [vehicleId], references: [id])
+
+  assignmentType    AssignmentType @default(BOTH)
+
+  monthlyFee        Float
+
+  startDate         DateTime
+  endDate           DateTime?
+
+  status            AssignmentStatus @default(ACTIVE)
+
+  tenantId          String @db.ObjectId
+  tenant            Tenant @relation(fields: [tenantId], references: [id])
+
+  attendances       TransportAttendance[]
+
+  isDeleted         Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([vehicleId])
+  @@index([routeId])
+}
+
+model TransportAttendance {
+
+  id               String @id @default(auto()) @map("_id") @db.ObjectId
+
+  assignmentId     String @db.ObjectId
+  assignment       TransportAssignment @relation(fields: [assignmentId], references: [id])
+
+  date             DateTime
+
+  status           AttendanceStatus
+
+  type             AttendanceType
+
+  remarks          String?
+
+  markedBy         String
+
+  tenantId         String @db.ObjectId
+  tenant           Tenant @relation(fields: [tenantId], references: [id])
+
+  isDeleted        Boolean @default(false)
+
+  createdAt        DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([assignmentId, date])
+}
+
+model TransportSetting {
+
+  id                     String @id @default(auto()) @map("_id") @db.ObjectId
+
+  tenantId               String @unique @db.ObjectId
+  tenant                 Tenant @relation(fields: [tenantId], references: [id])
+
+  lateFinePerDay         Float @default(0)
+
+  absentNotification     Boolean @default(true)
+
+  gpsTrackingEnabled     Boolean @default(false)
+
+  smsAlertEnabled        Boolean @default(false)
+
+  maxStudentsPerVehicle  Int @default(50)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }

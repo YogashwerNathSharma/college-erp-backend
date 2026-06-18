@@ -78,7 +78,7 @@ router.post(
   ]),
   uploadTenantImages
 );
-
+router.get("/usage", authMiddleware, getTenantUsage);
 //////////////////////////////////////////////////
 // 🔥 UPDATE / TOGGLE TENANT (SUPER ADMIN ONLY)
 //////////////////////////////////////////////////
@@ -101,5 +101,5 @@ router.get(
   allowRoles("SUPER_ADMIN"),
   getOne
 );
-router.get("/usage", authMiddleware, getTenantUsage);
+
 export default router;

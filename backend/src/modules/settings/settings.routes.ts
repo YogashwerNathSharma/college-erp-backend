@@ -1,27 +1,119 @@
 
+// Settings Routes (Enhanced v2)
+// SUPER_ADMIN + ADMIN dono ke liye combined routes
+// User Management endpoints included (sirf ADMIN access)
+
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
+
 import {
   getSettings,
   updateTenantSettings,
   updateProfile,
+  changePassword,
+  getUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  getRoles,
 } from "./settings.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
+
+
+
 const router = Router();
 
-// 🔒 Only ADMIN of the tenant can access these
-router.use(authMiddleware, resolveTenant, allowRoles("ADMIN"));
+// Multer config
+const storage = multer.diskStorage({
+  destination: (req: any, file: any, cb: any) => {
+    cb(null, path.join(__dirname, "../../../uploads"));
+  },
+  filename: (req: any, file: any, cb: any) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
 
-// Get tenant settings (tenant info + profile + usage)
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req: any, file: any, cb: any) => {
+    const allowed = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files allowed"));
+    }
+  },
+});
+
+// Upload route — baaki routes ke saath add karo
+router.post("/upload", upload.single("file"), (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({
+      success: true,
+      data: { url: fileUrl, filename: req.file.filename },
+      message: "File uploaded successfully",
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+// ============================================================
+// 🔒 Common Middleware — Auth + Tenant resolve
+// Dono roles access kar sakte hain (SUPER_ADMIN + ADMIN)
+// ============================================================
+
+router.use(authMiddleware, resolveTenant, allowRoles("ADMIN", "SUPER_ADMIN"));
+
+// ============================================================
+// SETTINGS ROUTES (Both ADMIN + SUPER_ADMIN)
+// ============================================================
+
+// Get settings (role-based response automatically adjust hoga)
 router.get("/", getSettings);
 
-// Update tenant branding/info (name, logo, address, etc.)
+// Update tenant settings (branding/info) — sirf ADMIN
 router.put("/", updateTenantSettings);
 
-// Update admin profile (name, email, password)
+// Update profile (name, email, password) — dono
 router.put("/profile", updateProfile);
+
+// Change password — dono
+router.put("/change-password", changePassword);
+
+// ============================================================
+// USER MANAGEMENT ROUTES (Sirf Tenant ADMIN)
+// SUPER_ADMIN ke liye ye routes nahi hain — wo super-admin panel se manage karta hai
+// ============================================================
+
+// Get all users (with pagination + filters)
+router.get("/users", allowRoles("ADMIN"), getUsers);
+
+// Get available roles
+router.get("/roles", allowRoles("ADMIN"), getRoles);
+
+// Get single user by ID
+router.get("/users/:id", allowRoles("ADMIN"), getUserById);
+
+// Create new user
+router.post("/users", allowRoles("ADMIN"), createUser);
+
+// Update user
+router.put("/users/:id", allowRoles("ADMIN"), updateUser);
+
+// Delete (deactivate) user
+router.delete("/users/:id", allowRoles("ADMIN"), deleteUser);
 
 export default router;
 

@@ -4,9 +4,9 @@ import axios from "axios";
 import { useOutletContext } from "react-router-dom";
 import {
   Users, School, IndianRupee, AlertCircle,
-  CreditCard, Crown, Clock, Zap, CheckCircle, Gift,
+   Zap, CheckCircle,
 } from "lucide-react";
-import UsageCard from "../components/dashboard/UsageCard";
+//import UsageCard from "../components/dashboard/UsageCard";
 import StatsCard from "../components/dashboard/StatsCard";
 import RevenueChart from "../components/dashboard/RevenueChart";
 import RecentPayments from "../components/dashboard/RecentPayments";
@@ -180,116 +180,84 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
 
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-500 mt-1">
-          Welcome, <b>{user?.name}</b> ({user?.role})
-        </p>
-      </div>
+     
 
-      {/* SUBSCRIPTION INFO CARD */}
-      <div className={`rounded-2xl border p-6 shadow-sm ${
-        isFreePlan
-          ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
-          : "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200"
+{/* 🔥 COMPACT SUBSCRIPTION — 1 LINE */}
+{subscriptionInfo && (
+  <div className={`flex items-center justify-between rounded-xl px-5 py-3 border shadow-sm ${
+    subscriptionInfo.daysRemaining <= 5
+      ? "bg-red-50 border-red-200"
+      : isFreePlan
+        ? "bg-green-50 border-green-200"
+        : "bg-white border-slate-200"
+  }`}>
+    <div className="flex items-center gap-3 flex-wrap">
+      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+        isFreePlan ? "bg-green-100 text-green-700" : "bg-indigo-100 text-indigo-700"
       }`}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className={`text-xl font-bold flex items-center gap-2 ${
-            isFreePlan ? "text-green-800" : "text-indigo-800"
-          }`}>
-            <CreditCard size={22} />
-            Subscription
-          </h2>
-          <button
-            onClick={fetchPlans}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
-          >
-            <Crown size={16} />
-            {subscriptionInfo ? "Upgrade / Renew" : "View Plans"}
-          </button>
-        </div>
+        {subscriptionInfo.planName}
+      </span>
+      <span className={`text-sm font-medium ${
+        subscriptionInfo.daysRemaining <= 5 ? "text-red-600" : "text-slate-600"
+      }`}>
+        ⏱ {subscriptionInfo.daysRemaining} days left
+      </span>
+      <span className="text-slate-300 hidden md:inline">|</span>
+      <span className="text-sm text-slate-500 hidden md:inline">
+        Till {new Date(subscriptionInfo.endDate).toLocaleDateString("en-IN")}
+      </span>
+      <span className="text-slate-300 hidden lg:inline">|</span>
+      <span className="text-sm text-slate-500 hidden lg:inline">
+        👨🎓{subscriptionInfo.maxStudents} 👨🏫{subscriptionInfo.maxTeachers} 💾{subscriptionInfo.maxStorageInGB}GB
+      </span>
+      {subscriptionInfo.daysRemaining <= 5 && (
+        <span className="text-xs text-red-600 font-semibold">⚠️ Expiring soon!</span>
+      )}
+    </div>
+    <button
+      onClick={fetchPlans}
+      className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-semibold whitespace-nowrap"
+    >
+      Upgrade
+    </button>
+  </div>
+)}
 
-        {subscriptionInfo ? (
-          <>
-            {/* 🔥 Free Plan Active Badge */}
-            {isFreePlan && (
-              <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-xl flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <Gift className="text-white" size={20} />
-                </div>
-                <div>
-                  <p className="text-green-800 font-bold text-sm">🎉 Free Trial Activated!</p>
-                  <p className="text-green-600 text-xs">
-                    You are on a free trial. {subscriptionInfo.daysRemaining} days remaining. Upgrade anytime for more features.
-                  </p>
-                </div>
-              </div>
-            )}
+    {/* STATS — Compact + Clickable */}
+<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <StatsCard title="Students" value={data.totalStudents} icon={<Users size={18} />} color="from-indigo-500 to-purple-600" link="/students" />
+  <StatsCard title="Classes" value={data.totalClasses} icon={<School size={18} />} color="from-teal-500 to-cyan-600" link="/master" />
+  <StatsCard title="Fees Collected" value={`₹ ${data.totalPaid}`} icon={<IndianRupee size={18} />} color="from-yellow-500 to-orange-500" growth={data?.insights?.growth} link="/fees" />
+  <StatsCard title="Pending Fees" value={`₹ ${data.totalPending}`} icon={<AlertCircle size={18} />} color="from-red-500 to-pink-600" link="/fees" />
+</div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-sm text-gray-500">Current Plan</p>
-                <p className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  {subscriptionInfo.planName}
-                  {isFreePlan && (
-                    <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">
-                      FREE
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-sm text-gray-500">Amount Paid</p>
-                <p className="text-lg font-bold text-green-600">
-                  {subscriptionInfo.amount === 0 ? "Free" : `₹${subscriptionInfo.amount}`}
-                </p>
-              </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-sm text-gray-500 flex items-center gap-1"><Clock size={14} /> Days Left</p>
-                <p className={`text-lg font-bold ${subscriptionInfo.daysRemaining <= 5 ? "text-red-500" : "text-indigo-600"}`}>
-                  {subscriptionInfo.daysRemaining} Days
-                </p>
-              </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm">
-                <p className="text-sm text-gray-500">Valid Till</p>
-                <p className="text-lg font-bold text-slate-800">
-                  {new Date(subscriptionInfo.endDate).toLocaleDateString("en-IN")}
-                </p>
-              </div>
-            </div>        
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
-              <span>👨‍🎓 Students: <b>{subscriptionInfo.maxStudents}</b></span>
-              <span>👨‍🏫 Teachers: <b>{subscriptionInfo.maxTeachers}</b></span>
-              <span>👨‍💼 Admins: <b>{subscriptionInfo.maxAdmins}</b></span>
-              <span>💾 Storage: <b>{subscriptionInfo.maxStorageInGB} GB</b></span>
-            </div>
-            
-            {subscriptionInfo.daysRemaining <= 5 && (
-              <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center gap-2">
-                <AlertCircle size={16} />
-                Your plan expires in {subscriptionInfo.daysRemaining} days! Renew now.
-              </div>
-            )}
-            <UsageCard />
-          </>
-        ) : (
-          <div className="text-center py-6">
-            <p className="text-gray-500 text-lg">No active subscription</p>
-            <p className="text-gray-400 text-sm mt-1">Choose a plan to unlock all features</p>
-          </div>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  {/* LEFT — Insights (half width) */}
+  <Insights data={data.insights} />
+
+  {/* RIGHT — Today's Summary */}
+  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+    <h3 className="text-lg font-bold text-slate-800 mb-3">📅 Today's Summary</h3>
+    <div className="space-y-3">
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-slate-600">Total Students</span>
+        <span className="text-sm font-bold text-slate-800">{data.totalStudents}</span>
       </div>
-
-      {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard title="Students" value={data.totalStudents} icon={<Users />} color="from-indigo-500 to-purple-600" />
-        <StatsCard title="Classes" value={data.totalClasses} icon={<School />} color="from-teal-500 to-cyan-600" />
-        <StatsCard title="Fees Collected" value={`₹ ${data.totalPaid}`} icon={<IndianRupee />} color="from-yellow-500 to-orange-500" growth={data?.insights?.growth} />
-        <StatsCard title="Pending Fees" value={`₹ ${data.totalPending}`} icon={<AlertCircle />} color="from-red-500 to-pink-600" />
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-slate-600">Total Classes</span>
+        <span className="text-sm font-bold text-slate-800">{data.totalClasses}</span>
       </div>
-
-      <Insights data={data.insights} />
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-slate-600">Fees Collected</span>
+        <span className="text-sm font-bold text-green-600">₹{data.totalPaid}</span>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-slate-600">Pending Fees</span>
+        <span className="text-sm font-bold text-red-500">₹{data.totalPending}</span>
+      </div>
+    </div>
+  </div>
+</div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RevenueChart data={data.monthlyData} />

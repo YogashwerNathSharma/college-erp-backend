@@ -10,14 +10,14 @@ import {
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import LoginPage from "./pages/LoginPages";
-import ForgotPassword from "./pages/ForgotPassword";
+import LoginPage from "./pages/login/LoginPages";
+import ForgotPassword from "./pages/login/ForgotPassword";
 import TenantDashboard from "./pages/TenantDashboard";
 
 // SuperAdmin Pages
 import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
 import TenantsPage from "./pages/superAdmin/TenantsPage";
-import ReportsPage from "./pages/superAdmin/ReportsPage";
+import ReportsPage from "./pages/reports/ReportsPage";
 import SuperAdminSettings from "./pages/superAdmin/SuperAdminSettings";
 
 import Sidebar from "./components/Sidebar";
@@ -36,12 +36,22 @@ import StudentIdCardPage from "./pages/students/StudentIdCard";
 import StudentReportsPage from "./pages/students/StudentReportsPage";
 import AdminStudentDashboard from "./pages/students/AdminStudentDashboard";
 import StudentDashboard from "./pages/students/StudentDashboard";
-
+//reports
+import StudentProfilePage from "./pages/students/StudentProfilePage";
+import CertificateGenerator from "./pages/reports/CertificateGenerator";
 // Subscriptions
 import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
+// App.tsx ya routes mein:
+import SubscriptionSettings from "./pages/subscriptions/SubscriptionSettings";
+//settings
+import TenantAdminSettings from "./pages/settings/TenantAdminSettings";
+
+
+
+
 // 🔥 NEW: Subscription Expired Page
 import SubscriptionExpired from "./pages/subscriptions/SubscriptionExpired";
-import RegisterSchool from "./pages/RegisterSchool";
+import RegisterSchool from "./pages/login/RegisterSchool";
 // Tenant Admin Settings
 import SettingsPage from "./pages/SettingsPage";
 
@@ -113,6 +123,11 @@ import ExamReports from "./pages/exams/ExamReports";
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
 import AttendanceDashboardPage from "./pages/AttendancePage/AttendanceDashboardPage";
+////library
+import LibraryDashboard from "./pages/library/LibraryDashboard";
+// Import (top of file)
+import TransportDashboard from "./pages/transport/TransportDashboard";
+
 
 //////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
@@ -276,11 +291,15 @@ export default function App() {
             <Route path="/subscriptions" element={<SubscriptionsPage />} />
 
             {/* REPORTS */}
+            <Route path="/student-profile" element={<StudentProfilePage />} />
+            <Route path="/certificates" element={<CertificateGenerator />} />
             <Route path="/reports" element={<ReportsPage />} />
-
+            {/*library*/}
+            <Route path="/library" element={<LibraryDashboard />} />
             {/* SETTINGS */}
             <Route path="/settings" element={<RoleSettings />} />
-
+            <Route path="/settings/users" element={<TenantAdminSettings />} />
+            <Route path="/settings/subscription" element={<SubscriptionSettings />} />
             {/* ATTENDANCE */}
             <Route path="/attendance-dashboard" element={<AttendanceDashboardPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
@@ -326,8 +345,9 @@ export default function App() {
 
             {/* TIMETABLE */}
             <Route path="/timeTable" element={<TimetablePage />} />
-
-            {/* FEES MODULE */}
+            // Route (Layout ke andar, protected routes mein)
+            <Route path="/transport" element={<TransportDashboard />} />
+                        {/* FEES MODULE */}
             <Route path="/fees" element={<FeeCollectionPage />} />
             <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
             <Route path="/fees/collection" element={<FeeCollectionPage />} />

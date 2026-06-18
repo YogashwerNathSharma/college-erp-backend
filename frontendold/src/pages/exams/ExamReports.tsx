@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Loader2,
@@ -99,12 +99,19 @@ const reportColumns: Record<string, { key: string; label: string }[]> = {
 
 const ExamReports: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
+  // URL se tab param read karo — default "result_summary"
+  const tabFromUrl = searchParams.get("tab") as ReportType | null;
+  const validTabs: ReportType[] = ["result_summary", "subject_wise", "topper_list", "pass_fail", "grade_report", "attendance", "marks"];
+
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExam, setSelectedExam] = useState("");
-  const [selectedReport, setSelectedReport] = useState<ReportType>("result_summary");
+  const [selectedReport, setSelectedReport] = useState<ReportType>(
+    tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "result_summary"
+  );
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -323,7 +330,7 @@ const ExamReports: React.FC = () => {
         {/* Header — hidden on print */}
         <div className="flex items-center mb-6 print:hidden">
           <button
-            onClick={() => navigate("/exams")}
+            onClick={() => navigate("/reports")}
             className="mr-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -370,7 +377,10 @@ const ExamReports: React.FC = () => {
                   return (
                     <button
                       key={tab.key}
-                      onClick={() => setSelectedReport(tab.key)}
+                      onClick={() => {
+                        setSelectedReport(tab.key);
+                        setSearchParams({ tab: tab.key });
+                      }}
                       className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         isActive
                           ? "bg-indigo-600 text-white shadow-sm"

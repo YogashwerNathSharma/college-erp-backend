@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -112,29 +111,29 @@ const ExamDashboard: React.FC = () => {
       title: "Total Exams",
       value: stats.totalExams,
       icon: FileSpreadsheet,
-      color: "bg-indigo-100",
-      iconColor: "text-indigo-600",
+      gradient: "linear-gradient(135deg, #4338CA, #6366F1)",
+      subtextColor: "#C7D2FE",
     },
     {
       title: "Total Students",
       value: stats.totalStudents,
       icon: Users,
-      color: "bg-green-100",
-      iconColor: "text-green-600",
+      gradient: "linear-gradient(135deg, #059669, #10B981)",
+      subtextColor: "#A7F3D0",
     },
     {
       title: "Total Subjects",
       value: stats.totalSubjects,
       icon: BookOpen,
-      color: "bg-blue-100",
-      iconColor: "text-blue-600",
+      gradient: "linear-gradient(135deg, #1E3A8A, #3B82F6)",
+      subtextColor: "#BFDBFE",
     },
     {
       title: "Results Published",
       value: stats.resultsPublished,
       icon: CheckCircle,
-      color: "bg-purple-100",
-      iconColor: "text-purple-600",
+      gradient: "linear-gradient(135deg, #7C3AED, #A855F7)",
+      subtextColor: "#E9D5FF",
     },
   ];
 
@@ -150,7 +149,6 @@ const ExamDashboard: React.FC = () => {
       title: "Grade Settings",
       description: "Configure grading scales",
       icon: Settings,
-      // Line 153 — Grade Settings path fix:
       path: "/grade-settings",
       color: "bg-green-50 text-green-700 hover:bg-green-100",
     },
@@ -158,7 +156,6 @@ const ExamDashboard: React.FC = () => {
       title: "Reports",
       description: "View exam reports and analytics",
       icon: BarChart3,
-
       path: "/exam-reports",
       color: "bg-purple-50 text-purple-700 hover:bg-purple-100",
     },
@@ -237,20 +234,26 @@ const ExamDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Stat Cards */}
+        {/* Stat Cards — COLORFUL */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {statCards.map((card) => (
             <div
               key={card.title}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-5"
+              className="rounded-xl shadow-lg p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              style={{ background: card.gradient }}
             >
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${card.color}`}>
-                  <card.icon className={`w-6 h-6 ${card.iconColor}`} />
+                <div
+                  className="p-3 rounded-lg"
+                  style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+                >
+                  <card.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">{card.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xs font-medium" style={{ color: card.subtextColor }}>
+                    {card.title}
+                  </p>
+                  <p className="text-2xl font-bold text-white">
                     {card.value}
                   </p>
                 </div>

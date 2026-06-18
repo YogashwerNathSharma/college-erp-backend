@@ -1,9 +1,12 @@
+import { useNavigate } from "react-router-dom";
+
 type Props = {
   title: string;
   value: number | string;
   icon: React.ReactNode;
   color: string;
   growth?: string;
+  link?: string; // 🔥 NEW — click karne par kahan jaaye
 };
 
 export default function StatsCard({
@@ -12,18 +15,25 @@ export default function StatsCard({
   icon,
   color,
   growth,
+  link,
 }: Props) {
+  const navigate = useNavigate();
+
   return (
-    <div className={`p-5 rounded-2xl text-white bg-gradient-to-r ${color} shadow-lg`}>
+    <div
+      onClick={() => link && navigate(link)}
+      className={`p-4 rounded-xl text-white bg-gradient-to-r ${color} shadow-md 
+        ${link ? "cursor-pointer hover:scale-[1.03] hover:shadow-lg transition-all duration-200" : ""}`}
+    >
       <div className="flex justify-between items-center">
-        <p className="opacity-80">{title}</p>
-        {icon}
+        <p className="text-xs font-medium opacity-80">{title}</p>
+        <span className="opacity-70">{icon}</span>
       </div>
 
-      <h2 className="text-2xl font-bold mt-3">{value ?? 0}</h2>
+      <h2 className="text-xl font-bold mt-2">{value ?? 0}</h2>
 
       {growth && (
-        <p className="text-xs mt-2 opacity-80">
+        <p className="text-[10px] mt-1 opacity-75">
           Growth: {growth}
         </p>
       )}

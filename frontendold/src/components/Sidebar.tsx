@@ -6,6 +6,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   UserCog,
   School,
   BookOpen,
@@ -37,6 +38,7 @@ import {
   Clock,
   Wallet,
   ClipboardEdit,
+
 } from "lucide-react";
 
 
@@ -188,13 +190,24 @@ const tenantMenu: SectionGroup[] = [
       { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
     ],
   },
+  
   {
-    section: "System",
-    items: [
-      { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
-    ],
-  },
-];
+  section: "System",
+  items: [
+    {
+      name: "Settings",
+      icon: <Settings size={20} />,
+      children: [
+        //{ name: "General", path: "/settings", icon: <Settings size={16} /> },
+        { name: "Subscription", path: "/settings/subscription", icon: <CreditCard size={16} /> },
+        //{ name: "Profile", path: "/settings/profile", icon: <Users size={16} /> },
+        { name: "User Management", path: "/settings/users", icon: <UserPlus size={16} /> },  // ← NEW
+      ],
+    },
+  ],
+
+},
+]
 
 //////////////////////////////////////////////////
 // SUPER ADMIN MENU

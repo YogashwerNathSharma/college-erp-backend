@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -28,6 +26,15 @@ interface RecentTeacher {
   createdAt: string;
 }
 
+interface LeaveItem {
+  id: string;
+  teacherName: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
 const COLORS = [
   "#3B82F6", "#10B981", "#F59E0B", "#EF4444",
   "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16",
@@ -36,7 +43,7 @@ const COLORS = [
 const TeacherDashboard = () => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [chartData, setChartData] = useState<ChartItem[]>([]);
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [leaveData, setLeaveData] = useState<LeaveItem[]>([]);
   const [recentTeachers, setRecentTeachers] = useState<RecentTeacher[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,16 +51,16 @@ const TeacherDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, chartRes, overviewRes, recentRes] = await Promise.all([
+      const [statsRes, chartRes, leaveRes, recentRes] = await Promise.all([
         axios.get(`${API}/teacher-dashboard/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API}/teacher-dashboard/department-chart`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get(`${API}/teacher-dashboard/overview`, {
+        axios.get(`${API}/teacher-dashboard/leaves`, {
           headers: { Authorization: `Bearer ${token}` },
-        }),
+        }).catch(() => ({ data: { success: false, data: [] } })),
         axios.get(`${API}/teacher-dashboard/recent`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -61,7 +68,7 @@ const TeacherDashboard = () => {
 
       if (statsRes.data.success) setStats(statsRes.data.data);
       if (chartRes.data.success) setChartData(chartRes.data.data);
-      if (overviewRes.data.success) setMonthlyData(overviewRes.data.data);
+      if (leaveRes.data.success) setLeaveData(leaveRes.data.data || []);
       if (recentRes.data.success) setRecentTeachers(recentRes.data.data);
     } catch (err: any) {
       toast.error("Failed to load dashboard data");
@@ -85,135 +92,172 @@ const TeacherDashboard = () => {
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Teacher Dashboard</h1>
+    <div className="p-1">
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-          <div className="bg-blue-100 p-3 rounded-lg">
-            <FiUsers className="text-blue-600" size={24} />
+      {/* Stats Cards — Colorful + Compact */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium opacity-80">Total Teachers</p>
+            <FiUsers size={16} className="opacity-70" />
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Total Teachers</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.totalTeachers || 0}</p>
-          </div>
+          <p className="text-2xl font-bold mt-2">{stats?.totalTeachers || 0}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-          <div className="bg-indigo-100 p-3 rounded-lg">
-            <FiUser className="text-indigo-600" size={24} />
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium opacity-80">Male Teachers</p>
+            <FiUser size={16} className="opacity-70" />
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Male Teachers</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.maleTeachers || 0}</p>
-          </div>
+          <p className="text-2xl font-bold mt-2">{stats?.maleTeachers || 0}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-          <div className="bg-pink-100 p-3 rounded-lg">
-            <FiUser className="text-pink-600" size={24} />
+        <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl p-4 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium opacity-80">Female Teachers</p>
+            <FiUser size={16} className="opacity-70" />
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Female Teachers</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.femaleTeachers || 0}</p>
-          </div>
+          <p className="text-2xl font-bold mt-2">{stats?.femaleTeachers || 0}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-          <div className="bg-green-100 p-3 rounded-lg">
-            <FiUserCheck className="text-green-600" size={24} />
+        <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl p-4 text-white shadow-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium opacity-80">Active Teachers</p>
+            <FiUserCheck size={16} className="opacity-70" />
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Active Teachers</p>
-            <p className="text-2xl font-bold text-gray-800">{stats?.activeTeachers || 0}</p>
-          </div>
+          <p className="text-2xl font-bold mt-2">{stats?.activeTeachers || 0}</p>
         </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Pie Chart - Teachers by Department */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Teachers by Department</h2>
-          <div className="flex items-center justify-center">
-            <div className="relative w-48 h-48">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                {chartData.map((item, index) => {
-                  const percentage = total > 0 ? (item.value / total) * 100 : 0;
-                  const offset = chartData
-                    .slice(0, index)
-                    .reduce((sum, i) => sum + (total > 0 ? (i.value / total) * 100 : 0), 0);
-                  return (
-                    <circle
-                      key={index}
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke={COLORS[index % COLORS.length]}
-                      strokeWidth="20"
-                      strokeDasharray={`${percentage * 2.51} ${251 - percentage * 2.51}`}
-                      strokeDashoffset={`${-offset * 2.51}`}
-                    />
-                  );
-                })}
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-800">{total}</p>
-                  <p className="text-xs text-gray-500">Total</p>
-                </div>
-              </div>
-            </div>
+{/* Three cards row */}
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  
+  {/* 1. Teachers by Department */}
+  <div className="bg-white rounded-xl shadow p-4">
+    <h2 className="text-sm font-semibold text-gray-800 mb-3">Teachers by Department</h2>
+    <div className="flex items-center gap-3">
+      {/* LEFT — Legend (2 columns, tight) */}
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 flex-1">
+        {chartData.map((item, index) => (
+          <div key={index} className="flex items-center gap-1.5">
+            <div
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            ></div>
+            <span className="text-[11px] text-gray-600 whitespace-nowrap">
+              {item.name} ({item.value})
+            </span>
           </div>
-          {/* Legend */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {chartData.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                ></div>
-                <span className="text-sm text-gray-600">
-                  {item.name} ({item.value})
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Overview - Monthly Bar Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Overview</h2>
-          <div className="flex items-end gap-2 h-48">
-            {monthlyData.map((item, index) => {
-              const maxCount = Math.max(...monthlyData.map((m) => m.count), 1);
-              const height = (item.count / maxCount) * 100;
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <span className="text-xs text-gray-500 mb-1">{item.count || ""}</span>
-                  <div
-                    className="w-full bg-blue-500 rounded-t-sm transition-all"
-                    style={{ height: `${Math.max(height, 2)}%` }}
-                  ></div>
-                  <span className="text-xs text-gray-500 mt-1">{item.month}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-blue-500 rounded"></div>
-              <span className="text-xs text-gray-500">Total Teachers</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span className="text-xs text-gray-500">Active Teachers</span>
-            </div>
+      {/* RIGHT — Donut */}
+      <div className="relative w-28 h-28 flex-shrink-0">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+          {chartData.map((item, index) => {
+            const percentage = total > 0 ? (item.value / total) * 100 : 0;
+            const offset = chartData
+              .slice(0, index)
+              .reduce((sum, i) => sum + (total > 0 ? (i.value / total) * 100 : 0), 0);
+            return (
+              <circle
+                key={index}
+                cx="50"
+                cy="50"
+                r="40"
+                fill="none"
+                stroke={COLORS[index % COLORS.length]}
+                strokeWidth="18"
+                strokeDasharray={`${percentage * 2.51} ${251 - percentage * 2.51}`}
+                strokeDashoffset={`${-offset * 2.51}`}
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg font-bold text-gray-800">{total}</p>
+            <p className="text-[7px] text-gray-500">Assignments</p>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+{/* Gender Distribution */}
+<div className="bg-white rounded-xl shadow p-4">
+  <h2 className="text-sm font-semibold text-gray-800 mb-3">Gender Distribution</h2>
+  {stats && (
+    <div className="flex items-center gap-3">
+      {/* LEFT — Legend */}
+      <div className="flex flex-col gap-2 flex-1">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+          <span className="text-xs text-gray-700 font-medium">Male ({stats.maleTeachers})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+          <span className="text-xs text-gray-700 font-medium">Female ({stats.femaleTeachers})</span>
+        </div>
+        <div className="mt-1 text-[11px] text-gray-500">
+          Total: {stats.totalTeachers} Teachers
+        </div>
+      </div>
+
+      {/* RIGHT — Donut */}
+      <div className="relative w-28 h-28 flex-shrink-0">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+          {stats.totalTeachers > 0 ? (
+            <>
+              {/* Male arc */}
+              <circle
+                cx="50" cy="50" r="40"
+                fill="none" stroke="#3B82F6" strokeWidth="18"
+                strokeDasharray={`${(stats.maleTeachers / stats.totalTeachers) * 251} ${251 - (stats.maleTeachers / stats.totalTeachers) * 251}`}
+                strokeDashoffset="0"
+              />
+              {/* Female arc */}
+              {stats.femaleTeachers > 0 && (
+                <circle
+                  cx="50" cy="50" r="40"
+                  fill="none" stroke="#EC4899" strokeWidth="18"
+                  strokeDasharray={`${(stats.femaleTeachers / stats.totalTeachers) * 251} ${251 - (stats.femaleTeachers / stats.totalTeachers) * 251}`}
+                  strokeDashoffset={`${-(stats.maleTeachers / stats.totalTeachers) * 251}`}
+                />
+              )}
+            </>
+          ) : (
+            /* Empty state - grey ring */
+            <circle
+              cx="50" cy="50" r="40"
+              fill="none" stroke="#E5E7EB" strokeWidth="18"
+              strokeDasharray="251"
+            />
+          )}
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg font-bold text-gray-800">{stats.totalTeachers}</p>
+            <p className="text-[7px] text-gray-500">Teachers</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
+  {/* 3. Recent Leave Requests */}
+  <div className="bg-white rounded-xl shadow p-4 flex flex-col">
+    <h2 className="text-sm font-semibold text-gray-800 mb-3">Recent Leave Requests</h2>
+    <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+      <div className="text-center">
+        <p>No leave requests found</p>
+        <p className="text-xs mt-1">Leave data will appear here</p>
+      </div>
+    </div>
+  </div>
+
+</div>
 
       {/* Recent Teachers Table */}
       <div className="bg-white rounded-lg shadow">
@@ -256,4 +300,3 @@ const TeacherDashboard = () => {
 };
 
 export default TeacherDashboard;
-

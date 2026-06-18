@@ -175,16 +175,6 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
-const SkeletonScheduleItem: React.FC = () => (
-  <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 animate-pulse">
-    <div className="w-16 h-12 bg-gray-200 rounded-lg" />
-    <div className="flex-1">
-      <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
-      <div className="h-3 w-24 bg-gray-200 rounded" />
-    </div>
-  </div>
-);
-
 // ─────────────────────────────────────────────
 // Progress Ring Component
 // ─────────────────────────────────────────────
@@ -234,7 +224,7 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
 };
 
 // ─────────────────────────────────────────────
-// Calendar Widget Component
+// Calendar Widget Component (Compact)
 // ─────────────────────────────────────────────
 
 interface CalendarWidgetProps {
@@ -256,7 +246,7 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const goToPrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -287,34 +277,34 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white/90">
           {monthNames[month]} {year}
         </h3>
         <div className="flex gap-1">
           <button
             onClick={goToPrevMonth}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <FiChevronLeft className="w-4 h-4 text-gray-600" />
+            <FiChevronLeft className="w-3.5 h-3.5 text-white/70" />
           </button>
           <button
             onClick={goToNextMonth}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <FiChevronRight className="w-4 h-4 text-gray-600" />
+            <FiChevronRight className="w-3.5 h-3.5 text-white/70" />
           </button>
         </div>
       </div>
 
       {/* Day Names */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {dayNames.map((day) => (
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {dayNames.map((day, i) => (
           <div
-            key={day}
-            className="text-center text-xs font-medium text-gray-400 py-2"
+            key={i}
+            className="text-center text-[10px] font-medium text-white/50 py-1"
           >
             {day}
           </div>
@@ -322,10 +312,10 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1 flex-1">
         {calendarDays.map((day, index) => {
           if (day === null) {
-            return <div key={`empty-${index}`} className="h-9" />;
+            return <div key={`empty-${index}`} className="h-7" />;
           }
 
           const event = hasEvent(day);
@@ -334,21 +324,21 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
           return (
             <div
               key={day}
-              className={`relative h-9 flex items-center justify-center rounded-lg text-sm cursor-pointer transition-all ${
+              className={`relative h-7 flex items-center justify-center rounded-md text-xs cursor-pointer transition-all ${
                 todayClass
-                  ? 'bg-[#1E3A8A] text-white font-bold shadow-md shadow-blue-900/20'
-                  : 'text-gray-700 hover:bg-blue-50'
+                  ? 'bg-white text-[#7C3AED] font-bold shadow-md'
+                  : 'text-white/80 hover:bg-white/10'
               }`}
             >
               {day}
               {event && (
                 <div
-                  className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
+                  className={`absolute bottom-0.5 w-1 h-1 rounded-full ${
                     event.type === 'exam'
-                      ? 'bg-red-400'
+                      ? 'bg-red-300'
                       : event.type === 'holiday'
-                      ? 'bg-green-400'
-                      : 'bg-blue-400'
+                      ? 'bg-green-300'
+                      : 'bg-yellow-300'
                   }`}
                 />
               )}
@@ -358,18 +348,18 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-          <span className="text-xs text-gray-500">Exam</span>
+      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-red-300" />
+          <span className="text-[10px] text-white/60">Exam</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-          <span className="text-xs text-gray-500">Event</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-yellow-300" />
+          <span className="text-[10px] text-white/60">Event</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-          <span className="text-xs text-gray-500">Holiday</span>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-green-300" />
+          <span className="text-[10px] text-white/60">Holiday</span>
         </div>
       </div>
     </div>
@@ -409,7 +399,6 @@ const StudentDashboard: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Try to get student info from localStorage first
         const storedUser = localStorage.getItem('user');
         let studentData: StudentInfo | null = null;
 
@@ -417,7 +406,6 @@ const StudentDashboard: React.FC = () => {
           studentData = JSON.parse(storedUser);
         }
 
-        // Fetch from API
         const [studentRes, scheduleRes, assignmentsRes, attendanceRes] = await Promise.allSettled([
           !studentData ? axios.get<StudentInfo>('/api/students/me') : Promise.resolve(null),
           axios.get<ScheduleItem[]>('/api/timetable/my-schedule', {
@@ -431,14 +419,12 @@ const StudentDashboard: React.FC = () => {
           ),
         ]);
 
-        // Student Info
         if (!studentData && studentRes.status === 'fulfilled' && studentRes.value) {
           studentData = (studentRes.value as any).data;
         }
         if (studentData) {
           setStudent(studentData);
         } else {
-          // Fallback mock data
           setStudent({
             id: '1',
             firstName: 'Alex',
@@ -451,11 +437,9 @@ const StudentDashboard: React.FC = () => {
           });
         }
 
-        // Schedule
         if (scheduleRes.status === 'fulfilled' && scheduleRes.value) {
           setSchedule((scheduleRes.value as any).data || []);
         } else {
-          // Mock schedule data
           setSchedule([
             {
               id: '1',
@@ -510,11 +494,9 @@ const StudentDashboard: React.FC = () => {
           ]);
         }
 
-        // Assignments
         if (assignmentsRes.status === 'fulfilled' && assignmentsRes.value) {
           setAssignments((assignmentsRes.value as any).data || []);
         } else {
-          // Mock assignments data
           setAssignments([
             {
               id: '1',
@@ -554,7 +536,6 @@ const StudentDashboard: React.FC = () => {
           ]);
         }
 
-        // Attendance / Overview
         if (attendanceRes.status === 'fulfilled' && attendanceRes.value) {
           const data = (attendanceRes.value as any).data;
           setOverview({
@@ -564,7 +545,6 @@ const StudentDashboard: React.FC = () => {
             overallGPA: data.gpa || 3.72,
           });
         } else {
-          // Mock overview data
           setOverview({
             totalCourses: 6,
             attendancePercentage: 85,
@@ -573,7 +553,6 @@ const StudentDashboard: React.FC = () => {
           });
         }
 
-        // Calendar events (mock)
         setCalendarEvents([
           { date: 5, type: 'event' },
           { date: 11, type: 'event' },
@@ -586,7 +565,6 @@ const StudentDashboard: React.FC = () => {
         ]);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Set fallback data on complete failure
         setStudent({
           id: '1',
           firstName: 'Alex',
@@ -630,7 +608,6 @@ const StudentDashboard: React.FC = () => {
     const options: Intl.DateTimeFormatOptions = {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
     };
     return date.toLocaleDateString('en-US', options);
   };
@@ -643,23 +620,20 @@ const StudentDashboard: React.FC = () => {
     switch (status) {
       case 'submitted':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5" />
-            Submitted
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
+            ✓ Done
           </span>
         );
       case 'overdue':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5" />
-            Overdue
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
+            ⚠ Overdue
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-            <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5" />
-            Pending
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">
+            ⏳ Pending
           </span>
         );
     }
@@ -693,13 +667,11 @@ const StudentDashboard: React.FC = () => {
 
             {/* Right Section */}
             <div className="flex items-center gap-4">
-              {/* Notification Bell */}
               <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors">
                 <FiBell className="w-5 h-5 text-gray-600" />
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
               </button>
 
-              {/* Student Name + Avatar */}
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                 <div className="text-right">
                   <p className="text-sm font-semibold text-gray-800">
@@ -736,36 +708,35 @@ const StudentDashboard: React.FC = () => {
         {/* Page Content */}
         <div className="p-8">
           {/* ─────────────────────────────────────────
-              1. Greeting Section
+              1. Greeting Section (Compact)
           ───────────────────────────────────────── */}
-          <section className="mb-8">
-            <div className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] rounded-2xl p-8 text-white relative overflow-hidden">
-              {/* Background Decorations */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-              <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
+          <section className="mb-6">
+            <div className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] rounded-2xl p-6 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+              <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full translate-y-1/2" />
 
               <div className="relative flex items-center justify-between">
                 <div>
                   {loading ? (
                     <div className="animate-pulse">
-                      <div className="h-8 w-64 bg-white/20 rounded mb-3" />
-                      <div className="h-5 w-48 bg-white/20 rounded" />
+                      <div className="h-7 w-56 bg-white/20 rounded mb-2" />
+                      <div className="h-4 w-40 bg-white/20 rounded" />
                     </div>
                   ) : (
                     <>
-                      <h2 className="text-3xl font-bold mb-2">
+                      <h2 className="text-2xl font-bold mb-1">
                         {greeting}, {student?.firstName}! 👋
                       </h2>
-                      <p className="text-blue-100 text-lg">
+                      <p className="text-blue-100 text-sm">
                         Welcome back to your learning journey.
                       </p>
-                      <div className="flex items-center gap-4 mt-4">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 rounded-lg text-sm">
-                          <FiBook className="w-4 h-4" />
+                      <div className="flex items-center gap-3 mt-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-lg text-xs">
+                          <FiBook className="w-3.5 h-3.5" />
                           {student?.department}
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 rounded-lg text-sm">
-                          <FiCalendar className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-lg text-xs">
+                          <FiCalendar className="w-3.5 h-3.5" />
                           Semester {student?.semester}
                         </span>
                       </div>
@@ -773,9 +744,8 @@ const StudentDashboard: React.FC = () => {
                   )}
                 </div>
 
-                {/* Student Photo */}
                 <div className="hidden md:block">
-                  <div className="w-24 h-24 rounded-full border-4 border-blue-300/50 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center shadow-xl shadow-blue-900/30">
+                  <div className="w-16 h-16 rounded-full border-3 border-blue-300/50 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center shadow-xl shadow-blue-900/30">
                     {student?.avatarUrl ? (
                       <img
                         src={student.avatarUrl}
@@ -783,7 +753,7 @@ const StudentDashboard: React.FC = () => {
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
-                      <span className="text-3xl font-bold text-white">
+                      <span className="text-2xl font-bold text-white">
                         {student?.firstName?.charAt(0) || 'S'}
                       </span>
                     )}
@@ -794,10 +764,10 @@ const StudentDashboard: React.FC = () => {
           </section>
 
           {/* ─────────────────────────────────────────
-              2. Overview Cards
+              2. Overview Cards (4 colorful cards)
           ───────────────────────────────────────── */}
-          <section className="mb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <section className="mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {loading ? (
                 <>
                   <SkeletonCard />
@@ -808,100 +778,76 @@ const StudentDashboard: React.FC = () => {
               ) : (
                 <>
                   {/* Total Courses */}
-                  <div className="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-6 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 hover:-translate-y-1">
+                  <div className="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-blue-100 text-sm font-medium mb-1">
+                        <p className="text-blue-100 text-xs font-medium mb-1">
                           Total Courses
                         </p>
-                        <p className="text-4xl font-bold">{overview?.totalCourses}</p>
-                        <p className="text-blue-200 text-xs mt-2">This Semester</p>
+                        <p className="text-3xl font-bold">{overview?.totalCourses}</p>
+                        <p className="text-blue-200 text-[10px] mt-1">This Semester</p>
                       </div>
-                      <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiBook className="w-7 h-7 text-white" />
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <FiBook className="w-6 h-6 text-white" />
                       </div>
                     </div>
                   </div>
 
                   {/* Attendance */}
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+                  <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-500 text-sm font-medium mb-1">
+                        <p className="text-emerald-100 text-xs font-medium mb-1">
                           Attendance
                         </p>
-                        <p
-                          className="text-4xl font-bold"
-                          style={{
-                            color: getAttendanceColor(
-                              overview?.attendancePercentage || 0
-                            ),
-                          }}
-                        >
+                        <p className="text-3xl font-bold">
                           {overview?.attendancePercentage}%
                         </p>
-                        <p className="text-gray-400 text-xs mt-2">
+                        <p className="text-emerald-100 text-[10px] mt-1">
                           {(overview?.attendancePercentage || 0) >= 80
-                            ? 'Great attendance!'
-                            : 'Needs improvement'}
+                            ? '✓ Great!'
+                            : '↑ Improve'}
                         </p>
                       </div>
-                      <div className="relative">
-                        <ProgressRing
-                          percentage={overview?.attendancePercentage || 0}
-                          size={56}
-                          strokeWidth={5}
-                          color={getAttendanceColor(
-                            overview?.attendancePercentage || 0
-                          )}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <FiCheckCircle
-                            className="w-5 h-5"
-                            style={{
-                              color: getAttendanceColor(
-                                overview?.attendancePercentage || 0
-                              ),
-                            }}
-                          />
-                        </div>
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <FiCheckCircle className="w-6 h-6 text-white" />
                       </div>
                     </div>
                   </div>
 
                   {/* Pending Assignments */}
-                  <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-6 text-white shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 hover:-translate-y-1">
+                  <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-orange-100 text-sm font-medium mb-1">
+                        <p className="text-orange-100 text-xs font-medium mb-1">
                           Assignments
                         </p>
-                        <p className="text-4xl font-bold">
+                        <p className="text-3xl font-bold">
                           {overview?.pendingAssignments}
                         </p>
-                        <p className="text-orange-100 text-xs mt-2">Pending</p>
+                        <p className="text-orange-100 text-[10px] mt-1">Pending</p>
                       </div>
-                      <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiClipboard className="w-7 h-7 text-white" />
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <FiClipboard className="w-6 h-6 text-white" />
                       </div>
                     </div>
                   </div>
 
                   {/* Overall GPA */}
-                  <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-6 text-white shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 transition-all duration-300 hover:-translate-y-1">
+                  <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-green-100 text-sm font-medium mb-1">
+                        <p className="text-purple-100 text-xs font-medium mb-1">
                           Overall GPA
                         </p>
-                        <p className="text-4xl font-bold">{overview?.overallGPA}</p>
-                        <p className="text-green-100 text-xs mt-2 flex items-center gap-1">
+                        <p className="text-3xl font-bold">{overview?.overallGPA}</p>
+                        <p className="text-purple-100 text-[10px] mt-1 flex items-center gap-1">
                           <FiTrendingUp className="w-3 h-3" />
-                          +0.12 from last sem
+                          +0.12 from last
                         </p>
                       </div>
-                      <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiAward className="w-7 h-7 text-white" />
+                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <FiAward className="w-6 h-6 text-white" />
                       </div>
                     </div>
                   </div>
@@ -911,192 +857,143 @@ const StudentDashboard: React.FC = () => {
           </section>
 
           {/* ─────────────────────────────────────────
-              3. Two Column Layout — Schedule + Calendar
+              3. Three Column Cards — Schedule + Assignments + Calendar
+              Compact, Colorful, One Row
           ───────────────────────────────────────── */}
-          <section className="mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-              {/* Today's Schedule — 3 columns */}
-              <div className="lg:col-span-3">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Today's Schedule
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-0.5">
-                        {new Date().toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
+          <section className="mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              
+              {/* Today's Schedule Card */}
+              <div className="bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] rounded-2xl p-5 shadow-lg shadow-blue-500/15 text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <FiClock className="w-4 h-4" />
                     </div>
-                    <button className="text-sm text-[#3B82F6] font-medium hover:underline">
-                      View Full Timetable
-                    </button>
+                    <h3 className="text-sm font-semibold">Today's Schedule</h3>
                   </div>
+                  <span className="text-[10px] text-blue-200 bg-white/10 px-2 py-0.5 rounded-full">
+                    {schedule.length} classes
+                  </span>
+                </div>
 
-                  {loading ? (
-                    <div className="space-y-3">
-                      <SkeletonScheduleItem />
-                      <SkeletonScheduleItem />
-                      <SkeletonScheduleItem />
-                      <SkeletonScheduleItem />
-                    </div>
-                  ) : schedule.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                      <FiCalendar className="w-12 h-12 mb-3 text-gray-300" />
-                      <p className="text-lg font-medium">No classes today</p>
-                      <p className="text-sm mt-1">Enjoy your free day! 🎉</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {schedule.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group"
-                        >
-                          {/* Time */}
-                          <div className="flex-shrink-0 w-20 text-center">
-                            <p className="text-sm font-semibold text-gray-800">
-                              {item.startTime}
-                            </p>
-                            <p className="text-xs text-gray-400">{item.endTime}</p>
-                          </div>
-
-                          {/* Color Bar */}
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-10 bg-white/10 rounded-lg" />
+                    ))}
+                  </div>
+                ) : schedule.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-white/60">
+                    <FiCalendar className="w-8 h-8 mb-2" />
+                    <p className="text-sm">No classes today 🎉</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+                    {schedule.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
+                      >
+                        {/* Color dot + Time */}
+                        <div className="flex-shrink-0 text-center">
                           <div
-                            className="w-1 h-12 rounded-full flex-shrink-0"
+                            className="w-2 h-2 rounded-full mx-auto mb-1"
                             style={{ backgroundColor: item.color }}
                           />
+                          <p className="text-[10px] text-blue-200 font-mono">
+                            {item.startTime}
+                          </p>
+                        </div>
 
-                          {/* Details */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">
-                              {item.subject}
-                            </p>
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="flex items-center gap-1 text-xs text-gray-500">
-                                <FiUser className="w-3 h-3" />
-                                {item.teacher}
-                              </span>
-                              <span className="flex items-center gap-1 text-xs text-gray-500">
-                                <FiMapPin className="w-3 h-3" />
-                                {item.room}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Status indicator */}
-                          <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium">
-                              <FiClock className="w-3 h-3" />
-                              {item.time}
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {item.subject}
+                          </p>
+                          <p className="text-[10px] text-blue-200 flex items-center gap-2 mt-0.5">
+                            <span className="flex items-center gap-0.5">
+                              <FiUser className="w-2.5 h-2.5" />
+                              {item.teacher.split(' ').slice(-1)[0]}
                             </span>
+                            <span className="flex items-center gap-0.5">
+                              <FiMapPin className="w-2.5 h-2.5" />
+                              {item.room}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Assignments Card */}
+              <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 shadow-lg shadow-pink-500/15 text-white">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                      <FiClipboard className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-sm font-semibold">Assignments</h3>
+                  </div>
+                  <span className="text-[10px] text-pink-100 bg-white/10 px-2 py-0.5 rounded-full">
+                    {assignments.filter(a => a.status === 'pending').length} pending
+                  </span>
+                </div>
+
+                {loading ? (
+                  <div className="space-y-2 animate-pulse">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-10 bg-white/10 rounded-lg" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+                    {assignments.map((assignment) => (
+                      <div
+                        key={assignment.id}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
+                      >
+                        {/* Icon */}
+                        <div className="flex-shrink-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            assignment.status === 'overdue' ? 'bg-red-400/30' :
+                            assignment.status === 'submitted' ? 'bg-green-400/30' :
+                            'bg-yellow-400/30'
+                          }`}>
+                            <FiFileText className="w-4 h-4" />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Calendar Widget — 2 columns */}
-              <div className="lg:col-span-2">
-                <CalendarWidget events={calendarEvents} />
-              </div>
-            </div>
-          </section>
-
-          {/* ─────────────────────────────────────────
-              4. Pending Assignments Section
-          ───────────────────────────────────────── */}
-          <section className="mb-8">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Pending Assignments
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Track your upcoming deadlines
-                  </p>
-                </div>
-                <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 text-[#3B82F6] text-sm font-medium hover:bg-blue-100 transition-colors">
-                  View All
-                  <FiChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="space-y-4 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50">
-                      <div className="w-10 h-10 bg-gray-200 rounded-lg" />
-                      <div className="flex-1">
-                        <div className="h-4 w-48 bg-gray-200 rounded mb-2" />
-                        <div className="h-3 w-32 bg-gray-200 rounded" />
-                      </div>
-                      <div className="h-6 w-20 bg-gray-200 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Assignment
-                        </th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Subject
-                        </th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Due Date
-                        </th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {assignments.map((assignment) => (
-                        <tr
-                          key={assignment.id}
-                          className="hover:bg-gray-50/50 transition-colors group"
-                        >
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                                <FiFileText className="w-5 h-5 text-[#3B82F6]" />
-                              </div>
-                              <span className="text-sm font-medium text-gray-800">
-                                {assignment.name}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600">
-                              {assignment.subject}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="text-sm text-gray-600 flex items-center gap-1.5">
-                              <FiCalendar className="w-3.5 h-3.5 text-gray-400" />
+                        {/* Details */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {assignment.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-pink-100">
                               {formatDueDate(assignment.dueDate)}
                             </span>
-                          </td>
-                          <td className="py-4 px-4">
                             {getStatusBadge(assignment.status)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Calendar Card */}
+              <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-5 shadow-lg shadow-purple-500/15 text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                    <FiCalendar className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold">Calendar</h3>
                 </div>
-              )}
+                <CalendarWidget events={calendarEvents} />
+              </div>
             </div>
           </section>
         </div>

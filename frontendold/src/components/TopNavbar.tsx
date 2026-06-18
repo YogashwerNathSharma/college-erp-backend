@@ -1,6 +1,5 @@
-
 import { LogOut, UserCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo
@@ -11,15 +10,38 @@ const getFullUrl = (path: string | null | undefined) => {
   return `http://localhost:5000${path}`;
 };
 
+// 🔥 Page title map — route ke hisaab se title
+const getPageTitle = (pathname: string): string => {
+  const routes: Record<string, string> = {
+    "/dashboard": "Dashboard",
+    "/students": "Students",
+    "/teachers": "Teachers",
+    "/master": "Master",
+    "/attendance": "Attendance",
+    "/exams": "Exams",
+    "/fees": "Fees",
+    "/settings": "Settings",
+    "/settings/subscription": "Subscription",
+    "/settings/profile": "Profile",
+    "/reports": "Reports",
+    "/transport": "Transport",
+    "/library": "Library",
+    "/timetable": "Time Table",
+  };
+  return routes[pathname] || "Dashboard";
+};
+
 type TopNavbarProps = {
   tenant?: any;
 };
 
 export default function TopNavbar({ tenant }: TopNavbarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const safeTenant = tenant || {};
+  const pageTitle = getPageTitle(location.pathname);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -28,7 +50,6 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
     navigate("/");
   };
 
-  // ✅ FIXED — getFullUrl for tenant logo
   const tenantLogoSrc = getFullUrl(safeTenant?.logoUrl);
 
   return (
@@ -51,7 +72,6 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
           </>
         ) : (
           <>
-            {/* TENANT LOGO — FIXED ✅ */}
             {tenantLogoSrc ? (
               <img
                 src={tenantLogoSrc}
@@ -67,13 +87,13 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
               </div>
             )}
 
-            {/* TENANT NAME */}
+            {/* TENANT NAME + PAGE TITLE */}
             <div>
-              <p className="font-semibold">
+              <p className="font-semibold text-slate-800">
                 {safeTenant?.name || "Tenant Panel"}
               </p>
-              <p className="text-xs text-gray-500">
-                {safeTenant?.type || "School Panel"}
+              <p className="text-xs text-slate-400">
+                {pageTitle}
               </p>
             </div>
           </>
@@ -82,11 +102,12 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
 
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
           <UserCircle size={20} />
-          <span>
-            {user?.name} ({user?.role})
-          </span>
+          <div className="text-right">
+            <p className="font-medium text-slate-700">{user?.name}</p>
+            <p className="text-[10px] text-slate-400">Welcome back 👋</p>
+          </div>
         </div>
 
         <button
@@ -101,4 +122,3 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
     </div>
   );
 }
-

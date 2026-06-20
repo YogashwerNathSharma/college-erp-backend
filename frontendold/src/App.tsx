@@ -39,6 +39,7 @@ import StudentDashboard from "./pages/students/StudentDashboard";
 //reports
 import StudentProfilePage from "./pages/students/StudentProfilePage";
 import CertificateGenerator from "./pages/reports/CertificateGenerator";
+import AnalyticsPage from "./pages/reports/AnalyticsPage";
 // Subscriptions
 import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
 // App.tsx ya routes mein:
@@ -46,6 +47,8 @@ import SubscriptionSettings from "./pages/subscriptions/SubscriptionSettings";
 //settings
 import TenantAdminSettings from "./pages/settings/TenantAdminSettings";
 
+import SignatureMaster from "./pages/settings/SignatureMaster";
+import ThemePage from "./pages/settings/theme/ThemePage";
 
 
 
@@ -84,6 +87,7 @@ import TeacherDocuments from "./pages/teachers/TeacherDocuments";
 import Communication from "./pages/teachers/Communication";
 import TeacherReports from "./pages/teachers/TeacherReports";
 import TeacherSettings from "./pages/teachers/TeacherSettings";
+import TeacherIdCard from "./pages/teachers/TeacherIdCard";
 
 // Timetable
 import TimetablePage from "./pages/timeTable/TimetablePage";
@@ -97,6 +101,7 @@ import FeeCollectionPage from "./pages/fees/FeeCollectionPage";
 import FeeDashboardPage from "./pages/fees/FeeDashboardPage";
 import AssignFeeStructurePage from "./pages/fees/AssignFeeStructurePage";
 import FeeReportsPage from "./pages/fees/FeeReportsPage";
+import FeeReceiptsPage from "./pages/fees/FeeReceiptsPage";
 import StudentLedgerPage from "./pages/fees/StudentLedgerPage";
 import FeeReminderPage from "./pages/fees/FeeReminderPage";
 import FeeSettingsPage from "./pages/fees/FeeSettingsPage";
@@ -109,6 +114,7 @@ import ExamSubjects from "./pages/exams/ExamSubjects";
 import MarksEntry from "./pages/exams/MarksEntry";
 import Results from "./pages/exams/Results";
 import ReportCard from "./pages/exams/ReportCard";
+import BulkReportCard from "./pages/exams/BulkReportCard";
 import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 // Exam Module (NEW Pages)
 import ExamSchedule from "./pages/exams/ExamSchedule";
@@ -119,6 +125,19 @@ import InvigilatorAssignment from "./pages/exams/InvigilatorAssignment";
 import ExamDashboard from "./pages/exams/ExamDashboard";
 import ExamReports from "./pages/exams/ExamReports";
 
+// Exam Module (Standalone Pages - Sidebar accessible)
+import SeatingArrangementPage from "./pages/exams/SeatingArrangementPage";
+import RoomManagement from "./pages/exams/RoomManagement";
+import AdmitCardPage from "./pages/exams/AdmitCardPage";
+
+import ReportCardSelect from "./pages/exams/ReportCardSelect";
+
+// Designer
+import DesignerPage from "./pages/designer/DesignerPage";
+
+// YN-UDP Template Designer
+import YnUdpPage from "./pages/yn-udp/YnUdpPage";
+
 // Attendance
 import AttendancePage from "./pages/AttendancePage/AttendancePage";
 import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
@@ -128,11 +147,14 @@ import LibraryDashboard from "./pages/library/LibraryDashboard";
 // Import (top of file)
 import TransportDashboard from "./pages/transport/TransportDashboard";
 
+// Backup
+import BackupPage from "./pages/backup/BackupPage";
+
 
 //////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
 //////////////////////////////////////////////////////
-axios.defaults.baseURL = "http://localhost:5000";
+axios.defaults.baseURL = "";
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -202,6 +224,12 @@ function Layout() {
   }, []);
 
   useEffect(() => {
+    // Load theme from localStorage instantly (no flash)
+    const savedTheme = localStorage.getItem("themeColor");
+    if (savedTheme) {
+      document.documentElement.style.setProperty("--primary-color", savedTheme);
+    }
+
     const fetchBranding = async () => {
       try {
         const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -211,9 +239,11 @@ function Layout() {
             : "/api/settings";
 
         const res = await axios.get(url);
-        const color = res.data.data?.platform?.primaryColor;
+        const data = res.data?.data;
+        const color = data?.platform?.primaryColor || data?.tenant?.primaryColor;
         if (color) {
           document.documentElement.style.setProperty("--primary-color", color);
+          localStorage.setItem("themeColor", color);
         }
       } catch (err) {
         console.error("Branding fetch error", err);
@@ -266,20 +296,21 @@ export default function App() {
           {/* 🔥 SUBSCRIPTION EXPIRED PAGE (No Sidebar/Navbar) */}
           <Route path="/subscription-expired" element={<SubscriptionExpired />} />
 
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/* PRINT ROUTES — No Sidebar, No Navbar       */}
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          <Route path="/print/report-card/:examId/bulk" element={<BulkReportCard />} />
           <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
           <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/* STUDENT PORTAL — Separate Layout (own sidebar) */}
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <Route path="/student-portal" element={<StudentDashboard />} />
 
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {/* NORMAL ROUTES — With Sidebar + Navbar      */}
-          {/* ─────────────────────────────────────────────── */}
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           <Route element={<Layout />}>
             {/* DASHBOARD */}
             <Route path="/dashboard" element={<RoleDashboard />} />
@@ -299,7 +330,11 @@ export default function App() {
             {/* SETTINGS */}
             <Route path="/settings" element={<RoleSettings />} />
             <Route path="/settings/users" element={<TenantAdminSettings />} />
-            <Route path="/settings/subscription" element={<SubscriptionSettings />} />
+            <Route path="/settings/theme" element={<ThemePage />} />
+
+            {/* SIGNATURE MASTER */}
+            <Route path="/signature-master" element={<SignatureMaster />} />
+
             {/* ATTENDANCE */}
             <Route path="/attendance-dashboard" element={<AttendanceDashboardPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
@@ -324,9 +359,9 @@ export default function App() {
             <Route path="/Sections" element={<Sections />} />
             <Route path="/subjects" element={<SubjectsPage />} />
 
-            {/* ─────────────────────────────────────────────── */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {/* TEACHER MODULE (Complete)                   */}
-            {/* ─────────────────────────────────────────────── */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/teachers/add" element={<AddEditTeacher />} />
@@ -342,12 +377,12 @@ export default function App() {
             <Route path="/teacher-communication" element={<Communication />} />
             <Route path="/teacher-reports" element={<TeacherReports />} />
             <Route path="/teacher-settings" element={<TeacherSettings />} />
+            <Route path="/teacher-id-card" element={<TeacherIdCard />} />
 
             {/* TIMETABLE */}
             <Route path="/timeTable" element={<TimetablePage />} />
-            // Route (Layout ke andar, protected routes mein)
             <Route path="/transport" element={<TransportDashboard />} />
-                        {/* FEES MODULE */}
+            {/* FEES MODULE */}
             <Route path="/fees" element={<FeeCollectionPage />} />
             <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
             <Route path="/fees/collection" element={<FeeCollectionPage />} />
@@ -357,6 +392,7 @@ export default function App() {
             <Route path="/fees/discounts" element={<FeeDiscountPage />} />
             <Route path="/fees/fine-rules" element={<FineRulePage />} />
             <Route path="/fees/reports" element={<FeeReportsPage />} />
+            <Route path="/fees/receipts" element={<FeeReceiptsPage />} />
             <Route path="/fees/ledger" element={<StudentLedgerPage />} />
             <Route path="/fees/reminders" element={<FeeReminderPage />} />
             <Route path="/fees/settings" element={<FeeSettingsPage />} />
@@ -375,10 +411,28 @@ export default function App() {
             <Route path="/exam-schedule/:id" element={<ExamSchedule />} />
             <Route path="/exam-seating/:id" element={<SeatingArrangement />} />
             <Route path="/exam-admit-cards/:id" element={<AdmitCard />} />
+
+            {/* Exam - Standalone Pages (Sidebar accessible) */}
+            <Route path="/exam-seating-plan" element={<SeatingArrangementPage />} />
+            <Route path="/exam-admit-card" element={<AdmitCardPage />} />
+            <Route path="/rooms" element={<RoomManagement />} />
+
             <Route path="/exam-question-papers/:id" element={<QuestionPaper />} />
             <Route path="/exam-invigilators/:id" element={<InvigilatorAssignment />} />
             <Route path="/exam-reports" element={<ExamReports />} />
 
+            <Route path="/report-card-select" element={<ReportCardSelect />} />
+
+
+            <Route path="/designer/:type" element={<DesignerPage />} />
+
+            {/* YN-UDP Template Designer */}
+            <Route path="/yn-udp" element={<YnUdpPage />} />
+
+            <Route path="/analytics" element={<AnalyticsPage />} />
+
+            {/* BACKUP */}
+            <Route path="/backup" element={<BackupPage />} />
           </Route>
         </Route>
 

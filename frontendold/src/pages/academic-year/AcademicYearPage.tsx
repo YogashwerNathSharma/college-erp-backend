@@ -46,7 +46,7 @@ interface FormData {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -359,14 +359,14 @@ const AcademicYearPage: React.FC = () => {
 
   const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-20 px-4">
-      <div className="w-20 h-20 rounded-full bg-indigo-50 flex items-center justify-center mb-5">
+      <div className="w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-5">
         <GraduationCap className="w-10 h-10 text-indigo-400" />
       </div>
       <h3 className="text-lg font-semibold text-gray-800 mb-2">No Academic Years Found</h3>
       <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
         Get started by creating your first academic year.
       </p>
-      <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
+      <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition-colors shadow-sm">
         <Plus className="w-4 h-4" />
         Add Academic Year
       </button>
@@ -398,7 +398,7 @@ const AcademicYearPage: React.FC = () => {
           </button>
 
           {!loading && academicYears.length > 0 && !showRecycleBin && (
-            <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
+            <button onClick={openCreateModal} className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 transition-colors shadow-sm">
               <Plus className="w-4 h-4" />
               Add Academic Year
             </button>
@@ -501,14 +501,14 @@ const AcademicYearPage: React.FC = () => {
                     key={year.id}
                     className={`relative rounded-2xl border p-6 shadow-sm transition-all duration-200 ${
                       year.isCurrent || year.isActive
-                        ? "bg-gradient-to-br from-indigo-50/80 to-white border-indigo-300 ring-1 ring-indigo-200"
+                        ? "bg-gradient-to-br from-indigo-50/80 to-white border-primary-300 ring-1 ring-indigo-200"
                         : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
                     }`}
                   >
                     {/* Current Year Ribbon */}
                     {(year.isCurrent || year.isActive) && (
                       <div className="absolute top-0 right-6 -translate-y-0">
-                        <div className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-b-lg shadow-sm">
+                        <div className="bg-primary-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-b-lg shadow-sm">
                           {year.isCurrent ? "Current" : "Active"}
                         </div>
                       </div>
@@ -518,7 +518,7 @@ const AcademicYearPage: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          year.isCurrent || year.isActive ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-500"
+                          year.isCurrent || year.isActive ? "bg-primary-100 text-primary-600" : "bg-gray-100 text-gray-500"
                         }`}>
                           <Calendar className="w-5 h-5" />
                         </div>
@@ -552,7 +552,7 @@ const AcademicYearPage: React.FC = () => {
                         className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                           year.isActive
                             ? "text-orange-700 bg-orange-50 border-orange-200 hover:bg-orange-100"
-                            : "text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100"
+                            : "text-primary-700 bg-primary-50 border-primary-200 hover:bg-primary-100"
                         }`}
                       >
                         {actionLoading === year.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
@@ -561,7 +561,7 @@ const AcademicYearPage: React.FC = () => {
 
                       <button
                         onClick={() => handleEdit(year)}
-                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-colors"
+                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-200 hover:bg-primary-50 transition-colors"
                         title="Edit"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -592,8 +592,8 @@ const AcademicYearPage: React.FC = () => {
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-indigo-600" />
+                <div className="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-primary-600" />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">
                   {editingYear ? "Edit Academic Year" : "Add Academic Year"}
@@ -614,24 +614,24 @@ const AcademicYearPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Academic Year Name</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g. 2025-26" className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow placeholder:text-gray-400" disabled={submitting} />
+                <input type="text" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g. 2025-26" className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow placeholder:text-gray-400" disabled={submitting} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
-                <input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" disabled={submitting} />
+                <input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">End Date</label>
-                <input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" disabled={submitting} />
+                <input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
               </div>
 
               <div className="flex items-center gap-3 pt-2">
                 <button type="button" onClick={() => { setShowModal(false); setEditingYear(null); setFormError(null); }} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-60">
                   Cancel
                 </button>
-                <button type="submit" disabled={submitting} className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                <button type="submit" disabled={submitting} className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed">
                   {submitting ? (<><Loader2 className="w-4 h-4 animate-spin" />{editingYear ? "Updating…" : "Creating…"}</>) : (<>{editingYear ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}{editingYear ? "Update" : "Create"}</>)}
                 </button>
               </div>

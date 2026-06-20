@@ -394,3 +394,20 @@ model Payment {
 
   @@index([tenantId])
 }
+
+// ══════════════════════════════════════════
+// SIGNATURE MASTER
+// ══════════════════════════════════════════
+model Signature {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  title       String   // e.g. "Principal", "Director", "Manager"
+  personName  String   // e.g. "Dr. Rajesh Kumar"
+  designation String   // e.g. "Principal"
+  imageUrl    String   // Path to uploaded signature image
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}

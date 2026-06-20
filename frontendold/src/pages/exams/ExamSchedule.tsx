@@ -84,7 +84,7 @@ const ExamSchedule: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -93,7 +93,7 @@ const ExamSchedule: React.FC = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/room", { headers });
+      const res = await axios.get("/api/room", { headers });
       setRooms(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load rooms");
@@ -103,7 +103,7 @@ const ExamSchedule: React.FC = () => {
   const fetchSubjects = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/subjects`,
+        `/api/exam/${selectedExam}/subjects`,
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -122,7 +122,7 @@ const ExamSchedule: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/schedule`,
+        `/api/exam/${selectedExam}/schedule`,
         { headers }
       );
       setSchedules(res.data?.data || res.data || []);
@@ -163,13 +163,13 @@ const ExamSchedule: React.FC = () => {
 
       if (editingId) {
         await axios.put(
-          `http://localhost:5000/api/exam/schedule/${editingId}`,
+          `/api/exam/schedule/${editingId}`,
           payload,
           { headers }
         );
         toast.success("Schedule updated successfully");
       } else {
-        await axios.post("http://localhost:5000/api/exam/schedule", payload, {
+        await axios.post("/api/exam/schedule", payload, {
           headers,
         });
         toast.success("Schedule added successfully");
@@ -189,7 +189,7 @@ const ExamSchedule: React.FC = () => {
     setDeleting(scheduleId);
     try {
       await axios.delete(
-        `http://localhost:5000/api/exam/schedule/${scheduleId}`,
+        `/api/exam/schedule/${scheduleId}`,
         { headers }
       );
       toast.success("Schedule deleted successfully");
@@ -230,7 +230,7 @@ const ExamSchedule: React.FC = () => {
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
                 {exams.map((exam) => (
@@ -269,7 +269,7 @@ const ExamSchedule: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, subjectId: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="">Select Subject</option>
                       {subjects.map((sub) => (
@@ -289,7 +289,7 @@ const ExamSchedule: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, date: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     />
                   </div>
                   <div>
@@ -302,7 +302,7 @@ const ExamSchedule: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, startTime: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     />
                   </div>
                   <div>
@@ -315,7 +315,7 @@ const ExamSchedule: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, endTime: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     />
                   </div>
                   <div>
@@ -327,7 +327,7 @@ const ExamSchedule: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, roomId: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="">Select Room</option>
                       {rooms.map((room) => (
@@ -341,7 +341,7 @@ const ExamSchedule: React.FC = () => {
                     <button
                       onClick={handleSubmit}
                       disabled={saving}
-                      className="inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -359,7 +359,7 @@ const ExamSchedule: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <Calendar className="w-5 h-5 text-primary-600" />
                   <h2 className="text-lg font-semibold text-gray-900">
                     Schedule List
                   </h2>
@@ -367,7 +367,7 @@ const ExamSchedule: React.FC = () => {
                 {!showForm && (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add Schedule
@@ -377,7 +377,7 @@ const ExamSchedule: React.FC = () => {
 
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                   <span className="ml-3 text-gray-500">Loading schedules...</span>
                 </div>
               ) : schedules.length === 0 ? (
@@ -391,7 +391,7 @@ const ExamSchedule: React.FC = () => {
                   </p>
                   <button
                     onClick={() => setShowForm(true)}
-                    className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Schedule
@@ -447,7 +447,7 @@ const ExamSchedule: React.FC = () => {
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => handleEdit(schedule)}
-                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                                 title="Edit"
                               >
                                 <Edit className="w-4 h-4" />

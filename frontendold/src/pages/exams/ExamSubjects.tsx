@@ -45,13 +45,13 @@ const ExamSubjects: React.FC = () => {
   setLoading(true);
   try {
     // 1. Exam fetch karo
-    const examRes = await axios.get(`http://localhost:5000/api/exam/${id}`, { headers });
+    const examRes = await axios.get(`/api/exam/${id}`, { headers });
     const examData = examRes.data?.data || examRes.data;
     setExam(examData);
 
     // 2. Saare subjects fetch karo
     const subjectRes = await axios.get(
-      `http://localhost:5000/api/subjects`,
+      `/api/subjects`,
       { headers }
     );
     const allSubjects = subjectRes.data?.data || subjectRes.data || [];
@@ -64,7 +64,7 @@ const ExamSubjects: React.FC = () => {
 
     // 3. Existing exam subjects
     const examSubjectsRes = await axios
-      .get(`http://localhost:5000/api/exam/${id}/subjects`, { headers })
+      .get(`/api/exam/${id}/subjects`, { headers })
       .catch(() => ({ data: { data: [] } }));
 
     const existingSubjects =
@@ -155,7 +155,7 @@ const ExamSubjects: React.FC = () => {
         })),
       };
 
-      await axios.post("http://localhost:5000/api/exam/subjects", payload, {
+      await axios.post("/api/exam/subjects", payload, {
         headers,
       });
       toast.success("Subjects saved successfully");
@@ -172,7 +172,7 @@ const ExamSubjects: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="text-gray-600">Loading subjects...</span>
         </div>
       </div>
@@ -205,14 +205,14 @@ const ExamSubjects: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-indigo-600" />
+              <BookOpen className="w-5 h-5 text-primary-600" />
               <h2 className="text-lg font-semibold text-gray-900">
                 Subject Configuration
               </h2>
             </div>
             <button
               onClick={addRow}
-              className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
             >
               <Plus className="w-4 h-4 mr-1" />
               Add Subject
@@ -252,7 +252,7 @@ const ExamSubjects: React.FC = () => {
                         onChange={(e) =>
                           updateRow(index, "subjectId", e.target.value)
                         }
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                       >
                         <option value="">Select Subject</option>
                         {subjects.map((sub) => (
@@ -270,7 +270,7 @@ const ExamSubjects: React.FC = () => {
                           updateRow(index, "maxMarks", Number(e.target.value))
                         }
                         min={1}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="100"
                       />
                     </td>
@@ -287,7 +287,7 @@ const ExamSubjects: React.FC = () => {
                         }
                         min={1}
                         max={row.maxMarks}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="33"
                       />
                     </td>
@@ -314,7 +314,7 @@ const ExamSubjects: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

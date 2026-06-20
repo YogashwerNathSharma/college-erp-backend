@@ -3,9 +3,10 @@
 // LIBRARY DASHBOARD — Complete Library Management UI
 // School ERP - Single File Component with Tabs
 // Style: Same as SuperAdminSettings/TenantAdminSettings
-// ============================================
+
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   BookOpen, Users, BookCopy, AlertTriangle, DollarSign,
@@ -110,7 +111,7 @@ interface Pagination {
 }
 
 // ==================== API HELPER ====================
-const API_BASE = "http://localhost:5000/api/library";
+const API_BASE = "/api/library";
 
 const getHeaders = () => {
   const token = localStorage.getItem("token");
@@ -133,7 +134,14 @@ const apiCall = async (endpoint: string, options?: RequestInit) => {
 // ==================== MAIN COMPONENT ====================
 const LibraryDashboard: React.FC = () => {
   // Tab state
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const validLibraryTabs = ["dashboard", "books", "members", "issue-return", "reports", "settings"];
+  const hideTabsBar = tabFromUrl && validLibraryTabs.includes(tabFromUrl);
+
+  const [activeTab, setActiveTab] = useState<string>(
+    tabFromUrl && validLibraryTabs.includes(tabFromUrl) ? tabFromUrl : "dashboard"
+  );
   
   // Tabs config — same style as TenantAdminSettings
   const tabs = [
@@ -150,14 +158,14 @@ const LibraryDashboard: React.FC = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-          <Library className="w-8 h-8 text-indigo-600" />
+          <Library className="w-8 h-8 text-primary-600" />
           Library Management
         </h1>
         <p className="text-slate-500 mt-1">Manage books, members, and transactions</p>
       </div>
 
       {/* Tab Navigation — indigo style */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+      {!hideTabsBar && <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
         <div className="flex overflow-x-auto border-b border-slate-200">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -167,7 +175,7 @@ const LibraryDashboard: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
                   activeTab === tab.id
-                    ? "border-indigo-600 text-indigo-600 bg-indigo-50/50"
+                    ? "border-primary-600 text-primary-600 bg-primary-50/50"
                     : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                 }`}
               >
@@ -177,7 +185,7 @@ const LibraryDashboard: React.FC = () => {
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {/* Tab Content */}
       <div className="space-y-6">
@@ -217,7 +225,7 @@ const DashboardTab: React.FC = () => {
   if (!stats) return null;
 
   const statCards = [
-    { label: "Total Books", value: stats.totalBooks, icon: BookOpen, color: "from-blue-500 to-blue-600", subtext: `${stats.uniqueBooks} unique titles` },
+    { label: "Total Books", value: stats.totalBooks, icon: BookOpen, color: "from-primary-500 to-primary-600", subtext: `${stats.uniqueBooks} unique titles` },
     { label: "Active Members", value: stats.totalMembers, icon: Users, color: "from-green-500 to-green-600", subtext: "Registered members" },
     { label: "Books Issued", value: stats.booksIssued, icon: BookCopy, color: "from-purple-500 to-purple-600", subtext: "Currently issued" },
     { label: "Overdue Books", value: stats.overdueBooks, icon: AlertTriangle, color: "from-orange-500 to-orange-600", subtext: "Need attention" },
@@ -247,7 +255,7 @@ const DashboardTab: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-slate-800">Recent Activity</h3>
-          <button onClick={fetchDashboard} className="text-indigo-600 hover:text-indigo-700 p-2 rounded-lg hover:bg-indigo-50">
+          <button onClick={fetchDashboard} className="text-primary-600 hover:text-primary-700 p-2 rounded-lg hover:bg-primary-50">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -434,14 +442,14 @@ const BooksTab: React.FC = () => {
                 placeholder="Search books by title, author, ISBN..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPagination(p => ({...p, page: 1})); }}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
             {/* Category Filter */}
             <select
               value={filterCategory}
               onChange={(e) => { setFilterCategory(e.target.value); setPagination(p => ({...p, page: 1})); }}
-              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
@@ -458,7 +466,7 @@ const BooksTab: React.FC = () => {
             </button>
             <button
               onClick={() => { resetBookForm(); setShowModal(true); }}
-              className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition flex items-center gap-2 shadow-md"
+              className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition flex items-center gap-2 shadow-md"
             >
               <Plus className="w-4 h-4" /> Add Book
             </button>
@@ -493,7 +501,7 @@ const BooksTab: React.FC = () => {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded flex items-center justify-center">
-                              <BookOpen className="w-5 h-5 text-indigo-500" />
+                              <BookOpen className="w-5 h-5 text-primary-500" />
                             </div>
                             <div>
                               <p className="font-medium text-slate-800">{book.title}</p>
@@ -503,7 +511,7 @@ const BooksTab: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-slate-600">{book.author}</td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-medium">
+                          <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded-md text-xs font-medium">
                             {book.category?.name || "—"}
                           </span>
                         </td>
@@ -519,7 +527,7 @@ const BooksTab: React.FC = () => {
                         <td className="py-3 px-4 text-slate-500">{book.shelfLocation || "—"}</td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end gap-1">
-                            <button onClick={() => openEditModal(book)} className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600 transition">
+                            <button onClick={() => openEditModal(book)} className="p-2 hover:bg-primary-50 rounded-lg text-primary-600 transition">
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDeleteBook(book.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition">
@@ -578,7 +586,7 @@ const BooksTab: React.FC = () => {
                 <select
                   value={bookForm.categoryId}
                   onChange={(e) => setBookForm({...bookForm, categoryId: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   required
                 >
                   <option value="">Select Category</option>
@@ -599,7 +607,7 @@ const BooksTab: React.FC = () => {
               <textarea
                 value={bookForm.description}
                 onChange={(e) => setBookForm({...bookForm, description: e.target.value})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 rows={3}
               />
             </div>
@@ -608,7 +616,7 @@ const BooksTab: React.FC = () => {
               <button type="button" onClick={() => { setShowModal(false); resetBookForm(); }} className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
+              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
                 {editingBook ? "Update Book" : "Add Book"}
               </button>
             </div>
@@ -626,7 +634,7 @@ const BooksTab: React.FC = () => {
               <textarea
                 value={categoryForm.description}
                 onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 rows={2}
               />
             </div>
@@ -634,7 +642,7 @@ const BooksTab: React.FC = () => {
               <button type="button" onClick={() => setShowCategoryModal(false)} className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
+              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
                 Create Category
               </button>
             </div>
@@ -738,13 +746,13 @@ const MembersTab: React.FC = () => {
                 placeholder="Search members by name, email, ID..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPagination(p => ({...p, page: 1})); }}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
             <select
               value={filterType}
               onChange={(e) => { setFilterType(e.target.value); setPagination(p => ({...p, page: 1})); }}
-              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Types</option>
               <option value="STUDENT">Student</option>
@@ -754,7 +762,7 @@ const MembersTab: React.FC = () => {
             <select
               value={filterStatus}
               onChange={(e) => { setFilterStatus(e.target.value); setPagination(p => ({...p, page: 1})); }}
-              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -764,7 +772,7 @@ const MembersTab: React.FC = () => {
           </div>
           <button
             onClick={() => { resetMemberForm(); setShowModal(true); }}
-            className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition flex items-center gap-2 shadow-md"
+            className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition flex items-center gap-2 shadow-md"
           >
             <Plus className="w-4 h-4" /> Add Member
           </button>
@@ -824,7 +832,7 @@ const MembersTab: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex justify-end gap-1">
-                            <button onClick={() => openEditModal(member)} className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600 transition">
+                            <button onClick={() => openEditModal(member)} className="p-2 hover:bg-primary-50 rounded-lg text-primary-600 transition">
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDeleteMember(member.id)} className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition">
@@ -873,7 +881,7 @@ const MembersTab: React.FC = () => {
                 <select
                   value={memberForm.memberType}
                   onChange={(e) => setMemberForm({...memberForm, memberType: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="STUDENT">Student</option>
                   <option value="TEACHER">Teacher</option>
@@ -889,7 +897,7 @@ const MembersTab: React.FC = () => {
                   <select
                     value={memberForm.status}
                     onChange={(e) => setMemberForm({...memberForm, status: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="SUSPENDED">Suspended</option>
@@ -902,7 +910,7 @@ const MembersTab: React.FC = () => {
               <button type="button" onClick={() => { setShowModal(false); resetMemberForm(); }} className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
                 Cancel
               </button>
-              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
+              <button type="submit" className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md">
                 {editingMember ? "Update Member" : "Register Member"}
               </button>
             </div>
@@ -1057,7 +1065,7 @@ const IssueReturnTab: React.FC = () => {
             onClick={() => setMode("issue")}
             className={`flex-1 py-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
               mode === "issue"
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+                ? "bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-md"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
@@ -1067,7 +1075,7 @@ const IssueReturnTab: React.FC = () => {
             onClick={() => setMode("return")}
             className={`flex-1 py-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
               mode === "return"
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md"
+                ? "bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-md"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
@@ -1080,7 +1088,7 @@ const IssueReturnTab: React.FC = () => {
       {mode === "issue" && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <BookCopy className="w-5 h-5 text-indigo-600" /> Issue a Book
+            <BookCopy className="w-5 h-5 text-primary-600" /> Issue a Book
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1105,7 +1113,7 @@ const IssueReturnTab: React.FC = () => {
                     placeholder="Search member by name or ID..."
                     value={memberSearch}
                     onChange={(e) => setMemberSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
                   />
                   {searchedMembers.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1113,7 +1121,7 @@ const IssueReturnTab: React.FC = () => {
                         <button
                           key={m.id}
                           onClick={() => { setSelectedMember(m); setSearchedMembers([]); setMemberSearch(""); }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 text-sm border-b border-slate-50 last:border-0"
+                          className="w-full text-left px-4 py-2.5 hover:bg-primary-50 text-sm border-b border-slate-50 last:border-0"
                         >
                           <p className="font-medium text-slate-700">{m.name}</p>
                           <p className="text-xs text-slate-400">{m.membershipId} • {m.memberType}</p>
@@ -1146,7 +1154,7 @@ const IssueReturnTab: React.FC = () => {
                     placeholder="Search book by title or ISBN..."
                     value={bookSearch}
                     onChange={(e) => setBookSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
                   />
                   {searchedBooks.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1154,7 +1162,7 @@ const IssueReturnTab: React.FC = () => {
                         <button
                           key={b.id}
                           onClick={() => { setSelectedBook(b); setSearchedBooks([]); setBookSearch(""); }}
-                          className={`w-full text-left px-4 py-2.5 hover:bg-indigo-50 text-sm border-b border-slate-50 last:border-0 ${b.availableCopies === 0 ? "opacity-50" : ""}`}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-primary-50 text-sm border-b border-slate-50 last:border-0 ${b.availableCopies === 0 ? "opacity-50" : ""}`}
                           disabled={b.availableCopies === 0}
                         >
                           <p className="font-medium text-slate-700">{b.title}</p>
@@ -1176,7 +1184,7 @@ const IssueReturnTab: React.FC = () => {
               value={issueRemarks}
               onChange={(e) => setIssueRemarks(e.target.value)}
               placeholder="Any notes..."
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -1185,7 +1193,7 @@ const IssueReturnTab: React.FC = () => {
             <button
               onClick={handleIssueBook}
               disabled={!selectedMember || !selectedBook || issuing}
-              className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
+              className="px-8 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
             >
               {issuing ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookCopy className="w-4 h-4" />}
               Issue Book
@@ -1198,7 +1206,7 @@ const IssueReturnTab: React.FC = () => {
       {mode === "return" && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <ArrowLeftRight className="w-5 h-5 text-indigo-600" /> Return a Book
+            <ArrowLeftRight className="w-5 h-5 text-primary-600" /> Return a Book
           </h3>
 
           {/* Search Member for Return */}
@@ -1222,7 +1230,7 @@ const IssueReturnTab: React.FC = () => {
                   placeholder="Search member to return books..."
                   value={returnMemberSearch}
                   onChange={(e) => setReturnMemberSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
                 />
                 {returnSearchedMembers.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -1235,7 +1243,7 @@ const IssueReturnTab: React.FC = () => {
                           setReturnMemberSearch("");
                           fetchActiveIssues(m.id);
                         }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-indigo-50 text-sm border-b border-slate-50 last:border-0"
+                        className="w-full text-left px-4 py-2.5 hover:bg-primary-50 text-sm border-b border-slate-50 last:border-0"
                       >
                         <p className="font-medium text-slate-700">{m.name}</p>
                         <p className="text-xs text-slate-400">{m.membershipId} • Currently Issued: {m.currentBooksIssued}</p>
@@ -1359,7 +1367,7 @@ const ReportsTab: React.FC = () => {
                 onClick={() => setActiveReport(r.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
                   activeReport === r.id
-                    ? "bg-indigo-600 text-white shadow-md"
+                    ? "bg-primary-600 text-white shadow-md"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -1393,13 +1401,13 @@ const ReportsTab: React.FC = () => {
                     <p className="text-xs text-slate-500">{item.author} • {item.category}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-indigo-600">{item.issueCount}</p>
+                    <p className="font-bold text-primary-600">{item.issueCount}</p>
                     <p className="text-xs text-slate-400">times issued</p>
                   </div>
                   {/* Simple bar chart */}
                   <div className="w-32 h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                      className="h-full bg-gradient-to-r from-primary-500 to-purple-500 rounded-full"
                       style={{ width: `${(item.issueCount / (mostIssued[0]?.issueCount || 1)) * 100}%` }}
                     />
                   </div>
@@ -1439,7 +1447,7 @@ const ReportsTab: React.FC = () => {
                           {cat.availableCopies}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center text-indigo-600 font-medium">{cat.totalIssues}</td>
+                      <td className="py-3 px-4 text-center text-primary-600 font-medium">{cat.totalIssues}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1544,7 +1552,7 @@ const SettingsTab: React.FC = () => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-3xl">
       <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center gap-2">
-        <Settings className="w-5 h-5 text-indigo-600" /> Library Configuration
+        <Settings className="w-5 h-5 text-primary-600" /> Library Configuration
       </h3>
 
       <div className="space-y-6">
@@ -1558,7 +1566,7 @@ const SettingsTab: React.FC = () => {
                 type="number"
                 value={settings.maxBooksPerStudent}
                 onChange={(e) => setSettings({...settings, maxBooksPerStudent: parseInt(e.target.value) || 0})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -1567,7 +1575,7 @@ const SettingsTab: React.FC = () => {
                 type="number"
                 value={settings.maxBooksPerTeacher}
                 onChange={(e) => setSettings({...settings, maxBooksPerTeacher: parseInt(e.target.value) || 0})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -1576,7 +1584,7 @@ const SettingsTab: React.FC = () => {
                 type="number"
                 value={settings.maxBooksPerStaff}
                 onChange={(e) => setSettings({...settings, maxBooksPerStaff: parseInt(e.target.value) || 0})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -1592,7 +1600,7 @@ const SettingsTab: React.FC = () => {
                 type="number"
                 value={settings.issueDurationDays}
                 onChange={(e) => setSettings({...settings, issueDurationDays: parseInt(e.target.value) || 14})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -1602,7 +1610,7 @@ const SettingsTab: React.FC = () => {
                 step="0.5"
                 value={settings.finePerDay}
                 onChange={(e) => setSettings({...settings, finePerDay: parseFloat(e.target.value) || 0})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <div>
@@ -1612,7 +1620,7 @@ const SettingsTab: React.FC = () => {
                 step="0.5"
                 value={settings.lostBookFineMultiplier}
                 onChange={(e) => setSettings({...settings, lostBookFineMultiplier: parseFloat(e.target.value) || 2})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -1630,7 +1638,7 @@ const SettingsTab: React.FC = () => {
                   onChange={(e) => setSettings({...settings, allowRenewal: e.target.checked})}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
               </label>
               <span className="text-sm text-slate-600">Allow Renewal</span>
             </div>
@@ -1640,7 +1648,7 @@ const SettingsTab: React.FC = () => {
                 type="number"
                 value={settings.maxRenewals}
                 onChange={(e) => setSettings({...settings, maxRenewals: parseInt(e.target.value) || 0})}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-500"
                 disabled={!settings.allowRenewal}
               />
             </div>
@@ -1652,7 +1660,7 @@ const SettingsTab: React.FC = () => {
                   onChange={(e) => setSettings({...settings, workingDaysOnly: e.target.checked})}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
               </label>
               <span className="text-sm text-slate-600">Fine on Working Days Only</span>
             </div>
@@ -1664,7 +1672,7 @@ const SettingsTab: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 shadow-md flex items-center gap-2"
+            className="px-8 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 shadow-md flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             Save Settings
@@ -1679,7 +1687,7 @@ const SettingsTab: React.FC = () => {
 // Loading spinner
 const LoadingSpinner: React.FC = () => (
   <div className="flex items-center justify-center py-12">
-    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+    <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
   </div>
 );
 
@@ -1715,7 +1723,7 @@ const FormInput: React.FC<{
       onChange={(e) => onChange(e.target.value)}
       required={required}
       placeholder={placeholder}
-      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
     />
   </div>
 );
@@ -1723,7 +1731,7 @@ const FormInput: React.FC<{
 // Status badge — issue status ke liye
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const styles: Record<string, string> = {
-    ISSUED: "bg-blue-100 text-blue-700",
+    ISSUED: "bg-primary-100 text-primary-700",
     RETURNED: "bg-green-100 text-green-700",
     OVERDUE: "bg-red-100 text-red-700",
     LOST: "bg-slate-100 text-slate-600",
@@ -1738,7 +1746,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 // Member type badge
 const MemberTypeBadge: React.FC<{ type: string }> = ({ type }) => {
   const styles: Record<string, string> = {
-    STUDENT: "bg-blue-100 text-blue-700",
+    STUDENT: "bg-primary-100 text-primary-700",
     TEACHER: "bg-purple-100 text-purple-700",
     STAFF: "bg-amber-100 text-amber-700",
   };

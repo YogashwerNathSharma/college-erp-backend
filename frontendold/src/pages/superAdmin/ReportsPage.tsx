@@ -65,7 +65,7 @@ export default function ReportsPage() {
     const fetchReports = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/reports", {
+        const res = await axios.get("/api/reports", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -162,7 +162,7 @@ export default function ReportsPage() {
       {/* 📈 MONTHLY REVENUE CHART */}
       <div className="bg-white rounded-2xl border p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-6">
-          <TrendingUp size={20} className="text-indigo-600" />
+          <TrendingUp size={20} className="text-primary-600" />
           <h2 className="text-xl font-bold text-slate-800">Monthly Revenue</h2>
         </div>
 
@@ -200,7 +200,7 @@ export default function ReportsPage() {
               .map((t, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                   <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">
+                    <span className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-bold">
                       {i + 1}
                     </span>
                     <span className="font-medium text-slate-700">{t.tenantName}</span>
@@ -225,13 +225,13 @@ export default function ReportsPage() {
               placeholder="Search tenant or plan..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="ALL">All Status</option>
             <option value="PAID">Paid</option>

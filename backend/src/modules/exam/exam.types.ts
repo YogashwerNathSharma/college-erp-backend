@@ -98,3 +98,17 @@ export interface GradeSettingInput {
   remarks?: string;
 }
 
+// ─────────────────────── CUSTOM SEATING (NEW) ───────────────────────
+
+export interface CustomSeatingInput {
+  examScheduleId: string;
+  roomId: string;
+  capacity: number;
+  rows: number;
+  cols: number;
+  classIds: string[];
+  mixClasses: boolean;
+  aiInstruction?: string;
+}
+
+

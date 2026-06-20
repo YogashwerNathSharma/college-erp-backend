@@ -5,10 +5,18 @@ import App from "./App.tsx";
 import "./index.css";
 
 //////////////////////////////////////////////////////
+// LOAD THEME EARLY (before React renders — no flash)
+//////////////////////////////////////////////////////
+const savedTheme = localStorage.getItem("themeColor");
+if (savedTheme) {
+  document.documentElement.style.setProperty("--primary-color", savedTheme);
+}
+
+//////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
 //////////////////////////////////////////////////////
 
-axios.defaults.baseURL = "http://localhost:5000";
+axios.defaults.baseURL = "";
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");

@@ -3,8 +3,9 @@ import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiFileText, FiDownload } from "react-icons/fi";
+import PrintSignature from "../../components/PrintSignature";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 const REPORT_TYPES = [
   { id: "teacher-list", name: "Teacher List Report", icon: "📋" },
@@ -132,7 +133,7 @@ const TeacherReports = () => {
                 setSelectedReport(e.target.value);
                 setGenerated(false);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               {REPORT_TYPES.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -147,7 +148,7 @@ const TeacherReports = () => {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
           </div>
           <div>
@@ -156,7 +157,7 @@ const TeacherReports = () => {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
           </div>
         </div>
@@ -165,7 +166,7 @@ const TeacherReports = () => {
           <button
             onClick={generateReport}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             <FiFileText size={16} /> {loading ? "Generating..." : "Generate"}
           </button>
@@ -182,7 +183,7 @@ const TeacherReports = () => {
               setGenerated(false);
             }}
             className={`bg-white rounded-lg shadow p-4 text-center hover:shadow-md transition ${
-              selectedReport === r.id ? "ring-2 ring-blue-500" : ""
+              selectedReport === r.id ? "ring-2 ring-primary-500" : ""
             }`}
           >
             <span className="text-2xl">{r.icon}</span>
@@ -193,7 +194,7 @@ const TeacherReports = () => {
                 setSelectedReport(r.id);
                 generateReport();
               }}
-              className="text-xs text-blue-600 hover:underline mt-1 block cursor-pointer"
+              className="text-xs text-primary-600 hover:underline mt-1 block cursor-pointer"
             >
               View Report
             </a>
@@ -254,6 +255,9 @@ const TeacherReports = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Principal Signature — visible only on print */}
+          <PrintSignature />
 
           <div className="p-4 border-t text-sm text-gray-500">
             Total Records: {reportData.length}

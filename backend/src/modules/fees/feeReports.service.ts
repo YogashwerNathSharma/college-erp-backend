@@ -8,7 +8,7 @@ export const getFeeReports = async (
   const { academicYearId, fromDate, toDate } = options;
 
   // Build enrollment filter
-  let enrollmentFilter: any = { tenantId, isDeleted: false, status: "ACTIVE" };
+  let enrollmentFilter: any = { tenantId, isDeleted: false, status: "active" };
   if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
 
   // Build payment date filter
@@ -45,7 +45,7 @@ export const getFeeReports = async (
           classId: cls.id,
           ...(academicYearId ? { academicYearId } : {}),
           isDeleted: false,
-          status: "ACTIVE",
+          status: "active",
         },
       },
       _sum: { netAmount: true },

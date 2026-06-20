@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiCheckCircle, FiXCircle, FiPercent, FiCalendar } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 
 
@@ -109,7 +109,7 @@ const TeacherAttendance = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
           </div>
           <div>
@@ -117,7 +117,7 @@ const TeacherAttendance = () => {
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => (
@@ -135,8 +135,8 @@ const TeacherAttendance = () => {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <FiCalendar className="text-blue-600" size={24} />
+              <div className="bg-primary-100 p-3 rounded-lg">
+                <FiCalendar className="text-primary-600" size={24} />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total Classes</p>
@@ -179,7 +179,7 @@ const TeacherAttendance = () => {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             {loading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
               </div>
             ) : (
               <div className="overflow-x-auto">

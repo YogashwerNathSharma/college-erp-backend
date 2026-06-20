@@ -90,6 +90,10 @@ const FeeCollectionPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [student, setStudent] = useState<StudentInfo | null>(null);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [sections, setSections] = useState<{ id: string; name: string }[]>([]);
   const [fees, setFees] = useState<FeeRecord[]>([]);
   const [summary, setSummary] = useState<FeeSummary | null>(null);
   const [paymentModal, setPaymentModal] = useState<PaymentModalData | null>(null);
@@ -112,7 +116,62 @@ const FeeCollectionPage: React.FC = () => {
   // Fetch discounts on mount
   useEffect(() => {
     fetchDiscounts();
+    fetchClasses();
   }, []);
+
+  useEffect(() => {
+    if (selectedClass) fetchSections();
+    else setSections([]);
+  }, [selectedClass]);
+
+  const fetchClasses = async () => {
+    try {
+      const res = await axios.get(`${API}/class`);
+      if (res.data.success) setClasses(res.data.data || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchSections = async () => {
+    try {
+      const res = await axios.get(`${API}/section`, { params: { classId: selectedClass } });
+      if (res.data.success) setSections(res.data.data || []);
+    } catch (e) { console.error(e); }
+  };
+
+  // Search by class/section selection
+  const handleFilterSearch = async () => {
+    if (!selectedClass) {
+      toast.error("Please select a class");
+      return;
+    }
+    setSearchQuery("");
+    setLoading(true);
+    setStudent(null);
+    setFees([]);
+    setSummary(null);
+    setSearchResults([]);
+    try {
+      const className = classes.find((c) => c.id === selectedClass)?.name || "";
+      const sectionName = sections.find((s) => s.id === selectedSection)?.name || "";
+      const query = sectionName ? `${className} ${sectionName}` : className;
+      const res = await axios.get(`${API}/fees/collection/search`, {
+        params: { q: query },
+      });
+      if (res.data.type === "multiple" && res.data.results?.length > 0) {
+        setSearchResults(res.data.results);
+      } else if (res.data.type === "single" && res.data.data) {
+        setStudent(res.data.data.student);
+        setFees(res.data.data.fees || []);
+        setSummary(res.data.data.summary || null);
+      } else {
+        toast.error("No students found for selected class");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || "Search failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchDiscounts = async () => {
     try {
@@ -131,9 +190,6 @@ const FeeCollectionPage: React.FC = () => {
         handleSearch();
       }
       if (searchQuery.trim().length === 0) {
-        setStudent(null);
-        setFees([]);
-        setSummary(null);
         setSearchResults([]);
       }
     }, 500);
@@ -146,6 +202,8 @@ const FeeCollectionPage: React.FC = () => {
       return;
     }
 
+    setSelectedClass("");
+    setSelectedSection("");
     setLoading(true);
     setStudent(null);
     setFees([]);
@@ -179,11 +237,13 @@ const FeeCollectionPage: React.FC = () => {
 
   const handleSearchByEnrollment = async (enrollmentId: string) => {
     setLoading(true);
+    setSearchResults([]);
     try {
       const res = await axios.get(`${API}/fees/collection/student/${enrollmentId}`);
       setStudent(res.data.student);
       setFees(res.data.fees);
       setSummary(res.data.summary);
+      setSearchQuery("");
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to load fees");
     } finally {
@@ -313,9 +373,9 @@ const FeeCollectionPage: React.FC = () => {
   };
 
   // Print receipt
-  const handlePrintReceipt = () => {
+  const handlePrintReceipt = async () => {
     if (!lastReceipt || !student) return;
-    FeeReceiptPrint({
+    await FeeReceiptPrint({
       receiptNo: lastReceipt.receiptNo,
       paymentDate: lastReceipt.payment.paymentDate,
       studentName: student.name,
@@ -352,21 +412,55 @@ const FeeCollectionPage: React.FC = () => {
 
       {/* Search Bar */}
       <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-        <div className="flex gap-3">
+        {/* Row 1: Text Search */}
+        <div className="flex gap-3 mb-3">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="Search by Name, Admission No, or Class..."
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
           <button
             onClick={handleSearch}
             disabled={loading}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
           >
             {loading ? "Searching..." : "Search"}
+          </button>
+        </div>
+
+        {/* Row 2: Manual Dropdown Filter */}
+        <div className="flex gap-3 items-center pt-3 border-t border-gray-100">
+          <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Or filter by:</span>
+          <select
+            value={selectedClass}
+            onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          >
+            <option value="">Select Class</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+            disabled={!selectedClass}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none disabled:opacity-50"
+          >
+            <option value="">All Sections</option>
+            {sections.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleFilterSearch}
+            disabled={loading || !selectedClass}
+            className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium whitespace-nowrap"
+          >
+            {loading ? "..." : "Go"}
           </button>
         </div>
       </div>
@@ -397,7 +491,7 @@ const FeeCollectionPage: React.FC = () => {
               </thead>
               <tbody>
                 {searchResults.map((s: any) => (
-                  <tr key={s.enrollmentId} className="border-t hover:bg-blue-50">
+                  <tr key={s.enrollmentId} className="border-t hover:bg-primary-50">
                     <td className="px-3 py-2 font-mono text-xs">{s.admissionNo}</td>
                     <td className="px-3 py-2 font-medium">{s.name}</td>
                     <td className="px-3 py-2 text-gray-600">{s.fatherName}</td>
@@ -406,7 +500,7 @@ const FeeCollectionPage: React.FC = () => {
                     <td className="px-3 py-2">
                       <button
                         onClick={() => { setSearchResults([]); handleSearchByEnrollment(s.enrollmentId); }}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                        className="px-3 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700"
                       >
                         View Fees
                       </button>
@@ -527,7 +621,7 @@ const FeeCollectionPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
-                        <button onClick={() => openPaymentModal(fee)} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700">
+                        <button onClick={() => openPaymentModal(fee)} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700">
                           Pay
                         </button>
                       )}
@@ -580,8 +674,8 @@ const FeeCollectionPage: React.FC = () => {
             )}
 
             {/* Balance Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between">
-              <span className="text-sm text-blue-700 font-medium">Outstanding Balance</span>
+            <div className="bg-primary-50 border border-primary-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between">
+              <span className="text-sm text-primary-700 font-medium">Outstanding Balance</span>
               <span className="text-lg font-bold text-blue-900">{formatCurrency(paymentModal.balance)}</span>
             </div>
 
@@ -637,7 +731,7 @@ const FeeCollectionPage: React.FC = () => {
                   type="number"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-lg font-semibold"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-lg font-semibold"
                   placeholder="₹ 0"
                   min={0}
                 />
@@ -654,7 +748,7 @@ const FeeCollectionPage: React.FC = () => {
                 <select
                   value={paymentForm.method}
                   onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                 >
                   <option value="CASH">Cash</option>
                   <option value="ONLINE">Online</option>
@@ -672,7 +766,7 @@ const FeeCollectionPage: React.FC = () => {
                   type="text"
                   value={paymentForm.reference}
                   onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                   placeholder="Transaction ID, Cheque No, etc."
                 />
               </div>
@@ -683,7 +777,7 @@ const FeeCollectionPage: React.FC = () => {
                 <textarea
                   value={paymentForm.remarks}
                   onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                   rows={2}
                   placeholder="Optional remarks..."
                 />
@@ -718,7 +812,7 @@ const FeeCollectionPage: React.FC = () => {
               <button
                 onClick={handleCollectPayment}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
               >
                 {submitting ? "Processing..." : "Collect Payment"}
               </button>

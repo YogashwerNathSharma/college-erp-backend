@@ -1,6 +1,7 @@
 
 import { useState, useRef } from "react";
 import { FiX, FiPrinter } from "react-icons/fi";
+import PrintSignature, { getPrintSignatureHTML } from "../../components/PrintSignature";
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
@@ -54,7 +55,8 @@ const TimetablePrint = ({ timetable, className, sectionName, onClose }: Props) =
   const getEntry = (day: string, period: number) =>
     timetable.find((e) => e.day === day && e.period === period);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    const signatureHTML = await getPrintSignatureHTML();
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -137,7 +139,7 @@ const TimetablePrint = ({ timetable, className, sectionName, onClose }: Props) =
       // FOOTER
       '<div style="margin-top:30px;display:flex;justify-content:space-between;">',
       '<div style="border-top:1px solid #333;padding-top:5px;min-width:150px;text-align:center;font-size:11px;">Class Teacher</div>',
-      '<div style="border-top:1px solid #333;padding-top:5px;min-width:150px;text-align:center;font-size:11px;">Principal</div>',
+      '<div style="min-width:150px;text-align:center;">' + signatureHTML + '</div>',
       '</div>',
 
       '<script>window.print();<\/script>',
@@ -159,7 +161,7 @@ const TimetablePrint = ({ timetable, className, sectionName, onClose }: Props) =
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
             >
               <FiPrinter /> Print
             </button>
@@ -246,7 +248,7 @@ const TimetablePrint = ({ timetable, className, sectionName, onClose }: Props) =
           {/* Footer */}
           <div className="flex justify-between mt-8">
             <div className="border-t border-gray-800 pt-2 w-40 text-center text-sm">Class Teacher</div>
-            <div className="border-t border-gray-800 pt-2 w-40 text-center text-sm">Principal</div>
+            <div className="text-center"><PrintSignature inline={false} printOnly={false} /></div>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import PrintSignature from "../../components/PrintSignature";
 
 const API = import.meta.env.VITE_API_URL || "/api";
 
@@ -97,7 +98,7 @@ const FeeReportsPage: React.FC = () => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">All Sessions</option>
               {academicYears.map((y) => (
@@ -111,7 +112,7 @@ const FeeReportsPage: React.FC = () => {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div>
@@ -120,13 +121,13 @@ const FeeReportsPage: React.FC = () => {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <button
             onClick={fetchReports}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
           >
             {loading ? "Loading..." : "Filter"}
           </button>
@@ -218,9 +219,12 @@ const FeeReportsPage: React.FC = () => {
         </>
       )}
 
+      {/* Principal Signature - visible only on print */}
+      <PrintSignature />
+
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span className="ml-3 text-gray-500">Loading reports...</span>
         </div>
       )}

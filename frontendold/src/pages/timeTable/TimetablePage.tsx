@@ -277,7 +277,7 @@ const TimetablePage = () => {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Timetable</h1>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+          <button onClick={() => setShowBulkModal(true)} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition">
             <FiLayers /> Bulk Generate
           </button>
           {selectedClass && selectedSection && timetable.length > 0 && (
@@ -294,7 +294,7 @@ const TimetablePage = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
             <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500">
               <option value="">Select Class</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -302,7 +302,7 @@ const TimetablePage = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
             <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500" disabled={!selectedClass}>
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500" disabled={!selectedClass}>
               <option value="">Select Section</option>
               {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -315,11 +315,11 @@ const TimetablePage = () => {
         <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
           <div className="flex flex-wrap items-center gap-3">
             <button onClick={handleAutoGenerate} disabled={generating || clearing}
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2.5 rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 shadow-sm">
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-primary-600 text-white px-5 py-2.5 rounded-lg hover:from-purple-700 hover:to-primary-700 disabled:opacity-50 shadow-sm">
               <FiZap /> {generating ? "Generating..." : "⚡ Auto Generate"}
             </button>
             <button onClick={() => { setEditEntry(null); setPrefillDay(""); setPrefillPeriod(0); setShowForm(true); }}
-              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 shadow-sm">
+              className="flex items-center gap-2 bg-primary-600 text-white px-5 py-2.5 rounded-lg hover:bg-primary-700 shadow-sm">
               <FiGrid /> Custom Add
             </button>
             {timetable.length > 0 && (
@@ -336,7 +336,7 @@ const TimetablePage = () => {
       {selectedClass && selectedSection ? (
         loading || generating ? (
           <div className="flex flex-col items-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full"></div>
             {generating && <p className="mt-3 text-sm text-gray-500">Generating...</p>}
           </div>
         ) : timetable.length > 0 ? (
@@ -344,7 +344,7 @@ const TimetablePage = () => {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse min-w-[800px]">
                 <thead>
-                  <tr className="bg-blue-50">
+                  <tr className="bg-primary-50">
                     <th className="border border-gray-200 px-3 py-3 text-left text-sm font-semibold text-gray-700 w-20">Day</th>
                     {PERIODS.map((p) => (
                       <th key={p} className="border border-gray-200 px-2 py-3 text-center text-sm font-semibold text-gray-700">Period {p}</th>
@@ -359,14 +359,14 @@ const TimetablePage = () => {
                         const entry = getEntry(day, period);
                         return (
                           <td key={`${day}-${period}`} onClick={() => handleCellClick(day, period)}
-                            className={`border border-gray-200 px-2 py-2 text-center cursor-pointer transition group relative min-w-[100px] ${entry ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-green-50"}`}>
+                            className={`border border-gray-200 px-2 py-2 text-center cursor-pointer transition group relative min-w-[100px] ${entry ? "bg-primary-50 hover:bg-primary-100" : "hover:bg-green-50"}`}>
                             {entry ? (
                               <div className="relative">
-                                <div className="text-xs font-semibold text-blue-800 truncate">{entry.subject.name}</div>
+                                <div className="text-xs font-semibold text-primary-800 truncate">{entry.subject.name}</div>
                                 <div className="text-[11px] text-gray-500 truncate">{entry.teacher.name}</div>
                                 <div className="absolute top-0 right-0 hidden group-hover:flex gap-1">
                                   <button onClick={(e) => { e.stopPropagation(); setEditEntry(entry); setShowForm(true); }}
-                                    className="p-0.5 bg-white rounded shadow text-blue-600"><FiEdit2 size={12} /></button>
+                                    className="p-0.5 bg-white rounded shadow text-primary-600"><FiEdit2 size={12} /></button>
                                   <button onClick={(e) => handleDelete(entry.id, e)}
                                     className="p-0.5 bg-white rounded shadow text-red-600"><FiTrash2 size={12} /></button>
                                 </div>
@@ -383,7 +383,7 @@ const TimetablePage = () => {
               </table>
             </div>
             <div className="px-4 py-3 border-t bg-gray-50 flex items-center gap-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-50 border rounded"></span>Assigned</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-primary-50 border rounded"></span>Assigned</span>
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-white border rounded"></span>Empty</span>
             </div>
           </div>
@@ -418,7 +418,7 @@ const TimetablePage = () => {
                 <label className="text-sm font-medium text-gray-700">Select Classes:</label>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setBulkSelectedClasses(classes.map((c) => c.id))}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Select All</button>
+                    className="text-xs text-primary-600 hover:text-primary-800 font-medium">Select All</button>
                   <span className="text-gray-300">|</span>
                   <button type="button" onClick={() => setBulkSelectedClasses([])}
                     className="text-xs text-gray-500 hover:text-gray-700 font-medium">Clear</button>
@@ -430,19 +430,19 @@ const TimetablePage = () => {
                 {classes.map((c) => (
                   <label key={c.id}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition ${
-                      bulkSelectedClasses.includes(c.id) ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-50 border border-transparent"
+                      bulkSelectedClasses.includes(c.id) ? "bg-primary-50 border border-primary-200" : "hover:bg-gray-50 border border-transparent"
                     }`}>
                     <input type="checkbox" checked={bulkSelectedClasses.includes(c.id)} onChange={() => toggleBulkClass(c.id)}
-                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500" />
                     <span className="text-sm font-medium text-gray-700">{c.name}</span>
                   </label>
                 ))}
               </div>
 
               {bulkSelectedClasses.length > 0 && (
-                <div className="bg-indigo-50 rounded-lg p-3 text-sm text-indigo-800">
+                <div className="bg-primary-50 rounded-lg p-3 text-sm text-primary-800">
                   <strong>{bulkSelectedClasses.length} classes selected</strong>
-                  <br /><span className="text-xs text-indigo-600">✅ One teacher = one class at a time</span>
+                  <br /><span className="text-xs text-primary-600">✅ One teacher = one class at a time</span>
                 </div>
               )}
 
@@ -450,12 +450,12 @@ const TimetablePage = () => {
                 <button onClick={() => setShowBulkModal(false)}
                   className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
                 <button onClick={handleBulkGenerate} disabled={bulkGenerating || bulkSelectedClasses.length === 0}
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2">
                   <FiZap />
                   {bulkGenerating ? "Generating..." : "🚀 Generate All"}
                 </button>
                 <button onClick={handleBulkPrint} disabled={bulkSelectedClasses.length === 0}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2">
                   <FiPrinter />
                   🖨️ Print All
                 </button>

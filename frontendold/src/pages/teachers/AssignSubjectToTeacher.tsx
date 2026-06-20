@@ -4,7 +4,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiPlus, FiTrash2, FiSave } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Assignment {
   id: string;
@@ -143,7 +143,7 @@ const AssignSubjectToTeacher = () => {
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => (
@@ -160,7 +160,7 @@ const AssignSubjectToTeacher = () => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Year</option>
               {academicYears.map((y: any) => (
@@ -195,7 +195,7 @@ const AssignSubjectToTeacher = () => {
                       <select
                         value={row.classId}
                         onChange={(e) => updateRow(row.id, "classId", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                       >
                         <option value="">Select Class</option>
                         {classes.map((c: any) => (
@@ -209,7 +209,7 @@ const AssignSubjectToTeacher = () => {
                       <select
                         value={row.subjectId}
                         onChange={(e) => updateRow(row.id, "subjectId", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                       >
                         <option value="">Select Subject</option>
                         {getFilteredSubjects(row.classId).map((s: any) => (
@@ -223,7 +223,7 @@ const AssignSubjectToTeacher = () => {
                       <select
                         value={row.type}
                         onChange={(e) => updateRow(row.id, "type", e.target.value)}
-                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                       >
                         <option value="Theory">Theory</option>
                         <option value="Practical">Practical</option>
@@ -246,14 +246,14 @@ const AssignSubjectToTeacher = () => {
           <div className="flex justify-between items-center p-4 border-t">
             <button
               onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition"
+              className="flex items-center gap-2 px-4 py-2 text-primary-600 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
             >
               <FiPlus size={16} /> Add More
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
             >
               <FiSave size={16} /> {loading ? "Saving..." : "Save Assignment"}
             </button>

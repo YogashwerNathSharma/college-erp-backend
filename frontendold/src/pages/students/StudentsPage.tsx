@@ -170,7 +170,7 @@ export default function StudentList() {
       <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Students</h1>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => navigate("/students/new-admission")} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors">
+          <button onClick={() => navigate("/students/new-admission")} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors">
             + New Admission
           </button>
           <button onClick={() => navigate("/students/old-entry")} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 text-sm font-medium transition-colors">
@@ -179,7 +179,7 @@ export default function StudentList() {
           <button onClick={() => navigate("/students/promotion")} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium transition-colors">
             🎓 Promotion
           </button>
-          <button onClick={() => navigate("/students/print")} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors">
+          <button onClick={() => navigate("/students/print")} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors">
             🖨️ Print List
           </button>
           <button onClick={() => navigate("/students/age-settings")} className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium transition-colors">
@@ -194,26 +194,26 @@ export default function StudentList() {
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <select value={filters.academicYearId} onChange={(e) => setFilters({ ...filters, academicYearId: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <select value={filters.academicYearId} onChange={(e) => setFilters({ ...filters, academicYearId: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
             <option value="">All Academic Years</option>
             {academicYears.map((ay) => (<option key={ay.id} value={ay.id}>{ay.name}</option>))}
           </select>
-          <select value={filters.classId} onChange={(e) => setFilters({ ...filters, classId: e.target.value, sectionId: "", page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <select value={filters.classId} onChange={(e) => setFilters({ ...filters, classId: e.target.value, sectionId: "", page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
             <option value="">All Classes</option>
             {classes.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
           </select>
-          <select value={filters.sectionId} onChange={(e) => setFilters({ ...filters, sectionId: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" disabled={!filters.classId}>
+          <select value={filters.sectionId} onChange={(e) => setFilters({ ...filters, sectionId: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" disabled={!filters.classId}>
             <option value="">All Sections</option>
             {sections.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
           </select>
-          <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="left">Left</option>
             <option value="tc_issued">TC Issued</option>
           </select>
-          <input type="text" placeholder="Search name, adm no, SR, father..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+          <input type="text" placeholder="Search name, adm no, SR, father..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 1 })} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
         </div>
       </div>
 
@@ -244,7 +244,7 @@ export default function StudentList() {
               {loading ? (
                 <tr><td colSpan={9} className="text-center py-8 text-gray-400">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                     Loading...
                   </div>
                 </td></tr>
@@ -255,14 +255,14 @@ export default function StudentList() {
                 </td></tr>
               ) : (
                 students.map((student, index) => (
-                  <tr key={student.id} className="hover:bg-blue-50/50 transition-colors">
+                  <tr key={student.id} className="hover:bg-primary-50/50 transition-colors">
                     <td className="px-4 py-3 text-sm text-gray-600">{(filters.page - 1) * 50 + index + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white shadow-sm overflow-hidden">
                           {student.photoUrl ? (
                             <img
-                              src={`http://localhost:5000/uploads/${student.photoUrl}`}
+                              src={`/uploads/${student.photoUrl}`}
                               alt={`${student.firstName} ${student.lastName}`}
                               className="w-full h-full object-cover"
                             />
@@ -280,7 +280,7 @@ export default function StudentList() {
                     <td className="px-4 py-3 text-sm font-mono text-gray-500">{student.srNo || "-"}</td>
                     <td className="px-4 py-3 text-sm">
                       {student.enrollments?.[0] ? (
-                        <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                        <span className="bg-primary-50 text-primary-700 px-2 py-0.5 rounded text-xs font-medium">
                           {student.enrollments[0].class.name} - {student.enrollments[0].section.name}
                         </span>
                       ) : "-"}
@@ -294,7 +294,7 @@ export default function StudentList() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleView(student.id)} className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium transition-colors">
+                        <button onClick={() => handleView(student.id)} className="px-2 py-1 text-xs bg-primary-50 text-primary-600 rounded hover:bg-primary-100 font-medium transition-colors">
                           View
                         </button>
                         <button onClick={() => navigate(`/students/${student.id}/edit`)} className="px-2 py-1 text-xs bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 font-medium transition-colors">
@@ -345,7 +345,7 @@ export default function StudentList() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shadow-lg overflow-hidden">
                   {viewStudent.photoUrl ? (
                     <img
-                      src={`http://localhost:5000/uploads/${viewStudent.photoUrl}`}
+                      src={`/uploads/${viewStudent.photoUrl}`}
                       alt={`${viewStudent.firstName} ${viewStudent.lastName}`}
                       className="w-full h-full object-cover"
                     />
@@ -401,7 +401,7 @@ export default function StudentList() {
 
             {/* Modal Footer */}
             <div className="flex justify-end gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
-              <button onClick={() => { setShowViewModal(false); navigate(`/students/${viewStudent.id}/edit`); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+              <button onClick={() => { setShowViewModal(false); navigate(`/students/${viewStudent.id}/edit`); }} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">
                 Edit Student
               </button>
               <button onClick={() => setShowViewModal(false)} className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-100 text-sm font-medium">

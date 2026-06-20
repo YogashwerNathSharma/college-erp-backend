@@ -1,5 +1,6 @@
 
 
+
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -32,12 +33,17 @@ import {
   // Teacher Module Icons
   GraduationCap,
   CalendarClock,
+  Grid3X3,
   Star,
   FolderOpen,
   MessageSquare,
   Clock,
   Wallet,
   ClipboardEdit,
+  PenTool,
+  Database,
+  Palette,
+  Brush,
 
 } from "lucide-react";
 
@@ -48,8 +54,8 @@ import {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `http://localhost:5000${path}`;
-  return `http://localhost:5000/uploads/${path}`;
+  if (path.startsWith("/")) return `${path}`;
+  return `/uploads/${path}`;
 };
 
 //////////////////////////////////////////////////
@@ -90,6 +96,8 @@ const tenantMenu: SectionGroup[] = [
           { name: "Classes", icon: <School size={16} />, path: "/classes" },
           { name: "Sections", icon: <Layers size={16} />, path: "/sections" },
           { name: "Subjects", icon: <BookOpen size={16} />, path: "/subjects" },
+          { name: "Signature Master", icon: <PenTool size={16} />, path: "/signature-master" },
+          { name: "Rooms", icon: <School size={16} />, path: "/rooms" },
         ],
       },
     ],
@@ -149,7 +157,8 @@ const tenantMenu: SectionGroup[] = [
           { name: "All Exams", icon: <FileText size={16} />, path: "/exams" },
           { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },
           { name: "Reports", icon: <BarChart3 size={16} />, path: "/exam-reports" },
-          //{ name: "Admit Card",icon: <CreditCard size={16} />,path: "/admitcard"}
+          { name: "Seating Arrangement", icon: <Grid3X3 size={16} />, path: "/exam-seating-plan" },
+          { name: "Admit Card", icon: <CreditCard size={16} />, path: "/exam-admit-card" },
         ],
       },
       { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
@@ -170,6 +179,7 @@ const tenantMenu: SectionGroup[] = [
           { name: "Discounts", icon: <CreditCard size={16} />, path: "/fees/discounts" },
           { name: "Fine Rules", icon: <FileText size={16} />, path: "/fees/fine-rules" },
           { name: "Reports", icon: <BarChart3 size={16} />, path: "/fees/reports" },
+          { name: "Receipts", icon: <FileText size={16} />, path: "/fees/receipts" },
           { name: "Student Ledger", icon: <BookOpenCheck size={16} />, path: "/fees/ledger" },
           { name: "Reminders", icon: <Bell size={16} />, path: "/fees/reminders" },
           { name: "Settings", icon: <Settings size={16} />, path: "/fees/settings" },
@@ -190,6 +200,18 @@ const tenantMenu: SectionGroup[] = [
       { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
     ],
   },
+  {
+    section: "Design Studio",
+    items: [
+      {
+        name: "YN-UDP Designer",
+        icon: <Brush size={20} />,
+        children: [
+          { name: "Template Designer", icon: <Palette size={16} />, path: "/yn-udp" },
+        ],
+      },
+    ],
+  },
   
   {
   section: "System",
@@ -202,6 +224,8 @@ const tenantMenu: SectionGroup[] = [
         { name: "Subscription", path: "/settings/subscription", icon: <CreditCard size={16} /> },
         //{ name: "Profile", path: "/settings/profile", icon: <Users size={16} /> },
         { name: "User Management", path: "/settings/users", icon: <UserPlus size={16} /> },  // ← NEW
+        { name: "Theme", path: "/settings/theme", icon: <Palette size={16} /> },
+        { name: "Data Backup", path: "/backup", icon: <Database size={16} /> },
       ],
     },
   ],

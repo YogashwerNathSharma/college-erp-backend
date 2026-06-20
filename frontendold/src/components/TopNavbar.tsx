@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
+  return `${path}`;
 };
 
 // 🔥 Page title map — route ke hisaab se title
@@ -82,7 +82,7 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
                 }}
               />
             ) : (
-              <div className="w-10 h-10 bg-indigo-600 text-white flex items-center justify-center rounded-lg font-bold">
+              <div className="w-10 h-10 bg-primary-600 text-white flex items-center justify-center rounded-lg font-bold">
                 {safeTenant?.name?.charAt(0) || "T"}
               </div>
             )}

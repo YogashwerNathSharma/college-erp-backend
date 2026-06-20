@@ -261,7 +261,7 @@ export default function CreatePlanModal({
 
         await axios.put(
 
-          `http://localhost:5000/api/subscriptions/plans/${editingPlan.id}`,
+          `/api/subscriptions/plans/${editingPlan.id}`,
 
           payload,
 
@@ -288,7 +288,7 @@ export default function CreatePlanModal({
 
         await axios.post(
 
-          "http://localhost:5000/api/subscriptions/plans",
+          "/api/subscriptions/plans",
 
           payload,
 
@@ -601,8 +601,8 @@ export default function CreatePlanModal({
               px-6
               py-3
               rounded-xl
-              bg-indigo-600
-              hover:bg-indigo-700
+              bg-primary-600
+              hover:bg-primary-700
               text-white
             "
           >

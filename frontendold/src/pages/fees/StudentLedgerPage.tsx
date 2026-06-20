@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import PrintSignature from "../../components/PrintSignature";
 
 const API = import.meta.env.VITE_API_URL || "/api";
 
@@ -114,7 +115,7 @@ const StudentLedgerPage: React.FC = () => {
         {ledgerData && (
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -132,11 +133,11 @@ const StudentLedgerPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by Student Name or Admission No..."
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
           {searching && (
             <div className="flex items-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
             </div>
           )}
         </div>
@@ -148,7 +149,7 @@ const StudentLedgerPage: React.FC = () => {
               <button
                 key={s.enrollmentId}
                 onClick={() => loadLedger(s.enrollmentId)}
-                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                className="w-full text-left px-4 py-3 hover:bg-primary-50 border-b border-gray-100 last:border-b-0"
               >
                 <div className="flex justify-between items-center">
                   <div>
@@ -156,7 +157,7 @@ const StudentLedgerPage: React.FC = () => {
                     <p className="text-xs text-gray-500">Father: {s.fatherName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-mono text-blue-600">{s.admissionNo}</p>
+                    <p className="text-xs font-mono text-primary-600">{s.admissionNo}</p>
                     <p className="text-xs text-gray-500">{s.className} - {s.sectionName}</p>
                   </div>
                 </div>
@@ -168,7 +169,7 @@ const StudentLedgerPage: React.FC = () => {
 
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span className="ml-3 text-gray-500">Loading ledger...</span>
         </div>
       )}
@@ -210,9 +211,9 @@ const StudentLedgerPage: React.FC = () => {
                 <p className="text-xs text-gray-500">Total Paid</p>
                 <p className="font-bold text-green-700 mt-1">{formatCurrency(ledgerData.summary.totalPaid)}</p>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-center p-3 bg-primary-50 rounded-lg">
                 <p className="text-xs text-gray-500">Discount</p>
-                <p className="font-bold text-blue-700 mt-1">{formatCurrency(ledgerData.summary.totalDiscount)}</p>
+                <p className="font-bold text-primary-700 mt-1">{formatCurrency(ledgerData.summary.totalDiscount)}</p>
               </div>
               <div className="text-center p-3 bg-red-50 rounded-lg">
                 <p className="text-xs text-gray-500">Balance</p>
@@ -245,7 +246,7 @@ const StudentLedgerPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-500">{idx + 1}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatDate(entry.date)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{entry.particulars}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-blue-600">
+                      <td className="px-4 py-3 text-sm font-mono text-primary-600">
                         {entry.receiptNo !== "-" ? entry.receiptNo : <span className="text-gray-400">-</span>}
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-red-600 font-medium">
@@ -287,6 +288,9 @@ const StudentLedgerPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Principal Signature — visible only on print */}
+      {ledgerData && <PrintSignature />}
 
       {/* Empty state */}
       {!ledgerData && !loading && (

@@ -73,7 +73,7 @@ const FeeDashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         <span className="ml-3 text-gray-500">Loading dashboard...</span>
       </div>
     );
@@ -93,7 +93,7 @@ const FeeDashboardPage: React.FC = () => {
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
         >
           <option value="">Current Session</option>
           {academicYears.map((y) => (

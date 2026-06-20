@@ -23,7 +23,7 @@ export default function SettingsPage() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/settings", {
+        const res = await axios.get("/api/settings", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const d = res.data.data;
@@ -58,7 +58,7 @@ export default function SettingsPage() {
         body.newPassword = passwords.newPassword;
       }
 
-      await axios.put("http://localhost:5000/api/settings/profile", body, {
+      await axios.put("/api/settings/profile", body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -77,9 +77,12 @@ export default function SettingsPage() {
       setSaving(true);
       const token = localStorage.getItem("token");
 
-      await axios.put("http://localhost:5000/api/settings/platform", platform, {
+      await axios.put("/api/settings/platform", platform, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // Apply theme color live (no reload needed)
+      document.documentElement.style.setProperty("--primary-color", platform.primaryColor);
 
       setSuccessMsg("Platform settings updated!");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -124,11 +127,11 @@ export default function SettingsPage() {
                 onClick={() => setActiveTab(item.key)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
                   activeTab === item.key
-                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    ? "bg-primary-50 text-primary-700 border border-primary-200"
                     : "text-slate-600 hover:bg-gray-50"
                 }`}
               >
-                <div className={`${activeTab === item.key ? "text-indigo-600" : "text-slate-400"}`}>
+                <div className={`${activeTab === item.key ? "text-primary-600" : "text-slate-400"}`}>
                   {item.icon}
                 </div>
                 <div>
@@ -148,7 +151,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-6">
               <div className="border-b pb-4">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <User size={20} className="text-indigo-600" /> Profile Settings
+                  <User size={20} className="text-primary-600" /> Profile Settings
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">Update your personal information and password</p>
               </div>
@@ -160,7 +163,7 @@ export default function SettingsPage() {
                     type="text"
                     value={profile.name}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
                   />
                 </div>
                 <div>
@@ -169,7 +172,7 @@ export default function SettingsPage() {
                     type="email"
                     value={profile.email}
                     onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
                   />
                 </div>
               </div>
@@ -183,7 +186,7 @@ export default function SettingsPage() {
                       type={showPassword ? "text" : "password"}
                       value={passwords.currentPassword}
                       onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
@@ -192,7 +195,7 @@ export default function SettingsPage() {
                       type={showPassword ? "text" : "password"}
                       value={passwords.newPassword}
                       onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>
@@ -201,14 +204,14 @@ export default function SettingsPage() {
                       type={showPassword ? "text" : "password"}
                       value={passwords.confirmPassword}
                       onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
 
                 <button
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-sm text-indigo-600 flex items-center gap-1 mt-3 hover:text-indigo-800"
+                  className="text-sm text-primary-600 flex items-center gap-1 mt-3 hover:text-primary-800"
                 >
                   {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   {showPassword ? "Hide" : "Show"} passwords
@@ -219,7 +222,7 @@ export default function SettingsPage() {
                 <button
                   onClick={saveProfile}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition"
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition"
                 >
                   <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -232,7 +235,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-6">
               <div className="border-b pb-4">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Palette size={20} className="text-indigo-600" /> Platform Branding
+                  <Palette size={20} className="text-primary-600" /> Platform Branding
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">Customize your ERP appearance</p>
               </div>
@@ -244,7 +247,7 @@ export default function SettingsPage() {
                     type="text"
                     value={platform.appName}
                     onChange={(e) => setPlatform({ ...platform, appName: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
                 <div>
@@ -253,7 +256,7 @@ export default function SettingsPage() {
                     type="text"
                     value={platform.tagline}
                     onChange={(e) => setPlatform({ ...platform, tagline: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -290,7 +293,7 @@ export default function SettingsPage() {
                 <button
                   onClick={savePlatform}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition"
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50 transition"
                 >
                   <Save size={16} /> {saving ? "Saving..." : "Save Platform Settings"}
                 </button>
@@ -303,7 +306,7 @@ export default function SettingsPage() {
             <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-6">
               <div className="border-b pb-4">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Shield size={20} className="text-indigo-600" /> System Configuration
+                  <Shield size={20} className="text-primary-600" /> System Configuration
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">API keys and server configuration (read-only)</p>
               </div>

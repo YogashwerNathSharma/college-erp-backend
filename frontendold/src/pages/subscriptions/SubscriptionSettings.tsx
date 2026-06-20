@@ -22,8 +22,8 @@ export default function SubscriptionSettings() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [subRes, usageRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/tenant/my-subscription", { headers }),
-        axios.get("http://localhost:5000/api/tenant/usage", { headers }),
+        axios.get("/api/tenant/my-subscription", { headers }),
+        axios.get("/api/tenant/usage", { headers }),
       ]);
 
       setSubscriptionInfo(subRes.data.data);
@@ -38,7 +38,7 @@ export default function SubscriptionSettings() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/tenant/plans", {
+      const res = await axios.get("/api/tenant/plans", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPlans(res.data.data || []);
@@ -55,7 +55,7 @@ export default function SubscriptionSettings() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const res = await axios.post(
-        "http://localhost:5000/api/tenant/self-subscribe",
+        "/api/tenant/self-subscribe",
         { planId },
         { headers }
       );
@@ -74,7 +74,7 @@ export default function SubscriptionSettings() {
         handler: async function (response: any) {
           try {
             await axios.post(
-              "http://localhost:5000/api/subscription-payments/verify",
+              "/api/subscription-payments/verify",
               {
                 subscriptionId,
                 razorpay_order_id: response.razorpay_order_id,
@@ -113,7 +113,7 @@ export default function SubscriptionSettings() {
       <div className={`rounded-2xl border p-6 shadow-sm ${
         isFreePlan
           ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
-          : "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200"
+          : "bg-gradient-to-r from-indigo-50 to-purple-50 border-primary-200"
       }`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
@@ -121,7 +121,7 @@ export default function SubscriptionSettings() {
           </h2>
           <button
             onClick={fetchPlans}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
+            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
           >
             <Crown size={16} />
             {subscriptionInfo ? "Upgrade / Renew" : "View Plans"}
@@ -153,7 +153,7 @@ export default function SubscriptionSettings() {
               </div>
               <div className="bg-white rounded-xl p-4 shadow-sm">
                 <p className="text-sm text-gray-500 flex items-center gap-1"><Clock size={14} /> Days Left</p>
-                <p className={`text-lg font-bold ${subscriptionInfo.daysRemaining <= 5 ? "text-red-500" : "text-indigo-600"}`}>
+                <p className={`text-lg font-bold ${subscriptionInfo.daysRemaining <= 5 ? "text-red-500" : "text-primary-600"}`}>
                   {subscriptionInfo.daysRemaining}
                 </p>
               </div>
@@ -190,7 +190,7 @@ export default function SubscriptionSettings() {
               { label: "Storage", icon: <HardDrive size={18} />, ...usage.storage, suffix: "GB" },
             ].map((item) => {
               const pct = item.max > 0 ? Math.min(100, Math.round((item.current / item.max) * 100)) : 0;
-              const barColor = pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-indigo-500";
+              const barColor = pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-primary-500";
 
               return (
                 <div key={item.label}>
@@ -242,7 +242,7 @@ export default function SubscriptionSettings() {
 
                     <h3 className="text-lg font-bold mt-2">{plan.name}</h3>
                     <p className="text-sm text-slate-500">{plan.description}</p>
-                    <p className="text-2xl font-bold text-indigo-600 mt-3">
+                    <p className="text-2xl font-bold text-primary-600 mt-3">
                       {plan.price === 0 ? "Free" : `₹${plan.price}`}
                     </p>
                     <p className="text-sm text-slate-400">{plan.durationInDays} Days</p>
@@ -257,7 +257,7 @@ export default function SubscriptionSettings() {
                     {plan.features?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1">
                         {plan.features.map((f: string, i: number) => (
-                          <span key={i} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">
+                          <span key={i} className="text-xs bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full">
                             {f}
                           </span>
                         ))}
@@ -268,7 +268,7 @@ export default function SubscriptionSettings() {
                       <button
                         onClick={() => buyPlan(plan.id)}
                         disabled={paymentLoading}
-                        className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-semibold text-sm"
+                        className="mt-4 w-full bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-xl font-semibold text-sm"
                       >
                         ⚡ Buy & Activate
                       </button>

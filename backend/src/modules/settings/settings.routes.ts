@@ -10,6 +10,7 @@ import path from "path";
 import {
   getSettings,
   updateTenantSettings,
+  updateTheme,
   updateProfile,
   changePassword,
   getUsers,
@@ -22,6 +23,7 @@ import {
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import { getDesignerSettings, updateDesignerSettings } from "./designer.controller";
 
 
 
@@ -82,6 +84,19 @@ router.use(authMiddleware, resolveTenant, allowRoles("ADMIN", "SUPER_ADMIN"));
 
 // Get settings (role-based response automatically adjust hoga)
 router.get("/", getSettings);
+
+// Update theme (both SUPER_ADMIN + TENANT ADMIN)
+router.put("/theme", updateTheme);
+
+// ============================================================
+// DESIGNER SETTINGS ROUTES
+// ============================================================
+
+// Get designer settings by type
+router.get("/designer", getDesignerSettings);
+
+// Update designer settings
+router.put("/designer", updateDesignerSettings);
 
 // Update tenant settings (branding/info) — sirf ADMIN
 router.put("/", updateTenantSettings);

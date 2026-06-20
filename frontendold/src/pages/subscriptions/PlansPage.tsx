@@ -16,7 +16,7 @@ export default function SubscriptionPlans() {
   const fetchPlans = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/subscription-plans"
+        "/api/subscription-plans"
       );
 
       setPlans(res.data);
@@ -32,7 +32,7 @@ export default function SubscriptionPlans() {
   const createPlan = async () => {
     try {
       await axios.post(
-        "http://localhost:5000/api/subscription-plans",
+        "/api/subscription-plans",
         {
           name: "Basic Plan",
           price: 999,
@@ -58,7 +58,7 @@ export default function SubscriptionPlans() {
 
         <button
           onClick={createPlan}
-          className="bg-indigo-600 text-white px-6 py-3 rounded-xl"
+          className="bg-primary-600 text-white px-6 py-3 rounded-xl"
         >
           Create Plan
         </button>
@@ -76,7 +76,7 @@ export default function SubscriptionPlans() {
               {plan.name}
             </h2>
 
-            <p className="text-4xl font-bold text-indigo-600 mb-4">
+            <p className="text-4xl font-bold text-primary-600 mb-4">
               ₹{plan.price}
             </p>
 
@@ -95,7 +95,7 @@ export default function SubscriptionPlans() {
                 (f: string, i: number) => (
                   <span
                     key={i}
-                    className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs"
+                    className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-xs"
                   >
                     {f}
                   </span>

@@ -21,6 +21,16 @@
   background: var(--bg);
 }
 
+/* ================= THEME UTILITY CLASSES ================= */
+.bg-theme { background-color: var(--primary-color); }
+.text-theme { color: var(--primary-color); }
+.border-theme { border-color: var(--primary-color); }
+.bg-theme-light { background-color: color-mix(in srgb, var(--primary-color) 10%, white); }
+.bg-theme-medium { background-color: color-mix(in srgb, var(--primary-color) 20%, white); }
+.text-theme-dark { color: color-mix(in srgb, var(--primary-color) 80%, black); }
+.ring-theme { --tw-ring-color: var(--primary-color); }
+.hover\:bg-theme-dark:hover { background-color: color-mix(in srgb, var(--primary-color) 80%, black); }
+
 /* ================= DARK MODE ================= */
 @media (prefers-color-scheme: dark) {
   :root {

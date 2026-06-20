@@ -96,7 +96,7 @@ export default function SubscriptionExpired() {
   const checkFreeTrialUsed = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/subscriptions/tenant/${tenant.id}`,
+        `/api/subscriptions/tenant/${tenant.id}`,
         { headers: getHeaders() }
       );
       const subscription = res.data?.data;
@@ -119,7 +119,7 @@ export default function SubscriptionExpired() {
   const fetchPlans = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/subscriptions/plans",
+        "/api/subscriptions/plans",
         { headers: getHeaders() }
       );
       setPlans(res.data?.data || []);
@@ -152,7 +152,7 @@ export default function SubscriptionExpired() {
         //////////////////////////////////////////////////
 
         const res = await axios.post(
-          "http://localhost:5000/api/tenant/self-subscribe",
+          "/api/tenant/self-subscribe",
           {
             planId,
             deviceFingerprint: getDeviceFingerprint(),
@@ -174,7 +174,7 @@ export default function SubscriptionExpired() {
         //////////////////////////////////////////////////
 
         const res = await axios.post(
-          "http://localhost:5000/api/tenant/self-subscribe",
+          "/api/tenant/self-subscribe",
           { planId },
           { headers: getHeaders() }
         );
@@ -197,7 +197,7 @@ export default function SubscriptionExpired() {
           handler: async (response: any) => {
             try {
               await axios.post(
-                "http://localhost:5000/api/subscription-payments/verify",
+                "/api/subscription-payments/verify",
                 {
                   subscriptionId,
                   razorpay_order_id: response.razorpay_order_id,
@@ -265,7 +265,7 @@ export default function SubscriptionExpired() {
       {/* Top Bar */}
       <div className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
             <Crown className="text-white" size={20} />
           </div>
           <div>
@@ -299,7 +299,7 @@ export default function SubscriptionExpired() {
         {/* Plans Grid */}
         {loading ? (
           <div className="text-center py-10">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3"></div>
             <p className="text-gray-500">Loading plans...</p>
           </div>
         ) : plans.length === 0 ? (
@@ -322,7 +322,7 @@ export default function SubscriptionExpired() {
                       : "hover:shadow-xl hover:-translate-y-1"
                   } ${
                     !isDisabled && index === 1
-                      ? "border-indigo-500 ring-2 ring-indigo-200"
+                      ? "border-primary-500 ring-2 ring-indigo-200"
                       : !isDisabled
                       ? "border-gray-100"
                       : ""
@@ -330,7 +330,7 @@ export default function SubscriptionExpired() {
                 >
                   {/* Popular badge */}
                   {index === 1 && !isDisabled && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-4 py-1 rounded-full font-medium">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs px-4 py-1 rounded-full font-medium">
                       Most Popular
                     </div>
                   )}
@@ -345,7 +345,7 @@ export default function SubscriptionExpired() {
                   <h3 className="text-xl font-bold text-gray-800 mb-1">{plan.name}</h3>
 
                   <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-4xl font-bold text-indigo-600">
+                    <span className="text-4xl font-bold text-primary-600">
                       {plan.price === 0 ? "Free" : `₹${plan.price}`}
                     </span>
                     <span className="text-gray-400 text-sm">/ {plan.durationInDays} days</span>
@@ -380,7 +380,7 @@ export default function SubscriptionExpired() {
                       <span>{plan.maxStorageInGB} GB Storage</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock size={16} className="text-blue-500 shrink-0" />
+                      <Clock size={16} className="text-primary-500 shrink-0" />
                       <span>{plan.durationInDays} Days Validity</span>
                     </div>
                   </div>
@@ -393,7 +393,7 @@ export default function SubscriptionExpired() {
                         {plan.features.map((f, i) => (
                           <span
                             key={i}
-                            className="bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full"
+                            className="bg-primary-50 text-primary-700 text-xs px-2 py-0.5 rounded-full"
                           >
                             {f}
                           </span>
@@ -410,8 +410,8 @@ export default function SubscriptionExpired() {
                       isDisabled
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : index === 1
-                        ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                        : "bg-gray-100 text-gray-700 hover:bg-indigo-600 hover:text-white"
+                        ? "bg-primary-600 text-white hover:bg-primary-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-primary-600 hover:text-white"
                     } ${paying && selectedPlan === plan.id ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {isDisabled ? (
@@ -436,7 +436,7 @@ export default function SubscriptionExpired() {
         <div className="mt-10 text-center">
           <p className="text-gray-400 text-sm">
             Need help? Contact us at{" "}
-            <a href="mailto:support@schoolerp.com" className="text-indigo-600 font-medium">
+            <a href="mailto:support@schoolerp.com" className="text-primary-600 font-medium">
               support@schoolerp.com
             </a>
           </p>

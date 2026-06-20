@@ -52,6 +52,10 @@ export const getTenantSettingsService = async (
   return {
     tenant,
     profile,
+    platform: {
+      primaryColor: (tenant as any).primaryColor || "#4f46e5",
+      appName: tenant.name,
+    },
     usage: {
       students: { used: studentCount, max: tenant.maxStudents },
       teachers: { used: teacherCount, max: tenant.maxTeachers },
@@ -107,6 +111,7 @@ export const updateTenantSettingsService = async (
     where: { id: tenantId },
     data: {
       ...(data.name && { name: data.name }),
+      ...(data.primaryColor !== undefined && { primaryColor: data.primaryColor }),
       ...(data.logoUrl !== undefined && { logoUrl: data.logoUrl || null }),
       ...(data.backgroundUrl !== undefined && {
         backgroundUrl: data.backgroundUrl || null,

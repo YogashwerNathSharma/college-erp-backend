@@ -118,7 +118,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
       }
 
       await axios.post(
-        "http://localhost:5000/api/super-admin/tenants",
+        "/api/super-admin/tenants",
         data,
         {
           headers: {
@@ -177,7 +177,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
         {/* HEADER */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600">
+            <div className="p-3 rounded-xl bg-primary-100 text-primary-600">
               <Building2 size={24} />
             </div>
             <div>
@@ -211,7 +211,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="e.g. Delhi Public School"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                   required
                 />
               </div>
@@ -224,7 +224,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 >
                   <option value="school">School</option>
                   <option value="college">College</option>
@@ -241,7 +241,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="admin@school.com"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
 
@@ -253,7 +253,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+91 98765 43210"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -266,7 +266,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                 onChange={handleChange}
                 placeholder="Full address..."
                 rows={2}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none"
+                className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all resize-none"
               />
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
 
                 <div
                   onClick={() => logoInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all"
+                  className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-primary-50/50 transition-all"
                 >
                   {logoPreview ? (
                     <div className="flex flex-col items-center gap-2">
@@ -301,7 +301,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                         alt="Logo preview"
                         className="w-16 h-16 rounded-full object-cover border-2 border-indigo-400"
                       />
-                      <span className="text-xs text-indigo-600 font-medium">
+                      <span className="text-xs text-primary-600 font-medium">
                         {logoFile?.name}
                       </span>
                       <span className="text-xs text-slate-400">Click to change</span>
@@ -332,16 +332,16 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
 
                 <div
                   onClick={() => bgInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-all"
+                  className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-primary-50/50 transition-all"
                 >
                   {bgPreview ? (
                     <div className="flex flex-col items-center gap-2">
                       <img
                         src={bgPreview}
                         alt="Background preview"
-                        className="w-full h-16 rounded-lg object-cover border border-indigo-300"
+                        className="w-full h-16 rounded-lg object-cover border border-primary-300"
                       />
-                      <span className="text-xs text-indigo-600 font-medium">
+                      <span className="text-xs text-primary-600 font-medium">
                         {bgFile?.name}
                       </span>
                       <span className="text-xs text-slate-400">Click to change</span>
@@ -371,7 +371,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.maxStudents}
                   onChange={handleChange}
                   min={0}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
 
@@ -383,7 +383,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.maxTeachers}
                   onChange={handleChange}
                   min={0}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
 
@@ -395,7 +395,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.maxAdmins}
                   onChange={handleChange}
                   min={0}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
 
@@ -407,7 +407,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
                   value={formData.maxStorageInGB}
                   onChange={handleChange}
                   min={0}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -426,7 +426,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {loading ? (
                 <>

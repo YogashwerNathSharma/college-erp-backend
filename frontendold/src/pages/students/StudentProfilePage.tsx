@@ -17,6 +17,7 @@ import {
   Heart,
   Home,
 } from 'lucide-react';
+import PrintSignature from '../../components/PrintSignature';
 
 interface StudentProfile {
   id: string;
@@ -78,7 +79,7 @@ const StudentProfilePage: React.FC = () => {
 
   const logoUrl = tenantInfo.logoUrl?.startsWith('http')
     ? tenantInfo.logoUrl
-    : `http://localhost:5000${tenantInfo.logoUrl || ''}`;
+    : `${tenantInfo.logoUrl || ''}`;
 
   // Fetch Academic Years
   useEffect(() => {
@@ -219,7 +220,7 @@ const StudentProfilePage: React.FC = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Student Profile
           </h1>
           <p className="text-gray-600">View and manage student information</p>
@@ -239,7 +240,7 @@ const StudentProfilePage: React.FC = () => {
                   const year = academicYears.find((y: any) => y.id === e.target.value);
                   setSelectedYear(year);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white cursor-pointer"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="">Select Academic Year</option>
                 {academicYears.map((year: any) => (
@@ -260,7 +261,7 @@ const StudentProfilePage: React.FC = () => {
                   setSelectedClass(classItem);
                 }}
                 disabled={!selectedYear}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select Class</option>
                 {classes.map((cls: any) => (
@@ -281,7 +282,7 @@ const StudentProfilePage: React.FC = () => {
                   setSelectedSection(section);
                 }}
                 disabled={!selectedClass}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select Section</option>
                 {sections.map((section: any) => (
@@ -302,7 +303,7 @@ const StudentProfilePage: React.FC = () => {
                   setSelectedStudent(student);
                 }}
                 disabled={!selectedSection}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select Student</option>
                 {students.map((student: any) => (
@@ -319,7 +320,7 @@ const StudentProfilePage: React.FC = () => {
         {(loading || fetchingProfile) && (
           <div className="flex items-center justify-center py-16">
             <div className="text-center">
-              <Loader className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+              <Loader className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
               <p className="text-gray-600">Loading student information...</p>
             </div>
           </div>
@@ -340,7 +341,7 @@ const StudentProfilePage: React.FC = () => {
             <div className="flex justify-end">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm font-medium print:hidden"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-sm font-medium print:hidden"
               >
                 <Printer className="w-5 h-5" />
                 Print Profile
@@ -372,7 +373,7 @@ const StudentProfilePage: React.FC = () => {
                     <h2 className="text-3xl font-bold text-gray-800">
                       {studentProfile.firstName} {studentProfile.lastName}
                     </h2>
-                    <p className="text-indigo-600 font-semibold">Status: {studentProfile.status}</p>
+                    <p className="text-primary-600 font-semibold">Status: {studentProfile.status}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -408,11 +409,11 @@ const StudentProfilePage: React.FC = () => {
             {/* Family Information */}
             <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Heart className="w-5 h-5 text-indigo-600" />
+                <Heart className="w-5 h-5 text-primary-600" />
                 Family Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-4 bg-indigo-50 rounded-lg">
+                <div className="p-4 bg-primary-50 rounded-lg">
                   <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Father's Name</p>
                   <p className="text-lg font-semibold text-gray-800">
                     {studentProfile.fathersName || 'N/A'}
@@ -436,7 +437,7 @@ const StudentProfilePage: React.FC = () => {
             {/* Personal Information */}
             <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600" />
+                <Calendar className="w-5 h-5 text-primary-600" />
                 Personal Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -474,11 +475,11 @@ const StudentProfilePage: React.FC = () => {
             {/* Contact Information */}
             <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Phone className="w-5 h-5 text-indigo-600" />
+                <Phone className="w-5 h-5 text-primary-600" />
                 Contact Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 bg-indigo-50 rounded-lg">
+                <div className="p-4 bg-primary-50 rounded-lg">
                   <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Phone</p>
                   <p className="text-lg font-semibold text-gray-800">
                     {studentProfile.phone || 'N/A'}
@@ -512,11 +513,11 @@ const StudentProfilePage: React.FC = () => {
             {/* Address Information */}
             <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-indigo-600" />
+                <MapPin className="w-5 h-5 text-primary-600" />
                 Address Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 bg-indigo-50 rounded-lg">
+                <div className="p-4 bg-primary-50 rounded-lg">
                   <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Current Address</p>
                   <p className="text-gray-800 leading-relaxed">
                     {studentProfile.currentAddress || 'N/A'}
@@ -534,7 +535,7 @@ const StudentProfilePage: React.FC = () => {
             {/* Admission Information */}
             <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-600" />
+                <FileText className="w-5 h-5 text-primary-600" />
                 Admission Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -876,6 +877,11 @@ const StudentProfilePage: React.FC = () => {
                 </table>
               </>
             )}
+          </div>
+
+          {/* Principal Signature */}
+          <div style={{ marginTop: '30px', display: 'flex', justifyContent: 'flex-end' }}>
+            <PrintSignature inline printOnly={false} />
           </div>
 
           {/* Footer */}

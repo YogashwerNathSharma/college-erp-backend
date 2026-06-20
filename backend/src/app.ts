@@ -1,15 +1,19 @@
 
 import express from "express";
+
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 // Other route imports ke saath:
 import settingsRoutes from "./modules/settings/settings.routes";
 
-
+import { securityHeaders, corsConfig } from "./middleware/security.middleware";
+import { sanitizeInput } from "./middleware/sanitize.middleware";
 import { swaggerSpec } from "./config/swagger";
 import { rateLimiter } from "./middleware/rateLimit";
+import { authLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
+import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 
 //////////////////////////////////////////////////////
 // ROUTES
@@ -72,7 +76,11 @@ import libraryRoutes from "./modules/libraryManagement/library.routes";
 // Import (top of file, with other imports)
 import transportRoutes from "./modules/transport/transport.routes";
 
+// SIGNATURE
+import signatureRoutes from "./modules/signature/signature.routes";
 
+// BACKUP
+import backupRoutes from "./modules/backup/backup.routes";
 
 
 
@@ -83,18 +91,25 @@ const app = express();
 // CORS
 //////////////////////////////////////////////////////
 
-app.use(
-  cors({
-    origin: "http://localhost:5174",
-    credentials: true,
-  })
-);
+app.use(corsConfig);
 
 //////////////////////////////////////////////////////
 // BODY PARSER
 //////////////////////////////////////////////////////
 
 app.use(express.json());
+
+//////////////////////////////////////////////////////
+// SECURITY HEADERS
+//////////////////////////////////////////////////////
+
+app.use(securityHeaders);
+
+//////////////////////////////////////////////////////
+// INPUT SANITIZATION
+//////////////////////////////////////////////////////
+
+app.use(sanitizeInput);
 
 //////////////////////////////////////////////////////
 // RATE LIMITER
@@ -117,7 +132,7 @@ app.use(
 //////////////////////////////////////////////////////
 
 app.use("/api", siteRoutes);
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tenant", tenantRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/reports", superadminreportsRoutes);
@@ -197,12 +212,21 @@ app.use("/api/fees", feesRoutes);
 app.use("/api/exam", examRoutes);
 app.use("/api/grade", gradeRoutes);
 app.use("/api/room", roomRoutes);
+app.use("/api/signature", signatureRoutes);
+app.use("/api/backup", backupRoutes);
 
 //////////////////////////////////////////////////////
 // SWAGGER DOCS
 //////////////////////////////////////////////////////
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+//////////////////////////////////////////////////////
+// ERROR HANDLING
+//////////////////////////////////////////////////////
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
 

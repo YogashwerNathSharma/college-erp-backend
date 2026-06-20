@@ -50,7 +50,7 @@ type ModalMode = "add" | "edit";
 
 // ─── API Config ────────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "";
 
 const getAuthHeaders = () => ({
   headers: {
@@ -438,7 +438,7 @@ const SubjectsPage: React.FC = () => {
 
   const renderEmptyState = () => (
     <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-      <div className="mx-auto w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
+      <div className="mx-auto w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4">
         <BookOpen className="w-8 h-8 text-indigo-400" />
       </div>
       <h3 className="text-lg font-semibold text-gray-800 mb-1">No Subjects Found</h3>
@@ -450,7 +450,7 @@ const SubjectsPage: React.FC = () => {
       {!searchQuery && filterYearId === "all" && filterClassId === "all" && (
         <button
           onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add First Subject
@@ -501,8 +501,8 @@ const SubjectsPage: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-indigo-500" />
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
+                      <BookOpen className="w-4 h-4 text-primary-500" />
                     </div>
                     <span className="text-sm font-semibold text-gray-800">
                       {subject.name}
@@ -510,7 +510,7 @@ const SubjectsPage: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 text-primary-700 text-xs font-medium">
                     <School className="w-3 h-3" />
                     {subject.class?.name || getClassName(subject.classId)}
                   </span>
@@ -539,7 +539,7 @@ const SubjectsPage: React.FC = () => {
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => openEditModal(subject)}
-                      className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
+                      className="p-2 rounded-lg hover:bg-primary-50 text-gray-400 hover:text-primary-600 transition-colors"
                       title="Edit subject"
                     >
                       <Edit3 className="w-4 h-4" />
@@ -598,8 +598,8 @@ const SubjectsPage: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-indigo-600" />
+              <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-primary-600" />
               </div>
               <h2 className="text-lg font-semibold text-gray-800">
                 {modalMode === "add" ? "Add New Subject" : "Edit Subject"}
@@ -625,7 +625,7 @@ const SubjectsPage: React.FC = () => {
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder="e.g. Mathematics, English, Science"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
                 autoFocus
               />
             </div>
@@ -638,7 +638,7 @@ const SubjectsPage: React.FC = () => {
               <select
                 value={formAcademicYearId}
                 onChange={(e) => handleFormYearChange(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all appearance-none bg-white"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all appearance-none bg-white"
                 disabled={modalMode === "edit"}
               >
                 <option value="">Select academic year</option>
@@ -663,7 +663,7 @@ const SubjectsPage: React.FC = () => {
               <select
                 value={formClassId}
                 onChange={(e) => setFormClassId(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all appearance-none bg-white"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all appearance-none bg-white"
                 disabled={modalMode === "edit" || !formAcademicYearId}
               >
                 <option value="">
@@ -698,7 +698,7 @@ const SubjectsPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={formSubmitting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {formSubmitting && (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -754,8 +754,8 @@ const SubjectsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-indigo-600" />
+            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-primary-600" />
             </div>
             Subjects
           </h1>
@@ -765,7 +765,7 @@ const SubjectsPage: React.FC = () => {
         </div>
         <button
           onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all hover:shadow-md hover:shadow-indigo-200"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 shadow-sm shadow-indigo-200 transition-all hover:shadow-md hover:shadow-indigo-200"
         >
           <Plus className="w-4 h-4" />
           Add Subject
@@ -777,9 +777,9 @@ const SubjectsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           {/* Active Year Badge */}
           {activeYear && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-lg">
-              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="text-xs font-medium text-indigo-700">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 rounded-lg">
+              <Calendar className="w-3.5 h-3.5 text-primary-500" />
+              <span className="text-xs font-medium text-primary-700">
                 Active Year: {activeYear.name}
               </span>
             </div>
@@ -795,7 +795,7 @@ const SubjectsPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search subjects..."
-              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
+              className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
             />
           </div>
 
@@ -803,7 +803,7 @@ const SubjectsPage: React.FC = () => {
           <select
             value={filterYearId}
             onChange={(e) => setFilterYearId(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-white appearance-none pr-8"
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all bg-white appearance-none pr-8"
           >
             <option value="all">All Years</option>
             {academicYears.map((year) => (
@@ -817,7 +817,7 @@ const SubjectsPage: React.FC = () => {
           <select
             value={filterClassId}
             onChange={(e) => setFilterClassId(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all bg-white appearance-none pr-8"
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all bg-white appearance-none pr-8"
           >
             <option value="all">All Classes</option>
             {filterClasses.map((cls) => (

@@ -556,7 +556,7 @@ const FeeStructurePage: React.FC = () => {
         </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -573,7 +573,7 @@ const FeeStructurePage: React.FC = () => {
             <select
               value={filterAcademicYear}
               onChange={(e) => setFilterAcademicYear(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">All Academic Years</option>
               {academicYears.map((year) => (
@@ -586,7 +586,7 @@ const FeeStructurePage: React.FC = () => {
             <select
               value={filterClass}
               onChange={(e) => setFilterClass(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">All Classes</option>
               {classes.map((cls) => (
@@ -601,7 +601,7 @@ const FeeStructurePage: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             <span className="ml-3 text-gray-500">Loading...</span>
           </div>
         ) : feeStructures.length === 0 ? (
@@ -647,7 +647,7 @@ const FeeStructurePage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button onClick={() => handleEdit(structure)} className="text-blue-600 hover:text-blue-800 font-medium mr-3">Edit</button>
+                      <button onClick={() => handleEdit(structure)} className="text-primary-600 hover:text-primary-800 font-medium mr-3">Edit</button>
                       <button onClick={() => handleDelete(structure.id, structure.name)} className="text-red-600 hover:text-red-800 font-medium">Delete</button>
                     </td>
                   </tr>
@@ -683,15 +683,15 @@ const FeeStructurePage: React.FC = () => {
                 <div className="px-6 py-4 space-y-5">
                   {/* ===== STEP 1: Mode + Basic Info ===== */}
                   {!editingStructure && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                       <label className="block text-sm font-semibold text-blue-900 mb-2">Apply To</label>
                       <div className="flex gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="applyMode" value="single" checked={applyMode === "single"} onChange={() => setApplyMode("single")} className="w-4 h-4 text-blue-600" />
+                          <input type="radio" name="applyMode" value="single" checked={applyMode === "single"} onChange={() => setApplyMode("single")} className="w-4 h-4 text-primary-600" />
                           <span className="text-sm font-medium text-gray-700">Single Class</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="applyMode" value="multiple" checked={applyMode === "multiple"} onChange={() => setApplyMode("multiple")} className="w-4 h-4 text-blue-600" />
+                          <input type="radio" name="applyMode" value="multiple" checked={applyMode === "multiple"} onChange={() => setApplyMode("multiple")} className="w-4 h-4 text-primary-600" />
                           <span className="text-sm font-medium text-gray-700">Multiple Classes (Class-wise Amounts)</span>
                         </label>
                       </div>
@@ -701,7 +701,7 @@ const FeeStructurePage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year <span className="text-red-500">*</span></label>
-                      <select value={formData.academicYearId} onChange={(e) => setFormData((prev) => ({ ...prev, academicYearId: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" required>
+                      <select value={formData.academicYearId} onChange={(e) => setFormData((prev) => ({ ...prev, academicYearId: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" required>
                         <option value="">Select Academic Year</option>
                         {academicYears.map((year) => (
                           <option key={year.id} value={year.id}>{year.name}</option>
@@ -711,7 +711,7 @@ const FeeStructurePage: React.FC = () => {
                     {applyMode === "single" && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Class <span className="text-red-500">*</span></label>
-                        <select value={formData.classId} onChange={(e) => setFormData((prev) => ({ ...prev, classId: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" required>
+                        <select value={formData.classId} onChange={(e) => setFormData((prev) => ({ ...prev, classId: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" required>
                           <option value="">Select Class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>{cls.name}</option>
@@ -721,7 +721,7 @@ const FeeStructurePage: React.FC = () => {
                     )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Due Day (1-28)</label>
-                      <input type="number" value={formData.dueDay} onChange={(e) => setFormData({ ...formData, dueDay: Number(e.target.value) })} min={1} max={28} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                      <input type="number" value={formData.dueDay} onChange={(e) => setFormData({ ...formData, dueDay: Number(e.target.value) })} min={1} max={28} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
 
@@ -731,14 +731,14 @@ const FeeStructurePage: React.FC = () => {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-semibold text-gray-900">Select Classes <span className="text-red-500">*</span></h3>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={selectedClassIds.length === classes.length && classes.length > 0} onChange={(e) => toggleAllClasses(e.target.checked)} className="w-4 h-4 text-blue-600 rounded" />
+                          <input type="checkbox" checked={selectedClassIds.length === classes.length && classes.length > 0} onChange={(e) => toggleAllClasses(e.target.checked)} className="w-4 h-4 text-primary-600 rounded" />
                           <span className="text-xs font-medium text-gray-600">Select All</span>
                         </label>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         {classes.map((cls) => (
-                          <label key={cls.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${selectedClassIds.includes(cls.id) ? "bg-blue-50 border-blue-300" : "bg-white border-gray-200 hover:bg-gray-50"}`}>
-                            <input type="checkbox" checked={selectedClassIds.includes(cls.id)} onChange={() => toggleClassSelection(cls.id)} className="w-4 h-4 text-blue-600 rounded" />
+                          <label key={cls.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${selectedClassIds.includes(cls.id) ? "bg-primary-50 border-primary-300" : "bg-white border-gray-200 hover:bg-gray-50"}`}>
+                            <input type="checkbox" checked={selectedClassIds.includes(cls.id)} onChange={() => toggleClassSelection(cls.id)} className="w-4 h-4 text-primary-600 rounded" />
                             <span className="text-sm font-medium text-gray-700">{cls.name}</span>
                           </label>
                         ))}
@@ -758,7 +758,7 @@ const FeeStructurePage: React.FC = () => {
                           checked={allFeeHeadsSelected}
                           ref={(el) => { if (el) el.indeterminate = someFeeHeadsSelected; }}
                           onChange={(e) => toggleAllFeeHeads(e.target.checked)}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 text-primary-600 rounded"
                         />
                         <span className="text-xs font-medium text-gray-600">Select All</span>
                       </label>
@@ -776,11 +776,11 @@ const FeeStructurePage: React.FC = () => {
 
                     <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
                       {feeHeadConfigs.map((config, index) => (
-                        <div key={config.feeHeadId} className={`px-4 py-2.5 transition-colors ${config.selected ? "bg-blue-50/50" : "hover:bg-gray-50"}`}>
+                        <div key={config.feeHeadId} className={`px-4 py-2.5 transition-colors ${config.selected ? "bg-primary-50/50" : "hover:bg-gray-50"}`}>
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
                             {/* Checkbox */}
                             <div className="md:col-span-1">
-                              <input type="checkbox" checked={config.selected} onChange={() => toggleFeeHead(index)} className="w-4 h-4 text-blue-600 rounded" />
+                              <input type="checkbox" checked={config.selected} onChange={() => toggleFeeHead(index)} className="w-4 h-4 text-primary-600 rounded" />
                             </div>
 
                             {/* Name */}
@@ -857,8 +857,8 @@ const FeeStructurePage: React.FC = () => {
                         <span className="text-sm text-gray-600">
                           {selectedHeads.length} of {feeHeadConfigs.length} fee heads selected
                         </span>
-                        <div className="bg-blue-100 border border-blue-200 rounded-lg px-4 py-2 inline-flex items-center gap-2">
-                          <span className="text-sm font-medium text-blue-700">Total:</span>
+                        <div className="bg-primary-100 border border-primary-200 rounded-lg px-4 py-2 inline-flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary-700">Total:</span>
                           <span className="text-lg font-bold text-blue-900">₹{singleTotalAmount.toLocaleString("en-IN")}</span>
                         </div>
                       </div>
@@ -889,7 +889,7 @@ const FeeStructurePage: React.FC = () => {
                               onClick={() => setActiveClassTab(classId)}
                               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                                 activeClassTab === classId
-                                  ? "border-blue-600 text-blue-600 bg-blue-50/50"
+                                  ? "border-primary-600 text-primary-600 bg-primary-50/50"
                                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                               }`}
                             >
@@ -967,7 +967,7 @@ const FeeStructurePage: React.FC = () => {
                                       onChange={(e) => updateClassAmount(activeClassTab, head.feeHeadId, Number(e.target.value))}
                                       placeholder="0"
                                       min={0}
-                                      className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     />
                                   </div>
                                 </div>
@@ -1006,7 +1006,7 @@ const FeeStructurePage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="px-5 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                       {submitting && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
                       {editingStructure ? "Update" : applyMode === "multiple" ? `Create for ${selectedClassIds.length} Classes` : "Create Fee Structure"}

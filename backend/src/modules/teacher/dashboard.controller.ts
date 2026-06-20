@@ -71,3 +71,24 @@ export const getRecent = async (req: any, res: Response) => {
   }
 };
 
+// ✅ GET RECENT LEAVES
+export const getLeaves = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const prisma = require("../../utils/prisma").default;
+    const leaves = await prisma.teacherLeave.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+
+    return res.json({ success: true, data: leaves || [] });
+  } catch (e: any) {
+    console.error("TEACHER LEAVES ERROR:", e);
+    return res.json({ success: true, data: [] });
+  }
+};

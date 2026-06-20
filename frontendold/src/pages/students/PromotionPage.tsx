@@ -371,7 +371,7 @@ const PromotionPage = () => {
                 </span>
               </label>
               {selectedStudents.length > 0 && (
-                <span className="text-sm text-blue-600 font-medium">
+                <span className="text-sm text-primary-600 font-medium">
                   {selectedStudents.length} selected
                 </span>
               )}
@@ -380,7 +380,7 @@ const PromotionPage = () => {
               <button
                 onClick={handlePromote}
                 disabled={promoting || selectedStudents.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm"
               >
                 {promoting ? "Promoting..." : `Promote Selected (${selectedStudents.length})`}
               </button>
@@ -411,7 +411,7 @@ const PromotionPage = () => {
                 <tr
                   key={e.id}
                   className={`border-b hover:bg-gray-50 ${
-                    selectedStudents.includes(e.student.id) ? "bg-blue-50" : ""
+                    selectedStudents.includes(e.student.id) ? "bg-primary-50" : ""
                   }`}
                 >
                   <td className="p-3">

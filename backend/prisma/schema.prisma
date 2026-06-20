@@ -24,6 +24,7 @@ model Tenant {
   address       String?
   phone         String?
   email         String?
+  primaryColor  String?   @default("#4f46e5")
 
   // Core Relations
   users         User[]
@@ -1883,4 +1884,70 @@ model TransportSetting {
 
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+}
+
+// ══════════════════════════════════════════
+// SIGNATURE MASTER
+// ══════════════════════════════════════════
+model Signature {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  title       String   // e.g. "Principal", "Director", "Manager"
+  personName  String   // e.g. "Dr. Rajesh Kumar"
+  designation String   // e.g. "Principal"
+  imageUrl    String   // Path to uploaded signature image
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ══════════════════════════════════════════
+// BACKUP MODULE
+// ══════════════════════════════════════════
+model Backup {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  filename  String
+  size      Int
+  type      String   // MANUAL, DAILY, WEEKLY, MONTHLY, YEARLY
+  status    String   // COMPLETED, FAILED, IN_PROGRESS
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+}
+
+model BackupSettings {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @unique @db.ObjectId
+  dailyEnabled   Boolean  @default(false)
+  weeklyEnabled  Boolean  @default(false)
+  monthlyEnabled Boolean  @default(false)
+  yearlyEnabled  Boolean  @default(false)
+  dailyTime      String   @default("02:00")
+  weeklyDay      Int      @default(0)
+  monthlyDate    Int      @default(1)
+  retentionDays  Int      @default(30)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ══════════════════════════════════════════════
+// DESIGNER SETTINGS
+// ══════════════════════════════════════════════
+model DesignerSettings {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  type      String   // certificate, report, report-card, id-card
+  settings  Json     // Stores all design settings as JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, type])
+  @@index([tenantId])
 }

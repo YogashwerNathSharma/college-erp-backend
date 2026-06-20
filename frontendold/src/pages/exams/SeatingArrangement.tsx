@@ -86,7 +86,7 @@ const SeatingArrangement: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -95,7 +95,7 @@ const SeatingArrangement: React.FC = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/room", { headers });
+      const res = await axios.get("/api/room", { headers });
       setRooms(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load rooms");
@@ -105,7 +105,7 @@ const SeatingArrangement: React.FC = () => {
   const fetchSchedules = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/schedule`,
+        `/api/exam/${selectedExam}/schedule`,
         { headers }
       );
       setSchedules(res.data?.data || res.data || []);
@@ -118,7 +118,7 @@ const SeatingArrangement: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/seating/${selectedSchedule}`,
+        `/api/exam/seating/${selectedSchedule}`,
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -152,7 +152,7 @@ const SeatingArrangement: React.FC = () => {
     setGenerating(true);
     try {
       await axios.post(
-        "http://localhost:5000/api/exam/seating/generate",
+        "/api/exam/seating/generate",
         { examScheduleId: selectedSchedule, roomId: selectedRoom },
         { headers }
       );
@@ -202,7 +202,7 @@ const SeatingArrangement: React.FC = () => {
                   setSelectedSchedule("");
                   setSeats([]);
                 }}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
                 {exams.map((exam) => (
@@ -219,7 +219,7 @@ const SeatingArrangement: React.FC = () => {
               <select
                 value={selectedSchedule}
                 onChange={(e) => setSelectedSchedule(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                 disabled={!selectedExam}
               >
                 <option value="">-- Select Schedule --</option>
@@ -237,7 +237,7 @@ const SeatingArrangement: React.FC = () => {
               <select
                 value={selectedRoom}
                 onChange={(e) => setSelectedRoom(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Room --</option>
                 {rooms.map((room) => (
@@ -251,7 +251,7 @@ const SeatingArrangement: React.FC = () => {
               <button
                 onClick={handleGenerate}
                 disabled={generating || !selectedSchedule || !selectedRoom}
-                className="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generating ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -269,8 +269,8 @@ const SeatingArrangement: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Users className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <Users className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Capacity</p>
@@ -312,7 +312,7 @@ const SeatingArrangement: React.FC = () => {
         {/* Seating Grid */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-            <Grid3X3 className="w-5 h-5 text-indigo-600" />
+            <Grid3X3 className="w-5 h-5 text-primary-600" />
             <h2 className="text-lg font-semibold text-gray-900">
               Seating Layout
             </h2>
@@ -320,7 +320,7 @@ const SeatingArrangement: React.FC = () => {
 
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
               <span className="ml-3 text-gray-500">Loading seating...</span>
             </div>
           ) : seats.length === 0 ? (

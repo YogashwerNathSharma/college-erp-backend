@@ -105,7 +105,7 @@ export const assignFeesToClass = async (
       classId,
       academicYearId,
       tenantId,
-      status: "ACTIVE",
+      status: "active",
       isDeleted: false,
     },
     select: { id: true },
@@ -218,7 +218,7 @@ export const getStudentFeesByAdmissionNo = async (
     where: {
       studentId: student.id,
       tenantId,
-      status: "ACTIVE",
+      status: "active",
       isDeleted: false,
     },
     orderBy: { createdAt: "desc" },
@@ -605,11 +605,14 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
         include: {
           enrollment: {
             include: {
-              student: { select: { firstName: true, lastName: true, admissionNo: true } },
+              student: { select: { firstName: true, lastName: true, admissionNo: true, fatherName: true } },
               class: { select: { name: true } },
+              section: { select: { name: true } },
             },
           },
-          feeStructure: { select: { name: true } },
+          feeStructure: {
+            include: { items: { include: { feeHead: { select: { name: true, code: true } } } } },
+          },
         },
       },
     },
@@ -637,11 +640,22 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
       student: {
         name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
         admissionNo: p.studentFee.enrollment.student.admissionNo,
+        fatherName: p.studentFee.enrollment.student.fatherName || "",
         class: p.studentFee.enrollment.class.name,
+        section: p.studentFee.enrollment.section?.name || "",
+        rollNumber: p.studentFee.enrollment.rollNumber || "",
       },
       feeStructure: p.studentFee.feeStructure.name,
+      installmentNo: p.studentFee.installmentNo,
+      feeItems: p.studentFee.feeStructure.items?.map((item: any) => ({
+        name: item.feeHead?.name || "Fee",
+        amount: item.amount || 0,
+        code: item.feeHead?.code || "",
+      })) || [],
     })),
-    summary: { byMethod, grandTotal, totalReceipts: payments.length },
+    summary: Object.entries(byMethod).map(([method, data]) => ({ method, count: data.count, total: data.total })),
+    grandTotal,
+    totalReceipts: payments.length,
   };
 };
 

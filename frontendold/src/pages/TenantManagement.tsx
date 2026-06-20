@@ -31,7 +31,7 @@ export default function TenantManagement() {
   //////////////////////////////////////////////////////
   const fetchTenants = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/tenant", {
+      const res = await axios.get("/api/tenant", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -64,7 +64,7 @@ export default function TenantManagement() {
       if (logoFile) formData.append("logo", logoFile);
       if (bgFile) formData.append("background", bgFile);
 
-      await axios.post("http://localhost:5000/api/tenant", formData, {
+      await axios.post("/api/tenant", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -101,7 +101,7 @@ const createTenant = async () => {
     if (logoFile) formData.append("logo", logoFile);
     if (bgFile) formData.append("background", bgFile);
 
-    const res = await axios.post("http://localhost:5000/api/tenant", formData, {
+    const res = await axios.post("/api/tenant", formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
@@ -150,7 +150,7 @@ const createTenant = async () => {
   //////////////////////////////////////////////////////
   const toggleTenant = async (id: string, isActive?: boolean) => {
     await axios.patch(
-      `http://localhost:5000/api/tenant/${id}`,
+      `/api/tenant/${id}`,
       { isActive: !isActive },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -207,7 +207,7 @@ const createTenant = async () => {
         <button
           onClick={createTenant}
           disabled={creating}
-          className="bg-indigo-600 text-white px-4 py-2 rounded"
+          className="bg-primary-600 text-white px-4 py-2 rounded"
         >
           {creating ? "Creating..." : "+ Create"}
         </button>

@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Subject {
   id: string;
@@ -97,7 +97,7 @@ const Teachers = () => {
         <h1 className="text-2xl font-bold text-gray-800">Teachers</h1>
         <button
           onClick={() => navigate("/teachers/add")}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
         >
           <FiPlus size={18} />
           Add Teacher
@@ -113,7 +113,7 @@ const Teachers = () => {
             placeholder="Search by name, email, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
           />
         </div>
       </form>
@@ -121,7 +121,7 @@ const Teachers = () => {
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       ) : teachers.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
@@ -179,7 +179,7 @@ const Teachers = () => {
                       {teacher.subjects?.map((sub) => (
                         <span
                           key={sub.id}
-                          className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs"
+                          className="bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full text-xs"
                         >
                           {sub.name}
                         </span>
@@ -202,7 +202,7 @@ const Teachers = () => {
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() => navigate(`/teachers/edit/${teacher.id}`)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                         title="Edit"
                       >
                         <FiEdit2 size={16} />

@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiDollarSign, FiDownload } from "react-icons/fi";
+import PrintSignature from "../../components/PrintSignature";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface SalaryRecord {
   id: string;
@@ -90,7 +91,7 @@ const TeacherSalary = () => {
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => (
@@ -103,7 +104,7 @@ const TeacherSalary = () => {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               {MONTHS.map((m, i) => (
                 <option key={i} value={i + 1}>{m}</option>
@@ -115,7 +116,7 @@ const TeacherSalary = () => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               {[2024, 2025, 2026].map((y) => (
                 <option key={y} value={y}>{y}</option>
@@ -127,15 +128,15 @@ const TeacherSalary = () => {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       ) : salary ? (
         <>
           {/* Salary Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-5">
               <p className="text-sm text-gray-500">Basic Salary</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-primary-600">
                 ₹{salary.basicSalary?.toLocaleString()}
               </p>
             </div>
@@ -223,15 +224,17 @@ const TeacherSalary = () => {
                     </td>
                   </tr>
 
-                  <tr className="bg-blue-50">
+                  <tr className="bg-primary-50">
                     <td className="py-4 text-base font-bold text-gray-800">Net Salary</td>
-                    <td className="py-4 text-base font-bold text-blue-600 text-right">
+                    <td className="py-4 text-base font-bold text-primary-600 text-right">
                       ₹{salary.netSalary?.toLocaleString()}
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
+            {/* Principal Signature — visible only on print */}
+            <PrintSignature />
           </div>
         </>
       ) : selectedTeacher ? (

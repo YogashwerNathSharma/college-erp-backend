@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiPlus, FiTrash2, FiMessageSquare, FiX } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Message {
   id: string;
@@ -89,7 +89,7 @@ const Communication = () => {
 
   const getSenderBadge = (type: string) => {
     switch (type) {
-      case "ADMIN": return "bg-blue-100 text-blue-700";
+      case "ADMIN": return "bg-primary-100 text-primary-700";
       case "PRINCIPAL": return "bg-purple-100 text-purple-700";
       case "SYSTEM": return "bg-gray-100 text-gray-700";
       default: return "bg-gray-100 text-gray-700";
@@ -107,7 +107,7 @@ const Communication = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -118,7 +118,7 @@ const Communication = () => {
         <h1 className="text-2xl font-bold text-gray-800">Communication</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
         >
           <FiPlus size={18} /> New Message
         </button>
@@ -128,7 +128,7 @@ const Communication = () => {
       <div className="bg-white rounded-lg shadow">
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-            <FiMessageSquare className="text-blue-600" /> Notice Board
+            <FiMessageSquare className="text-primary-600" /> Notice Board
           </h2>
         </div>
 
@@ -189,7 +189,7 @@ const Communication = () => {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter message title"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -198,7 +198,7 @@ const Communication = () => {
                 <select
                   value={formData.senderType}
                   onChange={(e) => setFormData({ ...formData, senderType: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="ADMIN">Admin</option>
                   <option value="PRINCIPAL">Principal</option>
@@ -213,7 +213,7 @@ const Communication = () => {
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   rows={4}
                   placeholder="Enter your message..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none"
                 />
               </div>
 
@@ -228,7 +228,7 @@ const Communication = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {submitting ? "Sending..." : "Send Message"}
                 </button>

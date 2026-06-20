@@ -7,6 +7,8 @@
 import { Response } from "express";
 import {
   createExamService,
+  generateCustomSeatingService,
+  aiArrangeSeatingService,
   updateExamService,
   getExamsService,
   getExamByIdService,
@@ -511,6 +513,34 @@ export const getExamReports = async (req: any, res: Response) => {
   } catch (error: any) {
     console.error("REPORTS ERROR:", error);
     return res.status(500).json({ success: false, message: error.message || "Error fetching reports" });
+  }
+};
+
+/////////////////////////
+// GENERATE CUSTOM SEATING (Multi-class, configurable capacity)
+/////////////////////////
+export const generateCustomSeating = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const result = await generateCustomSeatingService(req.body, tenantId);
+    return res.json({ success: true, data: result, message: "Custom seating generated successfully" });
+  } catch (error: any) {
+    console.error("GENERATE CUSTOM SEATING ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error generating custom seating" });
+  }
+};
+
+/////////////////////////
+// AI AUTO-ARRANGE SEATING
+/////////////////////////
+export const aiArrangeSeating = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const result = await aiArrangeSeatingService(req.body, tenantId);
+    return res.json({ success: true, data: result, message: "AI seating arrangement generated successfully" });
+  } catch (error: any) {
+    console.error("AI ARRANGE SEATING ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error in AI seating arrangement" });
   }
 };
 

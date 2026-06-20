@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Bus,
   Route,
@@ -37,7 +38,7 @@ import axios from "axios";
 // ============================================
 
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "/api",
 });
 
 api.interceptors.request.use((config) => {
@@ -144,7 +145,14 @@ interface Pagination {
 // ============================================
 
 const TransportDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const validTransportTabs = ["dashboard", "vehicles", "routes", "assignments", "attendance", "reports", "settings"];
+  const hideTabsBar = tabFromUrl && validTransportTabs.includes(tabFromUrl);
+
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl && validTransportTabs.includes(tabFromUrl) ? tabFromUrl : "dashboard"
+  );
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -169,7 +177,7 @@ const TransportDashboard: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      {!hideTabsBar && <div className="border-b border-gray-200">
         <nav className="flex space-x-1 overflow-x-auto" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -179,7 +187,7 @@ const TransportDashboard: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "bg-white text-indigo-600 border-b-2 border-indigo-600"
+                    ? "bg-white text-primary-600 border-b-2 border-primary-600"
                     : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
@@ -189,7 +197,7 @@ const TransportDashboard: React.FC = () => {
             );
           })}
         </nav>
-      </div>
+      </div>}
 
       {/* Tab Content */}
       <div>
@@ -236,7 +244,7 @@ const DashboardTab: React.FC = () => {
       title: "Total Vehicles",
       value: stats?.totalVehicles || 0,
       icon: Bus,
-      gradient: "from-indigo-500 to-purple-600",
+      gradient: "from-primary-500 to-purple-600",
     },
     {
       title: "Active Routes",
@@ -248,7 +256,7 @@ const DashboardTab: React.FC = () => {
       title: "Total Assignments",
       value: stats?.totalAssignments || 0,
       icon: Users,
-      gradient: "from-blue-500 to-indigo-600",
+      gradient: "from-primary-500 to-primary-600",
     },
     {
       title: "Today's Attendance",
@@ -389,13 +397,13 @@ const VehiclesTab: React.FC = () => {
               placeholder="Search vehicles..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -405,7 +413,7 @@ const VehiclesTab: React.FC = () => {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Types</option>
             <option value="BUS">Bus</option>
@@ -415,7 +423,7 @@ const VehiclesTab: React.FC = () => {
         </div>
         <button
           onClick={() => { setEditingVehicle(null); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
         >
           <Plus className="w-4 h-4" /> Add Vehicle
         </button>
@@ -444,7 +452,7 @@ const VehiclesTab: React.FC = () => {
                   <tr key={vehicle.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{vehicle.vehicleNo}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
+                      <span className="px-2 py-1 bg-primary-50 text-primary-700 rounded text-xs font-medium">
                         {vehicle.type}
                       </span>
                     </td>
@@ -463,7 +471,7 @@ const VehiclesTab: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => { setEditingVehicle(vehicle); setShowModal(true); }}
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
@@ -591,7 +599,7 @@ const VehicleModal: React.FC<{ vehicle: Vehicle | null; onClose: () => void; onS
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium">
               Cancel
             </button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all text-sm font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 transition-all text-sm font-medium disabled:opacity-50">
               {saving ? "Saving..." : vehicle ? "Update Vehicle" : "Add Vehicle"}
             </button>
           </div>
@@ -676,13 +684,13 @@ const RoutesTab: React.FC = () => {
               placeholder="Search routes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -691,7 +699,7 @@ const RoutesTab: React.FC = () => {
         </div>
         <button
           onClick={() => { setEditingRoute(null); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
         >
           <Plus className="w-4 h-4" /> Add Route
         </button>
@@ -706,8 +714,8 @@ const RoutesTab: React.FC = () => {
             <div key={route.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => setExpandedRoute(expandedRoute === route.id ? null : route.id)}>
-                  <div className="bg-indigo-50 p-2.5 rounded-lg">
-                    <Route className="w-5 h-5 text-indigo-600" />
+                  <div className="bg-primary-50 p-2.5 rounded-lg">
+                    <Route className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
@@ -728,7 +736,7 @@ const RoutesTab: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-3">
-                  <button onClick={() => { setEditingRoute(route); setShowModal(true); }} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                  <button onClick={() => { setEditingRoute(route); setShowModal(true); }} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                     <Edit className="w-4 h-4" />
                   </button>
                   <button onClick={() => setDeleteConfirm(route.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -744,7 +752,7 @@ const RoutesTab: React.FC = () => {
                     <h5 className="text-sm font-medium text-gray-700">Stops ({route.stops?.length || 0})</h5>
                     <button
                       onClick={() => { setStopRouteId(route.id); setEditingStop(null); setShowStopModal(true); }}
-                      className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 font-medium"
                     >
                       <Plus className="w-3 h-3" /> Add Stop
                     </button>
@@ -756,7 +764,7 @@ const RoutesTab: React.FC = () => {
                       {route.stops?.map((stop) => (
                         <div key={stop.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100">
                           <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                            <span className="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-xs font-bold">
                               {stop.sequence}
                             </span>
                             <div>
@@ -770,7 +778,7 @@ const RoutesTab: React.FC = () => {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => { setStopRouteId(route.id); setEditingStop(stop); setShowStopModal(true); }}
-                              className="p-1 text-gray-400 hover:text-indigo-600 rounded"
+                              className="p-1 text-gray-400 hover:text-primary-600 rounded"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
@@ -881,7 +889,7 @@ const RouteModal: React.FC<{ route: TransportRoute | null; onClose: () => void; 
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
               {saving ? "Saving..." : route ? "Update Route" : "Add Route"}
             </button>
           </div>
@@ -950,7 +958,7 @@ const StopModal: React.FC<{ stop: RouteStop | null; routeId: string; onClose: ()
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
               {saving ? "Saving..." : stop ? "Update Stop" : "Add Stop"}
             </button>
           </div>
@@ -1029,13 +1037,13 @@ const AssignmentsTab: React.FC = () => {
               placeholder="Search students..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
           </div>
           <select
             value={routeFilter}
             onChange={(e) => setRouteFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Routes</option>
             {routes.map((r) => (
@@ -1045,7 +1053,7 @@ const AssignmentsTab: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
           >
             <option value="">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -1054,7 +1062,7 @@ const AssignmentsTab: React.FC = () => {
         </div>
         <button
           onClick={() => { setEditingAssignment(null); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 transition-all text-sm font-medium shadow-md"
         >
           <Plus className="w-4 h-4" /> Assign Student
         </button>
@@ -1097,7 +1105,7 @@ const AssignmentsTab: React.FC = () => {
                     <td className="px-4 py-3"><StatusBadge status={assignment.status} /></td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => { setEditingAssignment(assignment); setShowModal(true); }} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                        <button onClick={() => { setEditingAssignment(assignment); setShowModal(true); }} className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                           <Edit className="w-4 h-4" />
                         </button>
                         <button onClick={() => setDeleteConfirm(assignment.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -1323,10 +1331,10 @@ const AssignmentModal: React.FC<{ assignment: Assignment | null; routes: Transpo
               ...students.map((s: any) => ({ value: s.id, label: `${s.firstName} ${s.lastName} (${s.admissionNo})` }))
             ]} />
             {form.studentName && (
-              <div className="flex items-center gap-2 mt-2 p-2 bg-indigo-50 rounded-lg">
-                <UserCheck className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-700">{form.studentName}</span>
-                <span className="text-xs text-indigo-500">({form.classInfo})</span>
+              <div className="flex items-center gap-2 mt-2 p-2 bg-primary-50 rounded-lg">
+                <UserCheck className="w-4 h-4 text-primary-600" />
+                <span className="text-sm font-medium text-primary-700">{form.studentName}</span>
+                <span className="text-xs text-primary-500">({form.classInfo})</span>
               </div>
             )}
           </div>
@@ -1354,7 +1362,7 @@ const AssignmentModal: React.FC<{ assignment: Assignment | null; routes: Transpo
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50">
               {saving ? "Saving..." : assignment ? "Update" : "Assign Student"}
             </button>
           </div>
@@ -1448,7 +1456,7 @@ const AttendanceTab: React.FC = () => {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div>
@@ -1456,7 +1464,7 @@ const AttendanceTab: React.FC = () => {
             <select
               value={routeFilter}
               onChange={(e) => setRouteFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Route</option>
               {routes.map((r) => (
@@ -1469,13 +1477,13 @@ const AttendanceTab: React.FC = () => {
             <div className="flex gap-1">
               <button
                 onClick={() => setTypeFilter("PICKUP")}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${typeFilter === "PICKUP" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${typeFilter === "PICKUP" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
               >
                 Pickup
               </button>
               <button
                 onClick={() => setTypeFilter("DROP")}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${typeFilter === "DROP" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${typeFilter === "DROP" ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
               >
                 Drop
               </button>
@@ -1486,7 +1494,7 @@ const AttendanceTab: React.FC = () => {
               <button
                 onClick={saveAttendance}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 text-sm font-medium disabled:opacity-50"
               >
                 {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                 Save Attendance
@@ -1617,7 +1625,7 @@ const ReportsTab: React.FC = () => {
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="route-students">Route-wise Students</option>
               <option value="vehicle-utilization">Vehicle Utilization</option>
@@ -1630,18 +1638,18 @@ const ReportsTab: React.FC = () => {
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Start Date</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">End Date</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500" />
               </div>
             </>
           )}
           <button
             onClick={fetchReport}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 text-sm font-medium"
           >
             <RefreshCw className="w-4 h-4" /> Generate
           </button>
@@ -1672,7 +1680,7 @@ const ReportsTab: React.FC = () => {
                       <td className="px-4 py-3 text-gray-700">{item.routeCode}</td>
                       <td className="px-4 py-3 text-gray-700">{item.totalStudents}</td>
                       <td className="px-4 py-3 text-gray-700">₹{item.monthlyFee}</td>
-                      <td className="px-4 py-3 font-medium text-indigo-600">₹{item.totalRevenue}</td>
+                      <td className="px-4 py-3 font-medium text-primary-600">₹{item.totalRevenue}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1719,7 +1727,7 @@ const ReportsTab: React.FC = () => {
           {reportType === "fee-collection" && (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white">
+                <div className="bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl p-4 text-white">
                   <p className="text-white/80 text-sm">Total Students</p>
                   <p className="text-2xl font-bold">{reportData.totalStudents}</p>
                 </div>
@@ -1736,7 +1744,7 @@ const ReportsTab: React.FC = () => {
                       <p className="text-sm font-medium text-gray-900">{item.routeName}</p>
                       <p className="text-xs text-gray-500">{item.students} students</p>
                     </div>
-                    <p className="text-sm font-medium text-indigo-600">₹{item.totalFee?.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-primary-600">₹{item.totalFee?.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
@@ -1746,9 +1754,9 @@ const ReportsTab: React.FC = () => {
           {reportType === "attendance" && reportData && (
             <div className="p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-700">{reportData.totalRecords}</p>
-                  <p className="text-xs text-blue-600">Total Records</p>
+                <div className="bg-primary-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-primary-700">{reportData.totalRecords}</p>
+                  <p className="text-xs text-primary-600">Total Records</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <p className="text-2xl font-bold text-green-700">{reportData.presentCount}</p>
@@ -1763,9 +1771,9 @@ const ReportsTab: React.FC = () => {
                   <p className="text-xs text-yellow-600">Late</p>
                 </div>
               </div>
-              <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-indigo-700">{reportData.attendancePercentage}%</p>
-                <p className="text-sm text-indigo-600">Overall Attendance</p>
+              <div className="bg-primary-50 rounded-lg p-4 text-center">
+                <p className="text-3xl font-bold text-primary-700">{reportData.attendancePercentage}%</p>
+                <p className="text-sm text-primary-600">Overall Attendance</p>
               </div>
             </div>
           )}
@@ -1830,7 +1838,7 @@ const SettingsTab: React.FC = () => {
               type="number"
               value={settings.lateFinePerDay}
               onChange={(e) => setSettings({ ...settings, lateFinePerDay: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">Fine amount per day for late arrivals</p>
           </div>
@@ -1842,7 +1850,7 @@ const SettingsTab: React.FC = () => {
               type="number"
               value={settings.maxStudentsPerVehicle}
               onChange={(e) => setSettings({ ...settings, maxStudentsPerVehicle: parseInt(e.target.value) || 50 })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">Maximum allowed students per vehicle</p>
           </div>
@@ -1874,7 +1882,7 @@ const SettingsTab: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-lg hover:from-primary-600 hover:to-purple-700 transition-all text-sm font-medium disabled:opacity-50"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             {saving ? "Saving..." : "Save Settings"}
@@ -1906,7 +1914,7 @@ const InputField: React.FC<{
       required={required}
       placeholder={placeholder}
       step={type === "number" ? "any" : undefined}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
     />
   </div>
 );
@@ -1922,7 +1930,7 @@ const SelectField: React.FC<{
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1958,7 +1966,7 @@ const ToggleSetting: React.FC<{
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? "bg-indigo-600" : "bg-gray-200"}`}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? "bg-primary-600" : "bg-gray-200"}`}
     >
       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? "translate-x-6" : "translate-x-1"}`} />
     </button>
@@ -1986,7 +1994,7 @@ const PaginationBar: React.FC<{ pagination: Pagination; onChange: (page: number)
             <button
               key={pageNum}
               onClick={() => onChange(pageNum)}
-              className={`px-3 py-1.5 text-sm rounded-lg ${pagination.page === pageNum ? "bg-indigo-600 text-white" : "border border-gray-300 hover:bg-gray-100"}`}
+              className={`px-3 py-1.5 text-sm rounded-lg ${pagination.page === pageNum ? "bg-primary-600 text-white" : "border border-gray-300 hover:bg-gray-100"}`}
             >
               {pageNum}
             </button>
@@ -2007,7 +2015,7 @@ const PaginationBar: React.FC<{ pagination: Pagination; onChange: (page: number)
 const LoadingState: React.FC = () => (
   <div className="flex items-center justify-center p-12">
     <div className="flex flex-col items-center gap-3">
-      <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
+      <RefreshCw className="w-8 h-8 text-primary-500 animate-spin" />
       <p className="text-sm text-gray-500">Loading...</p>
     </div>
   </div>

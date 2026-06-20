@@ -46,7 +46,7 @@ interface Toast {
 
 // ─── API Config ────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "";
 
 const getAuthHeaders = () => ({
   headers: {
@@ -231,7 +231,7 @@ const AgeSettings: React.FC = () => {
 
   const boardColors: Record<string, string> = {
     UP_BOARD: "bg-orange-100 text-orange-800",
-    CBSE: "bg-blue-100 text-blue-800",
+    CBSE: "bg-primary-100 text-primary-800",
     ICSE: "bg-purple-100 text-purple-800",
   };
 
@@ -270,8 +270,8 @@ const AgeSettings: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <Settings className="w-5 h-5 text-indigo-600" />
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <Settings className="w-5 h-5 text-primary-600" />
           </div>
           Age Configuration
         </h1>
@@ -283,8 +283,8 @@ const AgeSettings: React.FC = () => {
       {/* Quick Setup Card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Download className="w-5 h-5 text-blue-600" />
+          <div className="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center">
+            <Download className="w-5 h-5 text-primary-600" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-800">
@@ -300,7 +300,7 @@ const AgeSettings: React.FC = () => {
           <select
             value={selectedBoard}
             onChange={(e) => setSelectedBoard(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 bg-white"
+            className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-blue-400 bg-white"
           >
             <option value="UP_BOARD">UP Board</option>
             <option value="CBSE">CBSE</option>
@@ -310,7 +310,7 @@ const AgeSettings: React.FC = () => {
           <button
             onClick={handleSeedDefaults}
             disabled={seeding}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-medium rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
             {seeding ? (
               <>
@@ -362,7 +362,7 @@ const AgeSettings: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-indigo-500" />
+              <Calendar className="w-5 h-5 text-primary-500" />
               <h2 className="text-lg font-semibold text-gray-800">
                 Current Age Limits
               </h2>
@@ -431,7 +431,7 @@ const AgeSettings: React.FC = () => {
                           onChange={(e) =>
                             setEditData({ ...editData, minAge: parseFloat(e.target.value) || 0 })
                           }
-                          className="w-20 border border-indigo-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          className="w-20 border border-primary-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                         />
                       ) : (
                         <span className="text-sm text-gray-700 font-medium">
@@ -449,7 +449,7 @@ const AgeSettings: React.FC = () => {
                           onChange={(e) =>
                             setEditData({ ...editData, maxAge: parseFloat(e.target.value) || 0 })
                           }
-                          className="w-20 border border-indigo-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          className="w-20 border border-primary-300 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                         />
                       ) : (
                         <span className="text-sm text-gray-700 font-medium">
@@ -501,7 +501,7 @@ const AgeSettings: React.FC = () => {
                           <>
                             <button
                               onClick={() => handleEdit(config)}
-                              className="p-2 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                              className="p-2 rounded-lg hover:bg-primary-50 text-primary-600 transition-colors"
                               title="Edit"
                             >
                               <Edit3 className="w-4 h-4" />

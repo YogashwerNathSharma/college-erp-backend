@@ -35,7 +35,7 @@ export default function RegisterPage() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5000/api/auth/register-tenant",
+        "/api/auth/register-tenant",
         {
           schoolName: formData.schoolName.trim(),
           name: formData.name.trim(),

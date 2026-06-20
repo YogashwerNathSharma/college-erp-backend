@@ -198,7 +198,7 @@ const TimetableForm = ({
             <select
               value={day}
               onChange={(e) => setDay(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Select Day</option>
               {DAYS.map((d) => (
@@ -217,7 +217,7 @@ const TimetableForm = ({
             <select
               value={period || ""}
               onChange={(e) => setPeriod(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Select Period</option>
               {PERIODS.map((p) => (
@@ -236,7 +236,7 @@ const TimetableForm = ({
             <select
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="">Select Subject</option>
               {subjects.map((s) => (
@@ -260,7 +260,7 @@ const TimetableForm = ({
             <select
               value={teacherId}
               onChange={(e) => setTeacherId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               disabled={!subjectId || loadingTeachers}
             >
               <option value="">
@@ -303,7 +303,7 @@ const TimetableForm = ({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
             >
               {saving ? "Saving..." : editEntry ? "Update" : "Add"}
             </button>

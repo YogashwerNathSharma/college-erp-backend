@@ -19,7 +19,7 @@ import Insights from "../components/dashboard/Insights";
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
+  return `${path}`;
 };
 
 export default function Dashboard() {
@@ -39,13 +39,23 @@ export default function Dashboard() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Separate subscription fetch - runs independently of dashboard data
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    axios.get("/api/tenant/my-subscription", { headers })
+      .then((res) => setSubscriptionInfo(res.data?.data || res.data))
+      .catch(() => console.log("No active subscription"));
+  }, []);
+
   useEffect(() => {
     const fetchAll = async () => {
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
 
-        const res = await axios.get("http://localhost:5000/api/dashboard", { headers });
+        const res = await axios.get("/api/dashboard", { headers });
         const d = res.data?.data;
 
         setData({
@@ -74,17 +84,6 @@ export default function Dashboard() {
         setTenant(tenantData);
         localStorage.setItem("tenant", JSON.stringify(tenantData));
 
-        // Fetch subscription info
-        try {
-          const subRes = await axios.get(
-            "http://localhost:5000/api/tenant/my-subscription",
-            { headers }
-          );
-          setSubscriptionInfo(subRes.data.data);
-        } catch (subErr) {
-          console.log("No active subscription:", subErr);
-        }
-
       } catch (err) {
         console.log("Dashboard error:", err);
         const savedTenant = localStorage.getItem("tenant");
@@ -99,7 +98,7 @@ export default function Dashboard() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/tenant/plans", {
+      const res = await axios.get("/api/tenant/plans", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPlans(res.data.data || []);
@@ -116,7 +115,7 @@ export default function Dashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const res = await axios.post(
-        "http://localhost:5000/api/tenant/self-subscribe",
+        "/api/tenant/self-subscribe",
         { planId },
         { headers }
       );
@@ -139,7 +138,7 @@ export default function Dashboard() {
         handler: async function (response: any) {
           try {
             await axios.post(
-              "http://localhost:5000/api/subscription-payments/verify",
+              "/api/subscription-payments/verify",
               {
                 subscriptionId,
                 razorpay_order_id: response.razorpay_order_id,
@@ -193,7 +192,7 @@ export default function Dashboard() {
   }`}>
     <div className="flex items-center gap-3 flex-wrap">
       <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-        isFreePlan ? "bg-green-100 text-green-700" : "bg-indigo-100 text-indigo-700"
+        isFreePlan ? "bg-green-100 text-green-700" : "bg-primary-100 text-primary-700"
       }`}>
         {subscriptionInfo.planName}
       </span>
@@ -216,7 +215,7 @@ export default function Dashboard() {
     </div>
     <button
       onClick={fetchPlans}
-      className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-semibold whitespace-nowrap"
+      className="text-sm bg-primary-600 hover:bg-primary-700 text-white px-4 py-1.5 rounded-lg font-semibold whitespace-nowrap"
     >
       Upgrade
     </button>
@@ -225,7 +224,7 @@ export default function Dashboard() {
 
     {/* STATS — Compact + Clickable */}
 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-  <StatsCard title="Students" value={data.totalStudents} icon={<Users size={18} />} color="from-indigo-500 to-purple-600" link="/students" />
+  <StatsCard title="Students" value={data.totalStudents} icon={<Users size={18} />} color="from-primary-500 to-purple-600" link="/students" />
   <StatsCard title="Classes" value={data.totalClasses} icon={<School size={18} />} color="from-teal-500 to-cyan-600" link="/master" />
   <StatsCard title="Fees Collected" value={`₹ ${data.totalPaid}`} icon={<IndianRupee size={18} />} color="from-yellow-500 to-orange-500" growth={data?.insights?.growth} link="/fees" />
   <StatsCard title="Pending Fees" value={`₹ ${data.totalPending}`} icon={<AlertCircle size={18} />} color="from-red-500 to-pink-600" link="/fees" />
@@ -291,7 +290,7 @@ export default function Dashboard() {
                     isCurrentPlan
                       ? "border-green-500 bg-green-50"
                       : plan.isPopular
-                      ? "border-indigo-500 shadow-lg"
+                      ? "border-primary-500 shadow-lg"
                       : "border-gray-200"
                   }`}>
                     {isCurrentPlan && (
@@ -300,11 +299,11 @@ export default function Dashboard() {
                       </span>
                     )}
                     {!isCurrentPlan && plan.isPopular && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-3 py-1 rounded-full">⭐ Popular</span>
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs px-3 py-1 rounded-full">⭐ Popular</span>
                     )}
                     <h3 className="text-xl font-bold">{plan.name}</h3>
                     {plan.description && <p className="text-gray-500 text-sm mt-1">{plan.description}</p>}
-                    <p className="text-3xl font-bold text-indigo-600 mt-4">
+                    <p className="text-3xl font-bold text-primary-600 mt-4">
                       {isFree ? "Free" : `₹${plan.price}`}
                     </p>
                     <p className="text-gray-500 text-sm">{plan.durationInDays} Days</p>
@@ -317,7 +316,7 @@ export default function Dashboard() {
                     {plan.features?.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1">
                         {plan.features.map((f: string, i: number) => (
-                          <span key={i} className="bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">{f}</span>
+                          <span key={i} className="bg-primary-50 text-primary-600 text-xs px-2 py-0.5 rounded-full">{f}</span>
                         ))}
                       </div>
                     )}
@@ -327,7 +326,7 @@ export default function Dashboard() {
                       className={`w-full mt-5 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${
                         isCurrentPlan
                           ? "bg-green-100 text-green-700 cursor-not-allowed"
-                          : "bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                          : "bg-primary-600 hover:bg-primary-700 text-white disabled:opacity-50"
                       }`}
                     >
                       {isCurrentPlan ? (

@@ -19,7 +19,7 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
 
   // 1. Total Students (active enrollments)
   const totalStudents = await prisma.enrollment.count({
-    where: { tenantId, status: "ACTIVE", isDeleted: false, ...ayFilter },
+    where: { tenantId, status: "active", isDeleted: false, ...ayFilter },
   });
 
   // 2. Total Receivable (sum of all StudentFee.netAmount)

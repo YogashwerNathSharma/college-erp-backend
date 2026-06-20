@@ -24,7 +24,9 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     where: { enrollmentId, tenantId, isDeleted: false },
     include: {
       payments: {
-        where: { isDeleted: false },
+        where: {
+          isDeleted: false,
+        },
         orderBy: { paymentDate: "asc" },
       },
       feeStructure: {
@@ -95,6 +97,21 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
         receiptNo: payment.receiptNo,
         debit: 0,
         credit: payment.amount,
+        balance: runningBalance,
+      });
+    }
+
+    // Fallback: if paidAmount > 0 but no payment records (legacy/imported data)
+    const totalPaymentAmount = fee.payments.reduce((sum, p) => sum + p.amount, 0);
+    if (fee.paidAmount > 0 && totalPaymentAmount < fee.paidAmount) {
+      const unrecordedAmount = fee.paidAmount - totalPaymentAmount;
+      runningBalance -= unrecordedAmount;
+      entries.push({
+        date: new Date(fee.updatedAt).toISOString(),
+        particulars: `Payment - ${fee.feeStructure.name} Inst.#${fee.installmentNo}`,
+        receiptNo: "N/A",
+        debit: 0,
+        credit: unrecordedAmount,
         balance: runningBalance,
       });
     }

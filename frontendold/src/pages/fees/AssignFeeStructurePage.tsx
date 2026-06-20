@@ -140,14 +140,14 @@ const AssignFeeStructurePage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">Select Session</option>
               {academicYears.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">Select Class</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -159,9 +159,9 @@ const AssignFeeStructurePage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* LEFT — Fee Structure */}
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <div className="bg-blue-50 border-b border-blue-200 px-4 py-3 flex items-center justify-between">
+            <div className="bg-primary-50 border-b border-primary-200 px-4 py-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-blue-900">Fee Structure</h3>
-              <a href="/fees/structures" className="text-xs text-blue-600 hover:underline font-medium">+ Create Fee Structure</a>
+              <a href="/fees/structures" className="text-xs text-primary-600 hover:underline font-medium">+ Create Fee Structure</a>
             </div>
 
             {loadingStructures ? (
@@ -169,7 +169,7 @@ const AssignFeeStructurePage: React.FC = () => {
             ) : feeStructures.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-gray-500 text-sm">No fee structure found for this class.</p>
-                <a href="/fees/structures" className="text-blue-600 text-sm mt-2 inline-block hover:underline">+ Create Fee Structure</a>
+                <a href="/fees/structures" className="text-primary-600 text-sm mt-2 inline-block hover:underline">+ Create Fee Structure</a>
               </div>
             ) : (
               <div>
@@ -195,8 +195,8 @@ const AssignFeeStructurePage: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-                <div className="bg-blue-50 border-t px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm font-medium text-blue-700">Total Amount</span>
+                <div className="bg-primary-50 border-t px-4 py-3 flex justify-between items-center">
+                  <span className="text-sm font-medium text-primary-700">Total Amount</span>
                   <span className="text-lg font-bold text-blue-900">₹{totalStructureAmount.toLocaleString("en-IN")}</span>
                 </div>
               </div>
@@ -230,7 +230,7 @@ const AssignFeeStructurePage: React.FC = () => {
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-8">
-                          <input type="checkbox" checked={selectedStudents.length === students.filter(s => s.assignmentStatus === "NOT_ASSIGNED").length && selectedStudents.length > 0} onChange={(e) => e.target.checked ? selectAllUnassigned() : setSelectedStudents([])} className="w-3.5 h-3.5 text-blue-600 rounded" />
+                          <input type="checkbox" checked={selectedStudents.length === students.filter(s => s.assignmentStatus === "NOT_ASSIGNED").length && selectedStudents.length > 0} onChange={(e) => e.target.checked ? selectAllUnassigned() : setSelectedStudents([])} className="w-3.5 h-3.5 text-primary-600 rounded" />
                         </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Roll No.</th>
@@ -240,10 +240,10 @@ const AssignFeeStructurePage: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {students.map((student, i) => (
-                        <tr key={student.id} className={`hover:bg-gray-50 ${selectedStudents.includes(student.id) ? "bg-blue-50/50" : ""}`}>
+                        <tr key={student.id} className={`hover:bg-gray-50 ${selectedStudents.includes(student.id) ? "bg-primary-50/50" : ""}`}>
                           <td className="px-3 py-2 text-center">
                             {student.assignmentStatus === "NOT_ASSIGNED" ? (
-                              <input type="checkbox" checked={selectedStudents.includes(student.id)} onChange={() => toggleStudentSelection(student.id)} className="w-3.5 h-3.5 text-blue-600 rounded" />
+                              <input type="checkbox" checked={selectedStudents.includes(student.id)} onChange={() => toggleStudentSelection(student.id)} className="w-3.5 h-3.5 text-primary-600 rounded" />
                             ) : (
                               <span className="text-green-500 text-sm">✓</span>
                             )}
@@ -271,7 +271,7 @@ const AssignFeeStructurePage: React.FC = () => {
                     <button onClick={handleAssignAll} disabled={assigning || summary.unassignedCount === 0} className="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">
                       {assigning ? "Assigning..." : `Assign All (${summary.unassignedCount})`}
                     </button>
-                    <button onClick={handleAssign} disabled={assigning || selectedStudents.length === 0} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    <button onClick={handleAssign} disabled={assigning || selectedStudents.length === 0} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
                       {assigning ? "Assigning..." : `Assign Selected (${selectedStudents.length})`}
                     </button>
                   </div>

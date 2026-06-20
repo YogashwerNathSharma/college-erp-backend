@@ -1,7 +1,7 @@
 
 
 import express from "express";
-import { getStats, getDeptChart, getOverview, getRecent } from "./dashboard.controller";
+import { getStats, getDeptChart, getOverview, getRecent, getLeaves } from "./dashboard.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 
@@ -18,6 +18,9 @@ router.get("/overview", authMiddleware, resolveTenant, getOverview);
 
 // GET RECENT TEACHERS
 router.get("/recent", authMiddleware, resolveTenant, getRecent);
+
+// GET RECENT LEAVES
+router.get("/leaves", authMiddleware, resolveTenant, getLeaves);
 
 export default router;
 

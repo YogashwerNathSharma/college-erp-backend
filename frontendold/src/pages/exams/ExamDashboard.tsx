@@ -70,8 +70,8 @@ const ExamDashboard: React.FC = () => {
   const fetchDropdowns = async () => {
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/class", { headers }),
-        axios.get("http://localhost:5000/api/academic", { headers }),
+        axios.get("/api/class", { headers }),
+        axios.get("/api/academic", { headers }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
@@ -87,7 +87,7 @@ const ExamDashboard: React.FC = () => {
       if (selectedYear) params.academicYearId = selectedYear;
       if (selectedClass) params.classId = selectedClass;
 
-      const res = await axios.get("http://localhost:5000/api/exam/dashboard", {
+      const res = await axios.get("/api/exam/dashboard", {
         headers,
         params,
       });
@@ -143,7 +143,7 @@ const ExamDashboard: React.FC = () => {
       description: "Set up a new examination",
       icon: Plus,
       path: "/exams/create",
-      color: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100",
+      color: "bg-primary-50 text-primary-700 hover:bg-primary-100",
     },
     {
       title: "Grade Settings",
@@ -165,7 +165,7 @@ const ExamDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="text-gray-600">Loading dashboard...</span>
         </div>
       </div>
@@ -187,7 +187,7 @@ const ExamDashboard: React.FC = () => {
           </div>
           <button
             onClick={() => navigate("/exams/create")}
-            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Exam
@@ -204,7 +204,7 @@ const ExamDashboard: React.FC = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Years</option>
                 {academicYears.map((yr) => (
@@ -221,7 +221,7 @@ const ExamDashboard: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Classes</option>
                 {classes.map((cls) => (
@@ -267,14 +267,14 @@ const ExamDashboard: React.FC = () => {
           <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600" />
+                <Calendar className="w-5 h-5 text-primary-600" />
                 <h2 className="text-lg font-semibold text-gray-900">
                   Upcoming Exams
                 </h2>
               </div>
               <button
                 onClick={() => navigate("/exams")}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 transition-colors"
+                className="text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1 transition-colors"
               >
                 View All
                 <ArrowRight className="w-4 h-4" />
@@ -334,7 +334,7 @@ const ExamDashboard: React.FC = () => {
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              <TrendingUp className="w-5 h-5 text-primary-600" />
               <h2 className="text-lg font-semibold text-gray-900">
                 Quick Actions
               </h2>

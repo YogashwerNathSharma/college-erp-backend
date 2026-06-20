@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
+import PrintSignature from "../../components/PrintSignature";
 
 // ============================================================
 // Types
@@ -82,8 +83,8 @@ const apiClient = axios.create({
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `http://localhost:5000${path}`;
-  return `http://localhost:5000/uploads/${path}`;
+  if (path.startsWith("/")) return `${path}`;
+  return `/uploads/${path}`;
 };
 
 // ============================================================
@@ -139,7 +140,7 @@ const ConsolidatedReportCard: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600 text-sm">Loading report card...</p>
         </div>
       </div>
@@ -178,7 +179,7 @@ const ConsolidatedReportCard: React.FC = () => {
       <div className="print:hidden fixed top-4 right-4 z-50">
         <button
           onClick={handlePrint}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors"
+          className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
@@ -534,9 +535,7 @@ const ConsolidatedReportCard: React.FC = () => {
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
-                <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Principal</p>
-              </div>
+              <PrintSignature inline printOnly={false} />
             </div>
           </div>
 

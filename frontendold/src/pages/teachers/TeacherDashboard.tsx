@@ -3,7 +3,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiUsers, FiUserCheck, FiUser } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Stats {
   totalTeachers: number;
@@ -84,7 +84,7 @@ const TeacherDashboard = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -96,7 +96,7 @@ const TeacherDashboard = () => {
 
       {/* Stats Cards — Colorful + Compact */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white shadow-md">
+        <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-4 text-white shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium opacity-80">Total Teachers</p>
             <FiUsers size={16} className="opacity-70" />
@@ -104,7 +104,7 @@ const TeacherDashboard = () => {
           <p className="text-2xl font-bold mt-2">{stats?.totalTeachers || 0}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
+        <div className="bg-gradient-to-br from-primary-500 to-purple-600 rounded-xl p-4 text-white shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium opacity-80">Male Teachers</p>
             <FiUser size={16} className="opacity-70" />
@@ -192,7 +192,7 @@ const TeacherDashboard = () => {
       {/* LEFT — Legend */}
       <div className="flex flex-col gap-2 flex-1">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+          <div className="w-3 h-3 rounded-full bg-primary-500"></div>
           <span className="text-xs text-gray-700 font-medium">Male ({stats.maleTeachers})</span>
         </div>
         <div className="flex items-center gap-2">

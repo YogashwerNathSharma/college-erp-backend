@@ -21,6 +21,7 @@ export interface MarkAttendanceBody {
 export interface UpdateAttendanceBody {
   classId: string;
   sectionId: string;
+  academicYearId: string;
   date: string;
   students: StudentAttendanceInput[];
 }

@@ -75,8 +75,8 @@ const CreateEditExam: React.FC = () => {
     setLoading(true);
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/class", { headers }),
-        axios.get("http://localhost:5000/api/academic", { headers }),
+        axios.get("/api/class", { headers }),
+        axios.get("/api/academic", { headers }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
@@ -90,7 +90,7 @@ const CreateEditExam: React.FC = () => {
   const fetchSections = async (classId: string) => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/section?classId=${classId}`,
+        `/api/section?classId=${classId}`,
         { headers }
       );
       setSections(res.data?.data || res.data || []);
@@ -102,7 +102,7 @@ const CreateEditExam: React.FC = () => {
   const fetchExam = async () => {
     setFetchingExam(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/exam/${id}`, {
+      const res = await axios.get(`/api/exam/${id}`, {
         headers,
       });
       const exam = res.data?.data || res.data;
@@ -162,12 +162,12 @@ const CreateEditExam: React.FC = () => {
       };
 
       if (isEditMode) {
-        await axios.put(`http://localhost:5000/api/exam/${id}`, payload, {
+        await axios.put(`/api/exam/${id}`, payload, {
           headers,
         });
         toast.success("Exam updated successfully");
       } else {
-        await axios.post("http://localhost:5000/api/exam", payload, { headers });
+        await axios.post("/api/exam", payload, { headers });
         toast.success("Exam created successfully");
       }
       navigate("/exams");
@@ -185,7 +185,7 @@ const CreateEditExam: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="text-gray-600">Loading...</span>
         </div>
       </div>
@@ -229,7 +229,7 @@ const CreateEditExam: React.FC = () => {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="e.g., First Term Examination 2025"
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                 required
               />
             </div>
@@ -244,7 +244,7 @@ const CreateEditExam: React.FC = () => {
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   required
                 >
                   <option value="">Select Type</option>
@@ -261,7 +261,7 @@ const CreateEditExam: React.FC = () => {
                   name="classId"
                   value={formData.classId}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   required
                 >
                   <option value="">Select Class</option>
@@ -284,7 +284,7 @@ const CreateEditExam: React.FC = () => {
                   name="sectionId"
                   value={formData.sectionId}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   disabled={!formData.classId}
                 >
                   <option value="">All Sections</option>
@@ -308,7 +308,7 @@ const CreateEditExam: React.FC = () => {
                   name="academicYearId"
                   value={formData.academicYearId}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   required
                 >
                   <option value="">Select Year</option>
@@ -332,7 +332,7 @@ const CreateEditExam: React.FC = () => {
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   required
                 />
               </div>
@@ -345,7 +345,7 @@ const CreateEditExam: React.FC = () => {
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleChange}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                   required
                 />
               </div>
@@ -372,7 +372,7 @@ const CreateEditExam: React.FC = () => {
                       value={option.value}
                       checked={formData.resultType === option.value}
                       onChange={handleChange}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                     />
                     <span className="ml-2 text-sm text-gray-700">
                       {option.label}
@@ -394,7 +394,7 @@ const CreateEditExam: React.FC = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

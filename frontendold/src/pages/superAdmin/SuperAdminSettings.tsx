@@ -57,7 +57,7 @@ export default function SuperAdminSettings() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get(
-        "http://localhost:5000/api/super-admin/settings",
+        "/api/super-admin/settings",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -101,11 +101,13 @@ export default function SuperAdminSettings() {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        "http://localhost:5000/api/super-admin/settings/platform",
+        "/api/super-admin/settings/platform",
         platform,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Platform settings updated! 🎉");
+      // Apply theme color live
+      document.documentElement.style.setProperty("--primary-color", platform.primaryColor);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to update");
     } finally {
@@ -122,7 +124,7 @@ export default function SuperAdminSettings() {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        "http://localhost:5000/api/super-admin/settings/profile",
+        "/api/super-admin/settings/profile",
         profile,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -164,7 +166,7 @@ export default function SuperAdminSettings() {
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-          <Settings size={28} className="text-indigo-600" />
+          <Settings size={28} className="text-primary-600" />
           Super Admin Settings
         </h1>
         <p className="text-slate-500 mt-1">
@@ -180,7 +182,7 @@ export default function SuperAdminSettings() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all ${
               activeTab === tab.id
-                ? "bg-indigo-600 text-white shadow-lg"
+                ? "bg-primary-600 text-white shadow-lg"
                 : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
@@ -199,7 +201,7 @@ export default function SuperAdminSettings() {
         {activeTab === "platform" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
-              <Palette size={22} className="text-indigo-600" />
+              <Palette size={22} className="text-primary-600" />
               <h2 className="text-xl font-bold text-slate-800">
                 Platform Settings
               </h2>
@@ -216,7 +218,7 @@ export default function SuperAdminSettings() {
                   onChange={(e) =>
                     setPlatform({ ...platform, appName: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -230,7 +232,7 @@ export default function SuperAdminSettings() {
                   onChange={(e) =>
                     setPlatform({ ...platform, tagline: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -253,7 +255,7 @@ export default function SuperAdminSettings() {
                     onChange={(e) =>
                       setPlatform({ ...platform, primaryColor: e.target.value })
                     }
-                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
               </div>
@@ -269,7 +271,7 @@ export default function SuperAdminSettings() {
                     setPlatform({ ...platform, logoUrl: e.target.value })
                   }
                   placeholder="https://example.com/logo.png"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -277,7 +279,7 @@ export default function SuperAdminSettings() {
             <button
               onClick={handleUpdatePlatform}
               disabled={saving}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -296,7 +298,7 @@ export default function SuperAdminSettings() {
         {activeTab === "profile" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
-              <Shield size={22} className="text-indigo-600" />
+              <Shield size={22} className="text-primary-600" />
               <h2 className="text-xl font-bold text-slate-800">
                 Admin Profile
               </h2>
@@ -313,7 +315,7 @@ export default function SuperAdminSettings() {
                   onChange={(e) =>
                     setProfile({ ...profile, name: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -327,7 +329,7 @@ export default function SuperAdminSettings() {
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -342,7 +344,7 @@ export default function SuperAdminSettings() {
                     setProfile({ ...profile, currentPassword: e.target.value })
                   }
                   placeholder="Enter current password"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -357,7 +359,7 @@ export default function SuperAdminSettings() {
                     setProfile({ ...profile, newPassword: e.target.value })
                   }
                   placeholder="Enter new password"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -365,7 +367,7 @@ export default function SuperAdminSettings() {
             <button
               onClick={handleUpdateProfile}
               disabled={saving}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -384,7 +386,7 @@ export default function SuperAdminSettings() {
         {activeTab === "system" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
-              <Server size={22} className="text-indigo-600" />
+              <Server size={22} className="text-primary-600" />
               <h2 className="text-xl font-bold text-slate-800">
                 System Configuration
               </h2>

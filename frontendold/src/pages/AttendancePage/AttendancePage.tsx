@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface StudentAttendance {
   studentId: string;
@@ -237,7 +237,7 @@ const AttendancePage = () => {
             <select
               value={selectedAcademicYear}
               onChange={(e) => setSelectedAcademicYear(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Year</option>
               {academicYears.map((ay) => (
@@ -256,7 +256,7 @@ const AttendancePage = () => {
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Class</option>
               {classes.map((c) => (
@@ -275,7 +275,7 @@ const AttendancePage = () => {
             <select
               value={selectedSection}
               onChange={(e) => setSelectedSection(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               disabled={!selectedClass}
             >
               <option value="">Select Section</option>
@@ -296,7 +296,7 @@ const AttendancePage = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
@@ -305,7 +305,7 @@ const AttendancePage = () => {
             <button
               onClick={fetchAttendance}
               disabled={loading || !selectedClass || !selectedSection}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
             >
               {loading ? "Loading..." : "Load Students"}
             </button>
@@ -434,7 +434,7 @@ const AttendancePage = () => {
             <button
               onClick={saveAttendance}
               disabled={saving || unmarkedCount > 0}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-sm"
+              className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-sm"
             >
               {saving
                 ? "Saving..."

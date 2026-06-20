@@ -137,7 +137,7 @@ const AddEditTeacher = () => {
         if (t.photoUrl) {
           const fullUrl = t.photoUrl.startsWith("http")
             ? t.photoUrl
-            : `http://localhost:5000${t.photoUrl}`;
+            : `${t.photoUrl}`;
           setPhotoPreview(fullUrl);
         }
       }
@@ -261,7 +261,7 @@ const AddEditTeacher = () => {
   if (fetching) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -310,7 +310,7 @@ const AddEditTeacher = () => {
                     </div>
                   )}
                 </div>
-                <label className="mt-2 text-xs text-blue-600 hover:underline cursor-pointer">
+                <label className="mt-2 text-xs text-primary-600 hover:underline cursor-pointer">
                   <input
                     type="file"
                     accept="image/*"
@@ -332,7 +332,7 @@ const AddEditTeacher = () => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Enter first name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -346,7 +346,7 @@ const AddEditTeacher = () => {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Enter last name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -360,7 +360,7 @@ const AddEditTeacher = () => {
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 placeholder="Auto-generated or enter manually"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -373,7 +373,7 @@ const AddEditTeacher = () => {
                 type="date"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -385,7 +385,7 @@ const AddEditTeacher = () => {
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               >
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
@@ -404,7 +404,7 @@ const AddEditTeacher = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter mobile number"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -418,7 +418,7 @@ const AddEditTeacher = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email address"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
 
@@ -430,7 +430,7 @@ const AddEditTeacher = () => {
               <select
                 value={maritalStatus}
                 onChange={(e) => setMaritalStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               >
                 <option value="">Select Status</option>
                 <option value="Single">Single</option>
@@ -456,7 +456,7 @@ const AddEditTeacher = () => {
             <select
               value={academicYearId}
               onChange={(e) => setAcademicYearId(e.target.value)}
-              className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((year) => (
@@ -534,7 +534,7 @@ const AddEditTeacher = () => {
                 <button
                   type="button"
                   onClick={selectAllSubjects}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-primary-600 hover:underline"
                 >
                   {selectedSubjects.length === filteredSubjects.length
                     ? "Deselect All"
@@ -558,7 +558,7 @@ const AddEditTeacher = () => {
                       key={sub.id}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition ${
                         selectedSubjects.includes(sub.id)
-                          ? "bg-blue-50 border-blue-300"
+                          ? "bg-primary-50 border-primary-300"
                           : "bg-white border-gray-200 hover:border-gray-300"
                       }`}
                     >
@@ -566,7 +566,7 @@ const AddEditTeacher = () => {
                         type="checkbox"
                         checked={selectedSubjects.includes(sub.id)}
                         onChange={() => toggleSubject(sub.id)}
-                        className="rounded text-blue-600"
+                        className="rounded text-primary-600"
                       />
                       <span className="text-sm">
                         {sub.name}
@@ -594,7 +594,7 @@ const AddEditTeacher = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 bg-primary-600 text-white px-6 py-2.5 rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
           >
             <FiSave size={18} />
             {loading

@@ -78,7 +78,7 @@ export default function EditStudentPage() {
         status: s.status || "active",
       });
       if (s.photoUrl) {
-        setPhotoPreview(`http://localhost:5000/uploads/${s.photoUrl}`);
+        setPhotoPreview(`/uploads/${s.photoUrl}`);
       }
     } catch (err: any) {
       toast.error("Failed to load student");
@@ -132,7 +132,7 @@ export default function EditStudentPage() {
       const res = await axios.post(`/api/students/${id}/photo`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setPhotoPreview(`http://localhost:5000/uploads/${res.data.data.photoUrl}`);
+      setPhotoPreview(`/uploads/${res.data.data.photoUrl}`);
       toast.success("Photo updated!");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Photo upload failed");
@@ -209,7 +209,7 @@ export default function EditStudentPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[50vh]">
         <div className="flex items-center gap-3 text-gray-500">
-          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
           Loading student data...
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function EditStudentPage() {
             <div className="relative">
               <div
                 onClick={() => photoRef.current?.click()}
-                className="w-28 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all overflow-hidden"
+                className="w-28 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-primary-50 transition-all overflow-hidden"
               >
                 {photoPreview ? (
                   <img src={photoPreview} alt="Student" className="w-full h-full object-cover" />
@@ -254,7 +254,7 @@ export default function EditStudentPage() {
             <div>
               <p className="text-sm font-medium text-gray-700">Click to change photo</p>
               <p className="text-xs text-gray-400 mt-1">JPG, PNG • Max 2MB</p>
-              {uploading && <p className="text-xs text-blue-500 mt-1">Uploading...</p>}
+              {uploading && <p className="text-xs text-primary-500 mt-1">Uploading...</p>}
             </div>
             <input ref={photoRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
           </div>
@@ -266,15 +266,15 @@ export default function EditStudentPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">First Name *</label>
-              <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Last Name *</label>
-              <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Gender *</label>
-              <select name="gender" value={formData.gender} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select name="gender" value={formData.gender} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 <option value="">Select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -283,11 +283,11 @@ export default function EditStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Date of Birth *</label>
-              <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Blood Group</label>
-              <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 <option value="">Select</option>
                 <option value="A+">A+</option><option value="A-">A-</option>
                 <option value="B+">B+</option><option value="B-">B-</option>
@@ -297,7 +297,7 @@ export default function EditStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Category</label>
-              <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 <option value="">Select</option>
                 <option value="General">General</option><option value="OBC">OBC</option>
                 <option value="SC">SC</option><option value="ST">ST</option><option value="EWS">EWS</option>
@@ -305,23 +305,23 @@ export default function EditStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Religion</label>
-              <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Caste</label>
-              <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Aadhar No</label>
-              <input type="text" name="aadharNo" value={formData.aadharNo} onChange={handleChange} maxLength={12} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="aadharNo" value={formData.aadharNo} onChange={handleChange} maxLength={12} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Nationality</label>
-              <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Status</label>
-              <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="left">Left</option>
@@ -337,15 +337,15 @@ export default function EditStudentPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
-              <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Phone</label>
-              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div className="md:col-span-3">
               <label className="block text-sm font-medium text-gray-600 mb-1">Address</label>
-              <textarea name="address" value={formData.address} onChange={handleChange} rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <textarea name="address" value={formData.address} onChange={handleChange} rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
           </div>
         </div>
@@ -356,39 +356,39 @@ export default function EditStudentPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Father's Name *</label>
-              <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Father's Phone *</label>
-              <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Father's Occupation</label>
-              <input type="text" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Mother's Name *</label>
-              <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Mother's Phone</label>
-              <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Mother's Occupation</label>
-              <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Guardian Name</label>
-              <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Guardian Phone</label>
-              <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Relation</label>
-              <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default function EditStudentPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-700">Documents</h2>
             <div className="flex items-center gap-2">
-              <select value={docType} onChange={(e) => setDocType(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+              <select value={docType} onChange={(e) => setDocType(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
                 <option value="aadhar_card">Aadhar Card</option>
                 <option value="birth_certificate">Birth Certificate</option>
                 <option value="tc">Transfer Certificate (TC)</option>
@@ -406,7 +406,7 @@ export default function EditStudentPage() {
                 <option value="photo">Photo</option>
                 <option value="other">Other</option>
               </select>
-              <button type="button" onClick={() => docRef.current?.click()} disabled={uploading} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium disabled:opacity-50 transition-colors">
+              <button type="button" onClick={() => docRef.current?.click()} disabled={uploading} className="px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 text-sm font-medium disabled:opacity-50 transition-colors">
                 {uploading ? "Uploading..." : "📎 Upload"}
               </button>
               <input ref={docRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={handleDocUpload} className="hidden" />
@@ -435,7 +435,7 @@ export default function EditStudentPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <a href={`http://localhost:5000/uploads/${doc.url}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium">
+                    <a href={`/uploads/${doc.url}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 text-xs bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 font-medium">
                       View
                     </a>
                     <button type="button" onClick={() => handleDeleteDoc(doc.id)} className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium">
@@ -453,7 +453,7 @@ export default function EditStudentPage() {
           <button type="button" onClick={() => navigate("/students")} className="px-6 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
             Cancel
           </button>
-          <button type="submit" disabled={saving} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium">
+          <button type="submit" disabled={saving} className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium">
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>

@@ -66,8 +66,8 @@ const ExamList: React.FC = () => {
   const fetchDropdowns = async () => {
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/class", { headers }),
-        axios.get("http://localhost:5000/api/academic", { headers }),
+        axios.get("/api/class", { headers }),
+        axios.get("/api/academic", { headers }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
@@ -83,7 +83,7 @@ const ExamList: React.FC = () => {
       if (selectedClass) params.classId = selectedClass;
       if (selectedYear) params.academicYearId = selectedYear;
 
-      const res = await axios.get("http://localhost:5000/api/exam", {
+      const res = await axios.get("/api/exam", {
         headers,
         params,
       });
@@ -100,7 +100,7 @@ const ExamList: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this exam?")) return;
     setDeleting(id);
     try {
-      await axios.delete(`http://localhost:5000/api/exam/${id}`, { headers });
+      await axios.delete(`/api/exam/${id}`, { headers });
       toast.success("Exam deleted successfully");
       fetchExams();
     } catch (error) {
@@ -126,9 +126,9 @@ const ExamList: React.FC = () => {
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      TERM: "bg-blue-100 text-blue-800",
+      TERM: "bg-primary-100 text-primary-800",
       UNIT_TEST: "bg-purple-100 text-purple-800",
-      PRACTICAL: "bg-indigo-100 text-indigo-800",
+      PRACTICAL: "bg-primary-100 text-primary-800",
     };
     return (
       <span
@@ -154,7 +154,7 @@ const ExamList: React.FC = () => {
           </div>
           <button
             onClick={() => navigate("/exams/create")}
-            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Exam
@@ -171,7 +171,7 @@ const ExamList: React.FC = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Classes</option>
                 {classes.map((cls) => (
@@ -188,7 +188,7 @@ const ExamList: React.FC = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Years</option>
                 {academicYears.map((yr) => (
@@ -205,7 +205,7 @@ const ExamList: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
               <span className="ml-3 text-gray-500">Loading exams...</span>
             </div>
           ) : exams.length === 0 ? (
@@ -217,7 +217,7 @@ const ExamList: React.FC = () => {
               </p>
               <button
                 onClick={() => navigate("/exams/create")}
-                className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Exam
@@ -285,7 +285,7 @@ const ExamList: React.FC = () => {
                           {/* Edit */}
                           <button
                             onClick={() => navigate(`/exams/edit/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit Exam"
                           >
                             <Edit className="w-4 h-4" />
@@ -294,7 +294,7 @@ const ExamList: React.FC = () => {
                           {/* Subjects */}
                           <button
                             onClick={() => navigate(`/exams/${exam.id}/subjects`)}
-                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Subjects"
                           >
                             <BookOpen className="w-4 h-4" />

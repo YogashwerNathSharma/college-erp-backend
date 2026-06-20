@@ -168,7 +168,7 @@ export const getDailyCollectionController = async (req: any, res: any) => {
     }
 
     const result = await getDailyCollection(tenantId, date as string);
-    res.json(result);
+    res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

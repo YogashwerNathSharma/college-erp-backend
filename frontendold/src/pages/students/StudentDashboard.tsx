@@ -661,7 +661,7 @@ const StudentDashboard: React.FC = () => {
                 placeholder="Search courses, assignments, teachers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-blue-400 transition-all"
               />
             </div>
 
@@ -745,7 +745,7 @@ const StudentDashboard: React.FC = () => {
                 </div>
 
                 <div className="hidden md:block">
-                  <div className="w-16 h-16 rounded-full border-3 border-blue-300/50 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center shadow-xl shadow-blue-900/30">
+                  <div className="w-16 h-16 rounded-full border-3 border-primary-300/50 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center shadow-xl shadow-blue-900/30">
                     {student?.avatarUrl ? (
                       <img
                         src={student.avatarUrl}
@@ -834,7 +834,7 @@ const StudentDashboard: React.FC = () => {
                   </div>
 
                   {/* Overall GPA */}
-                  <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-1">
+                  <div className="bg-gradient-to-br from-purple-500 to-primary-600 rounded-2xl p-5 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-1">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-purple-100 text-xs font-medium mb-1">

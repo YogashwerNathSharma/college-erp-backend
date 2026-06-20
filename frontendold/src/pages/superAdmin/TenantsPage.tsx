@@ -21,7 +21,7 @@ import CreateTenant from "./CreateTenant";
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
+  return `${path}`;
 };
 
 //////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ export default function TenantsPage() {
   const fetchTenants = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/super-admin/tenants", {
+      const res = await axios.get("/api/super-admin/tenants", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTenants(res.data.data);
@@ -56,7 +56,7 @@ export default function TenantsPage() {
     try {
       const token = localStorage.getItem("token");
       await axios.patch(
-        `http://localhost:5000/api/super-admin/tenants/${id}/toggle-status`,
+        `/api/super-admin/tenants/${id}/toggle-status`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -72,7 +72,7 @@ export default function TenantsPage() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/super-admin/tenants/${id}`, {
+      await axios.delete(`/api/super-admin/tenants/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Tenant deleted!");
@@ -103,7 +103,7 @@ export default function TenantsPage() {
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 shadow-lg transition-all"
+          className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 shadow-lg transition-all"
         >
           <Plus size={18} />
           Create Tenant
@@ -119,7 +119,7 @@ export default function TenantsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tenants by name or email..."
-            className="w-full pl-11 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            className="w-full pl-11 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
           />
         </div>
       </div>
@@ -151,10 +151,10 @@ export default function TenantsPage() {
                           <img
                             src={getFullUrl(tenant.logoUrl)!}
                             alt={tenant.name}
-                            className="w-10 h-10 rounded-full object-cover border-2 border-indigo-300"
+                            className="w-10 h-10 rounded-full object-cover border-2 border-primary-300"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
                             {tenant.name?.charAt(0)}
                           </div>
                         )}
@@ -166,7 +166,7 @@ export default function TenantsPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-full capitalize">
+                      <span className="px-3 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded-full capitalize">
                         {tenant.type}
                       </span>
                     </td>
@@ -205,7 +205,7 @@ export default function TenantsPage() {
           tenant.subscriptions[0].status === "ACTIVE"
             ? tenant.subscriptions[0].plan?.price === 0
               ? "bg-green-100 text-green-700"
-              : "bg-indigo-100 text-indigo-700"
+              : "bg-primary-100 text-primary-700"
             : "bg-yellow-100 text-yellow-700"
         }`}
       >

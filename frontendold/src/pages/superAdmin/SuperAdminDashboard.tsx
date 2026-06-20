@@ -17,7 +17,7 @@ import {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `http://localhost:5000${path}`;
+  return `${path}`;
 };
 
 //////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ export default function SuperAdminDashboard() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get(
-        "http://localhost:5000/api/super-admin/dashboard",
+        "/api/super-admin/dashboard",
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setData(res.data.data);
@@ -76,7 +76,7 @@ export default function SuperAdminDashboard() {
           <img
             src="/super-admin-logo.png"
             alt="Super Admin"
-            className="w-14 h-14 rounded-full object-cover border-4 border-indigo-500 shadow-lg bg-white"
+            className="w-14 h-14 rounded-full object-cover border-4 border-primary-500 shadow-lg bg-white"
           />
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manage All Tenants</h1>
@@ -93,7 +93,7 @@ export default function SuperAdminDashboard() {
 
       {/* STATS CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        <Card title="Total Schools" value={totalSchools} icon={<School2 size={28} />} color="from-indigo-500 to-purple-600" />
+        <Card title="Total Schools" value={totalSchools} icon={<School2 size={28} />} color="from-primary-500 to-purple-600" />
         <Card title="Total Students" value={data.totalStudents} icon={<Users size={28} />} color="from-cyan-500 to-teal-600" />
         <Card title="Total Teachers" value={data.totalTeachers} icon={<User size={28} />} color="from-orange-500 to-pink-600" />
         <Card title="Active Tenants" value={activeTenants} icon={<Activity size={28} />} color="from-green-500 to-emerald-600" />
@@ -105,7 +105,7 @@ export default function SuperAdminDashboard() {
         {/* TENANT STATUS */}
         <div className="bg-white rounded-3xl shadow-md border border-slate-200 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-xl bg-indigo-100 text-indigo-600">
+            <div className="p-3 rounded-xl bg-primary-100 text-primary-600">
               <Building2 size={22} />
             </div>
             <h3 className="text-xl font-bold text-slate-800">Tenant Status</h3>
@@ -175,7 +175,7 @@ export default function SuperAdminDashboard() {
                         className="w-11 h-11 rounded-full object-cover border-2 border-indigo-400 bg-white"
                       />
                     ) : (
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold">
                         {tenant?.name?.charAt(0)}
                       </div>
                     )}
@@ -204,7 +204,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* INSIGHTS */}
-      <div className="mt-8 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white rounded-3xl shadow-xl p-8">
+      <div className="mt-8 bg-gradient-to-r from-primary-600 via-purple-600 to-fuchsia-600 text-white rounded-3xl shadow-xl p-8">
         <div className="flex items-center gap-3">
           <TrendingUp size={24} />
           <h3 className="text-2xl font-bold">Platform Insights</h3>

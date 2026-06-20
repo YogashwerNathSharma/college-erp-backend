@@ -41,7 +41,7 @@ const GradeSettings: React.FC = () => {
   const fetchGrades = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/grade", {
+      const res = await axios.get("/api/grade", {
         headers,
       });
       const existingGrades = res.data?.data || res.data || [];
@@ -134,7 +134,7 @@ const GradeSettings: React.FC = () => {
         })),
       };
 
-      await axios.post("http://localhost:5000/api/grade/bulk", payload, {
+      await axios.post("/api/grade/bulk", payload, {
         headers,
       });
       toast.success("Grade settings saved successfully");
@@ -163,7 +163,7 @@ const GradeSettings: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="text-gray-600">Loading grade settings...</span>
         </div>
       </div>
@@ -193,7 +193,7 @@ const GradeSettings: React.FC = () => {
           </div>
           <button
             onClick={resetToDefaults}
-            className="mt-4 sm:mt-0 text-sm text-gray-600 hover:text-indigo-600 font-medium transition-colors"
+            className="mt-4 sm:mt-0 text-sm text-gray-600 hover:text-primary-600 font-medium transition-colors"
           >
             Reset to Defaults
           </button>
@@ -203,14 +203,14 @@ const GradeSettings: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-indigo-600" />
+              <Settings className="w-5 h-5 text-primary-600" />
               <h2 className="text-lg font-semibold text-gray-900">
                 Grading Scale
               </h2>
             </div>
             <button
               onClick={addRow}
-              className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
             >
               <Plus className="w-4 h-4 mr-1" />
               Add Grade
@@ -257,14 +257,14 @@ const GradeSettings: React.FC = () => {
                         onChange={(e) =>
                           updateRow(index, "grade", e.target.value)
                         }
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm font-medium"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm font-medium"
                         placeholder="A+"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
                         type="number"
-                        value={row.minPercentage}
+                        value={row.minPercentage ?? ""}
                         onChange={(e) =>
                           updateRow(
                             index,
@@ -274,14 +274,14 @@ const GradeSettings: React.FC = () => {
                         }
                         min={0}
                         max={100}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="0"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
                         type="number"
-                        value={row.maxPercentage}
+                        value={row.maxPercentage ?? ""}
                         onChange={(e) =>
                           updateRow(
                             index,
@@ -291,14 +291,14 @@ const GradeSettings: React.FC = () => {
                         }
                         min={0}
                         max={100}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="100"
                       />
                     </td>
                     <td className="px-4 py-2">
                       <input
                         type="number"
-                        value={row.gradePoint}
+                        value={row.gradePoint ?? ""}
                         onChange={(e) =>
                           updateRow(
                             index,
@@ -309,7 +309,7 @@ const GradeSettings: React.FC = () => {
                         min={0}
                         max={10}
                         step={0.5}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="10"
                       />
                     </td>
@@ -320,7 +320,7 @@ const GradeSettings: React.FC = () => {
                         onChange={(e) =>
                           updateRow(index, "remarks", e.target.value)
                         }
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                         placeholder="Outstanding"
                       />
                     </td>
@@ -347,7 +347,7 @@ const GradeSettings: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -360,11 +360,11 @@ const GradeSettings: React.FC = () => {
         </div>
 
         {/* Info Card */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="mt-6 bg-primary-50 border border-primary-200 rounded-xl p-4">
           <h3 className="text-sm font-medium text-blue-900 mb-2">
             ℹ️ About Grade Settings
           </h3>
-          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+          <ul className="text-sm text-primary-700 space-y-1 list-disc list-inside">
             <li>
               Grades are used to automatically calculate student grades based on
               percentage.

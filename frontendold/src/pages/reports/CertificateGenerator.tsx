@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import PrintSignature from '../../components/PrintSignature';
 
 interface AcademicYear {
   id: string;
@@ -81,6 +82,10 @@ const CertificateGenerator: React.FC = () => {
 
   const [certificateType, setCertificateType] =
     useState<CertificateType>('TC');
+  const [useCustomTemplate, setUseCustomTemplate] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState<any>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [reasonForLeaving, setReasonForLeaving] = useState('');
   const [dateOfLeaving, setDateOfLeaving] = useState('');
   const [lastExamAppeared, setLastExamAppeared] = useState('');
@@ -95,7 +100,30 @@ const CertificateGenerator: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
 
   // Fetch tenant info
+  
+  // Fetch custom certificate templates from YN-UDP Designer
   useEffect(() => {
+    const fetchCustomTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
+        let res = await axios.get(`/api/designer/templates?tenantId=${tenantId}&type=certificate`).catch(() => null);
+        if (!res?.data?.data?.length) {
+          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+        }
+        if (res?.data?.success) {
+          setCustomTemplates(res.data.data || []);
+        }
+      } catch (err) {
+        console.log("YN-UDP templates not available:", err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    fetchCustomTemplates();
+  }, []);
+
+useEffect(() => {
     const tenantData = JSON.parse(localStorage.getItem('tenant') || '{}');
     setTenant(tenantData);
   }, []);
@@ -327,7 +355,7 @@ const fetchAcademicYears = async () => {
   const getLogoUrl = (): string => {
     if (!tenant.logo) return '';
     if (tenant.logo.startsWith('http')) return tenant.logo;
-    return `http://localhost:5000${tenant.logo}`;
+    return `${tenant.logo}`;
   };
 
   const renderCertificateContent = (): string => {
@@ -376,8 +404,8 @@ const fetchAcademicYears = async () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <FileText className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <FileText className="w-8 h-8 text-primary-600" />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent">
               Certificate Generator
             </h1>
           </div>
@@ -387,7 +415,7 @@ const fetchAcademicYears = async () => {
         </div>
 
         {!showPreview ? (
-          <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-indigo-600">
+          <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-primary-600">
             {/* Certificate Type Selection */}
             <div className="mb-8">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -401,7 +429,7 @@ const fetchAcademicYears = async () => {
                       onClick={() => setCertificateType(type)}
                       className={`p-3 rounded-lg font-medium transition-all ${
                         certificateType === type
-                          ? 'bg-indigo-600 text-white shadow-md'
+                          ? 'bg-primary-600 text-white shadow-md'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -411,6 +439,34 @@ const fetchAcademicYears = async () => {
                 )}
               </div>
             </div>
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <button onClick={() => setUseCustomTemplate(false)} className={`px-3 py-1 text-xs font-medium rounded ${!useCustomTemplate ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>Built-in Templates</button>
+                  <button onClick={() => setUseCustomTemplate(true)} className={`px-3 py-1 text-xs font-medium rounded ${useCustomTemplate ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>✨ Custom (YN-UDP Designer)</button>
+                  <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-blue-600 hover:bg-blue-50 border border-blue-200">+ Create New</a>
+                </div>
+                {useCustomTemplate && (
+                  <div>
+                    {loadingTemplates ? (
+                      <div className="text-center py-6 text-gray-500 text-sm">Loading templates...</div>
+                    ) : customTemplates.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {customTemplates.map((tmpl: any) => (
+                          <div key={tmpl.id} onClick={() => setSelectedCustomTemplate(tmpl)} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedCustomTemplate?.id === tmpl.id ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-400"}`}>
+                            <div className="h-16 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center"><span className="text-xl">📜</span></div>
+                            <div className="p-2"><div className="text-xs font-medium text-gray-800 truncate">{tmpl.name}</div><div className="text-[10px] text-gray-500">{tmpl.pageWidth}×{tmpl.pageHeight}</div></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500 text-sm mb-2">No custom certificate templates</p>
+                        <a href="http://localhost:5173" target="_blank" className="inline-flex items-center gap-1 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">✨ Open Designer</a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
             {/* Cascading Dropdowns */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -426,7 +482,7 @@ const fetchAcademicYears = async () => {
                       const year = academicYears.find((y) => y.id === e.target.value);
                       if (year) handleAcademicYearChange(year);
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none cursor-pointer"
                   >
                     <option value="">Select Academic Year</option>
                     {academicYears.map((year) => (
@@ -452,7 +508,7 @@ const fetchAcademicYears = async () => {
                       if (classItem) handleClassChange(classItem);
                     }}
                     disabled={!selectedAcademicYear}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select Class</option>
                     {classes.map((cls) => (
@@ -478,7 +534,7 @@ const fetchAcademicYears = async () => {
                       if (section) handleSectionChange(section);
                     }}
                     disabled={!selectedClass}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select Section</option>
                     {sections.map((sec) => (
@@ -504,7 +560,7 @@ const fetchAcademicYears = async () => {
                       if (student) handleStudentChange(student);
                     }}
                     disabled={!selectedSection}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">Select Student</option>
                     {students.map((student) => (
@@ -532,7 +588,7 @@ const fetchAcademicYears = async () => {
                       value={reasonForLeaving}
                       onChange={(e) => setReasonForLeaving(e.target.value)}
                       placeholder="e.g., Change of residence, Further studies"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -544,7 +600,7 @@ const fetchAcademicYears = async () => {
                       type="date"
                       value={dateOfLeaving}
                       onChange={(e) => setDateOfLeaving(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -557,7 +613,7 @@ const fetchAcademicYears = async () => {
                       value={lastExamAppeared}
                       onChange={(e) => setLastExamAppeared(e.target.value)}
                       placeholder="e.g., Final Examination 2024"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -570,7 +626,7 @@ const fetchAcademicYears = async () => {
                       value={result}
                       onChange={(e) => setResult(e.target.value)}
                       placeholder="e.g., Passed"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
 
@@ -583,7 +639,7 @@ const fetchAcademicYears = async () => {
                       value={conductCharacter}
                       onChange={(e) => setConductCharacter(e.target.value)}
                       placeholder="e.g., Good, Excellent"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                 </>
@@ -600,7 +656,7 @@ const fetchAcademicYears = async () => {
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
                     placeholder="e.g., Admission in college, Scholarship application"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
               )}
@@ -611,7 +667,7 @@ const fetchAcademicYears = async () => {
               <button
                 onClick={handleGeneratePreview}
                 disabled={loading || !selectedStudent}
-                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 bg-gradient-to-r from-primary-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <FileText className="w-5 h-5" />
                 Generate Certificate
@@ -625,7 +681,7 @@ const fetchAcademicYears = async () => {
             <div className="bg-gray-100 p-4 border-b flex gap-3 justify-end">
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all print:hidden"
+                className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-all print:hidden"
               >
                 <Printer className="w-5 h-5" />
                 Print
@@ -733,11 +789,7 @@ const fetchAcademicYears = async () => {
 
                   {/* Principal Signature Right */}
                   <div className="text-center">
-                    <div className="h-16 w-32 border-b border-gray-800 mb-2" />
-                    <p className="text-sm font-semibold text-gray-800">
-                      {tenant.principalName || 'Principal Name'}
-                    </p>
-                    <p className="text-xs text-gray-600">Principal</p>
+                    <PrintSignature inline={false} printOnly={false} />
                   </div>
                 </div>
               </div>

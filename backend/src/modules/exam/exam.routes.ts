@@ -34,6 +34,8 @@ import {
   removeInvigilator,
   getExamDashboard,
   getExamReports,
+  generateCustomSeating,
+  aiArrangeSeating,
 } from "./exam.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
@@ -71,6 +73,10 @@ router.delete("/schedule/:scheduleId", authMiddleware, allowRoles("ADMIN", "SUPE
 // Seating Arrangement
 router.post("/seating/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateSeating);
 router.get("/seating/:scheduleId", authMiddleware, getSeatingBySchedule);
+
+// Custom Seating (Multi-class, configurable)
+router.post("/seating/generate-custom", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateCustomSeating);
+router.post("/seating/ai-arrange", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), aiArrangeSeating);
 
 // Admit Cards
 router.post("/admit-cards/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateAdmitCards);

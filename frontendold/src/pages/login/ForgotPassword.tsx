@@ -17,7 +17,7 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      await axios.post("http://localhost:5000/api/auth/forgot-password", {
+      await axios.post("/api/auth/forgot-password", {
         email: email.toLowerCase().trim(),
       });
 
@@ -41,7 +41,7 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      await axios.post("http://localhost:5000/api/auth/reset-password", {
+      await axios.post("/api/auth/reset-password", {
         email: email.toLowerCase().trim(),
         otp: otp.trim(),
         newPassword: newPassword.trim(),

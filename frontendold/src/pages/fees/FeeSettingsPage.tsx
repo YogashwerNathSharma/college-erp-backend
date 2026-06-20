@@ -121,7 +121,7 @@ const FeeSettingsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -137,7 +137,7 @@ const FeeSettingsPage: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium flex items-center gap-2"
+          className="px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium flex items-center gap-2"
         >
           {saving ? (
             <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> Saving...</>
@@ -156,7 +156,7 @@ const FeeSettingsPage: React.FC = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === tab.key
-                  ? "border-blue-600 text-blue-600 bg-blue-50/50"
+                  ? "border-primary-600 text-primary-600 bg-primary-50/50"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -174,12 +174,12 @@ const FeeSettingsPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Apply Fine After (Days)</label>
-                    <input type="number" value={settings.general.fineAfterDays} onChange={(e) => updateGeneral("fineAfterDays", Number(e.target.value))} min={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                    <input type="number" value={settings.general.fineAfterDays} onChange={(e) => updateGeneral("fineAfterDays", Number(e.target.value))} min={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
                     <p className="text-xs text-gray-400 mt-1">0 = No fine</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Grace Period (Days)</label>
-                    <input type="number" value={settings.general.gracePeriod} onChange={(e) => updateGeneral("gracePeriod", Number(e.target.value))} min={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                    <input type="number" value={settings.general.gracePeriod} onChange={(e) => updateGeneral("gracePeriod", Number(e.target.value))} min={0} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" />
                     <p className="text-xs text-gray-400 mt-1">Days after due date before fine starts</p>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ const FeeSettingsPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Default Payment Mode</label>
-                  <select value={settings.general.defaultPaymentMode} onChange={(e) => updateGeneral("defaultPaymentMode", e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                  <select value={settings.general.defaultPaymentMode} onChange={(e) => updateGeneral("defaultPaymentMode", e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
                     <option value="CASH">Cash</option>
                     <option value="ONLINE">Online</option>
                     <option value="UPI">UPI</option>
@@ -201,7 +201,7 @@ const FeeSettingsPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700">Rounding Off</p>
                     <p className="text-xs text-gray-400">Round amounts to nearest integer</p>
                   </div>
-                  <button onClick={() => updateGeneral("roundingOff", !settings.general.roundingOff)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.roundingOff ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => updateGeneral("roundingOff", !settings.general.roundingOff)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.roundingOff ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.general.roundingOff ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>
@@ -213,7 +213,7 @@ const FeeSettingsPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700">Enable Online Payment</p>
                     <p className="text-xs text-gray-400">Allow parents to pay fees online</p>
                   </div>
-                  <button onClick={() => updateGeneral("enableOnlinePayment", !settings.general.enableOnlinePayment)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.enableOnlinePayment ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => updateGeneral("enableOnlinePayment", !settings.general.enableOnlinePayment)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.enableOnlinePayment ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.general.enableOnlinePayment ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>
@@ -222,7 +222,7 @@ const FeeSettingsPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700">Enable SMS Reminder</p>
                     <p className="text-xs text-gray-400">Auto-send SMS before due date</p>
                   </div>
-                  <button onClick={() => updateGeneral("enableSmsReminder", !settings.general.enableSmsReminder)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.enableSmsReminder ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => updateGeneral("enableSmsReminder", !settings.general.enableSmsReminder)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.general.enableSmsReminder ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.general.enableSmsReminder ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>
@@ -235,7 +235,7 @@ const FeeSettingsPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Receipt Prefix</label>
-                <input type="text" value={settings.receipt.receiptPrefix} onChange={(e) => updateReceipt("receiptPrefix", e.target.value)} className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="e.g. RCP" />
+                <input type="text" value={settings.receipt.receiptPrefix} onChange={(e) => updateReceipt("receiptPrefix", e.target.value)} className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="e.g. RCP" />
                 <p className="text-xs text-gray-400 mt-1">Receipt format: PREFIX/YEAR/XXXXX</p>
               </div>
 
@@ -245,7 +245,7 @@ const FeeSettingsPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700">Show School Logo</p>
                     <p className="text-xs text-gray-400">Display logo in receipt header</p>
                   </div>
-                  <button onClick={() => updateReceipt("showSchoolLogo", !settings.receipt.showSchoolLogo)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.receipt.showSchoolLogo ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => updateReceipt("showSchoolLogo", !settings.receipt.showSchoolLogo)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.receipt.showSchoolLogo ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.receipt.showSchoolLogo ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>
@@ -254,7 +254,7 @@ const FeeSettingsPage: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700">Show Student Photo</p>
                     <p className="text-xs text-gray-400">Display student photo in receipt</p>
                   </div>
-                  <button onClick={() => updateReceipt("showStudentPhoto", !settings.receipt.showStudentPhoto)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.receipt.showStudentPhoto ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => updateReceipt("showStudentPhoto", !settings.receipt.showStudentPhoto)} className={`relative w-11 h-6 rounded-full transition-colors ${settings.receipt.showStudentPhoto ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${settings.receipt.showStudentPhoto ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>
@@ -262,7 +262,7 @@ const FeeSettingsPage: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Receipt Note</label>
-                <textarea value={settings.receipt.receiptNote} onChange={(e) => updateReceipt("receiptNote", e.target.value)} rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Footer note on receipt..." />
+                <textarea value={settings.receipt.receiptNote} onChange={(e) => updateReceipt("receiptNote", e.target.value)} rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500" placeholder="Footer note on receipt..." />
               </div>
             </div>
           )}
@@ -284,7 +284,7 @@ const FeeSettingsPage: React.FC = () => {
                     </span>
                     <p className="text-sm font-medium text-gray-700">{mode.replace("_", " ")}</p>
                   </div>
-                  <button onClick={() => togglePaymentMode(mode)} className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? "bg-blue-600" : "bg-gray-300"}`}>
+                  <button onClick={() => togglePaymentMode(mode)} className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? "bg-primary-600" : "bg-gray-300"}`}>
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${enabled ? "translate-x-5" : ""}`}></span>
                   </button>
                 </div>

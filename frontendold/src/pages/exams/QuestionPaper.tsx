@@ -73,7 +73,7 @@ const QuestionPaper: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -83,7 +83,7 @@ const QuestionPaper: React.FC = () => {
   const fetchSubjects = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/subjects`,
+        `/api/exam/${selectedExam}/subjects`,
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -102,7 +102,7 @@ const QuestionPaper: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/question-papers`,
+        `/api/exam/${selectedExam}/question-papers`,
         { headers }
       );
       setPapers(res.data?.data || res.data || []);
@@ -127,7 +127,7 @@ const QuestionPaper: React.FC = () => {
     setSaving(true);
     try {
       await axios.post(
-        "http://localhost:5000/api/exam/question-papers",
+        "/api/exam/question-papers",
         { ...form, examId: selectedExam },
         { headers }
       );
@@ -149,7 +149,7 @@ const QuestionPaper: React.FC = () => {
     setDeleting(paperId);
     try {
       await axios.delete(
-        `http://localhost:5000/api/exam/question-papers/${paperId}`,
+        `/api/exam/question-papers/${paperId}`,
         { headers }
       );
       toast.success("Question paper deleted successfully");
@@ -192,7 +192,7 @@ const QuestionPaper: React.FC = () => {
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
                 {exams.map((exam) => (
@@ -231,7 +231,7 @@ const QuestionPaper: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, subjectId: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="">Select Subject</option>
                       {subjects.map((sub) => (
@@ -252,7 +252,7 @@ const QuestionPaper: React.FC = () => {
                         setForm({ ...form, title: e.target.value })
                       }
                       placeholder="e.g., Mid-Term Math Paper"
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     />
                   </div>
                   <div>
@@ -266,7 +266,7 @@ const QuestionPaper: React.FC = () => {
                         setForm({ ...form, fileUrl: e.target.value })
                       }
                       placeholder="https://... or /uploads/..."
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     />
                   </div>
                 </div>
@@ -274,7 +274,7 @@ const QuestionPaper: React.FC = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={saving}
-                    className="inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -291,7 +291,7 @@ const QuestionPaper: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-600" />
+                  <FileText className="w-5 h-5 text-primary-600" />
                   <h2 className="text-lg font-semibold text-gray-900">
                     Question Papers
                   </h2>
@@ -299,7 +299,7 @@ const QuestionPaper: React.FC = () => {
                 {!showForm && (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Upload Paper
@@ -309,7 +309,7 @@ const QuestionPaper: React.FC = () => {
 
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                   <span className="ml-3 text-gray-500">
                     Loading question papers...
                   </span>
@@ -325,7 +325,7 @@ const QuestionPaper: React.FC = () => {
                   </p>
                   <button
                     onClick={() => setShowForm(true)}
-                    className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Upload Paper
@@ -370,7 +370,7 @@ const QuestionPaper: React.FC = () => {
                               href={paper.fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+                              className="inline-flex items-center text-primary-600 hover:text-primary-800 transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5 mr-1" />
                               View File

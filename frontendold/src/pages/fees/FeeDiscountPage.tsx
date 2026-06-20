@@ -162,7 +162,7 @@ const FeeDiscountPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -178,7 +178,7 @@ const FeeDiscountPage: React.FC = () => {
         </div>
         <button
           onClick={openCreateModal}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -249,7 +249,7 @@ const FeeDiscountPage: React.FC = () => {
                     <button
                       onClick={() => toggleActive(discount)}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                        discount.isActive ? "bg-blue-600" : "bg-gray-200"
+                        discount.isActive ? "bg-primary-600" : "bg-gray-200"
                       }`}
                     >
                       <span
@@ -262,7 +262,7 @@ const FeeDiscountPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => openEditModal(discount)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
+                      className="text-primary-600 hover:text-blue-900 mr-4"
                     >
                       Edit
                     </button>
@@ -297,7 +297,7 @@ const FeeDiscountPage: React.FC = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., Sibling Discount, Merit Scholarship"
                     required
                   />
@@ -311,7 +311,7 @@ const FeeDiscountPage: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, type: e.target.value as "PERCENTAGE" | "FIXED" })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
                       <option value="PERCENTAGE">Percentage (%)</option>
                       <option value="FIXED">Fixed Amount (₹)</option>
@@ -328,7 +328,7 @@ const FeeDiscountPage: React.FC = () => {
                       max={formData.type === "PERCENTAGE" ? "100" : undefined}
                       value={formData.value}
                       onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder={formData.type === "PERCENTAGE" ? "e.g., 10" : "e.g., 500"}
                       required
                     />
@@ -342,7 +342,7 @@ const FeeDiscountPage: React.FC = () => {
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     rows={2}
                     placeholder="Brief description of this discount"
                   />
@@ -362,7 +362,7 @@ const FeeDiscountPage: React.FC = () => {
                             type="checkbox"
                             checked={formData.applicableHeadIds.includes(head.id)}
                             onChange={() => handleHeadToggle(head.id)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                           />
                           <span className="text-sm text-gray-700">{head.name}</span>
                         </label>
@@ -384,7 +384,7 @@ const FeeDiscountPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     {editingDiscount ? "Update" : "Create"}
                   </button>

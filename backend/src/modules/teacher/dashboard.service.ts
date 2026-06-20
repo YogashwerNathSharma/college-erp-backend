@@ -14,10 +14,10 @@ export const getDashboardStats = async (tenantId: string) => {
       where: { tenantId, isDeleted: false },
     }),
     prisma.teacher.count({
-      where: { tenantId, isDeleted: false, gender: "Male" },
+      where: { tenantId, isDeleted: false, gender: { in: ["Male", "male", "MALE", "M"] } },
     }),
     prisma.teacher.count({
-      where: { tenantId, isDeleted: false, gender: "Female" },
+      where: { tenantId, isDeleted: false, gender: { in: ["Female", "female", "FEMALE", "F"] } },
     }),
   ]);
 

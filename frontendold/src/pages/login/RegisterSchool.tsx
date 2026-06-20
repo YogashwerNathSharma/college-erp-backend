@@ -40,7 +40,7 @@ export default function RegisterSchool() {
     if (background) formData.append("background", background);
 
     const res = await axios.post(
-      "http://localhost:5000/api/auth/register-tenant",
+      "/api/auth/register-tenant",
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );

@@ -242,7 +242,7 @@ export default function AdmissionForm() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-primary-600 bg-clip-text text-transparent">
               New Student Admission
             </h1>
             <p className="text-gray-500 mt-1">Fill in the student details to complete admission</p>
@@ -264,7 +264,7 @@ export default function AdmissionForm() {
               onClick={() => setActiveStep(i)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeStep === i
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                  ? "bg-primary-600 text-white shadow-lg shadow-blue-200"
                   : "text-gray-500 hover:bg-gray-100"
               }`}
             >
@@ -307,8 +307,8 @@ export default function AdmissionForm() {
           </div>
         )}
         {ageChecking && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-blue-600">
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="mb-4 flex items-center gap-2 text-sm text-primary-600">
+            <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
             Checking age eligibility...
           </div>
         )}
@@ -318,29 +318,29 @@ export default function AdmissionForm() {
           <div className={activeStep === 0 ? "block" : "hidden"}>
             <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <FiBook className="text-blue-600 text-lg" />
+                <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <FiBook className="text-primary-600 text-lg" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-800">Academic Information</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Academic Year <span className="text-red-500">*</span></label>
-                  <select name="academicYearId" value={formData.academicYearId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                  <select name="academicYearId" value={formData.academicYearId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                     <option value="">Select Year</option>
                     {academicYears.map((ay) => (<option key={ay.id} value={ay.id}>{ay.name}</option>))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Class <span className="text-red-500">*</span></label>
-                  <select name="classId" value={formData.classId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                  <select name="classId" value={formData.classId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                     <option value="">Select Class</option>
                     {classes.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Section <span className="text-red-500">*</span></label>
-                  <select name="sectionId" value={formData.sectionId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                  <select name="sectionId" value={formData.sectionId} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                     <option value="">Select Section</option>
                     {sections.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
                   </select>
@@ -364,7 +364,7 @@ export default function AdmissionForm() {
                 <div className="relative">
                   <div
                     onClick={() => photoInputRef.current?.click()}
-                    className="w-28 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all overflow-hidden"
+                    className="w-28 h-28 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-primary-50 transition-all overflow-hidden"
                   >
                     {photoPreview ? (
                       <img src={photoPreview} alt="Student" className="w-full h-full object-cover" />
@@ -396,15 +396,15 @@ export default function AdmissionForm() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name <span className="text-red-500">*</span></label>
-                  <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter first name" />
+                  <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Enter first name" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name <span className="text-red-500">*</span></label>
-                  <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter last name" />
+                  <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Enter last name" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Gender <span className="text-red-500">*</span></label>
-                  <select name="gender" value={formData.gender} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <select name="gender" value={formData.gender} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -413,11 +413,11 @@ export default function AdmissionForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Date of Birth <span className="text-red-500">*</span></label>
-                  <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Group</label>
-                  <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Select</option>
                     <option value="A+">A+</option><option value="A-">A-</option>
                     <option value="B+">B+</option><option value="B-">B-</option>
@@ -427,7 +427,7 @@ export default function AdmissionForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-                  <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Select</option>
                     <option value="General">General</option>
                     <option value="OBC">OBC</option>
@@ -438,19 +438,19 @@ export default function AdmissionForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Religion</label>
-                  <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Hindu" />
+                  <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="e.g. Hindu" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Caste</label>
-                  <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter caste" />
+                  <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Enter caste" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Aadhar No</label>
-                  <input type="text" name="aadharNo" value={formData.aadharNo} onChange={handleChange} maxLength={12} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="12 digit number" />
+                  <input type="text" name="aadharNo" value={formData.aadharNo} onChange={handleChange} maxLength={12} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="12 digit number" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nationality</label>
-                  <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
               </div>
             </div>
@@ -468,15 +468,15 @@ export default function AdmissionForm() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="student@email.com" />
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="student@email.com" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Mobile number" />
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Mobile number" />
                 </div>
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Address <span className="text-red-500">*</span></label>
-                  <textarea name="address" value={formData.address} onChange={handleChange} required rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" placeholder="Full residential address" />
+                  <textarea name="address" value={formData.address} onChange={handleChange} required rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none" placeholder="Full residential address" />
                 </div>
               </div>
             </div>
@@ -494,39 +494,39 @@ export default function AdmissionForm() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Father's Name <span className="text-red-500">*</span></label>
-                  <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Father's Phone <span className="text-red-500">*</span></label>
-                  <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Father's Occupation</label>
-                  <input type="text" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Mother's Name <span className="text-red-500">*</span></label>
-                  <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} required className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Mother's Phone</label>
-                  <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Mother's Occupation</label>
-                  <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Guardian Name</label>
-                  <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Guardian Phone</label>
-                  <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Relation to Student</label>
-                  <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Uncle, Aunt" />
+                  <input type="text" name="guardianRelation" value={formData.guardianRelation} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="e.g. Uncle, Aunt" />
                 </div>
               </div>
             </div>
@@ -536,16 +536,16 @@ export default function AdmissionForm() {
           <div className={activeStep === 4 ? "block" : "hidden"}>
             <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                  <FiFileText className="text-indigo-600 text-lg" />
+                <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <FiFileText className="text-primary-600 text-lg" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-800">Upload Documents</h2>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-6 mb-6">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FiUpload className="text-blue-600 text-xl" />
+                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                    <FiUpload className="text-primary-600 text-xl" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-700">Upload Supporting Documents</p>
@@ -593,7 +593,7 @@ export default function AdmissionForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 font-medium"
+                className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 font-medium"
               >
                 {loading ? "Creating..." : "Complete Admission"}
               </button>
@@ -601,7 +601,7 @@ export default function AdmissionForm() {
               <button
                 type="button"
                 onClick={() => setActiveStep(Math.min(steps.length - 1, activeStep + 1))}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
+                className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-medium"
               >
                 Next →
               </button>

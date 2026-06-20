@@ -18,6 +18,7 @@ import {
   getSuperAdminProfileService,
   updateSuperAdminProfileService,
 } from "./settings.service";
+import prisma from "../../utils/prisma";
 
 // ============================================================
 // 📋 GET SETTINGS (role-based response)
@@ -64,6 +65,51 @@ export const updateTenantSettings = async (req: any, res: Response) => {
     res.json({ success: true, data, message: "Tenant settings updated successfully" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// 🎨 UPDATE THEME (Both SUPER_ADMIN + TENANT ADMIN)
+// ============================================================
+
+export const updateTheme = async (req: any, res: Response) => {
+  try {
+    const { primaryColor } = req.body;
+    if (!primaryColor) {
+      return res.status(400).json({ success: false, message: "primaryColor is required" });
+    }
+
+    const role = req.user?.role;
+    const tenantId = req.tenantId;
+
+    // Use raw PrismaClient to avoid $extends issues
+    const { PrismaClient } = require("@prisma/client");
+    const rawPrisma = new PrismaClient();
+
+    try {
+      if (role === "SUPER_ADMIN") {
+        // Save to PlatformSettings
+        const existing = await rawPrisma.platformSettings.findFirst();
+        if (existing) {
+          await rawPrisma.platformSettings.update({ where: { id: existing.id }, data: { primaryColor } });
+        } else {
+          await rawPrisma.platformSettings.create({ data: { primaryColor, appName: "College ERP" } });
+        }
+      } else if (tenantId) {
+        // Tenant Admin — save to tenant
+        await rawPrisma.tenant.update({
+          where: { id: tenantId },
+          data: { primaryColor },
+        });
+      }
+    } finally {
+      await rawPrisma.$disconnect();
+    }
+
+    res.json({ success: true, message: "Theme updated successfully" });
+  } catch (error: any) {
+    console.error("Theme update error:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to save theme" });
   }
 };
 

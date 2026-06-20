@@ -85,7 +85,7 @@ const InvigilatorAssignment: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -94,7 +94,7 @@ const InvigilatorAssignment: React.FC = () => {
 
   const fetchTeachers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/teacher", {
+      const res = await axios.get("/api/teacher", {
         headers,
       });
       setTeachers(res.data?.data || res.data || []);
@@ -107,7 +107,7 @@ const InvigilatorAssignment: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/schedule`,
+        `/api/exam/${selectedExam}/schedule`,
         { headers }
       );
       const schedulesData = res.data?.data || res.data || [];
@@ -118,7 +118,7 @@ const InvigilatorAssignment: React.FC = () => {
       for (const sch of schedulesData) {
         try {
           const invRes = await axios.get(
-            `http://localhost:5000/api/exam/invigilators/${sch.id}`,
+            `/api/exam/invigilators/${sch.id}`,
             { headers }
           );
           const invData = invRes.data?.data || invRes.data || [];
@@ -148,7 +148,7 @@ const InvigilatorAssignment: React.FC = () => {
 
     setSaving(true);
     try {
-      await axios.post("http://localhost:5000/api/exam/invigilators", form, {
+      await axios.post("/api/exam/invigilators", form, {
         headers,
       });
       toast.success("Invigilator assigned successfully");
@@ -168,7 +168,7 @@ const InvigilatorAssignment: React.FC = () => {
     setDeleting(assignmentId);
     try {
       await axios.delete(
-        `http://localhost:5000/api/exam/invigilators/${assignmentId}`,
+        `/api/exam/invigilators/${assignmentId}`,
         { headers }
       );
       toast.success("Invigilator removed successfully");
@@ -186,8 +186,8 @@ const InvigilatorAssignment: React.FC = () => {
       <span
         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
           isChief
-            ? "bg-indigo-100 text-indigo-800"
-            : "bg-blue-100 text-blue-800"
+            ? "bg-primary-100 text-primary-800"
+            : "bg-primary-100 text-primary-800"
         }`}
       >
         {role}
@@ -226,7 +226,7 @@ const InvigilatorAssignment: React.FC = () => {
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
                 {exams.map((exam) => (
@@ -265,7 +265,7 @@ const InvigilatorAssignment: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, scheduleId: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="">Select Schedule</option>
                       {schedules.map((sch) => (
@@ -285,7 +285,7 @@ const InvigilatorAssignment: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, teacherId: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="">Select Teacher</option>
                       {teachers.map((teacher) => (
@@ -305,7 +305,7 @@ const InvigilatorAssignment: React.FC = () => {
                       onChange={(e) =>
                         setForm({ ...form, role: e.target.value })
                       }
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                     >
                       <option value="Chief">Chief Invigilator</option>
                       <option value="Assistant">Assistant Invigilator</option>
@@ -315,7 +315,7 @@ const InvigilatorAssignment: React.FC = () => {
                     <button
                       onClick={handleSubmit}
                       disabled={saving}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -333,7 +333,7 @@ const InvigilatorAssignment: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-indigo-600" />
+                  <Shield className="w-5 h-5 text-primary-600" />
                   <h2 className="text-lg font-semibold text-gray-900">
                     Assigned Invigilators
                   </h2>
@@ -341,7 +341,7 @@ const InvigilatorAssignment: React.FC = () => {
                 {!showForm && (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Assign Invigilator
@@ -351,7 +351,7 @@ const InvigilatorAssignment: React.FC = () => {
 
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                   <span className="ml-3 text-gray-500">Loading...</span>
                 </div>
               ) : invigilators.length === 0 ? (
@@ -365,7 +365,7 @@ const InvigilatorAssignment: React.FC = () => {
                   </p>
                   <button
                     onClick={() => setShowForm(true)}
-                    className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Assign Invigilator

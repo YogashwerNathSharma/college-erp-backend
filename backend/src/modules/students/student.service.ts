@@ -296,16 +296,46 @@ export const getDeletedStudents = async (tenantId: string) => {
 // GET STUDENT STATS
 // ============================================
 export const getStudentStats = async (tenantId: string, academicYearId?: string) => {
+  // If academicYearId is provided, count students via enrollments (handles promotions correctly)
+  if (academicYearId) {
+    const enrollments = await prisma.enrollment.findMany({
+      where: { tenantId, academicYearId, isDeleted: false },
+      include: { student: { select: { gender: true, createdAt: true } } },
+    });
+
+    const total = enrollments.length;
+    const active = enrollments.filter((e) => e.status === "active").length;
+    const inactive = enrollments.filter((e) => e.status === "inactive").length;
+    const left = enrollments.filter((e) => e.status === "left").length;
+    const boys = enrollments.filter((e) => ["Male", "male", "M", "MALE"].includes(e.student.gender)).length;
+    const girls = enrollments.filter((e) => ["Female", "female", "F", "FEMALE"].includes(e.student.gender)).length;
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newAdmissions = enrollments.filter((e) => new Date(e.student.createdAt) >= monthStart).length;
+
+    return { total, active, inactive, left, boys, girls, newAdmissions, totalStudents: total };
+  }
+
+  // Fallback: no academicYearId — count all students directly
   const baseWhere: any = { tenantId, isDeleted: false };
 
-  const [total, active, inactive, left] = await Promise.all([
+  const [total, active, inactive, left, boys, girls] = await Promise.all([
     prisma.student.count({ where: baseWhere }),
     prisma.student.count({ where: { ...baseWhere, status: "active" } }),
     prisma.student.count({ where: { ...baseWhere, status: "inactive" } }),
     prisma.student.count({ where: { ...baseWhere, status: "left" } }),
+    prisma.student.count({ where: { ...baseWhere, gender: { in: ["Male", "male", "M", "MALE"] } } }),
+    prisma.student.count({ where: { ...baseWhere, gender: { in: ["Female", "female", "F", "FEMALE"] } } }),
   ]);
 
-  return { total, active, inactive, left };
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const newAdmissions = await prisma.student.count({
+    where: { ...baseWhere, createdAt: { gte: monthStart } },
+  });
+
+  return { total, active, inactive, left, boys, girls, newAdmissions, totalStudents: total };
 };
 
 // ============================================

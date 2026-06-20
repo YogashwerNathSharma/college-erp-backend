@@ -6,7 +6,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiArrowLeft, FiEdit2, FiDownload } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Teacher {
   id: string;
@@ -100,7 +100,7 @@ const TeacherProfile = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -124,8 +124,8 @@ const TeacherProfile = () => {
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex flex-col md:flex-row items-start gap-6">
           {/* Avatar */}
-          <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-blue-600">
+          <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center">
+            <span className="text-3xl font-bold text-primary-600">
               {teacher.name.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -143,7 +143,7 @@ const TeacherProfile = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => navigate(`/teachers/edit/${teacher.id}`)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
                 >
                   <FiEdit2 size={16} /> Edit Profile
                 </button>
@@ -187,7 +187,7 @@ const TeacherProfile = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
                   activeTab === tab
-                    ? "border-blue-600 text-blue-600"
+                    ? "border-primary-600 text-primary-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -370,7 +370,7 @@ const TeacherProfile = () => {
                         <a
                           href={doc.fileUrl}
                           target="_blank"
-                          className="text-blue-600 hover:underline text-sm"
+                          className="text-primary-600 hover:underline text-sm"
                         >
                           View
                         </a>
@@ -395,9 +395,9 @@ const TeacherProfile = () => {
               {salary ? (
                 <div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="bg-primary-50 rounded-lg p-4">
                       <p className="text-xs text-gray-500">Basic Salary</p>
-                      <p className="text-lg font-bold text-blue-600">₹{salary.basicSalary?.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-primary-600">₹{salary.basicSalary?.toLocaleString()}</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4">
                       <p className="text-xs text-gray-500">Allowances</p>
@@ -425,7 +425,7 @@ const TeacherProfile = () => {
               <p>Attendance details are available in the Attendance section</p>
               <button
                 onClick={() => navigate("/teacher-attendance")}
-                className="mt-2 text-blue-600 hover:underline"
+                className="mt-2 text-primary-600 hover:underline"
               >
                 Go to Attendance →
               </button>

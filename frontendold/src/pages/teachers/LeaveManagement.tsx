@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiPlus, FiCheckCircle, FiClock, FiXCircle, FiX } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface LeaveRecord {
   id: string;
@@ -133,7 +133,7 @@ const LeaveManagement = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -144,7 +144,7 @@ const LeaveManagement = () => {
         <h1 className="text-2xl font-bold text-gray-800">Leave Management</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
         >
           <FiPlus size={18} /> Apply Leave
         </button>
@@ -153,8 +153,8 @@ const LeaveManagement = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-5 flex items-center gap-4">
-          <div className="bg-blue-100 p-3 rounded-lg">
-            <FiClock className="text-blue-600" size={24} />
+          <div className="bg-primary-100 p-3 rounded-lg">
+            <FiClock className="text-primary-600" size={24} />
           </div>
           <div>
             <p className="text-sm text-gray-500">Total Leave</p>
@@ -280,7 +280,7 @@ const LeaveManagement = () => {
                 <select
                   value={formData.teacherId}
                   onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="">Select Teacher</option>
                   {teachers.map((t) => (
@@ -294,7 +294,7 @@ const LeaveManagement = () => {
                 <select
                   value={formData.leaveType}
                   onChange={(e) => setFormData({ ...formData, leaveType: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="CASUAL">Casual Leave</option>
                   <option value="MEDICAL">Medical Leave</option>
@@ -310,7 +310,7 @@ const LeaveManagement = () => {
                     type="date"
                     value={formData.fromDate}
                     onChange={(e) => setFormData({ ...formData, fromDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
                 <div>
@@ -319,7 +319,7 @@ const LeaveManagement = () => {
                     type="date"
                     value={formData.toDate}
                     onChange={(e) => setFormData({ ...formData, toDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
               </div>
@@ -329,7 +329,7 @@ const LeaveManagement = () => {
                 <select
                   value={formData.academicYearId}
                   onChange={(e) => setFormData({ ...formData, academicYearId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="">Select Year</option>
                   {academicYears.map((y: any) => (
@@ -345,7 +345,7 @@ const LeaveManagement = () => {
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                   rows={3}
                   placeholder="Enter reason for leave"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none"
                 />
               </div>
 
@@ -360,7 +360,7 @@ const LeaveManagement = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {submitting ? "Applying..." : "Apply Leave"}
                 </button>

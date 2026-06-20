@@ -10,6 +10,7 @@ import {
   UpdateExamInput,
   AddExamSubjectInput,
   EnterMarksInput,
+  CustomSeatingInput,
 } from "./exam.types";
 
 // ─────────────────────────────────────────────────────
@@ -289,6 +290,7 @@ export const getMarksService = async (
       ...(exam.sectionId && { sectionId: exam.sectionId }),
       academicYearId: exam.academicYearId,
       tenantId,
+      status: "active",
       isDeleted: false,
     },
   });
@@ -817,7 +819,7 @@ export const getConsolidatedReportService = async (
 
   // 12. Calculate rank (compare with all students in the class)
   const enrollments = await prisma.enrollment.findMany({
-    where: { classId, academicYearId, tenantId, isDeleted: false },
+    where: { classId, academicYearId, tenantId, status: "active", isDeleted: false },
   });
   const classStudentIds = enrollments.map((e) => e.studentId);
 
@@ -1013,6 +1015,7 @@ export const generateSeatingService = async (
     classId: exam.classId,
     academicYearId: exam.academicYearId,
     tenantId,
+    status: "active",
     isDeleted: false,
   };
   if (exam.sectionId) enrollmentWhere.sectionId = exam.sectionId;
@@ -1076,6 +1079,43 @@ export const getSeatingByScheduleService = async (
     ? await prisma.student.findMany({ where: { id: { in: studentIds } } })
     : [];
 
+  // Get enrollments to find class info
+  const enrollments = studentIds.length > 0
+    ? await prisma.enrollment.findMany({
+        where: { studentId: { in: studentIds }, tenantId, isDeleted: false },
+      })
+    : [];
+
+  // Get class names
+  const classIds = [...new Set(enrollments.map((e: any) => e.classId))];
+  const classesData = classIds.length > 0
+    ? await prisma.class.findMany({ where: { id: { in: classIds } } })
+    : [];
+  const classNameMap: Record<string, string> = {};
+  for (const c of classesData as any[]) {
+    classNameMap[c.id] = c.name;
+  }
+
+  // Map studentId -> classId
+  const studentClassMap: Record<string, string> = {};
+  for (const e of enrollments as any[]) {
+    studentClassMap[e.studentId] = e.classId;
+  }
+
+  // Get sections
+  const sectionIds = [...new Set(enrollments.map((e: any) => e.sectionId).filter(Boolean))];
+  const sectionsData = sectionIds.length > 0
+    ? await prisma.section.findMany({ where: { id: { in: sectionIds } } })
+    : [];
+  const sectionNameMap: Record<string, string> = {};
+  for (const s of sectionsData as any[]) {
+    sectionNameMap[s.id] = s.name;
+  }
+  const studentSectionMap: Record<string, string> = {};
+  for (const e of enrollments as any[]) {
+    if (e.sectionId) studentSectionMap[e.studentId] = e.sectionId;
+  }
+
   const room = seatings.length > 0
     ? await prisma.room.findFirst({ where: { id: seatings[0].roomId } })
     : null;
@@ -1087,10 +1127,18 @@ export const getSeatingByScheduleService = async (
     available: ((room as any)?.capacity || 0) - seatings.length,
     seats: seatings.map((seat: any) => {
       const student = students.find((s: any) => s.id === seat.studentId);
+      const classId = studentClassMap[seat.studentId] || "";
+      const sectionId = studentSectionMap[seat.studentId] || "";
       return {
-        ...seat,
-        studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
-        admissionNo: (student as any)?.admissionNo || "",
+        seatNumber: seat.seatNo,
+        studentId: seat.studentId,
+        studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "",
+        fatherName: (student as any)?.fatherName || "",
+        roomName: room ? (room as any).name : "",
+        rollNo: (student as any)?.rollNumber || (student as any)?.admissionNo || "",
+        className: classNameMap[classId] || "",
+        sectionName: sectionNameMap[sectionId] || "",
+        assigned: true,
       };
     }),
   };
@@ -1113,6 +1161,7 @@ export const generateAdmitCardsService = async (
     classId: exam.classId,
     academicYearId: exam.academicYearId,
     tenantId,
+    status: "active",
     isDeleted: false,
   };
   if (exam.sectionId) enrollmentWhere.sectionId = exam.sectionId;
@@ -1555,5 +1604,240 @@ export const getExamReportsService = async (
     default:
       throw new Error("Invalid report type");
   }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOM SEATING ARRANGEMENT — Multi-class, Configurable
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Interleave students from different classes so no two from same class are adjacent
+ */
+function interleaveByClass(students: any[]): any[] {
+  // Group students by classId
+  const groups: Record<string, any[]> = {};
+  for (const s of students) {
+    const key = s._classId || "unknown";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(s);
+  }
+
+  const classKeys = Object.keys(groups);
+  if (classKeys.length <= 1) return students; // only one class, no mixing needed
+
+  // Round-robin pick from each class
+  const result: any[] = [];
+  let idx = 0;
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = false;
+    for (const key of classKeys) {
+      if (groups[key].length > 0) {
+        result.push(groups[key].shift()!);
+        hasMore = true;
+      }
+    }
+    idx++;
+    if (idx > 10000) break; // safety
+  }
+  return result;
+}
+
+/**
+ * Shuffle array randomly (Fisher-Yates)
+ */
+function shuffleArray(arr: any[]): any[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Custom Seating Generation — Admin chooses capacity, classes, mixing rules
+ */
+export const generateCustomSeatingService = async (
+  data: CustomSeatingInput,
+  tenantId: string
+) => {
+  const { examScheduleId, roomId, capacity, rows, cols, classIds, mixClasses, aiInstruction } = data;
+
+  // Validate schedule exists
+  const schedule = await prisma.examSchedule.findFirst({
+    where: { id: examScheduleId, tenantId, isDeleted: false },
+  });
+  if (!schedule) throw new Error("Schedule not found");
+
+  // Validate room exists
+  const room = await prisma.room.findFirst({
+    where: { id: roomId, tenantId, isDeleted: false },
+  });
+  if (!room) throw new Error("Room not found");
+
+  // Get exam for academicYearId
+  const exam = await prisma.exam.findFirst({
+    where: { id: schedule.examId, tenantId, isDeleted: false },
+  });
+  if (!exam) throw new Error("Exam not found");
+
+  // Fetch students from all selected classIds via Enrollment
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      classId: { in: classIds },
+      academicYearId: exam.academicYearId,
+      tenantId,
+      status: "active",
+      isDeleted: false,
+    },
+  });
+
+  // Deduplicate: one enrollment per student (first match wins)
+  const studentIds = [...new Set(enrollments.map((e: any) => e.studentId))];
+  if (studentIds.length === 0) throw new Error("No students found in selected classes");
+
+  const students = await prisma.student.findMany({
+    where: { id: { in: studentIds }, isDeleted: false },
+    orderBy: { firstName: "asc" },
+  });
+
+  // Map classId to each student for mixing purposes (first enrollment per student wins)
+  const enrollmentMap: Record<string, string> = {};
+  for (const e of enrollments as any[]) {
+    if (!enrollmentMap[e.studentId]) {
+      enrollmentMap[e.studentId] = e.classId;
+    }
+  }
+
+  // Get class names for reference
+  const classesData = await prisma.class.findMany({
+    where: { id: { in: classIds } },
+  });
+  const classNameMap: Record<string, string> = {};
+  for (const c of classesData as any[]) {
+    classNameMap[c.id] = c.name;
+  }
+
+  // Augment students with classId
+  let augmented = students.map((s: any) => ({
+    ...s,
+    _classId: enrollmentMap[s.id] || "",
+    _className: classNameMap[enrollmentMap[s.id] || ""] || "",
+  }));
+
+  // Limit to capacity
+  if (augmented.length > capacity) {
+    augmented = augmented.slice(0, capacity);
+  }
+
+  // Apply arrangement logic
+  let arranged: any[];
+
+  if (aiInstruction) {
+    // AI/Rule-based arrangement
+    arranged = applyAiInstruction(augmented, aiInstruction, classNameMap, rows, cols);
+  } else if (mixClasses) {
+    // Default: interleave by class
+    arranged = interleaveByClass(augmented);
+  } else {
+    // No mixing — just sequential
+    arranged = augmented;
+  }
+
+  // Soft delete old seating for this schedule+room
+  await prisma.seatingArrangement.updateMany({
+    where: { examScheduleId, roomId, tenantId },
+    data: { isDeleted: true },
+  });
+
+  // Assign seat numbers based on rows x cols
+  const seatingData = arranged.map((student: any, index: number) => {
+    const row = String.fromCharCode(65 + Math.floor(index / cols));
+    const col = (index % cols) + 1;
+    return {
+      examScheduleId,
+      studentId: student.id,
+      tenantId,
+      seatNo: `${row}${col}`,
+      roomId,
+      isDeleted: false,
+    };
+  });
+
+  await prisma.seatingArrangement.createMany({ data: seatingData });
+
+  return {
+    message: "Custom seating generated",
+    total: seatingData.length,
+    rows,
+    cols,
+    mixClasses,
+    classesUsed: classIds.length,
+  };
+};
+
+/**
+ * Apply AI instruction (rule-based keyword matching for now)
+ */
+function applyAiInstruction(
+  students: any[],
+  instruction: string,
+  classNameMap: Record<string, string>,
+  rows: number,
+  cols: number
+): any[] {
+  const lower = instruction.toLowerCase();
+
+  // Pattern: "random" — shuffle then interleave
+  if (lower.includes("random")) {
+    const shuffled = shuffleArray(students);
+    return interleaveByClass(shuffled);
+  }
+
+  // Pattern: "alternate" — alternate classes in a strict pattern
+  if (lower.includes("alternate") || lower.includes("alternating")) {
+    return interleaveByClass(students);
+  }
+
+  // Pattern: "row" — assign classes to specific rows
+  // e.g., "Put class 5 in first 2 rows and class 6 in last 3 rows"
+  if (lower.includes("row")) {
+    // Group by class
+    const groups: Record<string, any[]> = {};
+    for (const s of students) {
+      const key = s._classId || "unknown";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    }
+    // Assign each class sequentially row-by-row
+    const result: any[] = [];
+    for (const key of Object.keys(groups)) {
+      result.push(...groups[key]);
+    }
+    return result;
+  }
+
+  // Pattern: "reverse" — reverse roll number order
+  if (lower.includes("reverse")) {
+    return [...students].reverse();
+  }
+
+  // Default: interleave
+  return interleaveByClass(students);
+}
+
+/**
+ * AI Auto-Arrange (same logic, separate endpoint for future LLM integration)
+ */
+export const aiArrangeSeatingService = async (
+  data: CustomSeatingInput,
+  tenantId: string
+) => {
+  // For now, same as custom with AI instruction enforced
+  if (!data.aiInstruction) {
+    data.aiInstruction = "alternate classes randomly ensuring no same-class adjacent";
+  }
+  return generateCustomSeatingService(data, tenantId);
 };
 

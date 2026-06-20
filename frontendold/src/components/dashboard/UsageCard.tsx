@@ -18,7 +18,7 @@ export default function UsageCard() {
     const fetchUsage = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/tenant/usage", {
+        const res = await axios.get("/api/tenant/usage", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsage(res.data.data);
@@ -94,7 +94,7 @@ export default function UsageCard() {
           const isAtLimit = percentage >= 100;
 
           // Color based on usage level
-          let barColor = "bg-indigo-500";
+          let barColor = "bg-primary-500";
           if (isAtLimit) barColor = "bg-red-500";
           else if (isNearLimit) barColor = "bg-amber-500";
           else if (item.color === "emerald") barColor = "bg-emerald-500";

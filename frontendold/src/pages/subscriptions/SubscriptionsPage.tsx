@@ -90,7 +90,7 @@ export default function SubscriptionsPage() {
       const response =
         await axios.get(
 
-          "http://localhost:5000/api/subscriptions/plans",
+          "/api/subscriptions/plans",
 
           {
 
@@ -138,7 +138,7 @@ export default function SubscriptionsPage() {
       const res =
         await axios.get(
 
-          "http://localhost:5000/api/tenant",
+          "/api/tenant",
 
           {
 
@@ -200,7 +200,7 @@ export default function SubscriptionsPage() {
 
       await axios.delete(
 
-        `http://localhost:5000/api/subscriptions/plans/${id}`,
+        `/api/subscriptions/plans/${id}`,
 
         {
 
@@ -269,7 +269,7 @@ export default function SubscriptionsPage() {
       const subscriptionResponse =
         await axios.post(
 
-          "http://localhost:5000/api/subscriptions/assign",
+          "/api/subscriptions/assign",
 
           {
 
@@ -307,7 +307,7 @@ export default function SubscriptionsPage() {
       const orderResponse =
         await axios.post(
 
-          "http://localhost:5000/api/subscription-payments/create-order",
+          "/api/subscription-payments/create-order",
 
           {
 
@@ -453,7 +453,7 @@ export default function SubscriptionsPage() {
               const verifyResponse =
                 await axios.post(
 
-                  "http://localhost:5000/api/subscription-payments/verify",
+                  "/api/subscription-payments/verify",
 
                   {
 
@@ -655,8 +655,8 @@ export default function SubscriptionsPage() {
           }}
 
           className="
-            bg-indigo-600
-            hover:bg-indigo-700
+            bg-primary-600
+            hover:bg-primary-700
             text-white
             px-6
             py-3
@@ -743,7 +743,7 @@ export default function SubscriptionsPage() {
               className="
                 text-4xl
                 font-bold
-                text-indigo-600
+                text-primary-600
                 mt-4
               "
             >
@@ -803,8 +803,8 @@ export default function SubscriptionsPage() {
                     key={index}
 
                     className="
-                      bg-indigo-100
-                      text-indigo-700
+                      bg-primary-100
+                      text-primary-700
                       text-xs
                       px-3
                       py-1
@@ -953,8 +953,8 @@ export default function SubscriptionsPage() {
 
                 className="
                   flex-1
-                  bg-indigo-600
-                  hover:bg-indigo-700
+                  bg-primary-600
+                  hover:bg-primary-700
                   text-white
                   py-2.5
                   rounded-xl

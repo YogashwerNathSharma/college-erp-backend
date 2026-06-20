@@ -1,3 +1,4 @@
+import { getPrintSignatureHTML } from "../../components/PrintSignature";
 
 // Fee Receipt Print — Dual Copy (Student + School)
 // Portrait A4 — 2 copies side by side
@@ -48,7 +49,8 @@ const numberToWords = (num: number): string => {
   return convert(Math.round(num)) + " only.";
 };
 
-export const FeeReceiptPrint = (data: ReceiptData) => {
+export const FeeReceiptPrint = async (data: ReceiptData) => {
+  const principalSignatureHTML = await getPrintSignatureHTML();
   const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const schoolName = tenant.name || tenant.schoolName || "School Name";
   const address = tenant.address || "";
@@ -57,7 +59,7 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
   const logoUrl = tenant.logoUrl
     ? tenant.logoUrl.startsWith("http")
       ? tenant.logoUrl
-      : `http://localhost:5000${tenant.logoUrl}`
+      : `${tenant.logoUrl}`
     : "";
 
   const date = new Date(data.paymentDate).toLocaleDateString("en-IN", {
@@ -209,10 +211,8 @@ export const FeeReceiptPrint = (data: ReceiptData) => {
             Student/Guardian
           </div>
         </div>
-        <div>
-          <div style="border-top: 1px solid #000; padding-top: 1px; width: 90px; text-align: center;">
-            ${data.collectedBy || "Authorized Sign."}
-          </div>
+        <div style="text-align: center;">
+          ${principalSignatureHTML || `<div style="border-top: 1px solid #000; padding-top: 1px; width: 90px; text-align: center;">${data.collectedBy || "Authorized Sign."}</div>`}
         </div>
       </div>
     </div>

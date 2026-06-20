@@ -7,7 +7,7 @@ type Props = {
 
 export default function Insights({ data }: Props) {
   return (
-    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+    <div className="bg-gradient-to-r from-primary-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
 
       {/* HEADER */}
       <div className="mb-2">

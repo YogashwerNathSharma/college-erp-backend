@@ -391,15 +391,17 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
       recentPaymentsRaw.map(
         (p: any) => ({
 
-          amount:
+          paidAmount:
             p.paidAmount ?? 0,
 
-          date:
+          createdAt:
             p.createdAt,
 
-          studentName:
-            `${p.enrollment?.student?.firstName ?? ""} ${p.enrollment?.student?.lastName ?? ""}`.trim() ||
-            "Unknown",
+          student: {
+            name:
+              `${p.enrollment?.student?.firstName ?? ""} ${p.enrollment?.student?.lastName ?? ""}`.trim() ||
+              "Unknown",
+          },
 
         })
       );
@@ -447,12 +449,14 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
       defaultersRaw.map(
         (d: any) => ({
 
-          amount:
-            d.pendingAmount ?? 0,
+          pendingAmount:
+            d.balanceAmount ?? 0,
 
-          studentName:
-            `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() ||
-            "Unknown",
+          student: {
+            name:
+              `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() ||
+              "Unknown",
+          },
 
         })
       );

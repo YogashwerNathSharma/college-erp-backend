@@ -53,7 +53,7 @@ const MarksEntry: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${id}/marks`,
+        `/api/exam/${id}/marks`,
         { headers }
       );
       const data = res.data?.data || res.data;
@@ -158,7 +158,7 @@ const MarksEntry: React.FC = () => {
 
     const payload = { examId: id, marks };
 
-    const res = await axios.post("http://localhost:5000/api/exam/marks", payload, {
+    const res = await axios.post("/api/exam/marks", payload, {
       headers,
     });
     
@@ -179,7 +179,7 @@ const MarksEntry: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
           <span className="text-gray-600">Loading marks data...</span>
         </div>
       </div>
@@ -209,7 +209,7 @@ const MarksEntry: React.FC = () => {
             </p>
             <button
               onClick={() => navigate(`/exams/${id}/subjects`)}
-              className="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
             >
               Add Subjects
             </button>
@@ -244,7 +244,7 @@ const MarksEntry: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="mt-4 sm:mt-0 inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-4 sm:mt-0 inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -342,7 +342,7 @@ const MarksEntry: React.FC = () => {
                                 disabled={mark?.isAbsent}
                                 min={0}
                                 max={sub.maxMarks}
-                                className={`w-20 text-center rounded-md border shadow-sm text-sm py-1 focus:border-indigo-500 focus:ring-indigo-500 ${getMarkColor(
+                                className={`w-20 text-center rounded-md border shadow-sm text-sm py-1 focus:border-primary-500 focus:ring-primary-500 ${getMarkColor(
                                   mark?.marks ?? null,
                                   sub.passingMarks,
                                   mark?.isAbsent ?? false
@@ -380,7 +380,7 @@ const MarksEntry: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="inline-flex items-center px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-5 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

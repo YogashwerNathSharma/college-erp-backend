@@ -59,7 +59,7 @@ export const updateAttendanceService = async (
   data: UpdateAttendanceBody,
   tenantId: string
 ) => {
-  const { classId, sectionId, date, students } = data;
+  const { classId, sectionId, academicYearId, date, students } = data;
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
@@ -89,7 +89,7 @@ export const updateAttendanceService = async (
           studentId: s.studentId,
           classId,
           sectionId,
-          academicYearId: "",
+          academicYearId,
           tenantId,
           date: attendanceDate,
           status: s.status,
@@ -123,6 +123,7 @@ export const getClassAttendanceService = async (
       classId,
       sectionId,
       tenantId,
+      status: "active",
       isDeleted: false,
     },
     include: {

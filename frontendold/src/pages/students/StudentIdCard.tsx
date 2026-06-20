@@ -3,8 +3,9 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import PrintSignature from "../../components/PrintSignature";
 
-// ─── Interfaces ───────────────────────────────────────────────────────────────
+// ─── Interfaces ─────────────────────────────────────────────────────────────
 
 interface StudentData {
   id?: string;
@@ -34,8 +35,8 @@ interface PatternProps {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `http://localhost:5000${path}`;
-  return `http://localhost:5000/uploads/${path}`;
+  if (path.startsWith("/")) return `${path}`;
+  return `/uploads/${path}`;
 };
 
 // FIX 2 (PDF): Convert an image URL to a base64 data URL for html2canvas
@@ -1550,6 +1551,103 @@ const patternColors: Record<number, string> = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+
+// ═══ Custom Template Card (renders YN-UDP template with student data) ═══
+const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant: any; academicYearName: string }> = ({ template, student, tenant, academicYearName }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const fillPlaceholder = (text: string) => {
+    if (!text) return text;
+    return text
+      .replace(/\{\{school_name\}\}/g, tenant?.name || "School Name")
+      .replace(/\{\{school_address\}\}/g, tenant?.address || "")
+      .replace(/\{\{school_phone\}\}/g, tenant?.phone || "")
+      .replace(/\{\{school_email\}\}/g, tenant?.email || "")
+      .replace(/\{\{student_name\}\}/g, `${student.firstName || ""} ${student.lastName || ""}`.trim())
+      .replace(/\{\{first_name\}\}/g, student.firstName || "")
+      .replace(/\{\{last_name\}\}/g, student.lastName || "")
+      .replace(/\{\{class_name\}\}/g, student.class?.name?.replace(/class\s*/i, "") || "")
+      .replace(/\{\{section_name\}\}/g, student.section?.name?.replace(/section\s*/i, "") || "")
+      .replace(/\{\{roll_number\}\}/g, (student as any).rollNumber || "")
+      .replace(/\{\{admission_no\}\}/g, student.admissionNo || "")
+      .replace(/\{\{father_name\}\}/g, student.fatherName || "")
+      .replace(/\{\{mother_name\}\}/g, (student as any).motherName || "")
+      .replace(/\{\{dob\}\}/g, student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "")
+      .replace(/\{\{blood_group\}\}/g, student.bloodGroup || "")
+      .replace(/\{\{address\}\}/g, student.address || "")
+      .replace(/\{\{phone\}\}/g, student.fatherPhone || "")
+      .replace(/\{\{academic_year\}\}/g, academicYearName || "")
+      .replace(/\{\{gender\}\}/g, (student as any).gender || "")
+      .replace(/\{\{sr_no\}\}/g, (student as any).srNo || "")
+      .replace(/\{\{current_date\}\}/g, new Date().toLocaleDateString("en-IN"))
+      .replace(/\{\{[^}]+\}\}/g, ""); // Remove any remaining unfilled placeholders
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !template?.canvasJSON?.elements) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const elements = template.canvasJSON.elements;
+    const pageBg = template.canvasJSON.pageBg || "#ffffff";
+
+    // Clear and draw background
+    ctx.fillStyle = pageBg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw each element
+    elements.forEach((el: any) => {
+      ctx.save();
+      ctx.globalAlpha = el.opacity ?? 1;
+      if (el.rotation) {
+        const cx = el.x + el.width / 2, cy = el.y + el.height / 2;
+        ctx.translate(cx, cy);
+        ctx.rotate((el.rotation * Math.PI) / 180);
+        ctx.translate(-cx, -cy);
+      }
+
+      if (el.type === "rect") {
+        const r = el.borderRadius || 0;
+        ctx.beginPath();
+        if (r > 0) { ctx.moveTo(el.x + r, el.y); ctx.arcTo(el.x + el.width, el.y, el.x + el.width, el.y + el.height, r); ctx.arcTo(el.x + el.width, el.y + el.height, el.x, el.y + el.height, r); ctx.arcTo(el.x, el.y + el.height, el.x, el.y, r); ctx.arcTo(el.x, el.y, el.x + el.width, el.y, r); ctx.closePath(); }
+        else { ctx.rect(el.x, el.y, el.width, el.height); }
+        if (el.fill && el.fill !== "transparent") { ctx.fillStyle = el.fill; ctx.fill(); }
+        if (el.stroke && el.stroke !== "transparent") { ctx.strokeStyle = el.stroke; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke(); }
+      } else if (el.type === "circle") {
+        ctx.beginPath(); ctx.ellipse(el.x + el.width / 2, el.y + el.height / 2, el.width / 2, el.height / 2, 0, 0, Math.PI * 2);
+        if (el.fill && el.fill !== "transparent") { ctx.fillStyle = el.fill; ctx.fill(); }
+        if (el.stroke && el.stroke !== "transparent") { ctx.strokeStyle = el.stroke || "#000"; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke(); }
+      } else if (el.type === "line") {
+        ctx.beginPath(); ctx.moveTo(el.x, el.y + el.height / 2); ctx.lineTo(el.x + el.width, el.y + el.height / 2);
+        ctx.strokeStyle = el.stroke || "#000"; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke();
+      } else if (el.type === "text" || el.type === "field") {
+        const text = fillPlaceholder(el.text || "");
+        const weight = el.fontWeight === "bold" ? "bold" : "";
+        const style = el.fontStyle === "italic" ? "italic" : "";
+        ctx.font = `${style} ${weight} ${el.fontSize || 14}px ${el.fontFamily || "Arial"}`;
+        ctx.fillStyle = el.color || (el.type === "field" ? "#000000" : "#000000");
+        ctx.textAlign = (el.textAlign as CanvasTextAlign) || "left";
+        let textX = el.x;
+        if (el.textAlign === "center") textX = el.x + el.width / 2;
+        else if (el.textAlign === "right") textX = el.x + el.width;
+        ctx.fillText(text, textX, el.y + (el.fontSize || 14));
+      }
+      ctx.restore();
+    });
+  }, [template, student, tenant, academicYearName]);
+
+  const w = template?.pageWidth || 382;
+  const h = template?.pageHeight || 550;
+  const scale = 0.55; // Scale down for display
+
+  return (
+    <div style={{ width: w * scale, height: h * scale, margin: "4px" }}>
+      <canvas ref={canvasRef} width={w} height={h} style={{ width: "100%", height: "100%", borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }} />
+    </div>
+  );
+};
+
 const StudentIdCardPage: React.FC = () => {
   const [mode, setMode] = useState<"individual" | "class">("individual");
   const [classes, setClasses] = useState<any[]>([]);
@@ -1562,6 +1660,10 @@ const StudentIdCardPage: React.FC = () => {
   const [photoShape, setPhotoShape] = useState<"rectangle" | "circle">("rectangle");
   const [cardsPerPage, setCardsPerPage] = useState<number>(6);
   const [selectedPattern, setSelectedPattern] = useState<number>(1);
+  const [useCustomTemplate, setUseCustomTemplate] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState<any>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [activeAcademicYear, setActiveAcademicYear] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [tenant, setTenant] = useState<any>(null);
@@ -1633,7 +1735,35 @@ const StudentIdCardPage: React.FC = () => {
     try { const raw = localStorage.getItem("tenant"); if (raw) setTenant(JSON.parse(raw)); } catch (err) {}
   };
 
-  useEffect(() => { loadTenant(); fetchClasses(); fetchAcademicYears(); }, []);
+  
+  // Fetch custom templates from YN-UDP
+  useEffect(() => {
+    const fetchCustomTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
+        // Try with tenant first, then fallback to default tenant
+        let res = await axios.get(`/api/designer/templates?tenantId=${tenantId}&type=id-card`).catch(() => null);
+        if (!res?.data?.data?.length) {
+          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000&type=id-card`).catch(() => null);
+        }
+        // Also try without type filter to get all templates
+        if (!res?.data?.data?.length) {
+          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+        }
+        if (res?.data?.success) {
+          setCustomTemplates(res.data.data || []);
+        }
+      } catch (err) {
+        console.log("YN-UDP templates not available:", err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    fetchCustomTemplates();
+  }, []);
+
+useEffect(() => { loadTenant(); fetchClasses(); fetchAcademicYears(); }, []);
   useEffect(() => { if (selectedClass) { setSections([]); setSelectedSection(""); setStudents([]); setSelectedStudent(null); setShowCards(false); fetchSections(selectedClass); } }, [selectedClass]);
   useEffect(() => { if (selectedClass && selectedSection) { setStudents([]); setSelectedStudent(null); setShowCards(false); fetchStudentsByClass(selectedClass, selectedSection); } }, [selectedSection]);
 
@@ -1739,20 +1869,20 @@ const StudentIdCardPage: React.FC = () => {
       <div className="no-print bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-800">Student ID Card Generator</h1>
-          {activeAcademicYear && <div className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">Active Year: {activeAcademicYear}</div>}
+          {activeAcademicYear && <div className="text-sm bg-primary-50 text-primary-700 px-3 py-1 rounded-full font-medium">Active Year: {activeAcademicYear}</div>}
         </div>
       </div>
 
       <div className="no-print bg-white rounded-lg shadow-sm p-4 mb-4">
         <div className="flex gap-2 mb-4">
-          <button onClick={() => { setMode("individual"); setShowCards(false); setSelectedStudent(null); }} className={`px-4 py-2 rounded-md text-sm font-medium transition ${mode === "individual" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>Individual</button>
-          <button onClick={() => { setMode("class"); setShowCards(false); setSelectedStudent(null); }} className={`px-4 py-2 rounded-md text-sm font-medium transition ${mode === "class" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>Class-wise</button>
+          <button onClick={() => { setMode("individual"); setShowCards(false); setSelectedStudent(null); }} className={`px-4 py-2 rounded-md text-sm font-medium transition ${mode === "individual" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>Individual</button>
+          <button onClick={() => { setMode("class"); setShowCards(false); setSelectedStudent(null); }} className={`px-4 py-2 rounded-md text-sm font-medium transition ${mode === "class" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>Class-wise</button>
         </div>
         <div className="flex flex-wrap gap-3 items-end">
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Class</label><select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[140px]"><option value="">Select Class</option>{classes.map((c: any) => (<option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>))}</select></div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Section</label><select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm min-w-[140px]" disabled={!selectedClass}><option value="">Select Section</option>{sections.map((s: any) => (<option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>))}</select></div>
-          <div><label className="block text-xs font-medium text-gray-600 mb-1">Orientation</label><div className="flex gap-1"><button onClick={() => setOrientation("portrait")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "portrait" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Portrait</button><button onClick={() => setOrientation("landscape")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "landscape" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Landscape</button></div></div>
-          <div><label className="block text-xs font-medium text-gray-600 mb-1">Photo Shape</label><div className="flex gap-1"><button onClick={() => setPhotoShape("rectangle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "rectangle" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Rectangle</button><button onClick={() => setPhotoShape("circle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "circle" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}>Circle</button></div></div>
+          <div><label className="block text-xs font-medium text-gray-600 mb-1">Orientation</label><div className="flex gap-1"><button onClick={() => setOrientation("portrait")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "portrait" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700"}`}>Portrait</button><button onClick={() => setOrientation("landscape")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${orientation === "landscape" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700"}`}>Landscape</button></div></div>
+          <div><label className="block text-xs font-medium text-gray-600 mb-1">Photo Shape</label><div className="flex gap-1"><button onClick={() => setPhotoShape("rectangle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "rectangle" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700"}`}>Rectangle</button><button onClick={() => setPhotoShape("circle")} className={`px-3 py-2 text-xs rounded-md font-medium transition ${photoShape === "circle" ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-700"}`}>Circle</button></div></div>
           <div><label className="block text-xs font-medium text-gray-600 mb-1">Cards/Page</label><select value={cardsPerPage} onChange={(e) => setCardsPerPage(Number(e.target.value))} className="border border-gray-300 rounded-md px-3 py-2 text-sm"><option value={4}>4</option><option value={6}>6</option><option value={8}>8</option><option value={10}>10</option></select></div>
           {mode === "class" && <button onClick={handleGenerateClass} disabled={students.length === 0} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition disabled:opacity-50">Generate All Cards</button>}
           {showCards && cardsToDisplay.length > 0 && (<><button onClick={handleDownloadPDF} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition">Download PDF</button><button onClick={handlePrint} className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium transition">Print</button></>)}
@@ -1760,15 +1890,56 @@ const StudentIdCardPage: React.FC = () => {
       </div>
 
       <div className="no-print bg-white rounded-lg shadow-sm p-4 mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Card Pattern</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3">
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13].map((num) => (
-            <div key={num} onClick={() => setSelectedPattern(num)} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedPattern === num ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200 hover:border-gray-400"}`}>
-              <div style={{ background: patternColors[num], height: 40 }} />
-              <div className="p-1 text-center"><div className="text-xs font-medium text-gray-700 truncate">{patternLabels[num]}</div></div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-700">Select Card Pattern</h3>
+          <div className="flex gap-1">
+            <button onClick={() => setUseCustomTemplate(false)} className={`px-3 py-1 text-xs font-medium rounded ${!useCustomTemplate ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>Built-in Patterns</button>
+            <button onClick={() => setUseCustomTemplate(true)} className={`px-3 py-1 text-xs font-medium rounded ${useCustomTemplate ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>✨ Custom (YN-UDP Designer)</button>
+            <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-blue-600 hover:bg-blue-50 border border-blue-200">+ Create New Template</a>
+          </div>
         </div>
+        
+        {!useCustomTemplate ? (
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-3">
+            {[1,2,3,4,5,6,7,8,9,10,11,12,13].map((num) => (
+              <div key={num} onClick={() => { setSelectedPattern(num); setSelectedCustomTemplate(null); }} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedPattern === num && !selectedCustomTemplate ? "border-primary-500 ring-2 ring-blue-200" : "border-gray-200 hover:border-gray-400"}`}>
+                <div style={{ background: patternColors[num], height: 40 }} />
+                <div className="p-1 text-center"><div className="text-xs font-medium text-gray-700 truncate">{patternLabels[num]}</div></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            {loadingTemplates ? (
+              <div className="text-center py-8 text-gray-500 text-sm">Loading custom templates...</div>
+            ) : customTemplates.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {customTemplates.map((tmpl) => (
+                  <div key={tmpl.id} onClick={() => { (async () => {
+                      try {
+                        const fullRes = await axios.get(`/api/designer/templates/${tmpl.id}`);
+                        if (fullRes.data.success) { setSelectedCustomTemplate(fullRes.data.data); } else { setSelectedCustomTemplate(tmpl); }
+                      } catch { setSelectedCustomTemplate(tmpl); }
+                    })(); setSelectedPattern(0); }} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedCustomTemplate?.id === tmpl.id ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-400"}`}>
+                    <div className="h-20 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
+                      <span className="text-2xl">🎨</span>
+                    </div>
+                    <div className="p-2">
+                      <div className="text-xs font-medium text-gray-800 truncate">{tmpl.name}</div>
+                      <div className="text-[10px] text-gray-500">{tmpl.pageWidth}×{tmpl.pageHeight}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-sm mb-2">No custom templates found</p>
+                <p className="text-gray-400 text-xs mb-3">Create ID Card templates in YN-UDP Designer first</p>
+                <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">✨ Open YN-UDP Designer</a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {mode === "individual" && students.length > 0 && !showCards && (
@@ -1776,7 +1947,7 @@ const StudentIdCardPage: React.FC = () => {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Select a Student ({students.length} found)</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto">
             {students.map((s) => (
-              <div key={s.id || (s as any)._id} onClick={() => handleStudentSelect(s)} className="flex items-center gap-2 p-2 border border-gray-200 rounded-md cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition">
+              <div key={s.id || (s as any)._id} onClick={() => handleStudentSelect(s)} className="flex items-center gap-2 p-2 border border-gray-200 rounded-md cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition">
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
                   {getFullUrl(s.photoUrl) ? <img src={getFullUrl(s.photoUrl)!} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">{s.firstName?.[0]}{s.lastName?.[0]}</div>}
                 </div>
@@ -1790,8 +1961,9 @@ const StudentIdCardPage: React.FC = () => {
       {showCards && cardsToDisplay.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-4">
           <div ref={printRef} className="print-area" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12, padding: 16 }}>
-            {cardsToDisplay.slice(0, cardsPerPage).map((student) => (<PatternComponent key={student.id || (student as any)._id} student={student} tenant={tenant} academicYearName={activeAcademicYear} orientation={orientation} photoShape={photoShape} />))}
+            {cardsToDisplay.slice(0, cardsPerPage).map((student) => (selectedCustomTemplate ? <CustomTemplateCard key={student.id || (student as any)._id} template={selectedCustomTemplate} student={student} tenant={tenant} academicYearName={activeAcademicYear} /> : <PatternComponent key={student.id || (student as any)._id} student={student} tenant={tenant} academicYearName={activeAcademicYear} orientation={orientation} photoShape={photoShape} />))}
           </div>
+          <PrintSignature />
           {cardsToDisplay.length > cardsPerPage && <div className="no-print text-center mt-3 text-sm text-gray-500">Showing {cardsPerPage} of {cardsToDisplay.length} cards.</div>}
         </div>
       )}

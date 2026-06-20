@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiSave, FiSettings } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 const TABS = [
   "General Settings",
@@ -89,7 +89,7 @@ const TeacherSettings = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -111,7 +111,7 @@ const TeacherSettings = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
                   activeTab === tab
-                    ? "border-blue-600 text-blue-600"
+                    ? "border-primary-600 text-primary-600"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -129,7 +129,7 @@ const TeacherSettings = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Academic Year
                 </label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
                   <option>2024-25</option>
                   <option>2025-26</option>
                 </select>
@@ -139,7 +139,7 @@ const TeacherSettings = () => {
                 <select
                   value={settings.dateFormat}
                   onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -151,7 +151,7 @@ const TeacherSettings = () => {
                 <select
                   value={settings.timeFormat}
                   onChange={(e) => setSettings({ ...settings, timeFormat: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="24 Hour">24 Hour</option>
                   <option value="12 Hour">12 Hour</option>
@@ -173,7 +173,7 @@ const TeacherSettings = () => {
                     setSettings({ ...settings, attendanceRequired: !settings.attendanceRequired })
                   }
                   className={`relative w-12 h-6 rounded-full transition ${
-                    settings.attendanceRequired ? "bg-blue-600" : "bg-gray-300"
+                    settings.attendanceRequired ? "bg-primary-600" : "bg-gray-300"
                   }`}
                 >
                   <div
@@ -191,7 +191,7 @@ const TeacherSettings = () => {
                   type="time"
                   value={settings.lateMarkTime}
                   onChange={(e) => setSettings({ ...settings, lateMarkTime: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div>
@@ -202,7 +202,7 @@ const TeacherSettings = () => {
                   type="time"
                   value={settings.halfDayTime}
                   onChange={(e) => setSettings({ ...settings, halfDayTime: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -221,7 +221,7 @@ const TeacherSettings = () => {
                   onChange={(e) =>
                     setSettings({ ...settings, casualLeavePerYear: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div>
@@ -234,7 +234,7 @@ const TeacherSettings = () => {
                   onChange={(e) =>
                     setSettings({ ...settings, medicalLeavePerYear: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div>
@@ -247,7 +247,7 @@ const TeacherSettings = () => {
                   onChange={(e) =>
                     setSettings({ ...settings, earnedLeavePerYear: parseInt(e.target.value) || 0 })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -268,7 +268,7 @@ const TeacherSettings = () => {
                   onChange={(e) =>
                     setSettings({ ...settings, payDay: parseInt(e.target.value) || 1 })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
               <div>
@@ -280,7 +280,7 @@ const TeacherSettings = () => {
                   onChange={(e) =>
                     setSettings({ ...settings, salarySlipTemplate: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="default">Default Template</option>
                   <option value="detailed">Detailed Template</option>
@@ -305,7 +305,7 @@ const TeacherSettings = () => {
                     setSettings({ ...settings, emailNotifications: !settings.emailNotifications })
                   }
                   className={`relative w-12 h-6 rounded-full transition ${
-                    settings.emailNotifications ? "bg-blue-600" : "bg-gray-300"
+                    settings.emailNotifications ? "bg-primary-600" : "bg-gray-300"
                   }`}
                 >
                   <div
@@ -327,7 +327,7 @@ const TeacherSettings = () => {
                     setSettings({ ...settings, smsNotifications: !settings.smsNotifications })
                   }
                   className={`relative w-12 h-6 rounded-full transition ${
-                    settings.smsNotifications ? "bg-blue-600" : "bg-gray-300"
+                    settings.smsNotifications ? "bg-primary-600" : "bg-gray-300"
                   }`}
                 >
                   <div
@@ -345,7 +345,7 @@ const TeacherSettings = () => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
             >
               <FiSave size={16} /> {saving ? "Saving..." : "Save Settings"}
             </button>

@@ -114,21 +114,21 @@ const FeeReminderPage: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year <span className="text-red-500">*</span></label>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">Select Session</option>
               {academicYears.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Class (Optional)</label>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">All Classes</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
-            <select value={template} onChange={(e) => setTemplate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+            <select value={template} onChange={(e) => setTemplate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
               {MESSAGE_TEMPLATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
@@ -139,16 +139,16 @@ const FeeReminderPage: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Send To</label>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" value="DUE_ONLY" checked={sendTo === "DUE_ONLY"} onChange={() => setSendTo("DUE_ONLY")} className="w-4 h-4 text-blue-600" />
+              <input type="radio" value="DUE_ONLY" checked={sendTo === "DUE_ONLY"} onChange={() => setSendTo("DUE_ONLY")} className="w-4 h-4 text-primary-600" />
               <span className="text-sm text-gray-700">Due Students Only</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" value="ALL" checked={sendTo === "ALL"} onChange={() => setSendTo("ALL")} className="w-4 h-4 text-blue-600" />
+              <input type="radio" value="ALL" checked={sendTo === "ALL"} onChange={() => setSendTo("ALL")} className="w-4 h-4 text-primary-600" />
               <span className="text-sm text-gray-700">All Students</span>
             </label>
           </div>
           {previewData && (
-            <p className="text-xs text-blue-600 mt-1 font-medium">
+            <p className="text-xs text-primary-600 mt-1 font-medium">
               {loadingPreview ? "Counting..." : `${previewData.totalStudents} students will receive this reminder`}
             </p>
           )}
@@ -161,7 +161,7 @@ const FeeReminderPage: React.FC = () => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
             placeholder="Enter reminder message..."
           />
           <p className="text-xs text-gray-400 mt-1">
@@ -174,8 +174,8 @@ const FeeReminderPage: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Send Via</label>
           <div className="flex gap-4">
             {["SMS", "EMAIL", "WHATSAPP"].map((ch) => (
-              <label key={ch} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${channels.includes(ch) ? "bg-blue-50 border-blue-300" : "bg-white border-gray-200 hover:bg-gray-50"}`}>
-                <input type="checkbox" checked={channels.includes(ch)} onChange={() => toggleChannel(ch)} className="w-4 h-4 text-blue-600 rounded" />
+              <label key={ch} className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${channels.includes(ch) ? "bg-primary-50 border-primary-300" : "bg-white border-gray-200 hover:bg-gray-50"}`}>
+                <input type="checkbox" checked={channels.includes(ch)} onChange={() => toggleChannel(ch)} className="w-4 h-4 text-primary-600 rounded" />
                 <span className="text-sm font-medium text-gray-700">{ch === "SMS" ? "📱 SMS" : ch === "EMAIL" ? "📧 Email" : "💬 WhatsApp"}</span>
               </label>
             ))}
@@ -190,7 +190,7 @@ const FeeReminderPage: React.FC = () => {
           <button
             onClick={handleSend}
             disabled={sending || !selectedYear || channels.length === 0}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium flex items-center gap-2"
+            className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium flex items-center gap-2"
           >
             {sending ? (
               <>

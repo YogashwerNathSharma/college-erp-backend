@@ -4,7 +4,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiStar, FiSave } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Parameter {
   name: string;
@@ -142,7 +142,7 @@ const TeacherPerformance = () => {
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => (
@@ -155,7 +155,7 @@ const TeacherPerformance = () => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Year</option>
               {academicYears.map((y: any) => (
@@ -171,7 +171,7 @@ const TeacherPerformance = () => {
         <div className="bg-white rounded-lg shadow">
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           ) : (
             <>
@@ -216,7 +216,7 @@ const TeacherPerformance = () => {
                             value={param.remarks}
                             onChange={(e) => updateRemarks(index, e.target.value)}
                             placeholder="Enter remarks"
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                           />
                         </td>
                       </tr>
@@ -228,10 +228,10 @@ const TeacherPerformance = () => {
               {/* Overall Rating & Remarks */}
               <div className="p-6 border-t">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="bg-primary-50 rounded-lg p-4">
                     <p className="text-sm text-gray-500 mb-1">Overall Rating</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-3xl font-bold text-blue-600">{overallRating}</span>
+                      <span className="text-3xl font-bold text-primary-600">{overallRating}</span>
                       <span className="text-sm text-gray-500">/ 5</span>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
@@ -247,7 +247,7 @@ const TeacherPerformance = () => {
                       onChange={(e) => setOverallRemarks(e.target.value)}
                       rows={3}
                       placeholder="Enter overall remarks..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -256,7 +256,7 @@ const TeacherPerformance = () => {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                    className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
                   >
                     <FiSave size={16} /> {saving ? "Saving..." : "Save Evaluation"}
                   </button>

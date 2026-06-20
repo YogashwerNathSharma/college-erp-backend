@@ -14,6 +14,7 @@ import {
   BookOpen,
   ClipboardList,
 } from "lucide-react";
+import PrintSignature from "../../components/PrintSignature";
 
 interface Exam {
   id: string;
@@ -39,8 +40,8 @@ interface ReportTab {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `http://localhost:5000${path}`;
-  return `http://localhost:5000/uploads/${path}`;
+  if (path.startsWith("/")) return `${path}`;
+  return `/uploads/${path}`;
 };
 
 // ✅ Report type ke hisaab se specific columns
@@ -106,6 +107,9 @@ const ExamReports: React.FC = () => {
   // URL se tab param read karo — default "result_summary"
   const tabFromUrl = searchParams.get("tab") as ReportType | null;
   const validTabs: ReportType[] = ["result_summary", "subject_wise", "topper_list", "pass_fail", "grade_report", "attendance", "marks"];
+  
+  // Agar URL me ?tab= hai → Reports section se aaya hai → tabs hide karo
+  const hideTabsBar = tabFromUrl && validTabs.includes(tabFromUrl);
 
   const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExam, setSelectedExam] = useState("");
@@ -141,7 +145,7 @@ const ExamReports: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       const raw = res.data?.data || res.data || [];
       setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch (error) {
@@ -153,7 +157,7 @@ const ExamReports: React.FC = () => {
     setLoading(true);
     setReportData(null);
     try {
-      const res = await axios.get("http://localhost:5000/api/exam/reports", {
+      const res = await axios.get("/api/exam/reports", {
         headers,
         params: {
           examId: selectedExam,
@@ -233,9 +237,9 @@ const ExamReports: React.FC = () => {
         <PrintHeader />
         <div className="p-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-blue-50 rounded-xl p-5 text-center border border-blue-100">
-              <p className="text-3xl font-bold text-blue-700">{d.total || 0}</p>
-              <p className="text-sm text-blue-600 mt-1">Total Students</p>
+            <div className="bg-primary-50 rounded-xl p-5 text-center border border-blue-100">
+              <p className="text-3xl font-bold text-primary-700">{d.total || 0}</p>
+              <p className="text-sm text-primary-600 mt-1">Total Students</p>
             </div>
             <div className="bg-green-50 rounded-xl p-5 text-center border border-green-100">
               <p className="text-3xl font-bold text-green-700">{d.passed || 0}</p>
@@ -353,7 +357,7 @@ const ExamReports: React.FC = () => {
               <select
                 value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
                 {exams.map((exam) => (
@@ -369,7 +373,7 @@ const ExamReports: React.FC = () => {
         {selectedExam && (
           <>
             {/* Report Type Tabs — hidden on print */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 print:hidden">
+            {!hideTabsBar && <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 print:hidden">
               <div className="flex flex-wrap gap-2">
                 {reportTabs.map((tab) => {
                   const Icon = tab.icon;
@@ -383,7 +387,7 @@ const ExamReports: React.FC = () => {
                       }}
                       className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                         isActive
-                          ? "bg-indigo-600 text-white shadow-sm"
+                          ? "bg-primary-600 text-white shadow-sm"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
@@ -393,13 +397,13 @@ const ExamReports: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
+            </div>}
 
             {/* Report Content */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-0 print:rounded-none">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between print:hidden">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-indigo-600" />
+                  <BarChart3 className="w-5 h-5 text-primary-600" />
                   <h2 className="text-lg font-semibold text-gray-900">
                     {reportTabs.find((t) => t.key === selectedReport)?.label || "Report"}
                   </h2>
@@ -407,7 +411,7 @@ const ExamReports: React.FC = () => {
                 {hasData && (
                   <button
                     onClick={handlePrint}
-                    className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100 transition-colors"
                   >
                     <Printer className="w-4 h-4 mr-1" />
                     Print
@@ -417,7 +421,7 @@ const ExamReports: React.FC = () => {
 
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                   <span className="ml-3 text-gray-500">Loading report...</span>
                 </div>
               ) : !hasData ? (
@@ -433,6 +437,8 @@ const ExamReports: React.FC = () => {
               ) : (
                 renderTable()
               )}
+              {/* Principal Signature — visible only on print */}
+              <PrintSignature />
             </div>
           </>
         )}

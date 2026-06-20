@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import PrintSignature from "../../components/PrintSignature";
+import { useSearchParams } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface ClassOption {
   id: string;
@@ -19,7 +21,16 @@ interface SectionOption {
 type ReportType = "monthly" | "datewise" | "yearly" | "classwise" | "school";
 
 const AttendanceReportPage = () => {
-  const [reportType, setReportType] = useState<ReportType>("monthly");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // URL se tab param read karo — default "monthly"
+  const tabFromUrl = searchParams.get("tab") as ReportType | null;
+  const validTabs: ReportType[] = ["monthly", "datewise", "yearly", "classwise", "school"];
+  const hideTabsBar = tabFromUrl && validTabs.includes(tabFromUrl);
+
+  const [reportType, setReportType] = useState<ReportType>(
+    tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "monthly"
+  );
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
@@ -174,7 +185,7 @@ const AttendanceReportPage = () => {
       {/* Filters — hide on print */}
       <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 print:hidden">
         {/* Report Type Tabs */}
-        <div className="flex flex-wrap gap-2 mb-4 border-b pb-3">
+        {!hideTabsBar && <div className="flex flex-wrap gap-2 mb-4 border-b pb-3">
           {[
             { value: "monthly", label: "Monthly" },
             { value: "datewise", label: "Date-wise" },
@@ -190,14 +201,14 @@ const AttendanceReportPage = () => {
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 reportType === tab.value
-                  ? "bg-blue-600 text-white"
+                  ? "bg-primary-600 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {tab.label}
             </button>
           ))}
-        </div>
+        </div>}
 
         {/* Filters Row */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -208,7 +219,7 @@ const AttendanceReportPage = () => {
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select Class</option>
                 {classes.map((c) => (
@@ -225,7 +236,7 @@ const AttendanceReportPage = () => {
               <select
                 value={selectedSection}
                 onChange={(e) => setSelectedSection(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 disabled={!selectedClass}
               >
                 <option value="">Select Section</option>
@@ -243,7 +254,7 @@ const AttendanceReportPage = () => {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {monthNames.map((m, i) => (
                   <option key={i} value={i + 1}>{m}</option>
@@ -259,7 +270,7 @@ const AttendanceReportPage = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {[2024, 2025, 2026, 2027].map((y) => (
                   <option key={y} value={y}>{y}</option>
@@ -276,7 +287,7 @@ const AttendanceReportPage = () => {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           )}
@@ -286,7 +297,7 @@ const AttendanceReportPage = () => {
             <button
               onClick={generateReport}
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+              className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
             >
               {loading ? "Generating..." : "Generate Report"}
             </button>
@@ -317,7 +328,7 @@ const AttendanceReportPage = () => {
                 const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
                 const logo = tenant?.logoUrl;
                 if (!logo) return "";
-                return logo.startsWith("http") ? logo : `http://localhost:5000${logo}`;
+                return logo.startsWith("http") ? logo : `${logo}`;
               })()}
               alt="logo"
               className="w-12 h-12 object-contain"
@@ -382,7 +393,7 @@ const AttendanceReportPage = () => {
                   ))}
                   <th className="border border-gray-400 px-2 py-1.5 text-center bg-green-50">P</th>
                   <th className="border border-gray-400 px-2 py-1.5 text-center bg-red-50">A</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-center bg-blue-50">%</th>
+                  <th className="border border-gray-400 px-2 py-1.5 text-center bg-primary-50">%</th>
                 </tr>
               </thead>
               <tbody>
@@ -411,7 +422,7 @@ const AttendanceReportPage = () => {
                     <td className="border border-gray-400 px-2 py-1 text-center font-bold text-red-600 bg-red-50">
                       {student.absentDays}
                     </td>
-                    <td className="border border-gray-400 px-2 py-1 text-center font-bold text-blue-600 bg-blue-50">
+                    <td className="border border-gray-400 px-2 py-1 text-center font-bold text-primary-600 bg-primary-50">
                       {student.percentage}%
                     </td>
                   </tr>
@@ -461,9 +472,9 @@ const AttendanceReportPage = () => {
               <p className="text-xs text-gray-500">Absent</p>
               <p className="text-xl font-bold text-red-600">{reportData.absent}</p>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-center p-3 bg-primary-50 rounded-lg">
               <p className="text-xs text-gray-500">Percentage</p>
-              <p className="text-xl font-bold text-blue-600">{reportData.percentage}%</p>
+              <p className="text-xl font-bold text-primary-600">{reportData.percentage}%</p>
             </div>
           </div>
 
@@ -527,7 +538,7 @@ const AttendanceReportPage = () => {
                   ))}
                   <th className="border border-gray-400 px-2 py-2 text-center bg-green-50">Total P</th>
                   <th className="border border-gray-400 px-2 py-2 text-center bg-red-50">Total A</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center bg-blue-50">%</th>
+                  <th className="border border-gray-400 px-2 py-2 text-center bg-primary-50">%</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,7 +558,7 @@ const AttendanceReportPage = () => {
                     <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-red-600 bg-red-50">
                       {student.totalAbsent}
                     </td>
-                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-blue-600 bg-blue-50">
+                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-primary-600 bg-primary-50">
                       {student.percentage}%
                     </td>
                   </tr>
@@ -641,9 +652,9 @@ const AttendanceReportPage = () => {
               <p className="text-xs text-gray-500">Avg. Absent</p>
               <p className="text-xl font-bold text-red-600">{reportData.avgAbsent}%</p>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-center p-3 bg-primary-50 rounded-lg">
               <p className="text-xs text-gray-500">Working Days</p>
-              <p className="text-xl font-bold text-blue-600">{reportData.workingDays}</p>
+              <p className="text-xl font-bold text-primary-600">{reportData.workingDays}</p>
             </div>
           </div>
 
@@ -696,6 +707,9 @@ const AttendanceReportPage = () => {
           </table>
         </div>
       )}
+
+      {/* Principal Signature — visible only on print */}
+      {reportData && <PrintSignature />}
 
       {/* Empty State */}
       {!reportData && !loading && (

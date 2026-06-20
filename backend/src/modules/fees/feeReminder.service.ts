@@ -22,7 +22,7 @@ export const getStudentsForReminder = async (
   const whereClause: any = {
     tenantId,
     academicYearId,
-    status: "ACTIVE",
+    status: "active",
     isDeleted: false,
   };
 

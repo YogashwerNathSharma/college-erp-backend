@@ -166,7 +166,7 @@ export default function OldStudentEntry() {
         <p className="text-sm text-gray-500">{students.length} student(s) to be entered.</p>
         <div className="flex gap-4">
           <button onClick={addRow} className="px-4 py-2 border border-green-500 text-green-600 rounded-lg hover:bg-green-50">+ Add More</button>
-          <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
             {loading ? "Saving..." : `Save ${students.length} Students`}
           </button>
         </div>

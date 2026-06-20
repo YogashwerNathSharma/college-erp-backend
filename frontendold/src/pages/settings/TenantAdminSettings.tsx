@@ -116,7 +116,7 @@ export default function TenantAdminSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/settings", {
+      const res = await axios.get("/api/settings", {
         headers,
       });
       const data = res.data.data;
@@ -162,7 +162,7 @@ export default function TenantAdminSettings() {
       if (roleFilter !== "ALL") params.role = roleFilter;
       if (statusFilter !== "ALL") params.status = statusFilter;
 
-      const res = await axios.get("http://localhost:5000/api/settings/users", {
+      const res = await axios.get("/api/settings/users", {
         headers,
         params,
       });
@@ -224,7 +224,7 @@ export default function TenantAdminSettings() {
     try {
       toast.loading("Uploading...", { id: "upload" });
       const res = await axios.post(
-        "http://localhost:5000/api/settings/upload",
+        "/api/settings/upload",
         formData,
         {
           headers: {
@@ -260,7 +260,7 @@ export default function TenantAdminSettings() {
   const handleUpdateSchoolInfo = async () => {
     setSaving(true);
     try {
-      await axios.put("http://localhost:5000/api/settings", schoolInfo, {
+      await axios.put("/api/settings", schoolInfo, {
         headers,
       });
       toast.success("School info updated! 🏫");
@@ -285,7 +285,7 @@ export default function TenantAdminSettings() {
       }
 
       await axios.put(
-        "http://localhost:5000/api/settings/profile",
+        "/api/settings/profile",
         payload,
         { headers }
       );
@@ -329,7 +329,7 @@ export default function TenantAdminSettings() {
       }
 
       const res = await axios.post(
-        "http://localhost:5000/api/settings/users",
+        "/api/settings/users",
         payload,
         { headers }
       );
@@ -362,7 +362,7 @@ export default function TenantAdminSettings() {
     setSaving(true);
     try {
       await axios.put(
-        `http://localhost:5000/api/settings/users/${selectedUser.id}`,
+        `/api/settings/users/${selectedUser.id}`,
         editForm,
         { headers }
       );
@@ -386,7 +386,7 @@ export default function TenantAdminSettings() {
     setSaving(true);
     try {
       await axios.delete(
-        `http://localhost:5000/api/settings/users/${selectedUser.id}`,
+        `/api/settings/users/${selectedUser.id}`,
         { headers }
       );
       toast.success("User deactivated! 🗑️");
@@ -438,13 +438,13 @@ export default function TenantAdminSettings() {
       case "PRINCIPAL":
         return "bg-purple-100 text-purple-700";
       case "TEACHER":
-        return "bg-blue-100 text-blue-700";
+        return "bg-primary-100 text-primary-700";
       case "STUDENT":
         return "bg-green-100 text-green-700";
       case "STAFF":
         return "bg-orange-100 text-orange-700";
       case "ADMIN":
-        return "bg-indigo-100 text-indigo-700";
+        return "bg-primary-100 text-primary-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -482,7 +482,7 @@ export default function TenantAdminSettings() {
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-          <Settings size={28} className="text-indigo-600" />
+          <Settings size={28} className="text-primary-600" />
           Settings
         </h1>
         <p className="text-slate-500 mt-1">
@@ -494,19 +494,19 @@ export default function TenantAdminSettings() {
           <div className="flex gap-4 mt-4 flex-wrap">
             <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-sm">
               <span className="text-slate-500">Students:</span>{" "}
-              <span className="font-bold text-indigo-600">
+              <span className="font-bold text-primary-600">
                 {usage.students.used}/{usage.students.max}
               </span>
             </div>
             <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-sm">
               <span className="text-slate-500">Teachers:</span>{" "}
-              <span className="font-bold text-indigo-600">
+              <span className="font-bold text-primary-600">
                 {usage.teachers.used}/{usage.teachers.max}
               </span>
             </div>
             <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 text-sm">
               <span className="text-slate-500">Users:</span>{" "}
-              <span className="font-bold text-indigo-600">
+              <span className="font-bold text-primary-600">
                 {usage.admins.used}/{usage.admins.max}
               </span>
             </div>
@@ -522,7 +522,7 @@ export default function TenantAdminSettings() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all ${
               activeTab === tab.id
-                ? "bg-indigo-600 text-white shadow-lg"
+                ? "bg-primary-600 text-white shadow-lg"
                 : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
             }`}
           >
@@ -541,7 +541,7 @@ export default function TenantAdminSettings() {
         {activeTab === "school" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
-              <School size={22} className="text-indigo-600" />
+              <School size={22} className="text-primary-600" />
               <h2 className="text-xl font-bold text-slate-800">
                 School Information
               </h2>
@@ -558,7 +558,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setSchoolInfo({ ...schoolInfo, name: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -572,7 +572,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setSchoolInfo({ ...schoolInfo, email: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -586,7 +586,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setSchoolInfo({ ...schoolInfo, phone: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -600,7 +600,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setSchoolInfo({ ...schoolInfo, address: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -615,7 +615,7 @@ export default function TenantAdminSettings() {
                       src={
                         schoolInfo.logoUrl.startsWith("http")
                           ? schoolInfo.logoUrl
-                          : `http://localhost:5000${schoolInfo.logoUrl}`
+                          : `${schoolInfo.logoUrl}`
                       }
                       alt="Logo"
                       className="w-16 h-16 object-contain rounded-xl border border-slate-200"
@@ -654,7 +654,7 @@ export default function TenantAdminSettings() {
                       src={
                         schoolInfo.backgroundUrl.startsWith("http")
                           ? schoolInfo.backgroundUrl
-                          : `http://localhost:5000${schoolInfo.backgroundUrl}`
+                          : `${schoolInfo.backgroundUrl}`
                       }
                       alt="Background"
                       className="w-24 h-16 object-cover rounded-xl border border-slate-200"
@@ -688,7 +688,7 @@ export default function TenantAdminSettings() {
             <button
               onClick={handleUpdateSchoolInfo}
               disabled={saving}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -706,7 +706,7 @@ export default function TenantAdminSettings() {
         {activeTab === "profile" && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-4">
-              <User size={22} className="text-indigo-600" />
+              <User size={22} className="text-primary-600" />
               <h2 className="text-xl font-bold text-slate-800">My Profile</h2>
             </div>
 
@@ -721,7 +721,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setProfile({ ...profile, name: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -735,7 +735,7 @@ export default function TenantAdminSettings() {
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
                   }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -751,7 +751,7 @@ export default function TenantAdminSettings() {
                       setProfile({ ...profile, currentPwd: e.target.value })
                     }
                     placeholder="Enter current password"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none pr-10"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none pr-10"
                   />
                   <button
                     type="button"
@@ -779,7 +779,7 @@ export default function TenantAdminSettings() {
                       setProfile({ ...profile, newPwd: e.target.value })
                     }
                     placeholder="Enter new password (min 6 chars)"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none pr-10"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none pr-10"
                   />
                   <button
                     type="button"
@@ -795,7 +795,7 @@ export default function TenantAdminSettings() {
             <button
               onClick={handleUpdateProfile}
               disabled={saving}
-              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+              className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 size={18} className="animate-spin" />
@@ -815,7 +815,7 @@ export default function TenantAdminSettings() {
             {/* Header + Add Button */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center gap-3">
-                <Users size={22} className="text-indigo-600" />
+                <Users size={22} className="text-primary-600" />
                 <h2 className="text-xl font-bold text-slate-800">
                   User Management
                 </h2>
@@ -825,7 +825,7 @@ export default function TenantAdminSettings() {
                   resetCreateForm();
                   setShowCreateModal(true);
                 }}
-                className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all text-sm"
+                className="px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center gap-2 transition-all text-sm"
               >
                 <Plus size={16} />
                 Add User
@@ -844,14 +844,14 @@ export default function TenantAdminSettings() {
                   placeholder="Search by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full pl-9 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white"
               >
                 <option value="ALL">All Roles</option>
                 <option value="STUDENT">Student</option>
@@ -863,7 +863,7 @@ export default function TenantAdminSettings() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                className="px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white"
               >
                 <option value="ALL">All Status</option>
                 <option value="ACTIVE">Active</option>
@@ -955,7 +955,7 @@ export default function TenantAdminSettings() {
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => openEditModal(user)}
-                                className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600"
+                                className="p-2 hover:bg-primary-50 rounded-lg text-primary-600"
                                 title="Edit"
                               >
                                 <Pencil size={16} />
@@ -1029,7 +1029,7 @@ export default function TenantAdminSettings() {
                   {/* Create Form */}
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                      <Plus size={20} className="text-indigo-600" />
+                      <Plus size={20} className="text-primary-600" />
                       Create New User
                     </h3>
                     <button
@@ -1052,7 +1052,7 @@ export default function TenantAdminSettings() {
                           setCreateForm({ ...createForm, name: e.target.value })
                         }
                         placeholder="Enter full name"
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                       />
                     </div>
 
@@ -1070,7 +1070,7 @@ export default function TenantAdminSettings() {
                           })
                         }
                         placeholder="Enter email"
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                       />
                     </div>
 
@@ -1088,7 +1088,7 @@ export default function TenantAdminSettings() {
                           })
                         }
                         placeholder="Enter phone (optional)"
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                       />
                     </div>
 
@@ -1101,7 +1101,7 @@ export default function TenantAdminSettings() {
                         onChange={(e) =>
                           setCreateForm({ ...createForm, role: e.target.value })
                         }
-                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white"
                       >
                         <option value="">Select Role</option>
                         <option value="STUDENT">Student</option>
@@ -1133,7 +1133,7 @@ export default function TenantAdminSettings() {
                           }
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                       </label>
                     </div>
 
@@ -1152,7 +1152,7 @@ export default function TenantAdminSettings() {
                             })
                           }
                           placeholder="Min 6 characters"
-                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                         />
                       </div>
                     )}
@@ -1168,7 +1168,7 @@ export default function TenantAdminSettings() {
                     <button
                       onClick={handleCreateUser}
                       disabled={saving}
-                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium flex items-center gap-2 disabled:opacity-50"
+                      className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-xl font-medium flex items-center gap-2 disabled:opacity-50"
                     >
                       {saving ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -1228,7 +1228,7 @@ export default function TenantAdminSettings() {
                         setShowCreateModal(false);
                         resetCreateForm();
                       }}
-                      className="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium"
+                      className="mt-4 px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium"
                     >
                       Done
                     </button>
@@ -1249,7 +1249,7 @@ export default function TenantAdminSettings() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <Pencil size={20} className="text-indigo-600" />
+                  <Pencil size={20} className="text-primary-600" />
                   Edit User
                 </h3>
                 <button
@@ -1271,7 +1271,7 @@ export default function TenantAdminSettings() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, name: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
 
@@ -1285,7 +1285,7 @@ export default function TenantAdminSettings() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, email: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
 
@@ -1299,7 +1299,7 @@ export default function TenantAdminSettings() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, phone: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
                   />
                 </div>
 
@@ -1312,7 +1312,7 @@ export default function TenantAdminSettings() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, role: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white"
                   >
                     <option value="STUDENT">Student</option>
                     <option value="TEACHER">Teacher</option>
@@ -1330,7 +1330,7 @@ export default function TenantAdminSettings() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, status: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none bg-white"
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Inactive</option>
@@ -1348,7 +1348,7 @@ export default function TenantAdminSettings() {
                 <button
                   onClick={handleUpdateUser}
                   disabled={saving}
-                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-xl font-medium flex items-center gap-2 disabled:opacity-50"
                 >
                   {saving ? (
                     <Loader2 size={16} className="animate-spin" />

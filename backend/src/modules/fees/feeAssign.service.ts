@@ -15,7 +15,7 @@ export const getStudentsWithAssignmentStatus = async (
       classId,
       academicYearId,
       tenantId,
-      status: "ACTIVE",
+      status: "active",
       isDeleted: false,
     },
     include: {

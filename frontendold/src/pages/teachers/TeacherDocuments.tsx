@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiUpload, FiTrash2, FiEye, FiX, FiFile } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 interface Document {
   id: string;
@@ -122,7 +122,7 @@ const TeacherDocuments = () => {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case "PERSONAL": return "bg-blue-100 text-blue-700";
+      case "PERSONAL": return "bg-primary-100 text-primary-700";
       case "IDENTITY": return "bg-purple-100 text-purple-700";
       case "ACADEMIC": return "bg-green-100 text-green-700";
       case "EXPERIENCE": return "bg-orange-100 text-orange-700";
@@ -136,7 +136,7 @@ const TeacherDocuments = () => {
         <h1 className="text-2xl font-bold text-gray-800">Documents</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
         >
           <FiUpload size={18} /> Upload Document
         </button>
@@ -149,7 +149,7 @@ const TeacherDocuments = () => {
           <select
             value={selectedTeacher}
             onChange={(e) => setSelectedTeacher(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
           >
             <option value="">All Teachers</option>
             {teachers.map((t) => (
@@ -163,7 +163,7 @@ const TeacherDocuments = () => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -202,7 +202,7 @@ const TeacherDocuments = () => {
                         <a
                           href={doc.fileUrl}
                           target="_blank"
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
                           title="View"
                         >
                           <FiEye size={16} />
@@ -250,7 +250,7 @@ const TeacherDocuments = () => {
                 <select
                   value={uploadData.teacherId}
                   onChange={(e) => setUploadData({ ...uploadData, teacherId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="">Select Teacher</option>
                   {teachers.map((t) => (
@@ -266,7 +266,7 @@ const TeacherDocuments = () => {
                   value={uploadData.name}
                   onChange={(e) => setUploadData({ ...uploadData, name: e.target.value })}
                   placeholder="e.g., Resume, Aadhar Card"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
 
@@ -275,7 +275,7 @@ const TeacherDocuments = () => {
                 <select
                   value={uploadData.type}
                   onChange={(e) => setUploadData({ ...uploadData, type: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
                   <option value="PERSONAL">Personal</option>
                   <option value="IDENTITY">Identity</option>
@@ -290,7 +290,7 @@ const TeacherDocuments = () => {
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Allowed: PDF, JPG, PNG, DOC (Max 5MB)
@@ -308,7 +308,7 @@ const TeacherDocuments = () => {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
                 >
                   {uploading ? "Uploading..." : "Upload"}
                 </button>

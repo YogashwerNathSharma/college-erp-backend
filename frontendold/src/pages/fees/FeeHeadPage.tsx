@@ -176,7 +176,7 @@ const FeeHeadPage: React.FC = () => {
         </div>
         <button
           onClick={handleAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm"
         >
           <FiPlus className="w-4 h-4" />
           Add Fee Head
@@ -192,7 +192,7 @@ const FeeHeadPage: React.FC = () => {
             placeholder="Search by name, code, or type..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
           />
           {searchQuery && (
             <button
@@ -236,7 +236,7 @@ const FeeHeadPage: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-gray-500">
                     <div className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                       Loading...
                     </div>
                   </td>
@@ -276,7 +276,7 @@ const FeeHeadPage: React.FC = () => {
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           feeHead.type === "RECURRING"
-                            ? "bg-blue-100 text-blue-700"
+                            ? "bg-primary-100 text-primary-700"
                             : "bg-purple-100 text-purple-700"
                         }`}
                       >
@@ -314,7 +314,7 @@ const FeeHeadPage: React.FC = () => {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleEdit(feeHead)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
                           title="Edit"
                         >
                           <FiEdit2 className="w-4 h-4" />
@@ -377,7 +377,7 @@ const FeeHeadPage: React.FC = () => {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="e.g., Tuition Fee"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                   required
                 />
               </div>
@@ -394,7 +394,7 @@ const FeeHeadPage: React.FC = () => {
                     setFormData({ ...formData, code: e.target.value })
                   }
                   placeholder="e.g., TF"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Short code for reference (optional)
@@ -413,7 +413,7 @@ const FeeHeadPage: React.FC = () => {
                   }
                   placeholder="Brief description of this fee head..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm resize-none"
                 />
               </div>
 
@@ -430,7 +430,7 @@ const FeeHeadPage: React.FC = () => {
                       type: e.target.value as "RECURRING" | "ONE_TIME",
                     })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                 >
                   <option value="RECURRING">Recurring</option>
                   <option value="ONE_TIME">One-Time</option>
@@ -452,7 +452,7 @@ const FeeHeadPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting
                     ? "Saving..."

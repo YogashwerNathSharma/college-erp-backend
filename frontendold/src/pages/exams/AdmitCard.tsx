@@ -12,6 +12,7 @@ import {
   RefreshCw,
   FileText,
 } from "lucide-react";
+import PrintSignature from "../../components/PrintSignature";
 
 interface Exam {
   id: string;
@@ -71,8 +72,8 @@ interface AdmitCardDetail {
 const getFullUrl = (path: string | undefined | null) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `http://localhost:5000${path}`;
-  return `http://localhost:5000/uploads/${path}`;
+  if (path.startsWith("/")) return `${path}`;
+  return `/uploads/${path}`;
 };
 
 const AdmitCard: React.FC = () => {
@@ -107,7 +108,7 @@ const AdmitCard: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/exam", { headers });
+      const res = await axios.get("/api/exam", { headers });
       const raw = res.data?.data || res.data || [];
       setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch (error) {
@@ -119,7 +120,7 @@ const AdmitCard: React.FC = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/admit-cards`,
+        `/api/exam/${selectedExam}/admit-cards`,
         { headers }
       );
       setAdmitCards(res.data?.data || res.data || []);
@@ -138,7 +139,7 @@ const AdmitCard: React.FC = () => {
     setGenerating(true);
     try {
       await axios.post(
-        "http://localhost:5000/api/exam/admit-cards/generate",
+        "/api/exam/admit-cards/generate",
         { examId: selectedExam },
         { headers }
       );
@@ -156,7 +157,7 @@ const AdmitCard: React.FC = () => {
     setViewLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/exam/${selectedExam}/admit-card/${studentId}`,
+        `/api/exam/${selectedExam}/admit-card/${studentId}`,
         { headers }
       );
       setViewingCard(res.data?.data || res.data);
@@ -179,7 +180,7 @@ const AdmitCard: React.FC = () => {
       for (const card of admitCards) {
         const sid = card.student?.id || card.studentId;
         const res = await axios.get(
-          `http://localhost:5000/api/exam/${selectedExam}/admit-card/${sid}`,
+          `/api/exam/${selectedExam}/admit-card/${sid}`,
           { headers }
         );
         allCards.push(res.data?.data || res.data);
@@ -294,7 +295,6 @@ const AdmitCard: React.FC = () => {
                   <th className="border border-gray-400 px-2 py-1.5 text-left">Subject</th>
                   <th className="border border-gray-400 px-2 py-1.5 text-left">Date</th>
                   <th className="border border-gray-400 px-2 py-1.5 text-left">Time</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-left">Room</th>
                 </tr>
               </thead>
               <tbody>
@@ -305,7 +305,6 @@ const AdmitCard: React.FC = () => {
                       {sch.examDate ? new Date(sch.examDate).toLocaleDateString("en-IN") : ""}
                     </td>
                     <td className="border border-gray-400 px-2 py-1.5">{sch.startTime} - {sch.endTime}</td>
-                    <td className="border border-gray-400 px-2 py-1.5">{sch.room?.name || ""}</td>
                   </tr>
                 ))}
               </tbody>
@@ -324,8 +323,7 @@ const AdmitCard: React.FC = () => {
             <p className="text-xs font-medium">Exam Controller</p>
           </div>
           <div className="text-center">
-            <div className="w-28 border-b border-gray-500 mb-1"></div>
-            <p className="text-xs font-medium">Principal</p>
+            <PrintSignature inline={false} printOnly={false} />
           </div>
         </div>
       </div>
@@ -372,7 +370,7 @@ const AdmitCard: React.FC = () => {
                 <select
                   value={selectedExam}
                   onChange={(e) => setSelectedExam(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                 >
                   <option value="">-- Select Exam --</option>
                   {exams.map((exam) => (
@@ -385,7 +383,7 @@ const AdmitCard: React.FC = () => {
               <button
                 onClick={handleGenerateAll}
                 disabled={generating || !selectedExam}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
+                className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm disabled:opacity-50"
               >
                 {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                 Generate All
@@ -406,13 +404,13 @@ const AdmitCard: React.FC = () => {
           {/* Admit Cards List */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:hidden">
             <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-indigo-600" />
+              <CreditCard className="w-5 h-5 text-primary-600" />
               <h2 className="text-lg font-semibold text-gray-900">Student Admit Cards</h2>
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                 <span className="ml-3 text-gray-500">Loading...</span>
               </div>
             ) : !selectedExam ? (
@@ -459,7 +457,7 @@ const AdmitCard: React.FC = () => {
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => handleView(card.student?.id || card.studentId)}
-                            className="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-lg hover:bg-indigo-100"
+                            className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-sm font-medium rounded-lg hover:bg-primary-100"
                           >
                             <Eye className="w-4 h-4 mr-1" />
                             View
@@ -479,7 +477,7 @@ const AdmitCard: React.FC = () => {
               <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto print:max-w-none print:shadow-none print:rounded-none print:max-h-none">
                 {viewLoading ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                    <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
                     <span className="ml-3 text-gray-500">Loading...</span>
                   </div>
                 ) : viewingCard ? (
@@ -490,7 +488,7 @@ const AdmitCard: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handlePrint}
-                          className="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+                          className="inline-flex items-center px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
                         >
                           <Printer className="w-4 h-4 mr-1" />
                           Print

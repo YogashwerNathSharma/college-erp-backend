@@ -96,8 +96,8 @@ const AdminStudentDashboard: React.FC = () => {
   const [classStrength, setClassStrength] = useState<ClassStrength[]>([]);
   const [recentAdmissions, setRecentAdmissions] = useState<RecentAdmission[]>([]);
   const [categoryDistribution, setCategoryDistribution] = useState<CategoryDistribution[]>([]);
-  const [feePending] = useState<FeePendingStudent[]>([]);
-  const [attendance] = useState<AttendanceOverview | null>(null);
+  const [feePending, setFeePending] = useState<FeePendingStudent[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceOverview | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch academic years from database
@@ -132,15 +132,17 @@ const AdminStudentDashboard: React.FC = () => {
         axios.get('/api/students/class-strength', { params: { academicYearId } }),
         axios.get('/api/students/recent-admissions', { params: { limit: 5 } }),
         axios.get('/api/students/category-distribution', { params: { academicYearId } }),
+        axios.get('/api/students/fee-pending', { params: { academicYearId } }),
+        axios.get('/api/students/attendance-overview', { params: { academicYearId } }),
       ]);
 
       if (results[0].status === 'fulfilled') {
         const statsData = results[0].value.data?.data || results[0].value.data;
         setStats({
           totalStudents: statsData?.total || 0,
-          newAdmissions: statsData?.active || 0,
-          boys: 0,
-          girls: 0,
+          newAdmissions: statsData?.newAdmissions || 0,
+          boys: statsData?.boys || 0,
+          girls: statsData?.girls || 0,
           active: statsData?.active || 0,
           inactive: statsData?.inactive || 0,
         });
@@ -156,6 +158,14 @@ const AdminStudentDashboard: React.FC = () => {
 
       if (results[3].status === 'fulfilled') {
         setCategoryDistribution(results[3].value.data?.data || []);
+      }
+
+      if (results[4].status === 'fulfilled') {
+        setFeePending(results[4].value.data?.data || []);
+      }
+
+      if (results[5].status === 'fulfilled') {
+        setAttendance(results[5].value.data?.data || null);
       }
 
     } catch (error) {
@@ -411,7 +421,7 @@ const AdminStudentDashboard: React.FC = () => {
                   <tbody>
                     {recentAdmissions.length > 0 ? (
                       recentAdmissions.map((student) => (
-                        <tr key={student.id} className="border-b border-gray-50 hover:bg-blue-50/50 transition-colors">
+                        <tr key={student.id} className="border-b border-gray-50 hover:bg-primary-50/50 transition-colors">
                           <td className="py-3 px-2 font-medium text-gray-700">{student.name}</td>
                           <td className="py-3 px-2 text-gray-500 font-mono text-xs">{student.admNo}</td>
                           <td className="py-3 px-2">

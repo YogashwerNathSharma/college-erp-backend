@@ -5,7 +5,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiCalendar, FiSave, FiX, FiEdit2 } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL || "/api";
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -266,7 +266,7 @@ const TeacherTimetable = () => {
             {!editMode ? (
               <button
                 onClick={() => setEditMode(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
               >
                 <FiEdit2 size={16} />
                 Edit Timetable
@@ -302,7 +302,7 @@ const TeacherTimetable = () => {
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="">Select Teacher</option>
               {teachers.map((t) => (
@@ -317,7 +317,7 @@ const TeacherTimetable = () => {
             <select
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as any)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             >
               <option value="Weekly">Weekly</option>
               <option value="Daily">Daily</option>
@@ -327,7 +327,7 @@ const TeacherTimetable = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Week</label>
             <input
               type="week"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
             />
           </div>
         </div>
@@ -346,13 +346,13 @@ const TeacherTimetable = () => {
       {selectedTeacher && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="p-4 border-b flex items-center gap-2">
-            <FiCalendar className="text-blue-600" />
+            <FiCalendar className="text-primary-600" />
             <span className="font-medium text-gray-700">{selectedTeacherName}</span>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -393,7 +393,7 @@ const TeacherTimetable = () => {
                               </div>
                             ) : isEditing ? (
                               /* ─── EDIT POPUP ─── */
-                              <div className="absolute z-50 top-0 left-0 w-64 bg-white border-2 border-blue-500 rounded-lg shadow-xl p-3 space-y-2">
+                              <div className="absolute z-50 top-0 left-0 w-64 bg-white border-2 border-primary-500 rounded-lg shadow-xl p-3 space-y-2">
                                 <select
                                   value={cellClassId}
                                   onChange={(e) => {
@@ -456,10 +456,10 @@ const TeacherTimetable = () => {
                                 className={`rounded-lg p-2 transition cursor-pointer ${
                                   isPending
                                     ? "bg-green-50 border-2 border-green-300"
-                                    : "bg-blue-50 border border-blue-200"
+                                    : "bg-primary-50 border border-primary-200"
                                 } ${editMode ? "hover:ring-2 hover:ring-blue-400" : ""}`}
                               >
-                                <p className="text-sm font-medium text-blue-700">
+                                <p className="text-sm font-medium text-primary-700">
                                   {entry.subject?.name}
                                 </p>
                                 <p className="text-xs text-gray-500">
@@ -473,7 +473,7 @@ const TeacherTimetable = () => {
                                 onClick={() => handleCellClick(day, periodIndex + 1)}
                                 className={`bg-gray-50 rounded-lg p-2 transition ${
                                   editMode
-                                    ? "cursor-pointer hover:bg-blue-50 hover:border-blue-300 border-2 border-dashed border-gray-200"
+                                    ? "cursor-pointer hover:bg-primary-50 hover:border-primary-300 border-2 border-dashed border-gray-200"
                                     : ""
                                 }`}
                               >

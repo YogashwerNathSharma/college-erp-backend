@@ -39,8 +39,8 @@ interface PatternProps {
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
+const getFullUrl = (path: string | null | undefined): string | undefined => {
+  if (!path) return undefined;
   if (path.startsWith("http")) return path;
   if (path.startsWith("/")) return `${path}`;
   return `/uploads/${path}`;

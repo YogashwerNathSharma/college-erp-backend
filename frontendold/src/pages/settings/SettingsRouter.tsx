@@ -4,7 +4,7 @@
 // SUPER_ADMIN → SuperAdminSettings
 // ADMIN → TenantAdminSettings (with User Management)
 
-import SuperAdminSettings from "./SuperAdminSettings";
+import SuperAdminSettings from "../superAdmin/SuperAdminSettings";
 import TenantAdminSettings from "./TenantAdminSettings";
 
 export default function SettingsRouter() {

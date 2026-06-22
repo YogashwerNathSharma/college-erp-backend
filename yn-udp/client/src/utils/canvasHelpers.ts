@@ -197,8 +197,8 @@ export const pasteObject = (canvas: fabric.Canvas, clipboard: fabric.Object | nu
     });
 
     if ((cloned as any).type === "activeSelection") {
-      (cloned as fabric.ActiveSelection).canvas = canvas;
-      (cloned as fabric.ActiveSelection).forEachObject((obj: fabric.Object) => {
+      (cloned as any).canvas = canvas;
+      (cloned as any).forEachObject((obj: fabric.Object) => {
         canvas.add(obj);
       });
       cloned.setCoords();

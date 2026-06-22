@@ -1,7 +1,8 @@
 
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -137,6 +138,7 @@ const tenantMenu: SectionGroup[] = [
           { name: "Communication", icon: <MessageSquare size={16} />, path: "/teacher-communication" },
           { name: "Reports", icon: <BarChart3 size={16} />, path: "/teacher-reports" },
           { name: "Settings", icon: <Settings size={16} />, path: "/teacher-settings" },
+          { name: "Teacher ID Card", icon: <IdCard size={16} />, path: "/teacher-id-card" },
         ],
       },
       {
@@ -280,6 +282,7 @@ type SidebarProps = {
 export default function Sidebar({ tenant }: SidebarProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
+  const [devProfile, setDevProfile] = useState<any>(null);
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
@@ -293,6 +296,26 @@ export default function Sidebar({ tenant }: SidebarProps) {
     : getFullUrl(safeTenant?.logoUrl);
 
   const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
+
+  // Fetch developer profile for non-super-admin users
+  useEffect(() => {
+    if (isSuperAdmin) return;
+    
+    // Check localStorage cache first
+    const cached = localStorage.getItem("devProfile");
+    if (cached) {
+      try { setDevProfile(JSON.parse(cached)); } catch {}
+    }
+
+    // Fetch fresh
+    axios.get("/api/developer-profile").then((res) => {
+      const data = res.data?.data;
+      if (data) {
+        setDevProfile(data);
+        localStorage.setItem("devProfile", JSON.stringify(data));
+      }
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white min-h-screen shadow-2xl flex flex-col border-r border-slate-800 print:hidden">
@@ -361,6 +384,79 @@ export default function Sidebar({ tenant }: SidebarProps) {
           </div>
         ))}
       </div>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {/* ABOUT DEVELOPER (Shown only to Tenant users) */}
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      {!isSuperAdmin && devProfile && devProfile.isVisible && (
+        <div className="mt-auto border-t border-slate-800 p-3">
+          <div className="bg-slate-800/60 rounded-xl p-3 space-y-2">
+            {/* Header */}
+            <div className="flex items-center gap-2.5">
+              {devProfile.photoUrl ? (
+                <img
+                  src={devProfile.photoUrl.startsWith("http") ? devProfile.photoUrl : devProfile.photoUrl}
+                  alt={devProfile.name}
+                  className="w-10 h-10 rounded-full object-cover border-2 border-indigo-400"
+                  onError={(e: any) => { e.target.style.display = "none"; }}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold border-2 border-indigo-400">
+                  {devProfile.name?.charAt(0) || "D"}
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-bold text-white leading-tight">{devProfile.name}</p>
+                <p className="text-[10px] text-slate-400">Developer / Support</p>
+              </div>
+            </div>
+
+            {/* Calling Hours */}
+            {devProfile.callingHours && (
+              <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                📞 Call: <span className="text-slate-300 font-medium">{devProfile.callingHours}</span>
+              </p>
+            )}
+
+            {/* Message */}
+            {devProfile.message && (
+              <p className="text-[10px] text-amber-300 italic">💡 {devProfile.message}</p>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1.5 pt-1">
+              {devProfile.whatsapp && (
+                <a
+                  href={`https://wa.me/${devProfile.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1 bg-green-600 hover:bg-green-500 text-white rounded-md text-[10px] font-medium transition-colors"
+                >
+                  💬 WhatsApp
+                </a>
+              )}
+              {devProfile.email && (
+                <a
+                  href={`mailto:${devProfile.email}`}
+                  className="flex items-center gap-1 px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded-md text-[10px] font-medium transition-colors"
+                >
+                  ✉️ Email
+                </a>
+              )}
+              {devProfile.linkedinUrl && (
+                <a
+                  href={devProfile.linkedinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-700 hover:bg-blue-600 text-white rounded-md text-[10px] font-medium transition-colors"
+                >
+                  in
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

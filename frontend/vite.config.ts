@@ -9,4 +9,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
+  // ✅ Build optimizations
+  build: {
+    sourcemap: false,
+    minify: "esbuild",
+    target: "es2020",
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+        },
+      },
+    },
+  },
 });

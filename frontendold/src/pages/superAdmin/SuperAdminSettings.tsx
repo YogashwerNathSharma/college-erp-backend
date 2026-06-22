@@ -10,6 +10,13 @@ import {
   User,
   Shield,
   Server,
+  Code2,
+  Phone,
+  MessageSquare,
+  Link,
+  Mail,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -48,6 +55,20 @@ export default function SuperAdminSettings() {
     smtpEmail: "",
     baseUrl: "",
   });
+
+  const [devProfile, setDevProfile] = useState({
+    name: "",
+    photoUrl: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
+    linkedinUrl: "",
+    callingHours: "",
+    message: "",
+    isVisible: true,
+  });
+
+  const [devSaving, setDevSaving] = useState(false);
 
   //////////////////////////////////////////////////////
   // FETCH SETTINGS
@@ -90,7 +111,56 @@ export default function SuperAdminSettings() {
 
   useEffect(() => {
     fetchSettings();
+    fetchDevProfile();
   }, []);
+
+  //////////////////////////////////////////////////////
+  // FETCH DEVELOPER PROFILE
+  //////////////////////////////////////////////////////
+
+  const fetchDevProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("/api/super-admin/developer-profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = res.data?.data;
+      if (data) {
+        setDevProfile({
+          name: data.name || "",
+          photoUrl: data.photoUrl || "",
+          phone: data.phone || "",
+          whatsapp: data.whatsapp || "",
+          email: data.email || "",
+          linkedinUrl: data.linkedinUrl || "",
+          callingHours: data.callingHours || "",
+          message: data.message || "",
+          isVisible: data.isVisible ?? true,
+        });
+      }
+    } catch (err) {
+      // First time — no profile yet
+    }
+  };
+
+  //////////////////////////////////////////////////////
+  // UPDATE DEVELOPER PROFILE
+  //////////////////////////////////////////////////////
+
+  const handleUpdateDevProfile = async () => {
+    setDevSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("/api/super-admin/developer-profile", devProfile, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("Developer profile updated! 🎉");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to update");
+    } finally {
+      setDevSaving(false);
+    }
+  };
 
   //////////////////////////////////////////////////////
   // UPDATE PLATFORM
@@ -155,6 +225,7 @@ export default function SuperAdminSettings() {
     { id: "platform", label: "Platform", icon: <Globe size={18} /> },
     { id: "profile", label: "Profile", icon: <User size={18} /> },
     { id: "system", label: "System Config", icon: <Server size={18} /> },
+    { id: "developer", label: "Developer Profile", icon: <Code2 size={18} /> },
   ];
 
   //////////////////////////////////////////////////////
@@ -460,6 +531,156 @@ export default function SuperAdminSettings() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ////////////////////////////////////////////////////// */}
+        {/* DEVELOPER PROFILE TAB */}
+        {/* ////////////////////////////////////////////////////// */}
+
+        {activeTab === "developer" && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Code2 size={22} className="text-primary-600" />
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Developer Profile</h2>
+                <p className="text-sm text-slate-500">This info will be shown to all tenants in their sidebar</p>
+              </div>
+            </div>
+
+            {/* Visibility Toggle */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setDevProfile({ ...devProfile, isVisible: !devProfile.isVisible })}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  devProfile.isVisible
+                    ? "bg-green-100 text-green-700 border border-green-300"
+                    : "bg-red-100 text-red-700 border border-red-300"
+                }`}
+              >
+                {devProfile.isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+                {devProfile.isVisible ? "Visible to Tenants" : "Hidden from Tenants"}
+              </button>
+              <span className="text-xs text-slate-500">
+                Toggle to show/hide your profile in tenant sidebar
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Your Name *
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.name}
+                  onChange={(e) => setDevProfile({ ...devProfile, name: e.target.value })}
+                  placeholder="Yogashwer Nath Sharma"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Photo URL
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.photoUrl}
+                  onChange={(e) => setDevProfile({ ...devProfile, photoUrl: e.target.value })}
+                  placeholder="/uploads/developer-photo.jpg"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  📞 Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.phone}
+                  onChange={(e) => setDevProfile({ ...devProfile, phone: e.target.value })}
+                  placeholder="+91 9876543210"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  💬 WhatsApp Number
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.whatsapp}
+                  onChange={(e) => setDevProfile({ ...devProfile, whatsapp: e.target.value })}
+                  placeholder="919876543210"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">Without + sign, e.g. 919876543210</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  ✉️ Email
+                </label>
+                <input
+                  type="email"
+                  value={devProfile.email}
+                  onChange={(e) => setDevProfile({ ...devProfile, email: e.target.value })}
+                  placeholder="developer@example.com"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  🔗 LinkedIn URL
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.linkedinUrl}
+                  onChange={(e) => setDevProfile({ ...devProfile, linkedinUrl: e.target.value })}
+                  placeholder="https://linkedin.com/in/your-profile"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  🕐 Calling Hours
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.callingHours}
+                  onChange={(e) => setDevProfile({ ...devProfile, callingHours: e.target.value })}
+                  placeholder="10:00 AM - 6:00 PM"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  💬 Message for Tenants
+                </label>
+                <input
+                  type="text"
+                  value={devProfile.message}
+                  onChange={(e) => setDevProfile({ ...devProfile, message: e.target.value })}
+                  placeholder="WhatsApp par message karo for support"
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleUpdateDevProfile}
+              disabled={devSaving || !devProfile.name}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 transition-all font-medium"
+            >
+              {devSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              Save Developer Profile
+            </button>
           </div>
         )}
       </div>

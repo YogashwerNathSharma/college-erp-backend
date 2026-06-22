@@ -242,11 +242,11 @@ export default function YnUdpPage() {
               {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all group relative"
+                  className="bg-white rounded-xl border border-gray-200 hover:shadow-lg hover:-translate-y-0.5 transition-all group relative"
                 >
                   {/* Thumbnail */}
                   <div
-                    className="h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center cursor-pointer"
+                    className="h-40 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center cursor-pointer overflow-hidden rounded-t-xl"
                     onClick={() => openEditor(template.id)}
                   >
                     {template.thumbnail ? (

@@ -8,147 +8,157 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
-import LoginPage from "./pages/login/LoginPages";
-import ForgotPassword from "./pages/login/ForgotPassword";
-import TenantDashboard from "./pages/TenantDashboard";
 
-// SuperAdmin Pages
-import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
-import TenantsPage from "./pages/superAdmin/TenantsPage";
-import ReportsPage from "./pages/reports/ReportsPage";
-import SuperAdminSettings from "./pages/superAdmin/SuperAdminSettings";
-
+// ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAGE LOADER (lightweight spinner shown while pages load)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LAZY IMPORTS — Each page loads ONLY when user visits it
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Auth
+const LoginPage = lazy(() => import("./pages/login/LoginPages"));
+const ForgotPassword = lazy(() => import("./pages/login/ForgotPassword"));
+const RegisterSchool = lazy(() => import("./pages/login/RegisterSchool"));
+
+// Dashboards
+const TenantDashboard = lazy(() => import("./pages/TenantDashboard"));
+const SuperAdminDashboard = lazy(() => import("./pages/superAdmin/SuperAdminDashboard"));
+
+// SuperAdmin Pages
+const TenantsPage = lazy(() => import("./pages/superAdmin/TenantsPage"));
+const SuperAdminSettings = lazy(() => import("./pages/superAdmin/SuperAdminSettings"));
+
 // Student Module
-import StudentsPage from "./pages/students/StudentsPage";
-import AdmissionForm from "./pages/students/AdmissionForm";
-import OldStudentEntry from "./pages/students/OldStudentEntry";
-import PromotionPage from "./pages/students/PromotionPage";
-import AgeSettings from "./pages/students/AgeSettings";
-import PrintStudents from "./pages/students/PrintStudents";
-import RecycleBinPage from "./pages/students/RecycleBinPage";
-import EditStudentPage from "./pages/students/EditStudentPage";
-import StudentIdCardPage from "./pages/students/StudentIdCard";
-import StudentReportsPage from "./pages/students/StudentReportsPage";
-import AdminStudentDashboard from "./pages/students/AdminStudentDashboard";
-import StudentDashboard from "./pages/students/StudentDashboard";
-//reports
-import StudentProfilePage from "./pages/students/StudentProfilePage";
-import CertificateGenerator from "./pages/reports/CertificateGenerator";
-import AnalyticsPage from "./pages/reports/AnalyticsPage";
+const StudentsPage = lazy(() => import("./pages/students/StudentsPage"));
+const AdmissionForm = lazy(() => import("./pages/students/AdmissionForm"));
+const OldStudentEntry = lazy(() => import("./pages/students/OldStudentEntry"));
+const PromotionPage = lazy(() => import("./pages/students/PromotionPage"));
+const AgeSettings = lazy(() => import("./pages/students/AgeSettings"));
+const PrintStudents = lazy(() => import("./pages/students/PrintStudents"));
+const RecycleBinPage = lazy(() => import("./pages/students/RecycleBinPage"));
+const EditStudentPage = lazy(() => import("./pages/students/EditStudentPage"));
+const StudentIdCardPage = lazy(() => import("./pages/students/StudentIdCard"));
+const StudentReportsPage = lazy(() => import("./pages/students/StudentReportsPage"));
+const AdminStudentDashboard = lazy(() => import("./pages/students/AdminStudentDashboard"));
+const StudentDashboard = lazy(() => import("./pages/students/StudentDashboard"));
+const StudentProfilePage = lazy(() => import("./pages/students/StudentProfilePage"));
+
+// Reports
+const ReportsPage = lazy(() => import("./pages/reports/ReportsPage"));
+const CertificateGenerator = lazy(() => import("./pages/reports/CertificateGenerator"));
+const AnalyticsPage = lazy(() => import("./pages/reports/AnalyticsPage"));
+
 // Subscriptions
-import SubscriptionsPage from "./pages/subscriptions/SubscriptionsPage";
-// App.tsx ya routes mein:
-import SubscriptionSettings from "./pages/subscriptions/SubscriptionSettings";
-//settings
-import TenantAdminSettings from "./pages/settings/TenantAdminSettings";
+const SubscriptionsPage = lazy(() => import("./pages/subscriptions/SubscriptionsPage"));
+const SubscriptionSettings = lazy(() => import("./pages/subscriptions/SubscriptionSettings"));
+const SubscriptionExpired = lazy(() => import("./pages/subscriptions/SubscriptionExpired"));
 
-import SignatureMaster from "./pages/settings/SignatureMaster";
-import ThemePage from "./pages/settings/theme/ThemePage";
-
-
-
-// 🔥 NEW: Subscription Expired Page
-import SubscriptionExpired from "./pages/subscriptions/SubscriptionExpired";
-import RegisterSchool from "./pages/login/RegisterSchool";
-// Tenant Admin Settings
-import SettingsPage from "./pages/SettingsPage";
+// Settings
+const TenantAdminSettings = lazy(() => import("./pages/settings/TenantAdminSettings"));
+const SignatureMaster = lazy(() => import("./pages/settings/SignatureMaster"));
+const ThemePage = lazy(() => import("./pages/settings/theme/ThemePage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 // Academic Year
-import AcademicYearPage from "./pages/academic-year/AcademicYearPage";
+const AcademicYearPage = lazy(() => import("./pages/academic-year/AcademicYearPage"));
 
 // Classes
-import ClassesPage from "./pages/classes/ClassesPage";
+const ClassesPage = lazy(() => import("./pages/classes/ClassesPage"));
 
 // Sections
-import Sections from "./pages/Sections/SectionsPage";
+const Sections = lazy(() => import("./pages/Sections/SectionsPage"));
 
 // Subjects
-import SubjectsPage from "./pages/Subjects/SubjectsPage";
+const SubjectsPage = lazy(() => import("./pages/Subjects/SubjectsPage"));
 
-// Teachers (Existing)
-import Teachers from "./pages/teachers/Teachers";
-import AddEditTeacher from "./pages/teachers/AddEditTeacher";
-
-// Teacher Module (New Pages)
-import TeacherDashboard from "./pages/teachers/TeacherDashboard";
-import TeacherProfile from "./pages/teachers/TeacherProfile";
-import AssignSubjectToTeacher from "./pages/teachers/AssignSubjectToTeacher";
-import TeacherTimetable from "./pages/teachers/TeacherTimetable";
-import TeacherAttendance from "./pages/teachers/TeacherAttendance";
-import LeaveManagement from "./pages/teachers/LeaveManagement";
-import TeacherSalary from "./pages/teachers/TeacherSalary";
-import TeacherPerformance from "./pages/teachers/TeacherPerformance";
-import TeacherDocuments from "./pages/teachers/TeacherDocuments";
-import Communication from "./pages/teachers/Communication";
-import TeacherReports from "./pages/teachers/TeacherReports";
-import TeacherSettings from "./pages/teachers/TeacherSettings";
-import TeacherIdCard from "./pages/teachers/TeacherIdCard";
+// Teachers
+const Teachers = lazy(() => import("./pages/teachers/Teachers"));
+const AddEditTeacher = lazy(() => import("./pages/teachers/AddEditTeacher"));
+const TeacherDashboard = lazy(() => import("./pages/teachers/TeacherDashboard"));
+const TeacherProfile = lazy(() => import("./pages/teachers/TeacherProfile"));
+const AssignSubjectToTeacher = lazy(() => import("./pages/teachers/AssignSubjectToTeacher"));
+const TeacherTimetable = lazy(() => import("./pages/teachers/TeacherTimetable"));
+const TeacherAttendance = lazy(() => import("./pages/teachers/TeacherAttendance"));
+const LeaveManagement = lazy(() => import("./pages/teachers/LeaveManagement"));
+const TeacherSalary = lazy(() => import("./pages/teachers/TeacherSalary"));
+const TeacherPerformance = lazy(() => import("./pages/teachers/TeacherPerformance"));
+const TeacherDocuments = lazy(() => import("./pages/teachers/TeacherDocuments"));
+const Communication = lazy(() => import("./pages/teachers/Communication"));
+const TeacherReports = lazy(() => import("./pages/teachers/TeacherReports"));
+const TeacherSettings = lazy(() => import("./pages/teachers/TeacherSettings"));
+const TeacherIdCard = lazy(() => import("./pages/teachers/TeacherIdCard"));
 
 // Timetable
-import TimetablePage from "./pages/timeTable/TimetablePage";
+const TimetablePage = lazy(() => import("./pages/timeTable/TimetablePage"));
 
 // Fees Module
-import FeeHeadPage from "./pages/fees/FeeHeadPage";
-import FeeStructurePage from "./pages/fees/FeeStructurePage";
-import FeeDiscountPage from "./pages/fees/FeeDiscountPage";
-import FineRulePage from "./pages/fees/FineRulePage";
-import FeeCollectionPage from "./pages/fees/FeeCollectionPage";
-import FeeDashboardPage from "./pages/fees/FeeDashboardPage";
-import AssignFeeStructurePage from "./pages/fees/AssignFeeStructurePage";
-import FeeReportsPage from "./pages/fees/FeeReportsPage";
-import FeeReceiptsPage from "./pages/fees/FeeReceiptsPage";
-import StudentLedgerPage from "./pages/fees/StudentLedgerPage";
-import FeeReminderPage from "./pages/fees/FeeReminderPage";
-import FeeSettingsPage from "./pages/fees/FeeSettingsPage";
+const FeeHeadPage = lazy(() => import("./pages/fees/FeeHeadPage"));
+const FeeStructurePage = lazy(() => import("./pages/fees/FeeStructurePage"));
+const FeeDiscountPage = lazy(() => import("./pages/fees/FeeDiscountPage"));
+const FineRulePage = lazy(() => import("./pages/fees/FineRulePage"));
+const FeeCollectionPage = lazy(() => import("./pages/fees/FeeCollectionPage"));
+const FeeDashboardPage = lazy(() => import("./pages/fees/FeeDashboardPage"));
+const AssignFeeStructurePage = lazy(() => import("./pages/fees/AssignFeeStructurePage"));
+const FeeReportsPage = lazy(() => import("./pages/fees/FeeReportsPage"));
+const FeeReceiptsPage = lazy(() => import("./pages/fees/FeeReceiptsPage"));
+const StudentLedgerPage = lazy(() => import("./pages/fees/StudentLedgerPage"));
+const FeeReminderPage = lazy(() => import("./pages/fees/FeeReminderPage"));
+const FeeSettingsPage = lazy(() => import("./pages/fees/FeeSettingsPage"));
 
 // Exam Module
-import ExamList from "./pages/exams/ExamList";
-import GradeSettings from "./pages/exams/GradeSettings";
-import CreateEditExam from "./pages/exams/CreateEditExam";
-import ExamSubjects from "./pages/exams/ExamSubjects";
-import MarksEntry from "./pages/exams/MarksEntry";
-import Results from "./pages/exams/Results";
-import ReportCard from "./pages/exams/ReportCard";
-import BulkReportCard from "./pages/exams/BulkReportCard";
-import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
-// Exam Module (NEW Pages)
-import ExamSchedule from "./pages/exams/ExamSchedule";
-import SeatingArrangement from "./pages/exams/SeatingArrangement";
-import AdmitCard from "./pages/exams/AdmitCard";
-import QuestionPaper from "./pages/exams/QuestionPaper";
-import InvigilatorAssignment from "./pages/exams/InvigilatorAssignment";
-import ExamDashboard from "./pages/exams/ExamDashboard";
-import ExamReports from "./pages/exams/ExamReports";
-
-// Exam Module (Standalone Pages - Sidebar accessible)
-import SeatingArrangementPage from "./pages/exams/SeatingArrangementPage";
-import RoomManagement from "./pages/exams/RoomManagement";
-import AdmitCardPage from "./pages/exams/AdmitCardPage";
-
-import ReportCardSelect from "./pages/exams/ReportCardSelect";
+const ExamList = lazy(() => import("./pages/exams/ExamList"));
+const GradeSettings = lazy(() => import("./pages/exams/GradeSettings"));
+const CreateEditExam = lazy(() => import("./pages/exams/CreateEditExam"));
+const ExamSubjects = lazy(() => import("./pages/exams/ExamSubjects"));
+const MarksEntry = lazy(() => import("./pages/exams/MarksEntry"));
+const Results = lazy(() => import("./pages/exams/Results"));
+const ReportCard = lazy(() => import("./pages/exams/ReportCard"));
+const BulkReportCard = lazy(() => import("./pages/exams/BulkReportCard"));
+const ConsolidatedReportCard = lazy(() => import("./pages/exams/ConsolidatedReportCard"));
+const ExamSchedule = lazy(() => import("./pages/exams/ExamSchedule"));
+const SeatingArrangement = lazy(() => import("./pages/exams/SeatingArrangement"));
+const AdmitCard = lazy(() => import("./pages/exams/AdmitCard"));
+const QuestionPaper = lazy(() => import("./pages/exams/QuestionPaper"));
+const InvigilatorAssignment = lazy(() => import("./pages/exams/InvigilatorAssignment"));
+const ExamDashboard = lazy(() => import("./pages/exams/ExamDashboard"));
+const ExamReports = lazy(() => import("./pages/exams/ExamReports"));
+const SeatingArrangementPage = lazy(() => import("./pages/exams/SeatingArrangementPage"));
+const RoomManagement = lazy(() => import("./pages/exams/RoomManagement"));
+const AdmitCardPage = lazy(() => import("./pages/exams/AdmitCardPage"));
+const ReportCardSelect = lazy(() => import("./pages/exams/ReportCardSelect"));
 
 // Designer
-import DesignerPage from "./pages/designer/DesignerPage";
+const DesignerPage = lazy(() => import("./pages/designer/DesignerPage"));
 
 // YN-UDP Template Designer
-import YnUdpPage from "./pages/yn-udp/YnUdpPage";
+const YnUdpPage = lazy(() => import("./pages/yn-udp/YnUdpPage"));
 
 // Attendance
-import AttendancePage from "./pages/AttendancePage/AttendancePage";
-import AttendanceReportPage from "./pages/AttendancePage/AttendanceReportPage";
-import AttendanceDashboardPage from "./pages/AttendancePage/AttendanceDashboardPage";
-////library
-import LibraryDashboard from "./pages/library/LibraryDashboard";
-// Import (top of file)
-import TransportDashboard from "./pages/transport/TransportDashboard";
+const AttendancePage = lazy(() => import("./pages/AttendancePage/AttendancePage"));
+const AttendanceReportPage = lazy(() => import("./pages/AttendancePage/AttendanceReportPage"));
+const AttendanceDashboardPage = lazy(() => import("./pages/AttendancePage/AttendanceDashboardPage"));
+
+// Library
+const LibraryDashboard = lazy(() => import("./pages/library/LibraryDashboard"));
+
+// Transport
+const TransportDashboard = lazy(() => import("./pages/transport/TransportDashboard"));
 
 // Backup
-import BackupPage from "./pages/backup/BackupPage";
+const BackupPage = lazy(() => import("./pages/backup/BackupPage"));
 
 
 //////////////////////////////////////////////////////
@@ -164,7 +174,7 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-// 🔥 NEW: Response interceptor — auto-redirect on subscription expired
+// 🔥 Response interceptor — auto-redirect on subscription expired
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -172,7 +182,6 @@ axios.interceptors.response.use(
       error?.response?.status === 403 &&
       error?.response?.data?.subscriptionExpired === true
     ) {
-      // Set flag and redirect
       localStorage.setItem("subscriptionExpired", "true");
       window.location.href = "/subscription-expired";
     }
@@ -186,14 +195,71 @@ axios.interceptors.response.use(
 function ProtectedRoute() {
   const token = localStorage.getItem("token");
   const location = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [expired, setExpired] = useState(false);
 
+  useEffect(() => {
+    if (!token) {
+      setChecking(false);
+      return;
+    }
+    const checkSubscription = async () => {
+      // Skip check for subscription-related pages
+      if (location.pathname === "/subscription-expired" || location.pathname === "/subscriptions") {
+        setChecking(false);
+        return;
+      }
+      // Skip check if payment was just completed (grace period)
+      const paymentJustCompleted = localStorage.getItem("subscriptionPaymentTime");
+      if (paymentJustCompleted) {
+        const elapsed = Date.now() - parseInt(paymentJustCompleted);
+        if (elapsed < 30000) { // 30 second grace after payment
+          localStorage.removeItem("subscriptionExpired");
+          setExpired(false);
+          setChecking(false);
+          return;
+        } else {
+          localStorage.removeItem("subscriptionPaymentTime");
+        }
+      }
+      try {
+        const res = await axios.get("/api/tenant/my-subscription", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = res.data?.data || res.data;
+        // If no subscription or expired
+        if (!data || !data.endDate || data.daysRemaining <= 0 || data.status === "expired" || data.status === "cancelled") {
+          localStorage.setItem("subscriptionExpired", "true");
+          setExpired(true);
+        } else {
+          localStorage.removeItem("subscriptionExpired");
+          setExpired(false);
+        }
+      } catch (err: any) {
+        // Any error means no active subscription — redirect
+        console.warn("Subscription check failed:", err?.response?.status, err?.message);
+        localStorage.setItem("subscriptionExpired", "true");
+        setExpired(true);
+      } finally {
+        setChecking(false);
+      }
+    };
+    checkSubscription();
+  }, [token, location.pathname]);
+
+  // No token = not logged in
   if (!token) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // 🔥 If subscription expired, only allow /subscription-expired
-  const isExpired = localStorage.getItem("subscriptionExpired") === "true";
-  if (isExpired && location.pathname !== "/subscription-expired") {
+  // Show spinner while checking subscription
+  if (checking) {
+    return <div className="h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>;
+  }
+
+  // Subscription expired — redirect
+  const isExpired = expired || localStorage.getItem("subscriptionExpired") === "true";
+  if (isExpired && location.pathname !== "/subscription-expired" && location.pathname !== "/subscriptions") {
     return <Navigate to="/subscription-expired" replace />;
   }
 
@@ -201,7 +267,7 @@ function ProtectedRoute() {
 }
 
 //////////////////////////////////////////////////////
-// Layout (with Sidebar + TopNavbar)
+// Layout (with Sidebar + TopNavbar + Suspense)
 //////////////////////////////////////////////////////
 function Layout() {
   const [tenant, setTenant] = useState<any>(() => {
@@ -224,7 +290,6 @@ function Layout() {
   }, []);
 
   useEffect(() => {
-    // Load theme from localStorage instantly (no flash)
     const savedTheme = localStorage.getItem("themeColor");
     if (savedTheme) {
       document.documentElement.style.setProperty("--primary-color", savedTheme);
@@ -257,7 +322,10 @@ function Layout() {
       <Sidebar tenant={tenant} />
       <div className="flex-1 bg-gray-100 p-6">
         <TopNavbar tenant={tenant} />
-        <Outlet context={{ setTenant }} />
+        {/* ✅ Suspense boundary inside Layout — Sidebar stays visible during page transitions */}
+        <Suspense fallback={<PageLoader />}>
+          <Outlet context={{ setTenant }} />
+        </Suspense>
       </div>
     </div>
   );
@@ -285,161 +353,165 @@ function RoleSettings() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* ===== PUBLIC ROUTES ===== */}
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/register-school" element={<RegisterSchool />} />
-        {/* ===== PROTECTED ROUTES ===== */}
-        <Route element={<ProtectedRoute />}>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* ===== PUBLIC ROUTES ===== */}
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/register-school" element={<RegisterSchool />} />
 
-          {/* 🔥 SUBSCRIPTION EXPIRED PAGE (No Sidebar/Navbar) */}
-          <Route path="/subscription-expired" element={<SubscriptionExpired />} />
+          {/* ===== PROTECTED ROUTES ===== */}
+          <Route element={<ProtectedRoute />}>
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* PRINT ROUTES — No Sidebar, No Navbar       */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          <Route path="/print/report-card/:examId/bulk" element={<BulkReportCard />} />
-          <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
-          <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* STUDENT PORTAL — Separate Layout (own sidebar) */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          <Route path="/student-portal" element={<StudentDashboard />} />
-
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          {/* NORMAL ROUTES — With Sidebar + Navbar      */}
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-          <Route element={<Layout />}>
-            {/* DASHBOARD */}
-            <Route path="/dashboard" element={<RoleDashboard />} />
-
-            {/* TENANTS (SuperAdmin only) */}
-            <Route path="/tenants" element={<TenantsPage />} />
-
-            {/* SUBSCRIPTIONS */}
-            <Route path="/subscriptions" element={<SubscriptionsPage />} />
-
-            {/* REPORTS */}
-            <Route path="/student-profile" element={<StudentProfilePage />} />
-            <Route path="/certificates" element={<CertificateGenerator />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            {/*library*/}
-            <Route path="/library" element={<LibraryDashboard />} />
-            {/* SETTINGS */}
-            <Route path="/settings" element={<RoleSettings />} />
-            <Route path="/settings/users" element={<TenantAdminSettings />} />
-            <Route path="/settings/theme" element={<ThemePage />} />
-
-            {/* SIGNATURE MASTER */}
-            <Route path="/signature-master" element={<SignatureMaster />} />
-
-            {/* ATTENDANCE */}
-            <Route path="/attendance-dashboard" element={<AttendanceDashboardPage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/attendance-report" element={<AttendanceReportPage />} />
-
-            {/* STUDENT MODULE */}
-            <Route path="/student-dashboard" element={<AdminStudentDashboard />} />
-            <Route path="/students" element={<StudentsPage />} />
-            <Route path="/students/new-admission" element={<AdmissionForm />} />
-            <Route path="/students/old-entry" element={<OldStudentEntry />} />
-            <Route path="/students/promotion" element={<PromotionPage />} />
-            <Route path="/students/age-settings" element={<AgeSettings />} />
-            <Route path="/students/print" element={<PrintStudents />} />
-            <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
-            <Route path="/students/:id/edit" element={<EditStudentPage />} />
-            <Route path="/students/reports" element={<StudentReportsPage />} />
-            <Route path="/students/id-card" element={<StudentIdCardPage />} />
-
-            {/* ACADEMIC */}
-            <Route path="/academic-years" element={<AcademicYearPage />} />
-            <Route path="/classes" element={<ClassesPage />} />
-            <Route path="/Sections" element={<Sections />} />
-            <Route path="/subjects" element={<SubjectsPage />} />
+            {/* 🔥 SUBSCRIPTION EXPIRED PAGE (No Sidebar/Navbar) */}
+            <Route path="/subscription-expired" element={<SubscriptionExpired />} />
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-            {/* TEACHER MODULE (Complete)                   */}
+            {/* PRINT ROUTES — No Sidebar, No Navbar       */}
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-            <Route path="/teachers" element={<Teachers />} />
-            <Route path="/teachers/add" element={<AddEditTeacher />} />
-            <Route path="/teachers/edit/:id" element={<AddEditTeacher />} />
-            <Route path="/teachers/profile/:id" element={<TeacherProfile />} />
-            <Route path="/assign-subject" element={<AssignSubjectToTeacher />} />
-            <Route path="/teacher-timetable" element={<TeacherTimetable />} />
-            <Route path="/teacher-attendance" element={<TeacherAttendance />} />
-            <Route path="/teacher-leave" element={<LeaveManagement />} />
-            <Route path="/teacher-salary" element={<TeacherSalary />} />
-            <Route path="/teacher-performance" element={<TeacherPerformance />} />
-            <Route path="/teacher-documents" element={<TeacherDocuments />} />
-            <Route path="/teacher-communication" element={<Communication />} />
-            <Route path="/teacher-reports" element={<TeacherReports />} />
-            <Route path="/teacher-settings" element={<TeacherSettings />} />
-            <Route path="/teacher-id-card" element={<TeacherIdCard />} />
+            <Route path="/print/report-card/:examId/bulk" element={<BulkReportCard />} />
+            <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
+            <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
-            {/* TIMETABLE */}
-            <Route path="/timeTable" element={<TimetablePage />} />
-            <Route path="/transport" element={<TransportDashboard />} />
-            {/* FEES MODULE */}
-            <Route path="/fees" element={<FeeCollectionPage />} />
-            <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
-            <Route path="/fees/collection" element={<FeeCollectionPage />} />
-            <Route path="/fees/heads" element={<FeeHeadPage />} />
-            <Route path="/fees/structures" element={<FeeStructurePage />} />
-            <Route path="/fees/assign" element={<AssignFeeStructurePage />} />
-            <Route path="/fees/discounts" element={<FeeDiscountPage />} />
-            <Route path="/fees/fine-rules" element={<FineRulePage />} />
-            <Route path="/fees/reports" element={<FeeReportsPage />} />
-            <Route path="/fees/receipts" element={<FeeReceiptsPage />} />
-            <Route path="/fees/ledger" element={<StudentLedgerPage />} />
-            <Route path="/fees/reminders" element={<FeeReminderPage />} />
-            <Route path="/fees/settings" element={<FeeSettingsPage />} />
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* STUDENT PORTAL — Separate Layout             */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            <Route path="/student-portal" element={<StudentDashboard />} />
 
-            {/* EXAM MODULE */}
-            <Route path="/grade-settings" element={<GradeSettings />} />
-            <Route path="/exams/consolidated-report/:studentId" element={<ConsolidatedReportCard />} />
-            <Route path="/exams/create" element={<CreateEditExam />} />
-            <Route path="/exams/edit/:id" element={<CreateEditExam />} />
-            <Route path="/exams/:id/subjects" element={<ExamSubjects />} />
-            <Route path="/exams/:id/marks" element={<MarksEntry />} />
-            <Route path="/exams/:id/results" element={<Results />} />
-            <Route path="/exams/:examId/report-card/:studentId" element={<ReportCard />} />
-            <Route path="/exams" element={<ExamList />} />
-            <Route path="/exam-dashboard" element={<ExamDashboard />} />
-            <Route path="/exam-schedule/:id" element={<ExamSchedule />} />
-            <Route path="/exam-seating/:id" element={<SeatingArrangement />} />
-            <Route path="/exam-admit-cards/:id" element={<AdmitCard />} />
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* NORMAL ROUTES — With Sidebar + Navbar      */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            <Route element={<Layout />}>
+              {/* DASHBOARD */}
+              <Route path="/dashboard" element={<RoleDashboard />} />
 
-            {/* Exam - Standalone Pages (Sidebar accessible) */}
-            <Route path="/exam-seating-plan" element={<SeatingArrangementPage />} />
-            <Route path="/exam-admit-card" element={<AdmitCardPage />} />
-            <Route path="/rooms" element={<RoomManagement />} />
+              {/* TENANTS (SuperAdmin only) */}
+              <Route path="/tenants" element={<TenantsPage />} />
 
-            <Route path="/exam-question-papers/:id" element={<QuestionPaper />} />
-            <Route path="/exam-invigilators/:id" element={<InvigilatorAssignment />} />
-            <Route path="/exam-reports" element={<ExamReports />} />
+              {/* SUBSCRIPTIONS */}
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
 
-            <Route path="/report-card-select" element={<ReportCardSelect />} />
+              {/* REPORTS */}
+              <Route path="/student-profile" element={<StudentProfilePage />} />
+              <Route path="/certificates" element={<CertificateGenerator />} />
+              <Route path="/reports" element={<ReportsPage />} />
 
+              {/* LIBRARY */}
+              <Route path="/library" element={<LibraryDashboard />} />
 
-            <Route path="/designer/:type" element={<DesignerPage />} />
+              {/* SETTINGS */}
+              <Route path="/settings" element={<RoleSettings />} />
+              <Route path="/settings/users" element={<TenantAdminSettings />} />
+              <Route path="/settings/theme" element={<ThemePage />} />
 
-            {/* YN-UDP Template Designer */}
-            <Route path="/yn-udp" element={<YnUdpPage />} />
+              {/* SIGNATURE MASTER */}
+              <Route path="/signature-master" element={<SignatureMaster />} />
 
-            <Route path="/analytics" element={<AnalyticsPage />} />
+              {/* ATTENDANCE */}
+              <Route path="/attendance-dashboard" element={<AttendanceDashboardPage />} />
+              <Route path="/attendance" element={<AttendancePage />} />
+              <Route path="/attendance-report" element={<AttendanceReportPage />} />
 
-            {/* BACKUP */}
-            <Route path="/backup" element={<BackupPage />} />
+              {/* STUDENT MODULE */}
+              <Route path="/student-dashboard" element={<AdminStudentDashboard />} />
+              <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students/new-admission" element={<AdmissionForm />} />
+              <Route path="/students/old-entry" element={<OldStudentEntry />} />
+              <Route path="/students/promotion" element={<PromotionPage />} />
+              <Route path="/students/age-settings" element={<AgeSettings />} />
+              <Route path="/students/print" element={<PrintStudents />} />
+              <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
+              <Route path="/students/:id/edit" element={<EditStudentPage />} />
+              <Route path="/students/reports" element={<StudentReportsPage />} />
+              <Route path="/students/id-card" element={<StudentIdCardPage />} />
+
+              {/* ACADEMIC */}
+              <Route path="/academic-years" element={<AcademicYearPage />} />
+              <Route path="/classes" element={<ClassesPage />} />
+              <Route path="/Sections" element={<Sections />} />
+              <Route path="/subjects" element={<SubjectsPage />} />
+
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {/* TEACHER MODULE (Complete)                   */}
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+              <Route path="/teachers" element={<Teachers />} />
+              <Route path="/teachers/add" element={<AddEditTeacher />} />
+              <Route path="/teachers/edit/:id" element={<AddEditTeacher />} />
+              <Route path="/teachers/profile/:id" element={<TeacherProfile />} />
+              <Route path="/assign-subject" element={<AssignSubjectToTeacher />} />
+              <Route path="/teacher-timetable" element={<TeacherTimetable />} />
+              <Route path="/teacher-attendance" element={<TeacherAttendance />} />
+              <Route path="/teacher-leave" element={<LeaveManagement />} />
+              <Route path="/teacher-salary" element={<TeacherSalary />} />
+              <Route path="/teacher-performance" element={<TeacherPerformance />} />
+              <Route path="/teacher-documents" element={<TeacherDocuments />} />
+              <Route path="/teacher-communication" element={<Communication />} />
+              <Route path="/teacher-reports" element={<TeacherReports />} />
+              <Route path="/teacher-settings" element={<TeacherSettings />} />
+              <Route path="/teacher-id-card" element={<TeacherIdCard />} />
+
+              {/* TIMETABLE */}
+              <Route path="/timeTable" element={<TimetablePage />} />
+              <Route path="/transport" element={<TransportDashboard />} />
+
+              {/* FEES MODULE */}
+              <Route path="/fees" element={<FeeCollectionPage />} />
+              <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
+              <Route path="/fees/collection" element={<FeeCollectionPage />} />
+              <Route path="/fees/heads" element={<FeeHeadPage />} />
+              <Route path="/fees/structures" element={<FeeStructurePage />} />
+              <Route path="/fees/assign" element={<AssignFeeStructurePage />} />
+              <Route path="/fees/discounts" element={<FeeDiscountPage />} />
+              <Route path="/fees/fine-rules" element={<FineRulePage />} />
+              <Route path="/fees/reports" element={<FeeReportsPage />} />
+              <Route path="/fees/receipts" element={<FeeReceiptsPage />} />
+              <Route path="/fees/ledger" element={<StudentLedgerPage />} />
+              <Route path="/fees/reminders" element={<FeeReminderPage />} />
+              <Route path="/fees/settings" element={<FeeSettingsPage />} />
+
+              {/* EXAM MODULE */}
+              <Route path="/grade-settings" element={<GradeSettings />} />
+              <Route path="/exams/consolidated-report/:studentId" element={<ConsolidatedReportCard />} />
+              <Route path="/exams/create" element={<CreateEditExam />} />
+              <Route path="/exams/edit/:id" element={<CreateEditExam />} />
+              <Route path="/exams/:id/subjects" element={<ExamSubjects />} />
+              <Route path="/exams/:id/marks" element={<MarksEntry />} />
+              <Route path="/exams/:id/results" element={<Results />} />
+              <Route path="/exams/:examId/report-card/:studentId" element={<ReportCard />} />
+              <Route path="/exams" element={<ExamList />} />
+              <Route path="/exam-dashboard" element={<ExamDashboard />} />
+              <Route path="/exam-schedule/:id" element={<ExamSchedule />} />
+              <Route path="/exam-seating/:id" element={<SeatingArrangement />} />
+              <Route path="/exam-admit-cards/:id" element={<AdmitCard />} />
+
+              {/* Exam - Standalone Pages (Sidebar accessible) */}
+              <Route path="/exam-seating-plan" element={<SeatingArrangementPage />} />
+              <Route path="/exam-admit-card" element={<AdmitCardPage />} />
+              <Route path="/rooms" element={<RoomManagement />} />
+
+              <Route path="/exam-question-papers/:id" element={<QuestionPaper />} />
+              <Route path="/exam-invigilators/:id" element={<InvigilatorAssignment />} />
+              <Route path="/exam-reports" element={<ExamReports />} />
+
+              <Route path="/report-card-select" element={<ReportCardSelect />} />
+
+              <Route path="/designer/:type" element={<DesignerPage />} />
+
+              {/* YN-UDP Template Designer */}
+              <Route path="/yn-udp" element={<YnUdpPage />} />
+
+              <Route path="/analytics" element={<AnalyticsPage />} />
+
+              {/* BACKUP */}
+              <Route path="/backup" element={<BackupPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/dashboard" />} />
-      </Routes>
+          {/* FALLBACK */}
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
-

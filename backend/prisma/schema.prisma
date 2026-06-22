@@ -1525,6 +1525,25 @@ model PlatformSettings {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+//////////////////////
+// DEVELOPER PROFILE (SuperAdmin's public info shown to tenants)
+//////////////////////
+model DeveloperProfile {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  photoUrl      String?
+  phone         String?
+  whatsapp      String?
+  email         String?
+  linkedinUrl   String?
+  callingHours  String?
+  message       String?
+  isVisible     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 ////////////////
 //library management
 /////////////////////

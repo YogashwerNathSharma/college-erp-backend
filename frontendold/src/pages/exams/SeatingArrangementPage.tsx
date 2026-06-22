@@ -84,6 +84,7 @@ interface Seat {
   studentId?: string;
   studentName?: string;
   fatherName?: string;
+  roomId?: string;
   roomName?: string;
   rollNo?: string;
   className?: string;
@@ -109,8 +110,9 @@ const SeatingArrangementPage: React.FC = () => {
   const headers = { Authorization: `Bearer ${token}` };
 
   // Core State
-  const [exams, setExams] = useState<Exam[]>([]);
+
   const [selectedExam, setSelectedExam] = useState("");
+  const [exams, setExams] = useState<Exam[]>([]);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState("");
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -130,7 +132,9 @@ const SeatingArrangementPage: React.FC = () => {
   const [customCols, setCustomCols] = useState<number>(8);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [classStudentCounts, setClassStudentCounts] = useState<Record<string, number>>({});
   const [mixClasses, setMixClasses] = useState(true);
+  const [seatingPlanType, setSeatingPlanType] = useState<"same" | "daily">("same"); // same = one plan for all days, daily = different each day
   const [aiInstruction, setAiInstruction] = useState("");
   const [showConfig, setShowConfig] = useState(true);
 
@@ -183,6 +187,10 @@ const SeatingArrangementPage: React.FC = () => {
   useEffect(() => {
     setCustomCapacity(customRows * customCols);
   }, [customRows, customCols]);
+
+
+
+
 
   // Build class color map when classes selected
   useEffect(() => {
@@ -270,9 +278,12 @@ const SeatingArrangementPage: React.FC = () => {
             allSeats = [...allSeats, ...schSeats];
           } catch {}
         }
-        setSeats(allSeats);
-        const assigned = allSeats.filter((s) => s.assigned).length;
-        setStats({ totalCapacity: allSeats.length, assigned, available: allSeats.length - assigned });
+        // Cap display to total grid capacity across all rooms
+        const totalCap = customRows * customCols * Math.max(selectedRoomIds.length, 1);
+        const cappedSeats = allSeats.slice(0, totalCap);
+        setSeats(cappedSeats);
+        const assignedAll = cappedSeats.filter((s) => s.assigned).length;
+        setStats({ totalCapacity: totalCap, assigned: assignedAll, available: totalCap - assignedAll });
         setLoading(false);
         return;
       }
@@ -282,11 +293,12 @@ const SeatingArrangementPage: React.FC = () => {
       const rawSeats = Array.isArray(raw) ? raw : raw.seats || [];
 
       // Map backend response to frontend Seat interface
-      const assignedSeats: Seat[] = rawSeats.map((s: any) => ({
+      const allAssignedSeats: Seat[] = rawSeats.map((s: any) => ({
         seatNumber: s.seatNumber || s.seatNo || "",
         studentId: s.studentId || "",
         studentName: s.studentName || "",
         fatherName: s.fatherName || "",
+        roomId: s.roomId || "",
         roomName: s.roomName || "",
         rollNo: s.rollNo || s.admissionNo || "",
         className: s.className || "",
@@ -294,26 +306,15 @@ const SeatingArrangementPage: React.FC = () => {
         assigned: s.assigned ?? !!s.studentId,
       }));
 
-      // Fill remaining seats as empty up to custom capacity
-      const totalSlots = customRows * customCols;
-      const seatingData: Seat[] = [];
-      for (let i = 0; i < totalSlots; i++) {
-        if (i < assignedSeats.length) {
-          seatingData.push(assignedSeats[i]);
-        } else {
-          const row = String.fromCharCode(65 + Math.floor(i / customCols));
-          const col = (i % customCols) + 1;
-          seatingData.push({ seatNumber: `${row}${col}`, assigned: false });
-        }
-      }
+      // Store ALL assigned seats (all rooms) — display will group by room
+      setSeats(allAssignedSeats);
 
-      setSeats(seatingData);
-
-      const assigned = seatingData.filter((s) => s.assigned).length;
+      const totalSlots = customRows * customCols * Math.max(selectedRoomIds.length, 1);
+      const assignedCount = allAssignedSeats.length;
       setStats({
-        totalCapacity: seatingData.length,
-        assigned,
-        available: seatingData.length - assigned,
+        totalCapacity: totalSlots,
+        assigned: assignedCount,
+        available: totalSlots - assignedCount,
       });
     } catch {
       setSeats([]);
@@ -329,6 +330,27 @@ const SeatingArrangementPage: React.FC = () => {
       prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId]
     );
   };
+
+  // Fetch student count per class when selection changes
+  useEffect(() => {
+    const fetchClassCounts = async () => {
+      if (selectedClassIds.length === 0) {
+        setClassStudentCounts({});
+        return;
+      }
+      try {
+        const counts: Record<string, number> = {};
+        for (const classId of selectedClassIds) {
+          const res = await axios.get(`/api/enrollment/count?classId=${classId}`, { headers });
+          counts[classId] = res.data?.count || res.data?.data || 0;
+        }
+        setClassStudentCounts(counts);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchClassCounts();
+  }, [selectedClassIds]);
 
   // Fetch how many students are already assigned per room for current schedule
   const fetchRoomUsage = async () => {
@@ -368,6 +390,7 @@ const SeatingArrangementPage: React.FC = () => {
   // GENERATE CUSTOM SEATING
   // ═══════════════════════════════════════════
   const handleGenerateCustom = async () => {
+    if (generating) return; // Prevent double-click
     if (!selectedSchedule) {
       toast.error("Please select an exam schedule");
       return;
@@ -386,29 +409,54 @@ const SeatingArrangementPage: React.FC = () => {
       // If "Full Schedule" selected, generate for all schedules
       if (selectedSchedule === "__ALL__") {
         let successCount = 0;
-        for (const sch of schedules) {
-          try {
-            await axios.post(
-              "/api/exam/seating/generate-custom",
-              {
-                examScheduleId: sch.id,
-                roomId: selectedRoomIds[0],
-                roomIds: selectedRoomIds,
-                capacity: customCapacity,
-                rows: customRows,
-                cols: customCols,
-                classIds: selectedClassIds,
-                mixClasses,
-                aiInstruction: aiInstruction.trim() || undefined,
-              },
-              { headers }
-            );
-            successCount++;
-          } catch {}
+
+        if (seatingPlanType === "same") {
+          // SAME seating for all days — generate once, copy to all schedules
+          // Generate for first schedule
+          const firstRes = await axios.post(
+            "/api/exam/seating/generate-custom",
+            {
+              examScheduleId: schedules[0].id,
+              roomId: selectedRoomIds[0],
+              roomIds: selectedRoomIds,
+              capacity: customCapacity,
+              rows: customRows,
+              cols: customCols,
+              classIds: selectedClassIds,
+              mixClasses,
+              aiInstruction: aiInstruction.trim() || undefined,
+              copyToScheduleIds: schedules.slice(1).map(s => s.id),
+            },
+            { headers }
+          );
+          successCount = schedules.length;
+          toast.success(`Same seating plan applied to all ${successCount} schedules!`);
+        } else {
+          // DAILY CHANGE — different seating each day (shuffle)
+          for (const sch of schedules) {
+            try {
+              await axios.post(
+                "/api/exam/seating/generate-custom",
+                {
+                  examScheduleId: sch.id,
+                  roomId: selectedRoomIds[0],
+                  roomIds: selectedRoomIds,
+                  capacity: customCapacity,
+                  rows: customRows,
+                  cols: customCols,
+                  classIds: selectedClassIds,
+                  mixClasses,
+                  aiInstruction: "random shuffle " + (aiInstruction.trim() || ""),
+                },
+                { headers }
+              );
+              successCount++;
+            } catch {}
+          }
+          toast.success(`Different seating generated for ${successCount}/${schedules.length} schedules!`);
         }
-        toast.success(`Seating generated for ${successCount}/${schedules.length} schedules!`);
       } else {
-        await axios.post(
+        const res = await axios.post(
           "/api/exam/seating/generate-custom",
           {
             examScheduleId: selectedSchedule,
@@ -423,7 +471,13 @@ const SeatingArrangementPage: React.FC = () => {
           },
           { headers }
         );
-        toast.success("Seating arrangement generated successfully!");
+        const result = res.data?.data || res.data || {};
+        if (result.unassigned > 0) {
+          toast.error(`${result.unassigned} students could not be assigned — add more rooms!`);
+        } else {
+          const roomInfo = result.roomAssignments?.map((r: any) => `${r.roomName}: ${r.count}`).join(", ") || "";
+          toast.success(`Seating generated! Total: ${result.total} students. ${roomInfo ? `(${roomInfo})` : ""}`);
+        }
       }
       fetchSeating();
     } catch (error: any) {
@@ -482,9 +536,15 @@ const SeatingArrangementPage: React.FC = () => {
     }
   };
 
-  // Filter seats by class for viewing
+
+  // Total available seats (0 if no rooms selected)
+  const totalAvailableSeats = selectedRoomIds.length > 0 ? customRows * customCols * selectedRoomIds.length : 0;
+  const perRoomSeats = selectedRoomIds.length > 0 ? customRows * customCols : 0;
+
+  // ALWAYS cap displayed seats to grid capacity
+  const gridCapacity = selectedRoomIds.length > 0 ? customRows * customCols * selectedRoomIds.length : 0;
   const filteredSeats = filterClass
-    ? seats.filter((s) => s.className === filterClass)
+    ? seats.filter((s) => s.roomName === filterClass)
     : seats;
 
   // Get class color for a seat
@@ -503,8 +563,9 @@ const SeatingArrangementPage: React.FC = () => {
   const handleNormalPrint = () => {
     const examName = exams.find((e) => e.id === selectedExam)?.name || "Exam";
     const schedule = schedules.find((s) => s.id === selectedSchedule);
-    const roomName = selectedRoomIds.map((id) => rooms.find((r) => r.id === id)?.name || "").filter(Boolean).join(", ") || schedule?.roomName || "";
     const logoUrl = getFullUrl(tenant?.logoUrl);
+    const schoolName = tenant?.name || "School Name";
+    const schoolAddress = tenant?.address || "";
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -512,92 +573,95 @@ const SeatingArrangementPage: React.FC = () => {
       return;
     }
 
-    const seatsHTML = filteredSeats
-      .map((seat) => {
-        const color = getSeatColor(seat);
-        return `
-        <div style="border:1.5px solid ${color.border};border-radius:6px;padding:6px;text-align:center;background:${color.bg};min-height:60px;display:flex;flex-direction:column;justify-content:center;">
-          <div style="font-weight:bold;font-size:12px;color:${color.text}">${seat.seatNumber}</div>
-          ${seat.assigned ? `<div style="font-size:10px;color:${color.text};margin-top:3px;">${seat.studentName || ''}</div><div style="font-size:9px;color:${color.text};">${seat.className || ''} | ${seat.rollNo || ''}</div>` : '<div style="font-size:9px;color:#9ca3af;margin-top:3px;">Empty</div>'}
-        </div>`;
-      })
-      .join("");
+    // Group seats by room
+    const roomGroups: Record<string, typeof seats> = {};
+    seats.filter(s => s.assigned).forEach((seat) => {
+      const rName = seat.roomName || "Room";
+      if (!roomGroups[rName]) roomGroups[rName] = [];
+      roomGroups[rName].push(seat);
+    });
 
     // Legend HTML
-    const legendHTML = selectedClassIds
-      .map((id, idx) => {
-        const cls = classes.find((c) => c.id === id);
-        const color = CLASS_COLORS[idx % CLASS_COLORS.length];
-        return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><span style="width:12px;height:12px;background:${color.bg};border:1.5px solid ${color.border};border-radius:3px;display:inline-block;"></span><span style="font-size:11px;">${cls?.name || id}</span></span>`;
-      })
-      .join("");
+    const legendHTML = selectedClassIds.map((id, idx) => {
+      const cls = classes.find((c) => c.id === id);
+      const color = CLASS_COLORS[idx % CLASS_COLORS.length];
+      return '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;"><span style="width:10px;height:10px;background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:2px;display:inline-block;"></span><span style="font-size:10px;">' + (cls?.name || id) + '</span></span>';
+    }).join("");
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Seating Arrangement - ${examName}</title>
-        <style>
-          @page { size: A4 landscape; margin: 12mm; }
-          body { font-family: 'Times New Roman', serif; margin: 0; padding: 16px; }
-          .header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 12px; }
-          .logo { width: 56px; height: 56px; object-fit: contain; margin-right: 14px; }
-          .school-info { flex: 1; text-align: center; }
-          .school-name { font-size: 18px; font-weight: bold; text-transform: uppercase; }
-          .school-address { font-size: 10px; color: #555; }
-          .title { text-align: center; margin: 10px 0; font-size: 15px; font-weight: bold; border: 1px solid #666; display: inline-block; padding: 4px 20px; }
-          .meta { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; }
-          .legend { margin-bottom: 10px; padding: 6px 0; border-bottom: 1px solid #eee; }
-          .grid { display: grid; grid-template-columns: repeat(${customCols}, 1fr); gap: 6px; margin: 12px 0; }
-          .footer { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; }
-          .sign-block { text-align: center; }
-          .sign-line { width: 130px; border-top: 1.5px solid #222; margin: 35px auto 4px; }
-          .sign-name { font-size: 11px; font-weight: bold; }
-          .sign-title { font-size: 10px; color: #555; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          ${logoUrl ? `<img src="${logoUrl}" class="logo" />` : '<div style="width:56px;"></div>'}
-          <div class="school-info">
-            <div class="school-name">${tenant?.name || 'School Name'}</div>
-            ${tenant?.address ? `<div class="school-address">${tenant.address}</div>` : ''}
-            ${tenant?.phone ? `<div class="school-address">Phone: ${tenant.phone}</div>` : ''}
-          </div>
-          <div style="width:56px;"></div>
-        </div>
+    // Logo HTML
+    const logoHTML = logoUrl ? '<img src="' + logoUrl + '" class="logo" />' : '<div style="width:56px;"></div>';
+    const addressHTML = schoolAddress ? '<div class="school-address">' + schoolAddress + '</div>' : '';
 
-        <div style="text-align:center;">
-          <div class="title">SEATING ARRANGEMENT</div>
-        </div>
+    // Build room pages
+    const gridSize = customRows * customCols;
+    const roomPages = Object.entries(roomGroups).map(([roomName, roomSeats]) => {
+      // Pad with empty seats
+      const padded = [...roomSeats];
+      while (padded.length < gridSize) {
+        const i = padded.length;
+        const rChar = String.fromCharCode(65 + Math.floor(i / customCols));
+        const cNum = (i % customCols) + 1;
+        padded.push({ seatNumber: rChar + "" + cNum, assigned: false } as any);
+      }
 
-        <div class="meta">
-          <span><strong>Exam:</strong> ${examName}</span>
-          <span><strong>Subject:</strong> ${schedule?.subjectName || 'N/A'}</span>
-          <span><strong>Date:</strong> ${schedule?.date ? new Date(schedule.date).toLocaleDateString('en-IN') : 'N/A'}</span>
-          <span><strong>Room:</strong> ${roomName}</span>
-          <span><strong>Layout:</strong> ${customRows} × ${customCols}</span>
-        </div>
+      const seatsHTML = padded.slice(0, gridSize).map((seat) => {
+        const color = getSeatColor(seat);
+        if (seat.assigned) {
+          return '<div style="border:1.5px solid ' + color.border + ';border-radius:6px;padding:5px;text-align:center;background:' + color.bg + ';min-height:55px;display:flex;flex-direction:column;justify-content:center;">' +
+            '<div style="font-weight:bold;font-size:11px;color:' + color.text + '">' + seat.seatNumber + '</div>' +
+            '<div style="font-size:10px;font-weight:600;color:#333;margin-top:2px;">' + (seat.studentName || '') + '</div>' +
+            '<div style="font-size:8px;color:#555;">F: ' + (seat.fatherName || '') + '</div>' +
+            '<div style="font-size:8px;color:' + color.text + ';margin-top:1px;">' + (seat.className || '') + '/' + (seat.sectionName || '') + ' | Roll: ' + (seat.rollNo || '') + '</div>' +
+            '</div>';
+        } else {
+          return '<div style="border:1.5px dashed #ddd;border-radius:6px;padding:5px;text-align:center;min-height:55px;display:flex;flex-direction:column;justify-content:center;">' +
+            '<div style="font-size:9px;color:#ccc;">' + seat.seatNumber + ' (Empty)</div></div>';
+        }
+      }).join("");
 
-        <div class="legend">${legendHTML}</div>
+      return '<div class="room-page">' +
+        '<div class="header">' + logoHTML +
+        '<div class="school-info"><div class="school-name">' + schoolName + '</div>' + addressHTML + '</div>' +
+        '<div style="width:56px;"></div></div>' +
+        '<div style="text-align:center;"><div class="title">SEATING ARRANGEMENT</div></div>' +
+        '<div class="meta">' +
+        '<span><strong>Exam:</strong> ' + examName + '</span>' +
+        '<span><strong>Subject:</strong> ' + (schedule?.subjectName || 'All') + '</span>' +
+        '<span><strong>Date:</strong> ' + (schedule?.date ? new Date(schedule.date).toLocaleDateString("en-IN") : "N/A") + '</span>' +
+        '<span><strong>Room:</strong> ' + roomName + '</span>' +
+        '<span><strong>Filled:</strong> ' + roomSeats.length + '/' + gridSize + '</span>' +
+        '</div>' +
+        '<div class="legend">' + legendHTML + '</div>' +
+        '<div class="grid">' + seatsHTML + '</div>' +
+        '<div class="footer">' +
+        '<div class="sign-block"><div class="sign-line"></div><div class="sign-name">Class Teacher</div><div class="sign-title">Signature</div></div>' +
+        '<div class="sign-block"><div class="sign-line"></div><div class="sign-name">Principal</div><div class="sign-title">Signature & Seal</div></div>' +
+        '</div></div>';
+    }).join("");
 
-        <div class="grid">${seatsHTML}</div>
+    const htmlContent = '<!DOCTYPE html><html><head><title>Seating Arrangement - ' + examName + '</title>' +
+      '<style>' +
+      '@page { size: A4 landscape; margin: 10mm; }' +
+      'body { font-family: Times New Roman, serif; margin: 0; padding: 0; }' +
+      '.room-page { padding: 14px; page-break-after: always; }' +
+      '.room-page:last-child { page-break-after: auto; }' +
+      '.header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }' +
+      '.logo { width: 50px; height: 50px; object-fit: contain; margin-right: 12px; }' +
+      '.school-info { flex: 1; text-align: center; }' +
+      '.school-name { font-size: 16px; font-weight: bold; text-transform: uppercase; }' +
+      '.school-address { font-size: 9px; color: #555; }' +
+      '.title { font-size: 14px; font-weight: bold; border: 1px solid #666; display: inline-block; padding: 3px 16px; margin: 6px 0; }' +
+      '.meta { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 10px; }' +
+      '.legend { margin-bottom: 8px; padding: 4px 0; border-bottom: 1px solid #eee; }' +
+      '.grid { display: grid; grid-template-columns: repeat(' + customCols + ', 1fr); gap: 4px; margin: 8px 0; }' +
+      '.footer { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 8px; border-top: 1px solid #ddd; }' +
+      '.sign-block { text-align: center; }' +
+      '.sign-line { width: 120px; border-top: 1.5px solid #222; margin: 30px auto 4px; }' +
+      '.sign-name { font-size: 10px; font-weight: bold; }' +
+      '.sign-title { font-size: 9px; color: #555; }' +
+      '</style></head><body>' + roomPages + '</body></html>';
 
-        <div class="footer">
-          <div class="sign-block">
-            <div class="sign-line"></div>
-            <div class="sign-name">Class Teacher</div>
-            <div class="sign-title">Signature</div>
-          </div>
-          <div class="sign-block">
-            <div class="sign-line"></div>
-            <div class="sign-name">Principal</div>
-            <div class="sign-title">Signature & Seal</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `);
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 400);
   };
@@ -855,7 +919,7 @@ const SeatingArrangementPage: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-[10px] text-gray-400 mt-2">
-                    Layout: {customRows} rows × {customCols} cols = {customRows * customCols} seats
+                    Layout: {customRows} rows × {customCols} cols = {selectedRoomIds.length > 0 ? customRows * customCols : 0} seats
                   </p>
                 </div>
 
@@ -895,9 +959,28 @@ const SeatingArrangementPage: React.FC = () => {
                     })}
                   </div>
                   {selectedClassIds.length > 0 && (
-                    <p className="text-[10px] text-green-600 mt-2 font-medium">
-                      {selectedClassIds.length} class{selectedClassIds.length > 1 ? "es" : ""} selected
-                    </p>
+                    <div className="mt-2">
+                      <div className="flex flex-wrap gap-2 mb-1">
+                        {selectedClassIds.map((cid) => {
+                          const cls = classes.find((c) => c.id === cid);
+                          const count = classStudentCounts[cid] || 0;
+                          return (
+                            <span key={cid} className="text-[10px] bg-gray-100 border border-gray-200 rounded px-2 py-0.5">
+                              {cls?.name || "?"}: <strong>{count}</strong>
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-indigo-700 font-semibold">
+                        Total Students: {Object.values(classStudentCounts).reduce((a, b) => a + b, 0)} | 
+                        Available Seats: {totalAvailableSeats}
+                        {Object.values(classStudentCounts).reduce((a, b) => a + b, 0) > totalAvailableSeats && selectedRoomIds.length > 0 && (
+                          <span className="text-red-500 ml-2">
+                            ⚠️ {Object.values(classStudentCounts).reduce((a, b) => a + b, 0) - totalAvailableSeats} students won't fit — add more rooms!
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -918,6 +1001,33 @@ const SeatingArrangementPage: React.FC = () => {
                 <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                   Recommended
                 </span>
+              </div>
+
+              {/* Row 3b: Seating Plan Type (Same vs Daily Change) */}
+              <div className="flex items-center gap-4 px-1 py-2">
+                <span className="text-sm font-medium text-gray-700">Seating Plan:</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="seatingPlanType"
+                    value="same"
+                    checked={seatingPlanType === "same"}
+                    onChange={() => setSeatingPlanType("same")}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-600">Same for all days</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="seatingPlanType"
+                    value="daily"
+                    checked={seatingPlanType === "daily"}
+                    onChange={() => setSeatingPlanType("daily")}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-600">Change daily (shuffle per day)</span>
+                </label>
               </div>
 
               {/* Row 4: AI Instruction */}
@@ -984,7 +1094,7 @@ const SeatingArrangementPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Total Capacity</p>
-                  <p className="text-xl font-bold text-gray-900">{stats.totalCapacity}</p>
+                  <p className="text-xl font-bold text-gray-900">{totalAvailableSeats}</p>
                 </div>
               </div>
             </div>
@@ -995,7 +1105,7 @@ const SeatingArrangementPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Assigned</p>
-                  <p className="text-xl font-bold text-gray-900">{stats.assigned}</p>
+                  <p className="text-xl font-bold text-gray-900">{seats.filter(s => s.assigned).length}</p>
                 </div>
               </div>
             </div>
@@ -1006,7 +1116,7 @@ const SeatingArrangementPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Available</p>
-                  <p className="text-xl font-bold text-gray-900">{stats.available}</p>
+                  <p className="text-xl font-bold text-gray-900">{Math.max(0, totalAvailableSeats - seats.filter(s => s.assigned).length)}</p>
                 </div>
               </div>
             </div>
@@ -1038,17 +1148,18 @@ const SeatingArrangementPage: React.FC = () => {
                   onChange={(e) => setFilterClass(e.target.value)}
                   className="rounded-lg border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                 >
-                  <option value="">All Classes</option>
-                  {classes
-                    .filter((c) => selectedClassIds.includes(c.id))
-                    .map((cls) => (
-                      <option key={cls.id} value={cls.name}>
-                        {cls.name}
-                      </option>
-                    ))}
+                  <option value="">All Rooms</option>
+                  {selectedRoomIds.map((id) => {
+                      const room = rooms.find((r) => r.id === id);
+                      return (
+                        <option key={id} value={room?.name || ""}>
+                          {room?.name || "Unknown"}
+                        </option>
+                      );
+                    })}
                 </select>
                 <span className="text-xs text-gray-400">
-                  Showing {filteredSeats.length} of {seats.length} seats
+                  Showing {seats.filter(s => s.assigned).length} assigned of {totalAvailableSeats} total seats ({selectedRoomIds.length} rooms)
                 </span>
               </div>
 
@@ -1112,52 +1223,103 @@ const SeatingArrangementPage: React.FC = () => {
             </div>
           ) : (
             <div>
-              {/* CARD GRID */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {filteredSeats.map((seat, idx) => {
-                  const color = getSeatColor(seat);
+              {/* ROOM-WISE CARD GRIDS */}
+              {(() => {
+                // Group seats by room
+                if (!filteredSeats || filteredSeats.length === 0) {
                   return (
-                    <div
-                      key={idx}
-                      className={`rounded-xl p-3 transition-all hover:shadow-md ${
-                        seat.assigned ? "border-2 shadow-sm" : "border-2 border-dashed"
-                      }`}
-                      style={{
-                        borderColor: color.border,
-                        backgroundColor: seat.assigned ? color.bg : "#fafafa",
-                      }}
-                    >
-                      {seat.assigned ? (
-                        <>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ backgroundColor: color.border + '30', color: color.text }}>
-                              {seat.seatNumber}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: color.bg, color: color.text, border: `1px solid ${color.border}` }}>
-                              {seat.className || ""}{seat.sectionName ? `/${seat.sectionName}` : ""}
-                            </span>
-                          </div>
-                          <p className="text-sm font-semibold text-gray-800 truncate">{seat.studentName || "-"}</p>
-                          <p className="text-[11px] text-gray-500 truncate">F: {seat.fatherName || "-"}</p>
-                          <div className="flex items-center justify-between mt-2 pt-1.5 border-t" style={{ borderColor: color.border + '40' }}>
-                            <span className="text-[10px] text-gray-500">Roll: <strong className="text-gray-700">{seat.rollNo || "-"}</strong></span>
-                            <span className="text-[10px] text-gray-500">{seat.roomName || rooms.find((r) => selectedRoomIds.includes(r.id))?.name || ""}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-center h-20">
-                          <div className="text-center">
-                            <span className="text-xs font-bold text-gray-400">{seat.seatNumber}</span>
-                            <p className="text-[10px] text-gray-300 mt-1">Empty</p>
-                          </div>
-                        </div>
-                      )}
+                    <div className="text-center text-gray-400 py-8">
+                      No seating arrangement generated yet. Click &quot;Generate Seating&quot; to create one.
                     </div>
                   );
-                })}
-              </div>
+                }
+                const roomGroups: Record<string, typeof filteredSeats> = {};
+                filteredSeats.forEach((seat) => {
+                  const rName = seat.roomName || "Unassigned";
+                  if (!roomGroups[rName]) roomGroups[rName] = [];
+                  roomGroups[rName].push(seat);
+                });
+                const roomNames = Object.keys(roomGroups);
+                
+                // If no rooms after grouping
+                if (roomNames.length === 0) {
+                  return (
+                    <div className="text-center text-gray-400 py-8">
+                      No seating data available.
+                    </div>
+                  );
+                }
+
+                return roomNames.map((roomName, roomIdx) => {
+                  const roomSeats = roomGroups[roomName];
+                  // Pad with empty seats up to grid capacity
+                  const gridSize = customRows * customCols;
+                  const paddedSeats = [...roomSeats];
+                  while (paddedSeats.length < gridSize) {
+                    const i = paddedSeats.length;
+                    const row = String.fromCharCode(65 + Math.floor(i / customCols));
+                    const col = (i % customCols) + 1;
+                    paddedSeats.push({ seatNumber: `${row}${col}`, assigned: false });
+                  }
+
+                  return (
+                    <div key={roomIdx} className="mb-8">
+                      {/* Room Header */}
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+                        <span className="text-sm font-bold text-gray-800 bg-indigo-50 px-3 py-1 rounded-lg">
+                          📍 {roomName}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {roomSeats.filter(s => s.assigned).length} / {gridSize} seats filled
+                        </span>
+                      </div>
+                      {/* Grid */}
+                      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${customCols}, minmax(0, 1fr))` }}>
+                        {paddedSeats.slice(0, gridSize).map((seat, idx) => {
+                          const color = getSeatColor(seat);
+                          return (
+                            <div
+                              key={idx}
+                              className={`rounded-xl p-3 transition-all hover:shadow-md ${
+                                seat.assigned ? "border-2 shadow-sm" : "border-2 border-dashed"
+                              }`}
+                              style={{
+                                borderColor: color.border,
+                                backgroundColor: seat.assigned ? color.bg : "#fafafa",
+                              }}
+                            >
+                              {seat.assigned ? (
+                                <>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ backgroundColor: color.border + '30', color: color.text }}>
+                                      {seat.seatNumber}
+                                    </span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: color.bg, color: color.text, border: `1px solid ${color.border}` }}>
+                                      {seat.className}/{seat.sectionName}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-semibold text-gray-800 truncate">{seat.studentName}</p>
+                                  <p className="text-[10px] text-gray-500 truncate">F: {seat.fatherName}</p>
+                                  <div className="flex justify-between mt-2 text-[10px] text-gray-400">
+                                    <span>Roll: {seat.rollNo}</span>
+                                    <span>{seat.roomName}</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-center h-16">
+                                  <span className="text-xs text-gray-300">{seat.seatNumber} (Empty)</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
               <div className="mt-3 text-xs text-gray-400 text-right">
-                Showing {filteredSeats.filter((s) => s.assigned).length} assigned / {filteredSeats.length} total seats
+                Showing {filteredSeats.filter((s) => s.assigned).length} assigned / {customRows * customCols * Math.max(selectedRoomIds.length, 1)} total seats
               </div>
             </div>
           )}
@@ -1166,7 +1328,7 @@ const SeatingArrangementPage: React.FC = () => {
         {/* ═══════════════════════════════════════════ */}
         {/* EXAM ATTENDANCE SHEET */}
         {/* ═══════════════════════════════════════════ */}
-        {seats.length > 0 && filteredSeats.filter((s) => s.assigned).length > 0 && (
+        {seats.length > 0 && seats.filter((s) => s.assigned).length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mt-6">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-4">
               <ClipboardList className="w-4 h-4 text-orange-500" />
@@ -1266,8 +1428,14 @@ const SeatingArrangementPage: React.FC = () => {
                       return;
                     }
 
-                    // Filter students by room
-                    const attendStudents = filteredSeats.filter((s) => s.assigned && (!attendanceRoom || s.roomName === attendanceRoom));
+                    // Filter students by selected room, cap to grid capacity
+                    const maxPerRoom = customRows * customCols;
+                    let attendStudents = seats.filter((s) => s.assigned);
+                    if (attendanceRoom) {
+                      attendStudents = attendStudents.filter((s) => s.roomName === attendanceRoom);
+                    }
+                    // HARD CAP: never exceed room capacity
+                    attendStudents = attendStudents.slice(0, maxPerRoom);
 
                     // Build date header columns
                     const dateHeaders = examDates.map((d) => {

@@ -48,6 +48,7 @@ body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
+  overflow: hidden;
 }
 
 /* ================= ROOT LAYOUT ================= */

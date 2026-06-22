@@ -163,8 +163,9 @@ export default function SubscriptionExpired() {
         if (res.data.success) {
           toast.success("Free Trial activated! 🎉 Redirecting...");
           localStorage.removeItem("subscriptionExpired");
+          localStorage.setItem("subscriptionPaymentTime", String(Date.now()));
           setTimeout(() => {
-            navigate("/dashboard");
+            window.location.href = "/dashboard";
           }, 1500);
         }
 
@@ -209,9 +210,10 @@ export default function SubscriptionExpired() {
 
               toast.success("Payment successful! 🎉 Redirecting...");
               localStorage.removeItem("subscriptionExpired");
+              localStorage.setItem("subscriptionPaymentTime", String(Date.now()));
 
               setTimeout(() => {
-                navigate("/dashboard");
+                window.location.href = "/dashboard";
               }, 1500);
 
             } catch (verifyErr: any) {

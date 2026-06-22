@@ -103,12 +103,14 @@ export interface GradeSettingInput {
 export interface CustomSeatingInput {
   examScheduleId: string;
   roomId: string;
+  roomIds?: string[];
   capacity: number;
   rows: number;
   cols: number;
   classIds: string[];
   mixClasses: boolean;
   aiInstruction?: string;
+  copyToScheduleIds?: string[];
 }
 
 

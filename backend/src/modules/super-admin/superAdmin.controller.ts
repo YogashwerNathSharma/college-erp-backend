@@ -13,6 +13,8 @@ import {
   updatePlatformSettingsService,
   updateSuperAdminProfileService,
   getSystemConfigService,
+  getDeveloperProfileService,
+  upsertDeveloperProfileService,
 } from "./superAdmin.service";
 
 //////////////////////////////////////////////////////
@@ -202,6 +204,32 @@ export const getSystemConfig = async (req: any, res: Response) => {
   try {
     const config = await getSystemConfigService();
     res.json({ success: true, data: config });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 👨💻 GET DEVELOPER PROFILE
+//////////////////////////////////////////////////////
+
+export const getDeveloperProfile = async (req: any, res: Response) => {
+  try {
+    const data = await getDeveloperProfileService();
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 👨💻 UPSERT DEVELOPER PROFILE
+//////////////////////////////////////////////////////
+
+export const upsertDeveloperProfile = async (req: any, res: Response) => {
+  try {
+    const data = await upsertDeveloperProfileService(req.body);
+    res.json({ success: true, data });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }

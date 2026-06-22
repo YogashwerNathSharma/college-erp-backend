@@ -62,3 +62,30 @@ export const getEnrollments = async (req: Request, res: Response) => {
     });
   }
 };
+
+/////////////////////////
+// COUNT ENROLLMENTS BY CLASS
+/////////////////////////
+export const getEnrollmentCount = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    const classId = req.query.classId as string;
+
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (!classId) {
+      return res.status(400).json({ success: false, message: "classId required" });
+    }
+
+    const count = await service.getEnrollmentCountByClass(classId, tenantId);
+
+    return res.status(200).json({ success: true, count });
+  } catch (error: any) {
+    console.error("GET ENROLLMENT COUNT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to count enrollments",
+    });
+  }
+};

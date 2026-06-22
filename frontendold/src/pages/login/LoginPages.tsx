@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +10,16 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // 🔥 Your other products — edit this list as needed
+  const otherProducts = [
+    "📚 YN Library Management",
+    "💰 YN Fee Manager",
+    "🚌 YN Transport Tracker",
+    "📊 YN Analytics Dashboard",
+    "📝 YN Online Exam Portal",
+    "👨‍🏫 YN HR & Payroll",
+  ];
 
   // 🔥 Generate device fingerprint (basic browser fingerprint)
   const getDeviceFingerprint = (): string => {
@@ -43,7 +54,7 @@ export default function LoginPage() {
 
       const payload = {
         email: email.toLowerCase().trim(),
-        password: password.trim(),
+        password,
       };
 
       const res = await axios.post(
@@ -97,56 +108,170 @@ export default function LoginPage() {
       style={{
         display: "flex",
         height: "100vh",
+        overflow: "hidden",
         fontFamily: "sans-serif",
       }}
     >
       {/* LEFT SIDE */}
       <div
         style={{
-          width: "40%",
-          background: "linear-gradient(135deg, #1E90FF, #00C6FF, #8A2BE2)",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "40vw",
+          height: "100vh",
+          zIndex: 10,
+          backgroundImage: "url('/school-bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
           color: "white",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          padding: "20px",
+          padding: "0px",
+          overflow: "hidden",
         }}
       >
-        <img
-          src="/ynlogo.png"
-          alt="logo"
+        {/* Dark overlay for text readability — very light so image stays clear */}
+        <div
           style={{
-            width: "180px",
-            marginBottom: "20px",
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.25)",
+            zIndex: 1,
           }}
         />
 
-        <h1
+        {/* 🔥 NEWS TICKER BANNER — Top scrolling patti */}
+        <div
           style={{
-            fontSize: "48px",
-            fontWeight: "bold",
-            marginBottom: "10px",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            background: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(4px)",
+            padding: "10px 0",
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            zIndex: 12,
           }}
         >
-          School ERP
-        </h1>
+          <div
+            style={{
+              display: "inline-block",
+              animation: "ticker 20s linear infinite",
+              paddingLeft: "100%",
+            }}
+          >
+            {otherProducts.map((product, index) => (
+              <span
+                key={index}
+                style={{
+                  marginRight: "50px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {product}
+                {index < otherProducts.length - 1 && (
+                  <span style={{ margin: "0 20px", opacity: 0.5 }}>|</span>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
 
-        <p
+        <div
+  style={{
+    position: "absolute",
+    top: "160px",
+    left: "10px",
+    width: "300px",
+    textAlign: "left",
+    zIndex: 20,
+  }}
+>
+  <img
+    src="/ynlogo.png"
+    alt="logo"
+    style={{
+      width: "200px",
+      marginBottom: "25px",
+    }}
+  />
+
+  <h1
+    style={{
+      fontSize: "36px",
+      fontWeight: "bold",
+      marginBottom: "10px",
+      textShadow: "2px 2px 8px rgba(0,0,0,0.5)",
+    }}
+  >
+    School ERP
+  </h1>
+
+  <p
+    style={{
+      fontSize: "20px",
+      textShadow: "2px 1px 4px rgba(0,0,0,0)",
+    }}
+  >
+    Manage your school digitally
+  </p>
+</div>
+
+        {/* 🔥 Product Cards — COMMENTED OUT (optional, uncomment if needed)
+        <div
           style={{
-            fontSize: "20px",
-            opacity: 0.9,
-            textAlign: "center",
+            marginTop: "30px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px",
+            justifyContent: "center",
+            maxWidth: "320px",
           }}
         >
-          Manage your school digitally
-        </p>
+          {otherProducts.map((product, index) => (
+            <div
+              key={index}
+              style={{
+                background: "rgba(255, 255, 255, 0.15)",
+                backdropFilter: "blur(4px)",
+                borderRadius: "8px",
+                padding: "8px 14px",
+                fontSize: "12px",
+                fontWeight: "500",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+              onMouseEnter={(e) => {
+                (e.target as HTMLDivElement).style.background = "rgba(255, 255, 255, 0.3)";
+                (e.target as HTMLDivElement).style.transform = "scale(1.05)";
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLDivElement).style.background = "rgba(255, 255, 255, 0.15)";
+                (e.target as HTMLDivElement).style.transform = "scale(1)";
+              }}
+            >
+              {product}
+            </div>
+          ))}
+        </div>
+        */}
       </div>
 
       {/* RIGHT SIDE */}
       <div
         style={{
-          width: "60%",
+          width: "60vw",
+          marginLeft: "40vw",
+          height: "100vh",
+          overflowY: "auto" as const,
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
@@ -274,6 +399,20 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* 🔥 CSS Keyframes for ticker animation */}
+      <style>
+        {`
+          @keyframes ticker {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-100%);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }
@@ -288,4 +427,5 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
 };
+
 

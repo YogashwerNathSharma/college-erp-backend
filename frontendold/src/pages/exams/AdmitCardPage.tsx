@@ -528,11 +528,41 @@ const AdmitCardPage: React.FC = () => {
           class_teacher_name: "Class Teacher",
         };
 
-        // Replace placeholders in canvas JSON
+        // Replace simple placeholders in canvas JSON
         let canvasStr = JSON.stringify(template.canvasJSON);
         Object.keys(placeholders).forEach((key) => {
           const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
           canvasStr = canvasStr.replace(regex, placeholders[key]);
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Replace REPEATING schedule fields ({{subject_name}}, {{exam_date}}, {{exam_time}})
+        // Each occurrence is replaced with the next schedule entry
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const schedule = data.schedule || [];
+        let scheduleIndex = 0;
+
+        // Replace each {{subject_name}} one-by-one with next schedule entry
+        canvasStr = canvasStr.replace(/\{\{subject_name\}\}/g, () => {
+          const item = schedule[scheduleIndex];
+          scheduleIndex++;
+          return item?.subject?.name || "";
+        });
+
+        scheduleIndex = 0;
+        canvasStr = canvasStr.replace(/\{\{exam_date\}\}/g, () => {
+          const item = schedule[scheduleIndex];
+          const dateVal = item?.examDate ? new Date(item.examDate).toLocaleDateString() : "";
+          scheduleIndex++;
+          return dateVal;
+        });
+
+        scheduleIndex = 0;
+        canvasStr = canvasStr.replace(/\{\{exam_time\}\}/g, () => {
+          const item = schedule[scheduleIndex];
+          const timeVal = item ? `${item.startTime || ""} - ${item.endTime || ""}` : "";
+          scheduleIndex++;
+          return timeVal;
         });
 
         const renderedTemplate = {

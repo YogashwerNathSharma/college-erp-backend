@@ -14,6 +14,8 @@ import {
   updatePlatformSettings,
   updateSuperAdminProfile,
   getSystemConfig,
+  getDeveloperProfile,
+  upsertDeveloperProfile,
 } from "./superAdmin.controller";
 
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -86,6 +88,13 @@ router.get("/settings", getSuperAdminSettings);
 router.put("/settings/platform", updatePlatformSettings);
 router.put("/settings/profile", updateSuperAdminProfile);
 router.get("/settings/system-config", getSystemConfig);
+
+//////////////////////////////////////////////////////
+// 👨💻 DEVELOPER PROFILE
+//////////////////////////////////////////////////////
+
+router.get("/developer-profile", getDeveloperProfile);
+router.put("/developer-profile", upsertDeveloperProfile);
 
 export default router;
 

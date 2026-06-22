@@ -1,6 +1,7 @@
 
 import express from "express";
 
+import compression from "compression";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
@@ -86,6 +87,12 @@ import backupRoutes from "./modules/backup/backup.routes";
 
 
 const app = express();
+
+//////////////////////////////////////////////////////
+// GZIP COMPRESSION (reduces API response size by 60-80%)
+//////////////////////////////////////////////////////
+
+app.use(compression());
 
 //////////////////////////////////////////////////////
 // CORS

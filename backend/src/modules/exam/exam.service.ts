@@ -1074,19 +1074,19 @@ export const getSeatingByScheduleService = async (
     orderBy: { seatNo: "asc" },
   });
 
-  const studentIds = seatings.map((s: any) => s.studentId);
+  const studentIds = [...new Set(seatings.map((s: any) => s.studentId))];
   const students = studentIds.length > 0
     ? await prisma.student.findMany({ where: { id: { in: studentIds } } })
     : [];
 
-  // Get enrollments to find class info
+  // Get enrollments (filter by academicYear to avoid duplicates from old years)
   const enrollments = studentIds.length > 0
     ? await prisma.enrollment.findMany({
-        where: { studentId: { in: studentIds }, tenantId, isDeleted: false },
+        where: { studentId: { in: studentIds }, tenantId, isDeleted: false, status: "active" },
       })
     : [];
 
-  // Get class names
+  // Class names
   const classIds = [...new Set(enrollments.map((e: any) => e.classId))];
   const classesData = classIds.length > 0
     ? await prisma.class.findMany({ where: { id: { in: classIds } } })
@@ -1096,13 +1096,15 @@ export const getSeatingByScheduleService = async (
     classNameMap[c.id] = c.name;
   }
 
-  // Map studentId -> classId
+  // Map studentId -> classId (first active enrollment wins)
   const studentClassMap: Record<string, string> = {};
   for (const e of enrollments as any[]) {
-    studentClassMap[e.studentId] = e.classId;
+    if (!studentClassMap[e.studentId]) {
+      studentClassMap[e.studentId] = e.classId;
+    }
   }
 
-  // Get sections
+  // Sections
   const sectionIds = [...new Set(enrollments.map((e: any) => e.sectionId).filter(Boolean))];
   const sectionsData = sectionIds.length > 0
     ? await prisma.section.findMany({ where: { id: { in: sectionIds } } })
@@ -1113,34 +1115,45 @@ export const getSeatingByScheduleService = async (
   }
   const studentSectionMap: Record<string, string> = {};
   for (const e of enrollments as any[]) {
-    if (e.sectionId) studentSectionMap[e.studentId] = e.sectionId;
+    if (e.sectionId && !studentSectionMap[e.studentId]) {
+      studentSectionMap[e.studentId] = e.sectionId;
+    }
   }
 
-  const room = seatings.length > 0
-    ? await prisma.room.findFirst({ where: { id: seatings[0].roomId } })
-    : null;
+  // Get all rooms used
+  const roomIds = [...new Set(seatings.map((s: any) => s.roomId))];
+  const rooms = roomIds.length > 0
+    ? await prisma.room.findMany({ where: { id: { in: roomIds } } })
+    : [];
+  const roomNameMap: Record<string, string> = {};
+  for (const r of rooms as any[]) {
+    roomNameMap[r.id] = r.name;
+  }
+
+  // Build seats array with room info
+  const seats = seatings.map((seat: any) => {
+    const student = students.find((s: any) => s.id === seat.studentId);
+    const classId = studentClassMap[seat.studentId] || "";
+    const sectionId = studentSectionMap[seat.studentId] || "";
+    return {
+      seatNumber: seat.seatNo,
+      studentId: seat.studentId,
+      studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "",
+      fatherName: (student as any)?.fatherName || "",
+      roomId: seat.roomId,
+      roomName: roomNameMap[seat.roomId] || "",
+      rollNo: (student as any)?.rollNumber || (student as any)?.admissionNo || "",
+      className: classNameMap[classId] || "",
+      sectionName: sectionNameMap[sectionId] || "",
+      assigned: true,
+    };
+  });
 
   return {
-    room: room ? { id: (room as any).id, name: (room as any).name, capacity: (room as any).capacity } : null,
-    totalCapacity: (room as any)?.capacity || 0,
-    assigned: seatings.length,
-    available: ((room as any)?.capacity || 0) - seatings.length,
-    seats: seatings.map((seat: any) => {
-      const student = students.find((s: any) => s.id === seat.studentId);
-      const classId = studentClassMap[seat.studentId] || "";
-      const sectionId = studentSectionMap[seat.studentId] || "";
-      return {
-        seatNumber: seat.seatNo,
-        studentId: seat.studentId,
-        studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "",
-        fatherName: (student as any)?.fatherName || "",
-        roomName: room ? (room as any).name : "",
-        rollNo: (student as any)?.rollNumber || (student as any)?.admissionNo || "",
-        className: classNameMap[classId] || "",
-        sectionName: sectionNameMap[sectionId] || "",
-        assigned: true,
-      };
-    }),
+    rooms: rooms.map((r: any) => ({ id: r.id, name: r.name })),
+    totalAssigned: seatings.length,
+    roomCount: roomIds.length,
+    seats,
   };
 };
 
@@ -1644,8 +1657,89 @@ function interleaveByClass(students: any[]): any[] {
 }
 
 /**
- * Shuffle array randomly (Fisher-Yates)
+ * Grid-aware placement: No same-class student in adjacent seats (left, right, front, back)
+ * Returns array in grid-row order (row-major). Students that can't fit are returned in overflow.
  */
+function gridPlaceNoAdjacent(
+  students: any[],
+  rows: number,
+  cols: number
+): { placed: any[]; overflow: any[] } {
+  const gridSize = rows * cols;
+
+  // If fewer students than grid, all go in this room
+  // If more students than grid, first gridSize go here, rest overflow
+  const forThisRoom = students.slice(0, gridSize);
+  const overflow = students.slice(gridSize);
+
+  // Now arrange forThisRoom in grid with best-effort no-adjacent-same-class
+  const grid: (any | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null));
+
+  // Group by class for round-robin
+  const groups: Record<string, any[]> = {};
+  for (const s of forThisRoom) {
+    const key = s._classId || "unknown";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(s);
+  }
+  const classKeys = Object.keys(groups);
+
+  // Helper: check adjacency
+  function canPlace(r: number, c: number, classId: string): boolean {
+    if (c > 0 && grid[r][c - 1] && grid[r][c - 1]._classId === classId) return false;
+    if (c < cols - 1 && grid[r][c + 1] && grid[r][c + 1]._classId === classId) return false;
+    if (r > 0 && grid[r - 1][c] && grid[r - 1][c]._classId === classId) return false;
+    if (r < rows - 1 && grid[r + 1][c] && grid[r + 1][c]._classId === classId) return false;
+    return true;
+  }
+
+  // Fill grid: try best-effort adjacency, but NEVER leave a seat empty
+  let classIdx = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let placed = false;
+
+      // Try round-robin with adjacency check
+      for (let attempt = 0; attempt < classKeys.length; attempt++) {
+        const tryIdx = (classIdx + attempt) % classKeys.length;
+        const tryKey = classKeys[tryIdx];
+        if (groups[tryKey].length > 0 && canPlace(r, c, tryKey)) {
+          grid[r][c] = groups[tryKey].shift()!;
+          classIdx = (tryIdx + 1) % classKeys.length;
+          placed = true;
+          break;
+        }
+      }
+
+      // If adjacency failed, place ANY remaining student (no empty seats!)
+      if (!placed) {
+        for (const key of classKeys) {
+          if (groups[key].length > 0) {
+            grid[r][c] = groups[key].shift()!;
+            placed = true;
+            break;
+          }
+        }
+      }
+
+      if (!placed) break; // No students left
+    }
+  }
+
+  // Collect placed students in row-major order
+  const placed: any[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] !== null) {
+        placed.push(grid[r][c]);
+      }
+    }
+  }
+
+  return { placed, overflow };
+}
+
+
 function shuffleArray(arr: any[]): any[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -1662,27 +1756,33 @@ export const generateCustomSeatingService = async (
   data: CustomSeatingInput,
   tenantId: string
 ) => {
-  const { examScheduleId, roomId, capacity, rows, cols, classIds, mixClasses, aiInstruction } = data;
+  const { examScheduleId, roomId, rows, cols, classIds, mixClasses, aiInstruction, roomIds } = data;
 
-  // Validate schedule exists
+  // Rooms to use
+  const allRoomIds = (roomIds && roomIds.length > 0) ? roomIds : [roomId];
+  const gridSize = rows * cols; // seats per room (e.g. 5x8 = 40)
+
+  console.log("\n🪑 [SEATING] Grid:", rows, "x", cols, "=", gridSize, "seats/room | Rooms:", allRoomIds.length, "| Classes:", classIds.length);
+
+  // Validate schedule
   const schedule = await prisma.examSchedule.findFirst({
     where: { id: examScheduleId, tenantId, isDeleted: false },
   });
   if (!schedule) throw new Error("Schedule not found");
 
-  // Validate room exists
-  const room = await prisma.room.findFirst({
-    where: { id: roomId, tenantId, isDeleted: false },
+  // Validate rooms
+  const roomsData = await prisma.room.findMany({
+    where: { id: { in: allRoomIds }, tenantId, isDeleted: false },
   });
-  if (!room) throw new Error("Room not found");
+  if (roomsData.length === 0) throw new Error("No valid rooms found");
 
-  // Get exam for academicYearId
+  // Get exam
   const exam = await prisma.exam.findFirst({
     where: { id: schedule.examId, tenantId, isDeleted: false },
   });
   if (!exam) throw new Error("Exam not found");
 
-  // Fetch students from all selected classIds via Enrollment
+  // Fetch students from selected classes
   const enrollments = await prisma.enrollment.findMany({
     where: {
       classId: { in: classIds },
@@ -1693,7 +1793,7 @@ export const generateCustomSeatingService = async (
     },
   });
 
-  // Deduplicate: one enrollment per student (first match wins)
+  // Deduplicate students (one per studentId)
   const studentIds = [...new Set(enrollments.map((e: any) => e.studentId))];
   if (studentIds.length === 0) throw new Error("No students found in selected classes");
 
@@ -1702,7 +1802,18 @@ export const generateCustomSeatingService = async (
     orderBy: { firstName: "asc" },
   });
 
-  // Map classId to each student for mixing purposes (first enrollment per student wins)
+  console.log("🪑 [SEATING] Enrollments:", enrollments.length, "| Unique studentIds:", studentIds.length, "| Students found:", students.length);
+  
+  // Extra safety: check for duplicate student names (debug)
+  const nameCount: Record<string, number> = {};
+  students.forEach((s: any) => {
+    const name = s.firstName + " " + s.lastName;
+    nameCount[name] = (nameCount[name] || 0) + 1;
+  });
+  const dupes = Object.entries(nameCount).filter(([_, c]) => c > 1);
+  if (dupes.length > 0) console.log("⚠️ [SEATING] Duplicate names:", dupes.map(([n, c]) => n + ":" + c).join(", "));
+
+  // Map student → classId
   const enrollmentMap: Record<string, string> = {};
   for (const e of enrollments as any[]) {
     if (!enrollmentMap[e.studentId]) {
@@ -1710,76 +1821,144 @@ export const generateCustomSeatingService = async (
     }
   }
 
-  // Get class names for reference
-  const classesData = await prisma.class.findMany({
-    where: { id: { in: classIds } },
-  });
+  // Class names
+  const classesDataList = await prisma.class.findMany({ where: { id: { in: classIds } } });
   const classNameMap: Record<string, string> = {};
-  for (const c of classesData as any[]) {
+  for (const c of classesDataList as any[]) {
     classNameMap[c.id] = c.name;
   }
 
-  // Augment students with classId
+  // Augment students
   let augmented = students.map((s: any) => ({
     ...s,
     _classId: enrollmentMap[s.id] || "",
     _className: classNameMap[enrollmentMap[s.id] || ""] || "",
   }));
 
-  // Limit to capacity
-  if (augmented.length > capacity) {
-    augmented = augmented.slice(0, capacity);
+  // Shuffle if requested
+  if (aiInstruction && aiInstruction.toLowerCase().includes("random")) {
+    augmented = shuffleArray(augmented);
   }
 
-  // Apply arrangement logic
-  let arranged: any[];
+  // *** HARD DELETE all old seating for this schedule (no soft-delete bloat) ***
+  await prisma.seatingArrangement.deleteMany({
+    where: { examScheduleId, tenantId },
+  });
 
-  if (aiInstruction) {
-    // AI/Rule-based arrangement
-    arranged = applyAiInstruction(augmented, aiInstruction, classNameMap, rows, cols);
-  } else if (mixClasses) {
-    // Default: interleave by class
-    arranged = interleaveByClass(augmented);
-  } else {
-    // No mixing — just sequential
-    arranged = augmented;
+  // Fill rooms one by one with grid-aware placement
+  let remainingStudents = [...augmented];
+  let totalAssigned = 0;
+  const roomAssignments: { roomId: string; roomName: string; count: number }[] = [];
+
+  for (let roomIndex = 0; roomIndex < allRoomIds.length; roomIndex++) {
+    if (remainingStudents.length === 0) break;
+
+    const currentRoomId = allRoomIds[roomIndex];
+    let placed: any[];
+    let overflow: any[];
+
+    if (mixClasses && classIds.length > 1) {
+      // Grid placement with no-adjacent-same-class rule
+      const result = gridPlaceNoAdjacent(remainingStudents, rows, cols);
+      placed = result.placed;
+      overflow = result.overflow;
+    } else {
+      // Sequential fill (no mixing needed for single class)
+      placed = remainingStudents.slice(0, gridSize);
+      overflow = remainingStudents.slice(gridSize);
+    }
+
+    // STRICT: never exceed grid capacity
+    if (placed.length > gridSize) {
+      overflow = [...placed.slice(gridSize), ...overflow];
+      placed = placed.slice(0, gridSize);
+    }
+
+    // Create seating records
+    const seatingData = placed.map((student: any, index: number) => {
+      const rowChar = String.fromCharCode(65 + Math.floor(index / cols));
+      const colNum = (index % cols) + 1;
+      return {
+        examScheduleId,
+        studentId: student.id,
+        tenantId,
+        seatNo: `${rowChar}${colNum}`,
+        roomId: currentRoomId,
+        isDeleted: false,
+      };
+    });
+
+    if (seatingData.length > 0) {
+      await prisma.seatingArrangement.createMany({ data: seatingData });
+    }
+
+    totalAssigned += seatingData.length;
+    remainingStudents = overflow;
+
+    const roomInfo = roomsData.find((r: any) => r.id === currentRoomId);
+    roomAssignments.push({
+      roomId: currentRoomId,
+      roomName: (roomInfo as any)?.name || `Room ${roomIndex + 1}`,
+      count: seatingData.length,
+    });
+
+    console.log(`🪑 [SEATING] Room ${roomIndex + 1} (${(roomInfo as any)?.name}): ${seatingData.length} students assigned`);
   }
 
-  // Soft delete old seating for this schedule+room
-  await prisma.seatingArrangement.updateMany({
-    where: { examScheduleId, roomId, tenantId },
-    data: { isDeleted: true },
-  });
+  const unassigned = remainingStudents.length;
+  console.log("🪑 [SEATING] DONE! Assigned:", totalAssigned, "| Unassigned:", unassigned);
 
-  // Assign seat numbers based on rows x cols
-  const seatingData = arranged.map((student: any, index: number) => {
-    const row = String.fromCharCode(65 + Math.floor(index / cols));
-    const col = (index % cols) + 1;
-    return {
-      examScheduleId,
-      studentId: student.id,
-      tenantId,
-      seatNo: `${row}${col}`,
-      roomId,
-      isDeleted: false,
-    };
-  });
+  // If copyToScheduleIds provided, duplicate same seating to other schedules
+  const { copyToScheduleIds } = data;
+  if (copyToScheduleIds && copyToScheduleIds.length > 0) {
+    console.log("🪑 [SEATING] Copying to", copyToScheduleIds.length, "other schedules...");
 
-  await prisma.seatingArrangement.createMany({ data: seatingData });
+    // Get all seating records just created for the primary schedule
+    const primaryRecords = await prisma.seatingArrangement.findMany({
+      where: { examScheduleId, tenantId, isDeleted: false },
+    });
+
+    for (const targetScheduleId of copyToScheduleIds) {
+      // Hard delete old records for target schedule
+      await prisma.seatingArrangement.deleteMany({
+        where: { examScheduleId: targetScheduleId, tenantId },
+      });
+
+      // Copy all records with new examScheduleId
+      const copyData = primaryRecords.map((r: any) => ({
+        examScheduleId: targetScheduleId,
+        studentId: r.studentId,
+        tenantId: r.tenantId,
+        seatNo: r.seatNo,
+        roomId: r.roomId,
+        isDeleted: false,
+      }));
+
+      if (copyData.length > 0) {
+        await prisma.seatingArrangement.createMany({ data: copyData });
+      }
+    }
+    console.log("🪑 [SEATING] Copied to all schedules! Total records:", primaryRecords.length, "x", (copyToScheduleIds.length + 1));
+  }
 
   return {
-    message: "Custom seating generated",
-    total: seatingData.length,
+    message: unassigned > 0
+      ? `${totalAssigned} students assigned. ${unassigned} students remaining — select more rooms to assign them.`
+      : `All ${totalAssigned} students assigned successfully across ${roomAssignments.length} room(s).`,
+    total: totalAssigned,
+    unassigned,
     rows,
     cols,
+    gridSize,
     mixClasses,
     classesUsed: classIds.length,
+    totalStudents: augmented.length,
+    roomsUsed: roomAssignments.length,
+    roomAssignments,
   };
 };
 
-/**
- * Apply AI instruction (rule-based keyword matching for now)
- */
+
 function applyAiInstruction(
   students: any[],
   instruction: string,

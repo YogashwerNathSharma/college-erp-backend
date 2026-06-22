@@ -151,3 +151,19 @@ export const createEnrollment = async (body: any, user: any) => {
     return { enrollment, studentFee };
   });
 };
+
+
+/////////////////////////
+// COUNT ENROLLMENTS BY CLASS
+/////////////////////////
+export const getEnrollmentCountByClass = async (classId: string, tenantId: string) => {
+  const count = await prisma.enrollment.count({
+    where: {
+      classId,
+      tenantId,
+      status: "active",
+      isDeleted: false,
+    },
+  });
+  return count;
+};

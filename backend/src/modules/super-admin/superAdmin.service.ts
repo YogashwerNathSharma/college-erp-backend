@@ -390,3 +390,50 @@ export const getSystemConfigService = async () => {
   };
 };
 
+//////////////////////////////////////////////////////
+// 👨‍💻 GET DEVELOPER PROFILE
+//////////////////////////////////////////////////////
+
+export const getDeveloperProfileService = async () => {
+  return prisma.developerProfile.findFirst();
+};
+
+//////////////////////////////////////////////////////
+// 👨‍💻 UPSERT DEVELOPER PROFILE
+//////////////////////////////////////////////////////
+
+export const upsertDeveloperProfileService = async (data: any) => {
+  let profile = await prisma.developerProfile.findFirst();
+
+  if (profile) {
+    return prisma.developerProfile.update({
+      where: { id: profile.id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.photoUrl !== undefined && { photoUrl: data.photoUrl }),
+        ...(data.phone !== undefined && { phone: data.phone }),
+        ...(data.whatsapp !== undefined && { whatsapp: data.whatsapp }),
+        ...(data.email !== undefined && { email: data.email }),
+        ...(data.linkedinUrl !== undefined && { linkedinUrl: data.linkedinUrl }),
+        ...(data.callingHours !== undefined && { callingHours: data.callingHours }),
+        ...(data.message !== undefined && { message: data.message }),
+        ...(data.isVisible !== undefined && { isVisible: data.isVisible }),
+      },
+    });
+  } else {
+    return prisma.developerProfile.create({
+      data: {
+        name: data.name || "Developer",
+        photoUrl: data.photoUrl || null,
+        phone: data.phone || null,
+        whatsapp: data.whatsapp || null,
+        email: data.email || null,
+        linkedinUrl: data.linkedinUrl || null,
+        callingHours: data.callingHours || null,
+        message: data.message || null,
+        isVisible: data.isVisible ?? true,
+      },
+    });
+  }
+};
+

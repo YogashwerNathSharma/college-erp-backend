@@ -1,6 +1,6 @@
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +10,45 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // 🔒 Zoom Lock — only for this page
+  useEffect(() => {
+    // Prevent Ctrl + scroll wheel zoom
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
+    // Prevent Ctrl + / Ctrl - / Ctrl 0 zoom
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    // Set viewport meta to prevent pinch zoom on mobile
+    const meta = document.querySelector('meta[name="viewport"]');
+    const originalContent = meta?.getAttribute("content") || "";
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      );
+    }
+
+    document.addEventListener("wheel", handleWheel, { passive: false });
+    document.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      document.removeEventListener("wheel", handleWheel);
+      document.removeEventListener("keydown", handleKeydown);
+      if (meta) meta.setAttribute("content", originalContent);
+    };
+  }, []);
 
   // 🔥 Your other products — edit this list as needed
   const otherProducts = [

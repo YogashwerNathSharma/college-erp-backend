@@ -182,6 +182,12 @@ axios.interceptors.response.use(
       error?.response?.status === 403 &&
       error?.response?.data?.subscriptionExpired === true
     ) {
+      // Skip redirect for SUPER_ADMIN
+      const userData = localStorage.getItem("user");
+      const userRole = userData ? JSON.parse(userData)?.role : null;
+      if (userRole === "SUPER_ADMIN") {
+        return Promise.reject(error);
+      }
       localStorage.setItem("subscriptionExpired", "true");
       window.location.href = "/subscription-expired";
     }
@@ -200,6 +206,13 @@ function ProtectedRoute() {
 
   useEffect(() => {
     if (!token) {
+      setChecking(false);
+      return;
+    }
+    // 🔥 Skip subscription check for SUPER_ADMIN
+    const userData = localStorage.getItem("user");
+    const userRole = userData ? JSON.parse(userData)?.role : null;
+    if (userRole === "SUPER_ADMIN") {
       setChecking(false);
       return;
     }

@@ -12,5 +12,5 @@ export const corsConfig = cors({
   origin: process.env.CORS_ORIGIN || "http://localhost:5174",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Device-Fingerprint"],
 });

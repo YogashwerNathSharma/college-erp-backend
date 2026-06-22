@@ -30,6 +30,8 @@ export const login = async (req: Request, res: Response) => {
       success: true,
       token: result.token,
       forcePasswordChange: result.forcePasswordChange,
+      subscriptionExpired: result.subscriptionExpired || false,
+      tenant: (result as any).tenant || null,
       data: result.user,
     });
 

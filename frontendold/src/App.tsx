@@ -10,6 +10,7 @@ import {
 
 import { useState, useEffect, lazy, Suspense } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "./config/api";
 
 // ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
@@ -164,7 +165,7 @@ const BackupPage = lazy(() => import("./pages/backup/BackupPage"));
 //////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
 //////////////////////////////////////////////////////
-axios.defaults.baseURL = "";
+axios.defaults.baseURL = API_BASE_URL;
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");

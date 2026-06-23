@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 
 interface SignatureData {
@@ -17,7 +18,7 @@ interface PrintSignatureProps {
   printOnly?: boolean;
 }
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 export default function PrintSignature({ inline = false, printOnly = true }: PrintSignatureProps) {
   const [signature, setSignature] = useState<SignatureData | null>(null);
@@ -120,7 +121,7 @@ export default function PrintSignature({ inline = false, printOnly = true }: Pri
 export async function getPrintSignatureHTML(): Promise<string> {
   try {
     const token = localStorage.getItem("token");
-    const API_URL = import.meta.env?.VITE_API_URL || "/api";
+    const API_URL = `${API_BASE_URL}/api`;
     const res = await axios.get(`${API_URL}/signature`, {
       headers: { Authorization: `Bearer ${token}` },
     });

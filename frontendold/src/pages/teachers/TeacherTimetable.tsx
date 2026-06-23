@@ -1,11 +1,12 @@
 
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiCalendar, FiSave, FiX, FiEdit2 } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

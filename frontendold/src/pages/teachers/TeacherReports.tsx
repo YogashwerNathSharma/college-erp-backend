@@ -1,11 +1,12 @@
 
 import { useState } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiFileText, FiDownload } from "react-icons/fi";
 import PrintSignature from "../../components/PrintSignature";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 const REPORT_TYPES = [
   { id: "teacher-list", name: "Teacher List Report", icon: "📋" },

@@ -1,12 +1,13 @@
 
 
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import PrintSignature from "../../components/PrintSignature";
 import { useSearchParams } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 interface ClassOption {
   id: string;

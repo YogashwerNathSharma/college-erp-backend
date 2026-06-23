@@ -1,12 +1,13 @@
 
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiDollarSign, FiDownload } from "react-icons/fi";
 import PrintSignature from "../../components/PrintSignature";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 interface SalaryRecord {
   id: string;

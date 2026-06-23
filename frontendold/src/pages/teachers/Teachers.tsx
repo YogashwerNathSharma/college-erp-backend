@@ -1,11 +1,12 @@
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 interface Subject {
   id: string;

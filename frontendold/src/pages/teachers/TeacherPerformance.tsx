@@ -1,10 +1,11 @@
 
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiStar, FiSave } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL || "/api";
+const API = `${API_BASE_URL}/api`;
 
 interface Parameter {
   name: string;

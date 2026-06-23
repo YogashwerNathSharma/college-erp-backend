@@ -1,6 +1,7 @@
 
 
 import { Request, Response } from "express";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import { uploadDocument, getDocuments, getAllDocuments, deleteDocument } from "./document.service";
 
 // ✅ UPLOAD DOCUMENT
@@ -12,7 +13,7 @@ export const upload = async (req: any, res: Response) => {
     }
 
     // File URL from multer
-    const fileUrl = req.file ? `/uploads/${req.file.filename}` : req.body.fileUrl;
+    const fileUrl = req.file ? await uploadToCloudinary(req.file.buffer, "documents") : req.body.fileUrl;
 
     if (!fileUrl) {
       return res.status(400).json({ success: false, message: "File is required" });

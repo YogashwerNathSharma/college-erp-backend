@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import {
@@ -93,8 +94,8 @@ export const registerTenant = async (req: Request, res: Response) => {
 
     const result = await prisma.$transaction(async (tx) => {
       const files = (req as any).files || {};
-      const logoFile = files?.logo?.[0]?.filename || null;
-      const bgFile = files?.background?.[0]?.filename || null;
+      const logoFile = files?.logo?.[0] || null;
+      const bgFile = files?.background?.[0] || null;
   
       const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
@@ -105,8 +106,8 @@ export const registerTenant = async (req: Request, res: Response) => {
         isDeleted: false,
         isActive: true,
       // 🔥 NEW: Logo + Background save
-        logoUrl: logoFile ? `${BASE_URL}/uploads/${logoFile}` : null,
-       backgroundUrl: bgFile ? `${BASE_URL}/uploads/${bgFile}` : null,
+        logoUrl: logoFile ? await uploadToCloudinary(logoFile.buffer, "tenants") : null,
+       backgroundUrl: bgFile ? await uploadToCloudinary(bgFile.buffer, "tenants") : null,
     },
   });
      

@@ -3,6 +3,7 @@
 // Handles HTTP request/response for signature CRUD
 
 import { Response } from "express";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import {
   getAllSignaturesService,
   createSignatureService,
@@ -47,7 +48,7 @@ export const createSignature = async (req: any, res: Response) => {
       });
     }
 
-    const imageUrl = `/uploads/signatures/${req.file.filename}`;
+    const imageUrl = await uploadToCloudinary(req.file.buffer, "signatures");
 
     const signature = await createSignatureService(tenantId, {
       title,
@@ -84,7 +85,7 @@ export const updateSignature = async (req: any, res: Response) => {
 
     // If new image uploaded
     if (req.file) {
-      updateData.imageUrl = `/uploads/signatures/${req.file.filename}`;
+      updateData.imageUrl = await uploadToCloudinary(req.file.buffer, "signatures");
     }
 
     const signature = await updateSignatureService(id, tenantId, updateData);

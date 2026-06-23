@@ -2,6 +2,7 @@
 
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import {
   getTenants,
   getTenantById,
@@ -33,8 +34,8 @@ export const create = async (req: any, res: Response) => {
     }
 
     const files = req.files || {};
-    const logoFile = files?.logo?.[0]?.filename || null;
-    const bgFile = files?.background?.[0]?.filename || null;
+    const logoFile = files?.logo?.[0];
+    const bgFile = files?.background?.[0];
 
     // 1. CREATE TENANT
     
@@ -42,8 +43,8 @@ export const create = async (req: any, res: Response) => {
       data: {
         name,
         type,
-        logoUrl: logoFile ? `${BASE_URL}/uploads/${logoFile}` : null,
-        backgroundUrl: bgFile ? `${BASE_URL}/uploads/${bgFile}` : null,
+        logoUrl: logoFile ? await uploadToCloudinary(logoFile.buffer, "tenants") : null,
+        backgroundUrl: bgFile ? await uploadToCloudinary(bgFile.buffer, "tenants") : null,
       },
     });
 
@@ -272,13 +273,13 @@ export const uploadTenantImages = async (req: any, res: Response) => {
     }
 
     const files = req.files || {};
-    const logo = files?.logo?.[0];
-    const background = files?.background?.[0];
+    const logoFile = files?.logo?.[0];
+    const bgFile = files?.background?.[0];
 
     const updatedTenant = await updateTenantImagesService({
       tenantId,
-      logoUrl: logo ? `${BASE_URL}/uploads/${logo.filename}` : undefined,
-      backgroundUrl: background ? `${BASE_URL}/uploads/${background.filename}` : undefined,
+      logoUrl: logoFile ? await uploadToCloudinary(logoFile.buffer, "tenants") : undefined,
+      backgroundUrl: bgFile ? await uploadToCloudinary(bgFile.buffer, "tenants") : undefined,
     });
 
     return res.json({

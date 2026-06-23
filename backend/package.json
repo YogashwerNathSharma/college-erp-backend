@@ -19,6 +19,7 @@
     "@prisma/client": "^6.19.3",
     "archiver": "^7.0.0",
     "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "exceljs": "^4.4.0",

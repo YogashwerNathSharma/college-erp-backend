@@ -10,7 +10,7 @@ import { authMiddleware } from "../../middleware/auth.middleware";
 const router = Router();
 
 // Upload config
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Public
 router.post("/login", login);

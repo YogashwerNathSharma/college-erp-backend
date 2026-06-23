@@ -2,6 +2,7 @@
 
 import { Response } from "express";
 import {
+import { uploadToCloudinary } from "../../config/cloudinary";
   getSuperAdminDashboardService,
   getTenantsService,
   createTenantService,
@@ -71,11 +72,11 @@ export const createTenant = async (req: any, res: Response) => {
     let backgroundUrl: string | null = null;
 
     if (files?.logo?.[0]) {
-      logoUrl = `/uploads/tenants/${files.logo[0].filename}`;
+      logoUrl = await uploadToCloudinary(files.logo[0].buffer, "tenants");
     }
 
     if (files?.background?.[0]) {
-      backgroundUrl = `/uploads/tenants/${files.background[0].filename}`;
+      backgroundUrl = await uploadToCloudinary(files.background[0].buffer, "tenants");
     }
 
     // Merge file URLs with body data
@@ -114,10 +115,10 @@ export const updateTenant = async (req: any, res: Response) => {
     const updateData = { ...req.body };
 
     if (files?.logo?.[0]) {
-      updateData.logoUrl = `/uploads/tenants/${files.logo[0].filename}`;
+      updateData.logoUrl = await uploadToCloudinary(files.logo[0].buffer, "tenants");
     }
     if (files?.background?.[0]) {
-      updateData.backgroundUrl = `/uploads/tenants/${files.background[0].filename}`;
+      updateData.backgroundUrl = await uploadToCloudinary(files.background[0].buffer, "tenants");
     }
 
     const tenant = await updateTenantService(id, updateData);

@@ -31,15 +31,7 @@ import { getDesignerSettings, updateDesignerSettings } from "./designer.controll
 const router = Router();
 
 // Multer config
-const storage = multer.diskStorage({
-  destination: (req: any, file: any, cb: any) => {
-    cb(null, path.join(__dirname, "../../../uploads"));
-  },
-  filename: (req: any, file: any, cb: any) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -61,7 +53,8 @@ router.post("/upload", upload.single("file"), (req: any, res: any) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const { uploadToCloudinary } = require("../../config/cloudinary");
+      const fileUrl = await uploadToCloudinary(req.file.buffer, "settings");
     res.json({
       success: true,
       data: { url: fileUrl, filename: req.file.filename },

@@ -2,6 +2,7 @@
 
 import { Request, Response } from "express";
 import multer from "multer";
+import { uploadToCloudinary } from "../../config/cloudinary";
 import path from "path";
 import {
   createTeacher,
@@ -14,15 +15,7 @@ import {
 //////////////////////////////////////////////////////
 // MULTER CONFIG (photo upload)
 //////////////////////////////////////////////////////
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../../../uploads/teachers"));
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `teacher-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
+const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
@@ -56,7 +49,7 @@ export const create = async (req: any, res: Response) => {
     // Handle photo URL
     const data = { ...req.body };
     if (req.file) {
-      data.photoUrl = `/uploads/teachers/${req.file.filename}`;
+      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
     }
 
     // Parse array fields from FormData
@@ -174,7 +167,7 @@ export const update = async (req: any, res: Response) => {
     // Handle photo URL
     const data = { ...req.body };
     if (req.file) {
-      data.photoUrl = `/uploads/teachers/${req.file.filename}`;
+      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
     }
 
     // Parse array fields from FormData

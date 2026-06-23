@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../../utils/url";
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
@@ -81,12 +82,6 @@ const apiClient = axios.create({
   },
 });
 
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
-};
 
 // ============================================================
 // Component

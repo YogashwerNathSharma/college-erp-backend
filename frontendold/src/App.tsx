@@ -210,7 +210,7 @@ function ProtectedRoute() {
       setChecking(false);
       return;
     }
-    // 🔥 Skip subscription check for SUPER_ADMIN
+    // Skip subscription check for SUPER_ADMIN
     const userData = localStorage.getItem("user");
     const userRole = userData ? JSON.parse(userData)?.role : null;
     if (userRole === "SUPER_ADMIN") {
@@ -250,10 +250,18 @@ function ProtectedRoute() {
           setExpired(false);
         }
       } catch (err: any) {
-        // Any error means no active subscription — redirect
-        console.warn("Subscription check failed:", err?.response?.status, err?.message);
-        localStorage.setItem("subscriptionExpired", "true");
-        setExpired(true);
+        // Only treat 403 with subscriptionExpired flag as actual expiry
+        // Network errors / 500s should NOT redirect to expired page
+        const status = err?.response?.status;
+        const isSubExpired = err?.response?.data?.subscriptionExpired === true;
+        if (status === 403 && isSubExpired) {
+          localStorage.setItem("subscriptionExpired", "true");
+          setExpired(true);
+        } else {
+          // Network error or server error — let user through
+          console.warn("Subscription check failed (non-fatal):", status, err?.message);
+          setExpired(false);
+        }
       } finally {
         setChecking(false);
       }

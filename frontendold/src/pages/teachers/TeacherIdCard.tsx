@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
@@ -39,12 +40,6 @@ interface PatternProps {
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
-const getFullUrl = (path: string | null | undefined): string | undefined => {
-  if (!path) return undefined;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
-};
 
 const imgToDataURL = (src: string): Promise<string> => {
   return new Promise((resolve) => {

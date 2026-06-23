@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../utils/url";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useOutletContext } from "react-router-dom";
@@ -16,11 +17,6 @@ import Insights from "../components/dashboard/Insights";
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo
 //////////////////////////////////////////////////////
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${path}`;
-};
 
 export default function Dashboard() {
   console.log("TENANT DASHBOARD RENDERED");

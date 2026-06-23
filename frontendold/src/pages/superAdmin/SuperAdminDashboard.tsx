@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../../utils/url";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -14,11 +15,6 @@ import {
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo
 //////////////////////////////////////////////////////
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${path}`;
-};
 
 //////////////////////////////////////////////////////
 // 🚀 SUPER ADMIN DASHBOARD

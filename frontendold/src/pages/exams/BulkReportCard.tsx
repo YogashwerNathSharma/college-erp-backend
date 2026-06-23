@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -116,12 +117,6 @@ const BulkReportCard: React.FC = () => {
     return result;
   };
 
-  const getFullUrl = (path: string | undefined) => {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    if (path.startsWith("/")) return path;
-    return `/uploads/${path}`;
-  };
 
   // Render a single student using custom template
   const renderCustomTemplate = (data: StudentReportData, idx: number) => {

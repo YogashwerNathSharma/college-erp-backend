@@ -1,6 +1,7 @@
 
 
 import { useState, useEffect } from "react";
+import { getFullUrl } from "../../utils/url";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -262,7 +263,7 @@ export default function StudentList() {
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white shadow-sm overflow-hidden">
                           {student.photoUrl ? (
                             <img
-                              src={`/uploads/${student.photoUrl}`}
+                              src={getFullUrl(student.photoUrl)!}
                               alt={`${student.firstName} ${student.lastName}`}
                               className="w-full h-full object-cover"
                             />
@@ -345,7 +346,7 @@ export default function StudentList() {
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xl font-bold text-white shadow-lg overflow-hidden">
                   {viewStudent.photoUrl ? (
                     <img
-                      src={`/uploads/${viewStudent.photoUrl}`}
+                      src={getFullUrl(viewStudent.photoUrl)!}
                       alt={`${viewStudent.firstName} ${viewStudent.lastName}`}
                       className="w-full h-full object-cover"
                     />

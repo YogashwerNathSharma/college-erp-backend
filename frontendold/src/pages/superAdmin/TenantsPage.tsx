@@ -1,5 +1,6 @@
 
 
+import { getFullUrl } from "../../utils/url";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -18,11 +19,6 @@ import CreateTenant from "./CreateTenant";
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo/background
 //////////////////////////////////////////////////////
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${path}`;
-};
 
 //////////////////////////////////////////////////////
 // 🚀 TENANTS PAGE (SuperAdmin)

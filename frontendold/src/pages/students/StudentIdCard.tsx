@@ -1,4 +1,5 @@
 
+import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
@@ -32,12 +33,6 @@ interface PatternProps {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
-};
 
 // FIX 2 (PDF): Convert an image URL to a base64 data URL for html2canvas
 const imgToDataURL = (src: string): Promise<string> => {

@@ -1,3 +1,4 @@
+import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -37,12 +38,6 @@ interface ReportTab {
   icon: React.ElementType;
 }
 
-const getFullUrl = (path: string | null | undefined) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
-};
 
 // ✅ Report type ke hisaab se specific columns
 const reportColumns: Record<string, { key: string; label: string }[]> = {

@@ -1,3 +1,4 @@
+import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -69,12 +70,6 @@ interface AdmitCardDetail {
   }[];
 }
 
-const getFullUrl = (path: string | undefined | null) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
-};
 
 const AdmitCard: React.FC = () => {
   const navigate = useNavigate();

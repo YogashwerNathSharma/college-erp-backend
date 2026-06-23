@@ -1,7 +1,7 @@
 
 
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiUpload, FiTrash2, FiEye, FiX, FiFile } from "react-icons/fi";

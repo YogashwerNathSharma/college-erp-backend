@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FeeReceiptPrint } from "./FeeReceiptPrint";

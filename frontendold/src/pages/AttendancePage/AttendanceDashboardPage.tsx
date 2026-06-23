@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 
 const API = `${API_BASE_URL}/api`;

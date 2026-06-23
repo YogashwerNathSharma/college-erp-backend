@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "../config/api";
+import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { FiUsers, FiUserCheck, FiUser } from "react-icons/fi";

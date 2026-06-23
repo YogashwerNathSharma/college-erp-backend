@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "axios"; 
+import { apiFetch } from "../lib/api";
 import logo from "../assets/logo.png";
 export default function PaymentPage() {
   const navigate = useNavigate();
@@ -32,12 +33,14 @@ export default function PaymentPage() {
     }
 
     try {
-      const res = await axios.post("http://localhost:5000/api/payments", form);
+      const res = await apiFetch<{ receiptNumber: string }>("/payments", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
 
       alert("Payment Saved ✅");
 
-      // redirect to receipt
-      navigate(`/receipt/${res.data.receiptNumber}`);
+      navigate(`/receipt/${res.receiptNumber}`);
     } catch (err) {
       alert("Error submitting payment");
     }

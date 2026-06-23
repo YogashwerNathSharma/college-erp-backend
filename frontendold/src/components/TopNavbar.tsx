@@ -1,5 +1,6 @@
 import { LogOut, UserCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
 
 //////////////////////////////////////////////////////
 // HELPER — Full URL for logo
@@ -7,7 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `${path}`;
+  return `${API_BASE_URL}${path}`;
 };
 
 // 🔥 Page title map — route ke hisaab se title

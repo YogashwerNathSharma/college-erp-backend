@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 import {
   PenTool,
   Plus,
@@ -36,7 +37,7 @@ interface FormData {
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
-const API_BASE = "";
+const API_BASE = API_BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE,

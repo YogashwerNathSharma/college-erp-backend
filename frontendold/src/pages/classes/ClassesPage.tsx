@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 import {
   School,
   Plus,
@@ -48,7 +49,7 @@ type ModalMode = "add" | "edit";
 
 // ─── API Config ──────────────────────────────────────────────────────────────
 
-const API_BASE = "";
+const API_BASE = API_BASE_URL;
 
 const getAuthHeaders = () => ({
   headers: {

@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { API_BASE_URL } from "../../config/api";
 import {
   BookOpen, Users, BookCopy, AlertTriangle, DollarSign,
   Plus, Search, Filter, Edit2, Trash2, Eye, RefreshCw,
@@ -111,7 +112,7 @@ interface Pagination {
 }
 
 // ==================== API HELPER ====================
-const API_BASE = "/api/library";
+const API_BASE = `${API_BASE_URL}/api/library`;
 
 const getHeaders = () => {
   const token = localStorage.getItem("token");

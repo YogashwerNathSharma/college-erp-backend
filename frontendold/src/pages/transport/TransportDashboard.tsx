@@ -32,13 +32,14 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { API_BASE_URL } from "../../config/api";
 
 // ============================================
 // AXIOS INSTANCE
 // ============================================
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: `${API_BASE_URL}/api`,
 });
 
 api.interceptors.request.use((config) => {

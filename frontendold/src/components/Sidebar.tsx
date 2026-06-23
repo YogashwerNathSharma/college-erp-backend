@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -55,8 +56,8 @@ import {
 const getFullUrl = (path: string | null | undefined) => {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return `${path}`;
-  return `/uploads/${path}`;
+  if (path.startsWith("/")) return `${API_BASE_URL}${path}`;
+  return `${API_BASE_URL}/uploads/${path}`;
 };
 
 //////////////////////////////////////////////////

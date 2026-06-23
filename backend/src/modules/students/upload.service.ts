@@ -83,7 +83,6 @@ export const getStudentDocuments = async (
 ) => {
   return prisma.studentDocument.findMany({
     where: { studentId, tenantId },
-    orderBy: { createdAt: "desc" },
   });
 };
 

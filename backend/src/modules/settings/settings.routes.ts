@@ -48,13 +48,13 @@ const upload = multer({
 });
 
 // Upload route — baaki routes ke saath add karo
-router.post("/upload", upload.single("file"), (req: any, res: any) => {
+router.post("/upload", upload.single("file"), async (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
     const { uploadToCloudinary } = require("../../config/cloudinary");
-      const fileUrl = await uploadToCloudinary(req.file.buffer, "settings");
+    const fileUrl = await uploadToCloudinary(req.file.buffer, "settings");
     res.json({
       success: true,
       data: { url: fileUrl, filename: req.file.filename },

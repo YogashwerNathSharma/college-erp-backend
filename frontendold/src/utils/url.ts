@@ -8,10 +8,10 @@ import { API_BASE_URL } from "../config/api";
  *   "/uploads/logo.png" → "https://backend.onrender.com/uploads/logo.png"
  *   "logo.png"          → "https://backend.onrender.com/uploads/logo.png"
  *   "https://..."       → "https://..." (unchanged)
- *   null/undefined      → null
+ *   null/undefined      → undefined
  */
-export function getFullUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
+export function getFullUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
   if (path.startsWith("http")) return path;
   if (path.startsWith("/")) return `${API_BASE_URL}${path}`;
   return `${API_BASE_URL}/uploads/${path}`;

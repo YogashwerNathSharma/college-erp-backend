@@ -119,7 +119,7 @@ export default function Dashboard() {
       const { order, subscriptionId } = res.data.data;
 
       const options = {
-        key: "rzp_test_SufLEYxZg1RUP2",
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SufLEYxZg1RUP2",
         amount: order.amount,
         currency: order.currency,
         name: "College ERP",

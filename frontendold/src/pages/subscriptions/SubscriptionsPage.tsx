@@ -344,7 +344,7 @@ export default function SubscriptionsPage() {
       const options = {
 
         key:
-          "rzp_test_SufLEYxZg1RUP2",
+          import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SufLEYxZg1RUP2",
 
         amount:
           order.amount,

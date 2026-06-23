@@ -223,6 +223,7 @@ export default function SubscriptionExpired() {
           prefill: {
             email: user?.email || "",
             name: user?.name || "",
+            contact: user?.phone || "",
           },
           theme: {
             color: "#4F46E5",

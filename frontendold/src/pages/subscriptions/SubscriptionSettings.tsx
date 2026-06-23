@@ -63,13 +63,13 @@ export default function SubscriptionSettings() {
       const { order, subscriptionId } = res.data.data;
 
       const options = {
-        key: "rzp_test_SufLEYxZg1RUP2",
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SufLEYxZg1RUP2",
         amount: order.amount,
         currency: order.currency,
         name: "College ERP",
         description: "Subscription Plan",
         order_id: order.id,
-        prefill: { name: user?.name || "User", email: user?.email || "" },
+        prefill: { name: user?.name || "User", email: user?.email || "", contact: user?.phone || "" },
         theme: { color: "#4f46e5" },
         handler: async function (response: any) {
           try {

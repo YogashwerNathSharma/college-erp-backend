@@ -425,6 +425,7 @@ export default function App() {
               <Route path="/settings" element={<RoleSettings />} />
               <Route path="/settings/users" element={<TenantAdminSettings />} />
               <Route path="/settings/theme" element={<ThemePage />} />
+              <Route path="/settings/subscription" element={<SubscriptionSettings />} />
 
               {/* SIGNATURE MASTER */}
               <Route path="/signature-master" element={<SignatureMaster />} />

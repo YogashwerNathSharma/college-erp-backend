@@ -334,8 +334,29 @@ export default function Sidebar({ tenant }: SidebarProps) {
               src={sidebarLogo}
               alt="Logo"
               className="w-14 h-14 object-contain"
+              crossOrigin="anonymous"
               onError={(e: any) => {
                 e.target.style.display = "none";
+              }}
+              onLoad={(e: any) => {
+                const img = e.target;
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return;
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                  const r = data[i], g = data[i+1], b = data[i+2];
+                  // Remove white and near-white pixels
+                  if (r > 230 && g > 230 && b > 230) {
+                    data[i+3] = 0; // make transparent
+                  }
+                }
+                ctx.putImageData(imageData, 0, 0);
+                img.src = canvas.toDataURL("image/png");
               }}
             />
           ) : (

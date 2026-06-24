@@ -320,8 +320,10 @@ console.log("ALL SUBS:", allSubs);
     const subscription = await prisma.tenantSubscription.findFirst({
       where: {
         tenantId,
-        isActive: true,
-       // status: "ACTIVE",
+        OR: [
+          { isActive: true },
+          { status: "ACTIVE", paymentStatus: "PAID" },
+        ],
       },
       orderBy: {
         createdAt: "desc",

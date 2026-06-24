@@ -24,6 +24,9 @@ const razorpay =
 
   });
 
+console.log("✅ Razorpay initialized with key:", process.env.RAZORPAY_KEY_ID?.substring(0, 12) + "...");
+console.log("✅ Razorpay secret present:", !!process.env.RAZORPAY_KEY_SECRET);
+
 //////////////////////////////////////////////////////////////
 // CREATE ORDER
 //////////////////////////////////////////////////////////////
@@ -98,10 +101,20 @@ export const createOrderService =
 
     };
 
-    const order =
-      await razorpay.orders.create(
-        options
+    let order;
+    try {
+      order = await razorpay.orders.create(options);
+    } catch (rzpError: any) {
+      console.error("RAZORPAY ORDER CREATE ERROR:", {
+        statusCode: rzpError.statusCode,
+        error: rzpError.error,
+        message: rzpError.message,
+        keyUsed: process.env.RAZORPAY_KEY_ID?.substring(0, 12) + "...",
+      });
+      throw new Error(
+        rzpError?.error?.description || rzpError?.message || "Razorpay order creation failed"
       );
+    }
 
     //////////////////////////////////////////////////
     // UPDATE SUBSCRIPTION
@@ -229,6 +242,16 @@ export const verifyPaymentService =
     //////////////////////////////////////////////////
     // UPDATE SUBSCRIPTION
     //////////////////////////////////////////////////
+
+    // First deactivate all other subscriptions for this tenant
+    await prisma.tenantSubscription.updateMany({
+      where: {
+        tenantId: subscription.tenantId,
+        id: { not: subscription.id },
+        isActive: true,
+      },
+      data: { isActive: false, status: SubscriptionStatus.EXPIRED },
+    });
 
     await prisma.tenantSubscription.update({
 

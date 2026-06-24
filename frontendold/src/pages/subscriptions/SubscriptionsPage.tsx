@@ -590,8 +590,9 @@ export default function SubscriptionsPage() {
         error
       );
 
+      const errMsg = (error as any)?.response?.data?.message || (error as any)?.message || "Unknown error";
       alert(
-        "❌ Payment failed"
+        "❌ Payment failed: " + errMsg
       );
 
     }

@@ -169,19 +169,6 @@ export const tenantSelfSubscribeService = async (
     throw new Error("Plan not found");
   }
 
-  // Check if already has active subscription
-  const existingActive = await prisma.tenantSubscription.findFirst({
-    where: { tenantId, isActive: true },
-  });
-
-  if (existingActive) {
-    // Deactivate old subscription
-    await prisma.tenantSubscription.update({
-      where: { id: existingActive.id },
-      data: { isActive: false },
-    });
-  }
-
   // Create subscription
   const subscriptionCode = `SUB-${Date.now()}`;
 
@@ -209,11 +196,24 @@ export const tenantSelfSubscribeService = async (
   });
 
   // Create Razorpay order
-  const order = await razorpay.orders.create({
-    amount: Math.round(plan.price * 100),
-    currency: "INR",
-    receipt: subscriptionCode,
-  });
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount: Math.round(plan.price * 100),
+      currency: "INR",
+      receipt: subscriptionCode,
+    });
+  } catch (rzpError: any) {
+    console.error("RAZORPAY ORDER CREATE ERROR (self-subscribe):", {
+      statusCode: rzpError.statusCode,
+      error: rzpError.error,
+      message: rzpError.message,
+      keyUsed: process.env.RAZORPAY_KEY_ID?.substring(0, 12) + "...",
+    });
+    throw new Error(
+      rzpError?.error?.description || rzpError?.message || "Razorpay order creation failed"
+    );
+  }
 
   // Update subscription with order id
   await prisma.tenantSubscription.update({

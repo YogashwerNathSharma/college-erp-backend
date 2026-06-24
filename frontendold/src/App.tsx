@@ -292,6 +292,9 @@ function ProtectedRoute() {
 // Layout (with Sidebar + TopNavbar + Suspense)
 //////////////////////////////////////////////////////
 function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
   const [tenant, setTenant] = useState<any>(() => {
     const saved = localStorage.getItem("tenant");
     return saved ? JSON.parse(saved) : null;
@@ -310,6 +313,11 @@ function Layout() {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
+
+  // Auto-close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("themeColor");
@@ -340,11 +348,46 @@ function Layout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar tenant={tenant} />
-      <div className="flex-1 bg-gray-100 p-6">
+    <div className="flex min-h-screen relative">
+      {/* Sidebar Backdrop (mobile only) */}
+      <div
+        className={`sidebar-backdrop ${sidebarOpen ? "open" : ""}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* Sidebar */}
+      <div className={`sidebar-wrapper ${sidebarOpen ? "open" : ""}`}>
+        <Sidebar tenant={tenant} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 bg-gray-100 p-6 main-content-wrapper">
+        {/* Hamburger (mobile only) */}
+        <button
+          className="hamburger-btn"
+          onClick={() => setSidebarOpen(true)}
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            zIndex: 9990,
+            background: "#4f46e5",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            width: 40,
+            height: 40,
+            fontSize: 20,
+            cursor: "pointer",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+          }}
+        >
+          ☰
+        </button>
+
         <TopNavbar tenant={tenant} />
-        {/* ✅ Suspense boundary inside Layout — Sidebar stays visible during page transitions */}
         <Suspense fallback={<PageLoader />}>
           <Outlet context={{ setTenant }} />
         </Suspense>

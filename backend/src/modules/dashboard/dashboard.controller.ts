@@ -357,29 +357,34 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
     //////////////////////////////////////////////////////
 
     const recentPaymentsRaw =
-      await prisma.studentFee.findMany({
+      await prisma.payment.findMany({
 
         where: {
           tenantId,
+          isDeleted: false,
         },
 
         orderBy: {
-          createdAt: "desc",
+          paymentDate: "desc",
         },
 
         take: 5,
 
         select: {
-
-          paidAmount: true,
-          createdAt: true,
-
-          enrollment: {
+          amount: true,
+          paymentDate: true,
+          receiptNo: true,
+          method: true,
+          studentFee: {
             select: {
-              student: {
+              enrollment: {
                 select: {
-                  firstName: true,
-                  lastName: true,
+                  student: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                    },
+                  },
                 },
               },
             },
@@ -392,14 +397,14 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
         (p: any) => ({
 
           paidAmount:
-            p.paidAmount ?? 0,
+            p.amount ?? 0,
 
           createdAt:
-            p.createdAt,
+            p.paymentDate,
 
           student: {
             name:
-              `${p.enrollment?.student?.firstName ?? ""} ${p.enrollment?.student?.lastName ?? ""}`.trim() ||
+              `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() ||
               "Unknown",
           },
 
@@ -417,8 +422,14 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
 
           tenantId,
 
+          isDeleted: false,
+
           balanceAmount: {
             gt: 0,
+          },
+
+          enrollment: {
+            status: "active",
           },
         },
 

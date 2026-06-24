@@ -11,7 +11,7 @@ type Props = {
 
 export default function DefaultersList({ data }: Props) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg overflow-hidden">
 
       {/* HEADER */}
       <div className="mb-4">

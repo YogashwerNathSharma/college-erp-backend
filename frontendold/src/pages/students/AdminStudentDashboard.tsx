@@ -177,34 +177,34 @@ const AdminStudentDashboard: React.FC = () => {
 
   const maxClassCount = Math.max(...classStrength.map((c) => c.count), 1);
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ─── Dashboard Content ──────────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* ─── Dashboard Content ──────────────────────────────────────────── */}
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 overflow-x-hidden">
         
         {/* ─── Stats Cards Row (5 COLORFUL CARDS) ─────────────────────────── */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5">
             {Array.from({ length: 5 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5">
             {/* Academic Year */}
-            <div className="rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #0F766E, #14B8A6)' }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <FiCalendar className="w-7 h-7 text-white" />
+            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #0F766E, #14B8A6)' }}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                  <FiCalendar className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium" style={{ color: '#A7F3D0' }}>Academic Year</p>
                   <select
                     value={academicYearId}
                     onChange={(e) => setAcademicYearId(e.target.value)}
-                    className="text-lg font-bold bg-transparent border-none outline-none text-white cursor-pointer appearance-none"
+                    className="text-sm sm:text-lg font-bold bg-transparent border-none outline-none text-white cursor-pointer appearance-none w-full truncate"
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
                   >
                     <option value="" className="text-gray-800">Select</option>
@@ -219,14 +219,14 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Total Students */}
-            <div className="rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <FiUsers className="w-7 h-7 text-white" />
+            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                  <FiUsers className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div>
                   <p className="text-xs font-medium" style={{ color: '#BFDBFE' }}>Total Students</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-xl sm:text-2xl font-bold text-white">
                     {stats?.totalStudents ?? '—'}
                   </p>
                 </div>
@@ -234,30 +234,30 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* New Admissions */}
-            <div className="rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <FiUserPlus className="w-7 h-7 text-white" />
+            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                  <FiUserPlus className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div>
                   <p className="text-xs font-medium" style={{ color: '#A7F3D0' }}>New Admissions</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-xl sm:text-2xl font-bold text-white">
                     {stats?.newAdmissions ?? '—'}
                   </p>
-                  <p className="text-xs" style={{ color: '#6EE7B7' }}>This month</p>
+                  <p className="text-xs hidden sm:block" style={{ color: '#6EE7B7' }}>This month</p>
                 </div>
               </div>
             </div>
 
             {/* Boys / Girls Ratio */}
-            <div className="rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <FiTrendingUp className="w-7 h-7 text-white" />
+            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                  <FiTrendingUp className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div>
                   <p className="text-xs font-medium" style={{ color: '#E9D5FF' }}>Boys / Girls</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-xl sm:text-2xl font-bold text-white">
                     {stats ? `${stats.boys} : ${stats.girls}` : '—'}
                   </p>
                 </div>
@@ -265,14 +265,14 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Active / Inactive */}
-            <div className="rounded-xl shadow-lg p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <FiCheckCircle className="w-7 h-7 text-white" />
+            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                  <FiCheckCircle className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div>
                   <p className="text-xs font-medium" style={{ color: '#FED7AA' }}>Active / Inactive</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-xl sm:text-2xl font-bold text-white">
                     {stats ? `${stats.active} / ${stats.inactive}` : '—'}
                   </p>
                 </div>
@@ -288,20 +288,21 @@ const AdminStudentDashboard: React.FC = () => {
             <SkeletonChart />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Class-wise Student Strength (Bar Chart) */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-6">
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 overflow-hidden">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4 sm:mb-6">
                 Class-wise Student Strength
               </h3>
               {classStrength.length > 0 ? (
-                <div className="flex items-end gap-2 h-48">
+                <div className="overflow-x-auto -mx-2 px-2">
+                <div className="flex items-end gap-1.5 sm:gap-2 h-48 min-w-[280px]">
                   {classStrength.map((cls) => (
                     <div
                       key={cls.class}
-                      className="flex-1 flex flex-col items-center justify-end h-full group"
+                      className="flex-1 min-w-[24px] flex flex-col items-center justify-end h-full group"
                     >
-                      <span className="text-xs font-medium text-gray-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] sm:text-xs font-medium text-gray-600 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {cls.count}
                       </span>
                       <div
@@ -311,18 +312,19 @@ const AdminStudentDashboard: React.FC = () => {
                           background: 'linear-gradient(to top, #3B82F6, #60A5FA)',
                         }}
                       />
-                      <span className="text-xs text-gray-500 mt-2 font-medium">
+                      <span className="text-[9px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 font-medium truncate max-w-full">
                         {cls.class}
                       </span>
                     </div>
                   ))}
+                </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-48 text-gray-400">
                   <p>No data</p>
                 </div>
               )}
-              <div className="mt-4 pt-3 border-t border-gray-100">
+              <div className="mt-3 sm:mt-4 pt-3 border-t border-gray-100">
                 <p className="text-xs text-gray-400 text-center">
                   Hover bars for count
                 </p>
@@ -330,13 +332,13 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Gender Distribution (Donut Chart) */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-6">
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 overflow-hidden">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4 sm:mb-6">
                 Gender Distribution
               </h3>
-              <div className="flex items-center justify-center gap-8">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
                 {/* Donut */}
-                <div className="relative w-44 h-44">
+                <div className="relative w-32 h-32 sm:w-44 sm:h-44">
                   {stats && (stats.boys + stats.girls) > 0 ? (
                     <>
                       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -354,7 +356,7 @@ const AdminStudentDashboard: React.FC = () => {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-2xl font-bold text-gray-800">{stats.boys + stats.girls}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-gray-800">{stats.boys + stats.girls}</span>
                         <span className="text-xs text-gray-400">Total</span>
                       </div>
                     </>
@@ -371,19 +373,19 @@ const AdminStudentDashboard: React.FC = () => {
                 </div>
 
                 {/* Legend */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
+                <div className="flex sm:flex-col gap-6 sm:gap-4">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full" style={{ backgroundColor: '#3b82f6' }} />
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">Boys</p>
-                      <p className="text-lg font-bold text-gray-800">{stats?.boys ?? '—'}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-gray-700">Boys</p>
+                      <p className="text-base sm:text-lg font-bold text-gray-800">{stats?.boys ?? '—'}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#ec4899' }} />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full" style={{ backgroundColor: '#ec4899' }} />
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">Girls</p>
-                      <p className="text-lg font-bold text-gray-800">{stats?.girls ?? '—'}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-gray-700">Girls</p>
+                      <p className="text-base sm:text-lg font-bold text-gray-800">{stats?.girls ?? '—'}</p>
                     </div>
                   </div>
                 </div>
@@ -399,17 +401,17 @@ const AdminStudentDashboard: React.FC = () => {
             <SkeletonTable />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Recent Admissions Table */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-semibold text-gray-800">Recent Admissions</h3>
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 overflow-hidden">
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Recent Admissions</h3>
                 <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#EFF6FF', color: '#2563EB' }}>
                   Last 5
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <table className="w-full text-sm min-w-[400px] sm:min-w-0">
                   <thead>
                     <tr className="border-b border-gray-100">
                       <th className="text-left py-3 px-2 text-gray-500 font-medium text-xs uppercase tracking-wider">Name</th>
@@ -445,8 +447,8 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Category-wise Distribution */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-5">
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4 sm:mb-5">
                 Category-wise Distribution
               </h3>
               <div className="space-y-4">
@@ -494,11 +496,11 @@ const AdminStudentDashboard: React.FC = () => {
             <SkeletonTable />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Fee Pending Students */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-semibold text-gray-800">Fee Pending Students</h3>
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Fee Pending Students</h3>
                 <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>
                   Top 5
                 </span>
@@ -510,16 +512,16 @@ const AdminStudentDashboard: React.FC = () => {
                       key={student.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-red-50/50 transition-colors group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
                           {index + 1}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">{student.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate">{student.name}</p>
                           <p className="text-xs text-gray-400">Class {student.class}</p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0 ml-2">
                         <p className="text-sm font-bold" style={{ color: '#DC2626' }}>
                           ₹{student.pendingAmount.toLocaleString('en-IN')}
                         </p>
@@ -534,9 +536,9 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Attendance Overview */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-semibold text-gray-800">Attendance Overview</h3>
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800">Attendance Overview</h3>
                 <div className="flex items-center gap-1.5 text-xs text-gray-400">
                   <FiCalendar className="w-3.5 h-3.5" />
                   <span>Today</span>
@@ -547,7 +549,7 @@ const AdminStudentDashboard: React.FC = () => {
                 <div className="space-y-6">
                   {/* Circular Progress */}
                   <div className="flex items-center justify-center">
-                    <div className="relative w-36 h-36">
+                    <div className="relative w-28 h-28 sm:w-36 sm:h-36">
                       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                         <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#e5e7eb" strokeWidth="2.5" />
                         <circle
@@ -559,28 +561,28 @@ const AdminStudentDashboard: React.FC = () => {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-3xl font-bold text-gray-800">{attendance.presentPercentage}%</span>
+                        <span className="text-2xl sm:text-3xl font-bold text-gray-800">{attendance.presentPercentage}%</span>
                         <span className="text-xs text-gray-400">Present</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#ECFDF5' }}>
-                      <FiCheckCircle className="w-5 h-5 mx-auto mb-1" style={{ color: '#059669' }} />
-                      <p className="text-lg font-bold" style={{ color: '#065F46' }}>{attendance.totalPresent}</p>
-                      <p className="text-xs" style={{ color: '#059669' }}>Present</p>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="text-center p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#ECFDF5' }}>
+                      <FiCheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" style={{ color: '#059669' }} />
+                      <p className="text-base sm:text-lg font-bold" style={{ color: '#065F46' }}>{attendance.totalPresent}</p>
+                      <p className="text-[10px] sm:text-xs" style={{ color: '#059669' }}>Present</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#FEF2F2' }}>
-                      <FiAlertCircle className="w-5 h-5 mx-auto mb-1" style={{ color: '#DC2626' }} />
-                      <p className="text-lg font-bold" style={{ color: '#991B1B' }}>{attendance.absentCount}</p>
-                      <p className="text-xs" style={{ color: '#DC2626' }}>Absent</p>
+                    <div className="text-center p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#FEF2F2' }}>
+                      <FiAlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" style={{ color: '#DC2626' }} />
+                      <p className="text-base sm:text-lg font-bold" style={{ color: '#991B1B' }}>{attendance.absentCount}</p>
+                      <p className="text-[10px] sm:text-xs" style={{ color: '#DC2626' }}>Absent</p>
                     </div>
-                    <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#EFF6FF' }}>
-                      <FiUsers className="w-5 h-5 mx-auto mb-1" style={{ color: '#2563EB' }} />
-                      <p className="text-lg font-bold" style={{ color: '#1E40AF' }}>{attendance.totalStudents}</p>
-                      <p className="text-xs" style={{ color: '#2563EB' }}>Total</p>
+                    <div className="text-center p-2 sm:p-3 rounded-lg" style={{ backgroundColor: '#EFF6FF' }}>
+                      <FiUsers className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" style={{ color: '#2563EB' }} />
+                      <p className="text-base sm:text-lg font-bold" style={{ color: '#1E40AF' }}>{attendance.totalStudents}</p>
+                      <p className="text-[10px] sm:text-xs" style={{ color: '#2563EB' }}>Total</p>
                     </div>
                   </div>
                 </div>
@@ -592,7 +594,7 @@ const AdminStudentDashboard: React.FC = () => {
         )}
       </main>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
+      {/* ─── Footer ───────────────────────────────────────────────────────── */}
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
         <div className="border-t border-gray-200 pt-4">
           <p className="text-xs text-gray-400 text-center">
@@ -605,4 +607,3 @@ const AdminStudentDashboard: React.FC = () => {
 };
 
 export default AdminStudentDashboard;
-

@@ -17,7 +17,7 @@ type Props = {
 
 export default function RevenueChart({ data }: Props) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg overflow-hidden">
 
       {/* HEADER */}
       <div className="mb-4">
@@ -31,7 +31,8 @@ export default function RevenueChart({ data }: Props) {
 
       {/* CHART */}
       {data && data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={300}>
+        <div className="w-full overflow-x-auto">
+        <ResponsiveContainer width="100%" height={300} minWidth={300}>
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
 
@@ -49,6 +50,7 @@ export default function RevenueChart({ data }: Props) {
             />
           </LineChart>
         </ResponsiveContainer>
+        </div>
       ) : (
         <p className="text-gray-400">No data available</p>
       )}

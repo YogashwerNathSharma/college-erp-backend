@@ -40,6 +40,15 @@ export default function Dashboard() {
     const token = localStorage.getItem("token");
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
+
+    // Load Razorpay checkout script
+    if (!document.getElementById("razorpay-script")) {
+      const script = document.createElement("script");
+      script.id = "razorpay-script";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
     axios.get("/api/tenant/my-subscription", { headers })
       .then((res) => setSubscriptionInfo(res.data?.data || res.data))
       .catch(() => console.log("No active subscription"));

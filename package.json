@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma --accept-data-loss && tsc",
+    "build": "npx prisma generate && tsc",
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts"
   },

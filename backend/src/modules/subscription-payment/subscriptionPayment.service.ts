@@ -408,6 +408,13 @@ export const createCustomOrderService = async (
     throw new Error("Tenant not found");
   }
 
+  // Find a plan to reference (planId is required in schema)
+  const defaultPlan = await prisma.subscriptionPlan.findFirst({
+    orderBy: { price: "asc" },
+  });
+
+  if (!defaultPlan) throw new Error("No subscription plans exist. Create at least one plan first.");
+
   // Create a subscription entry for tracking
   const subscriptionCode = `CUSTOM-${Date.now()}`;
   const startDate = new Date();
@@ -417,6 +424,7 @@ export const createCustomOrderService = async (
   const subscription = await prisma.tenantSubscription.create({
     data: ({
       tenantId,
+      planId: defaultPlan.id,
       subscriptionCode,
       amount,
       currency: "INR",

@@ -5,6 +5,7 @@ import {
 
   createOrderService,
 
+  createCustomOrderService,
   verifyPaymentService,
 
   getPaymentsService,
@@ -126,6 +127,43 @@ export const getPayments =
 
       });
 
+    }
+
+  };
+
+//////////////////////////////////////////////////////////////
+// CREATE CUSTOM ORDER (Super Admin - custom amount)
+//////////////////////////////////////////////////////////////
+
+export const createCustomOrder =
+  async (
+    req: Request,
+    res: Response
+  ) => {
+
+    try {
+
+      const { tenantId, amount } = req.body;
+
+      if (!tenantId || !amount || amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "tenantId and valid amount required",
+        });
+      }
+
+      const result = await createCustomOrderService(tenantId, amount);
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
     }
 
   };

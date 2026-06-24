@@ -389,3 +389,77 @@ export const getPaymentsService =
     });
 
   };
+
+//////////////////////////////////////////////////////////////
+// CREATE CUSTOM ORDER (Super Admin - custom amount payment)
+//////////////////////////////////////////////////////////////
+
+export const createCustomOrderService = async (
+  tenantId: string,
+  amount: number
+) => {
+  // Verify tenant exists
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+  });
+
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  // Create a subscription entry for tracking
+  const subscriptionCode = `CUSTOM-${Date.now()}`;
+  const startDate = new Date();
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 30); // Default 30 days for custom
+
+  const subscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId,
+      subscriptionCode,
+      amount,
+      currency: "INR",
+      startDate,
+      endDate,
+      status: "PENDING",
+      isActive: false,
+      maxStudents: tenant.maxStudents || 300,
+      maxTeachers: tenant.maxTeachers || 20,
+      maxAdmins: tenant.maxAdmins || 2,
+      maxStorageInGB: tenant.maxStorageInGB || 5,
+    },
+  });
+
+  // Create Razorpay order
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount: Math.round(amount * 100),
+      currency: "INR",
+      receipt: subscriptionCode,
+    });
+  } catch (rzpError: any) {
+    console.error("RAZORPAY CUSTOM ORDER ERROR:", rzpError?.error || rzpError?.message);
+    throw new Error(rzpError?.error?.description || rzpError?.message || "Razorpay order creation failed");
+  }
+
+  // Update subscription with order id
+  await prisma.tenantSubscription.update({
+    where: { id: subscription.id },
+    data: { razorpayOrderId: order.id },
+  });
+
+  // Create payment entry
+  await prisma.subscriptionPayment.create({
+    data: {
+      subscriptionId: subscription.id,
+      amount,
+      currency: "INR",
+      gateway: "RAZORPAY",
+      status: PaymentStatus.PENDING,
+      razorpayOrderId: order.id,
+    },
+  });
+
+  return { order, subscriptionId: subscription.id };
+};

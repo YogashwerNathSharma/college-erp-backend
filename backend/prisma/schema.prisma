@@ -1376,8 +1376,8 @@ model TenantSubscription {
   tenantId String @db.ObjectId
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
-  planId String           @db.ObjectId
-  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+  planId String?           @db.ObjectId
+  plan   SubscriptionPlan? @relation(fields: [planId], references: [id])
 
   payments SubscriptionPayment[]
 

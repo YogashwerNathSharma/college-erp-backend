@@ -74,6 +74,12 @@ export default function SubscriptionsPage() {
   const [editingPlan, setEditingPlan] =
     useState<Plan | null>(null);
 
+  const [customAmount, setCustomAmount] =
+    useState("");
+
+  const [customTenant, setCustomTenant] =
+    useState("");
+
   //////////////////////////////////////////////////////
   // FETCH PLANS
   //////////////////////////////////////////////////////
@@ -240,6 +246,74 @@ export default function SubscriptionsPage() {
   //////////////////////////////////////////////////////
   // ASSIGN PLAN + PAYMENT
   //////////////////////////////////////////////////////
+
+  const customPayment = async () => {
+    if (!customTenant) {
+      alert("Please select a tenant");
+      return;
+    }
+    const amount = parseFloat(customAmount);
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      // Create custom order via backend
+      const res = await axios.post(
+        "/api/subscription-payments/custom-order",
+        { tenantId: customTenant, amount },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const { order, subscriptionId } = res.data.data;
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_SufLEYxZg1RUP2",
+        amount: order.amount,
+        currency: order.currency,
+        name: "College ERP",
+        description: `Custom Payment - ₹${amount}`,
+        order_id: order.id,
+        prefill: {
+          name: "Admin",
+          email: "admin@collegeerp.com",
+          contact: "9999999999",
+        },
+        theme: { color: "#4f46e5" },
+        handler: async (response: any) => {
+          try {
+            await axios.post(
+              "/api/subscription-payments/verify",
+              {
+                subscriptionId,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            alert("✅ Custom Payment Successful!");
+            setCustomAmount("");
+            setCustomTenant("");
+          } catch (verifyErr: any) {
+            alert("❌ Verification failed: " + (verifyErr?.response?.data?.message || verifyErr?.message));
+          }
+        },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on("payment.failed", (resp: any) => {
+        alert("❌ Payment failed: " + resp.error.description);
+      });
+      razorpay.open();
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || error?.message || "Unknown error";
+      alert("❌ Payment failed: " + errMsg);
+    }
+  };
 
   const assignPlan = async (
     planId: string
@@ -680,6 +754,54 @@ export default function SubscriptionsPage() {
 
         </button>
 
+      </div>
+
+      {/* CUSTOM AMOUNT PAYMENT */}
+      <div className="mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6">
+        <h2 className="text-xl font-bold text-slate-800 mb-1">💰 Custom Amount Payment</h2>
+        <p className="text-slate-500 text-sm mb-4">Collect custom payment from any tenant (discounts, partial, custom deals)</p>
+
+        <div className="flex flex-wrap items-end gap-4">
+
+          {/* Tenant Select */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Select Tenant</label>
+            <select
+              value={customTenant}
+              onChange={(e) => setCustomTenant(e.target.value)}
+              className="w-full border border-slate-300 rounded-xl px-4 py-3 bg-white"
+            >
+              <option value="">Select Tenant</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Amount Input */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹)</label>
+            <input
+              type="number"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder="Enter amount e.g. 5000"
+              min="1"
+              className="w-full border border-slate-300 rounded-xl px-4 py-3"
+            />
+          </div>
+
+          {/* Pay Button */}
+          <div>
+            <button
+              onClick={customPayment}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold whitespace-nowrap"
+            >
+              💳 Pay Custom Amount
+            </button>
+          </div>
+
+        </div>
       </div>
 
       {/* EMPTY */}

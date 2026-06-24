@@ -1,0 +1,152 @@
+/* ================================================
+   GLOBAL RESPONSIVE - Mobile + Desktop Handler
+   Add this to index.css or import in main.tsx
+   ================================================ */
+
+/* ===== BASE FIXES ===== */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ===== TABLES — Horizontal scroll on mobile ===== */
+@media (max-width: 768px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Smaller text in tables on mobile */
+  table th, table td {
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+  }
+}
+
+/* ===== GRIDS — Stack on mobile ===== */
+@media (max-width: 768px) {
+  .grid,
+  [class*="grid-cols-2"],
+  [class*="grid-cols-3"],
+  [class*="grid-cols-4"],
+  [class*="grid-cols-5"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Flex rows → column on mobile */
+  .flex-row-mobile {
+    flex-direction: column !important;
+  }
+}
+
+/* ===== FORMS — Full width inputs on mobile ===== */
+@media (max-width: 768px) {
+  input, select, textarea, button {
+    max-width: 100% !important;
+    font-size: 16px !important; /* Prevents iOS zoom */
+  }
+
+  /* Side-by-side form fields → stack */
+  .flex.gap-4,
+  .flex.gap-3,
+  .flex.gap-2 {
+    flex-wrap: wrap;
+  }
+  .flex.gap-4 > *,
+  .flex.gap-3 > *,
+  .flex.gap-2 > * {
+    min-width: 100% !important;
+  }
+}
+
+/* ===== CARDS — Full width on mobile ===== */
+@media (max-width: 768px) {
+  [class*="rounded-2xl"],
+  [class*="rounded-xl"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ===== SIDEBAR — Hide on mobile (show toggle) ===== */
+@media (max-width: 768px) {
+  .sidebar, [class*="w-64"], [class*="w-60"], [class*="min-w-"] {
+    position: fixed !important;
+    left: -280px;
+    top: 0;
+    height: 100vh;
+    z-index: 999;
+    transition: left 0.3s ease;
+    width: 260px !important;
+    min-width: 260px !important;
+  }
+  .sidebar.open, [class*="w-64"].open, [class*="w-60"].open {
+    left: 0 !important;
+  }
+
+  /* Main content full width when sidebar hidden */
+  .main-content, [class*="ml-64"], [class*="ml-60"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ===== PAGE PADDING — Tighter on mobile ===== */
+@media (max-width: 768px) {
+  .p-6 { padding: 12px !important; }
+  .p-8 { padding: 14px !important; }
+  .p-10 { padding: 16px !important; }
+  .px-6 { padding-left: 12px !important; padding-right: 12px !important; }
+  .px-8 { padding-left: 14px !important; padding-right: 14px !important; }
+}
+
+/* ===== TEXT — Smaller headings on mobile ===== */
+@media (max-width: 768px) {
+  h1, .text-3xl, .text-4xl { font-size: 22px !important; }
+  h2, .text-2xl { font-size: 18px !important; }
+  h3, .text-xl { font-size: 16px !important; }
+}
+
+/* ===== MODALS — Full screen on mobile ===== */
+@media (max-width: 768px) {
+  [class*="max-w-lg"],
+  [class*="max-w-xl"],
+  [class*="max-w-2xl"],
+  [class*="max-w-3xl"] {
+    max-width: 95vw !important;
+    margin: 10px auto !important;
+  }
+}
+
+/* ===== BUTTONS — Stack on mobile ===== */
+@media (max-width: 768px) {
+  .flex.justify-end.gap-3,
+  .flex.justify-end.gap-2,
+  .flex.gap-3.flex-wrap {
+    flex-direction: column;
+  }
+  .flex.justify-end.gap-3 > button,
+  .flex.justify-end.gap-2 > button {
+    width: 100%;
+  }
+}
+
+/* ===== HIDE ON MOBILE / DESKTOP ===== */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* ===== PRINT — Clean output ===== */
+@media print {
+  .sidebar, .ticker-strip, nav, header, .no-print { display: none !important; }
+  body { background: white !important; }
+}

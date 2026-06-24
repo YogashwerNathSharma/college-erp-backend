@@ -1,6 +1,8 @@
 
 import { getFullUrl } from "../../utils/url";
 import React, { useEffect, useState, useRef } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL as CENTRAL_API_URL } from "../../config/api";
@@ -96,6 +98,10 @@ const ConsolidatedReportCard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isMobile] = useState(() =>
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
+  );
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -126,7 +132,46 @@ const ConsolidatedReportCard: React.FC = () => {
   }, [studentId, academicYearId, classId]);
 
   const handlePrint = () => {
-    window.print();
+    if (isMobile) {
+      const el = printRef.current;
+      if (!el) { window.print(); return; }
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) return;
+      printWindow.document.write(`
+        <html><head><title>Consolidated Report</title>
+        <style>body{margin:0;padding:20px;font-family:'Times New Roman',Times,serif;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}table{border-collapse:collapse;width:100%;}</style>
+        </head><body>${el.innerHTML}</body></html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    } else {
+      window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const el = printRef.current;
+    if (!el) return;
+
+    setDownloadingPdf(true);
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Consolidated-Report-${reportData?.student?.name || "student"}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   // ============================================================
@@ -172,7 +217,19 @@ const ConsolidatedReportCard: React.FC = () => {
   return (
     <>
       {/* Print button */}
-      <div className="print:hidden fixed top-4 right-4 z-50">
+      <div className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-2">
+        {isMobile && (
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            {downloadingPdf ? "..." : "PDF"}
+          </button>
+        )}
         <button
           onClick={handlePrint}
           className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors"
@@ -180,7 +237,7 @@ const ConsolidatedReportCard: React.FC = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
           </svg>
-          Print Report
+          {isMobile ? "Print" : "Print Report"}
         </button>
       </div>
 
@@ -215,6 +272,7 @@ const ConsolidatedReportCard: React.FC = () => {
             <img
               src={logoUrl}
               alt=""
+              loading="lazy"
               style={{ opacity: 0.05, width: "350px", height: "350px", objectFit: "contain" }}
             />
           </div>
@@ -231,6 +289,7 @@ const ConsolidatedReportCard: React.FC = () => {
                 <img
                   src={logoUrl}
                   alt="School Logo"
+                  loading="lazy"
                   style={{ width: "75px", height: "75px", objectFit: "contain" }}
                 />
               )}
@@ -348,6 +407,7 @@ const ConsolidatedReportCard: React.FC = () => {
                 <img
                   src={studentPhotoUrl}
                   alt="Student"
+                  loading="lazy"
                   style={{
                     width: "80px",
                     height: "95px",

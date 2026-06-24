@@ -101,6 +101,10 @@ const Communication = lazy(() => import("./pages/teachers/Communication"));
 const TeacherReports = lazy(() => import("./pages/teachers/TeacherReports"));
 const TeacherSettings = lazy(() => import("./pages/teachers/TeacherSettings"));
 const TeacherIdCard = lazy(() => import("./pages/teachers/TeacherIdCard"));
+const TeacherPortal = lazy(() => import("./pages/teachers/TeacherPortal"));
+
+// Principal
+const PrincipalPortal = lazy(() => import("./pages/principal/PrincipalPortal"));
 
 // Timetable
 const TimetablePage = lazy(() => import("./pages/timeTable/TimetablePage"));
@@ -285,6 +289,22 @@ function ProtectedRoute() {
     return <Navigate to="/subscription-expired" replace />;
   }
 
+  // Role-based route guards — prevent non-admin roles from accessing admin routes
+  const userData = localStorage.getItem("user");
+  const userRole = userData ? JSON.parse(userData)?.role : null;
+  const adminRoutes = ["/dashboard", "/tenants", "/students", "/teachers", "/fees", "/exams", "/settings", "/classes", "/subjects", "/academic-years", "/attendance", "/reports", "/library", "/transport", "/backup", "/subscriptions"];
+  const isAdminRoute = adminRoutes.some(route => location.pathname === route || location.pathname.startsWith(route + "/"));
+
+  if (userRole === "STUDENT" && isAdminRoute) {
+    return <Navigate to="/student-portal" replace />;
+  }
+  if (userRole === "TEACHER" && isAdminRoute) {
+    return <Navigate to="/teacher-portal" replace />;
+  }
+  if (userRole === "PRINCIPAL" && isAdminRoute) {
+    return <Navigate to="/principal-portal" replace />;
+  }
+
   return <Outlet />;
 }
 
@@ -401,7 +421,11 @@ function Layout() {
 //////////////////////////////////////////////////////
 function RoleDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user?.role === "SUPER_ADMIN" ? <SuperAdminDashboard /> : <TenantDashboard />;
+  if (user?.role === "SUPER_ADMIN") return <SuperAdminDashboard />;
+  if (user?.role === "STUDENT") return <Navigate to="/student-portal" />;
+  if (user?.role === "TEACHER") return <Navigate to="/teacher-portal" />;
+  if (user?.role === "PRINCIPAL") return <Navigate to="/principal-portal" />;
+  return <TenantDashboard />;
 }
 
 //////////////////////////////////////////////////////
@@ -442,6 +466,16 @@ export default function App() {
             {/* STUDENT PORTAL — Separate Layout             */}
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             <Route path="/student-portal" element={<StudentDashboard />} />
+
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* TEACHER PORTAL — Separate Layout              */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            <Route path="/teacher-portal" element={<TeacherPortal />} />
+
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            {/* PRINCIPAL PORTAL — Separate Layout            */}
+            {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+            <Route path="/principal-portal" element={<PrincipalPortal />} />
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {/* NORMAL ROUTES — With Sidebar + Navbar      */}

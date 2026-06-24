@@ -4,7 +4,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Printer, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Loader2, Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import PrintSignature from "../../components/PrintSignature";
 
 interface SubjectResult {
@@ -69,25 +71,31 @@ const ReportCard: React.FC = () => {
   const [data, setData] = useState<ReportCardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [customTemplate, setCustomTemplate] = useState<any>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isMobile] = useState(() =>
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
+  );
   const customTemplateId = searchParams.get("customTemplate");
 
   useEffect(() => {
-    if (examId && studentId) {
-      fetchReportCard();
-    }
-  }, [examId, studentId]);
-
-  // Fetch custom template if specified
-  useEffect(() => {
+    if (!examId || !studentId) return;
+    
+    // Run both fetches in parallel for faster loading
+    const promises: Promise<any>[] = [fetchReportCard()];
+    
     if (customTemplateId) {
+      promises.push(
       axios.get(`/api/designer/templates/${customTemplateId}`, { headers })
         .then((res) => {
           const tmpl = res.data?.data || res.data;
           setCustomTemplate(tmpl);
         })
-        .catch((err) => console.error("Failed to load custom template:", err));
+        .catch((err) => console.error("Failed to load custom template:", err))
+      );
     }
-  }, [customTemplateId]);
+    
+    Promise.all(promises);
+  }, [examId, studentId, customTemplateId]);
 
   const fetchReportCard = async () => {
     setLoading(true);
@@ -161,7 +169,72 @@ const ReportCard: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (isMobile) {
+      // Mobile: Open report card in a new clean window and print
+      const printContent = document.getElementById("report-card-print");
+      if (!printContent) return;
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        // Popup blocked, fall back to download
+        toast.error("Please allow popups for printing, or use Download PDF.");
+        return;
+      }
+
+      printWindow.document.write(`
+        <html>
+        <head><title>Report Card - ${data?.student?.name || "Student"}</title>
+        <style>
+          body { margin: 0; padding: 20px; font-family: 'Times New Roman', Times, serif; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          table { border-collapse: collapse; width: 100%; }
+          @media print {
+            body { margin: 0; padding: 15px; }
+          }
+        </style>
+        </head>
+        <body>${printContent.innerHTML}</body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    } else {
+      // Desktop: normal print
+      window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const printContent = document.getElementById("report-card-print");
+    if (!printContent) return;
+
+    setDownloadingPdf(true);
+    try {
+      const canvas = await html2canvas(printContent, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Report-Card-${data?.student?.name || "student"}.pdf`);
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast.error("Failed to generate PDF. Try using Print instead.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
 
@@ -329,16 +402,28 @@ const ReportCard: React.FC = () => {
               </button>
               <h1 className="text-lg font-semibold text-gray-900">Report Card - {customTemplate.name}</h1>
             </div>
-            <button onClick={handlePrint} className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 shadow-sm">
-              <Printer className="w-4 h-4 mr-2" />
-              Print Report
-            </button>
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <button
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow-sm disabled:opacity-50"
+                >
+                  {downloadingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  {downloadingPdf ? "Generating..." : "Download PDF"}
+                </button>
+              )}
+              <button onClick={handlePrint} className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 shadow-sm">
+                <Printer className="w-4 h-4 mr-2" />
+                {isMobile ? "Print" : "Print Report"}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Canvas Render */}
         <div className="max-w-[850px] mx-auto py-8 print:py-0 print:max-w-none">
-          <div className="bg-white shadow-lg print:shadow-none mx-auto" style={{ width: pageW, minHeight: pageH, position: "relative", background: pageBg }}>
+          <div id="report-card-print" className="bg-white shadow-lg print:shadow-none mx-auto" style={{ width: pageW, minHeight: pageH, position: "relative", background: pageBg }}>
             {finalElements.map((el: any, idx: number) => {
               const style: React.CSSProperties = {
                 position: "absolute",
@@ -446,13 +531,25 @@ const ReportCard: React.FC = () => {
             </button>
             <h1 className="text-lg font-semibold text-gray-900">Report Card</h1>
           </div>
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
-          >
-            <Printer className="w-4 h-4 mr-2" />
-            Print Report Card
-          </button>
+          <div className="flex items-center gap-2">
+            {isMobile && (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {downloadingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                {downloadingPdf ? "Generating..." : "Download PDF"}
+              </button>
+            )}
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              {isMobile ? "Print" : "Print Report Card"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -506,6 +603,7 @@ const ReportCard: React.FC = () => {
               <img
                 src={logoUrl}
                 alt=""
+                loading="lazy"
                 style={{ opacity: 0.05, width: "350px", height: "350px", objectFit: "contain" }}
               />
             </div>
@@ -522,6 +620,7 @@ const ReportCard: React.FC = () => {
                   <img
                     src={logoUrl}
                     alt="School Logo"
+                    loading="lazy"
                     style={{ width: "75px", height: "75px", objectFit: "contain" }}
                   />
                 )}
@@ -639,6 +738,7 @@ const ReportCard: React.FC = () => {
                   <img
                     src={studentPhotoUrl}
                     alt="Student"
+                    loading="lazy"
                     style={{
                       width: "80px",
                       height: "95px",

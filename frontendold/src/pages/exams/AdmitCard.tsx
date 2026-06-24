@@ -1,5 +1,7 @@
 import { getFullUrl } from "../../utils/url";
 import React, { useState, useEffect } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
@@ -7,6 +9,7 @@ import {
   ArrowLeft,
   Loader2,
   Printer,
+  Download,
   Eye,
   X,
   CreditCard,
@@ -86,6 +89,10 @@ const AdmitCard: React.FC = () => {
   const [viewLoading, setViewLoading] = useState(false);
   const [bulkPrintData, setBulkPrintData] = useState<AdmitCardDetail[]>([]);
   const [bulkPrinting, setBulkPrinting] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isMobile] = useState(() =>
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
+  );
 
   useEffect(() => {
     fetchExams();
@@ -194,7 +201,48 @@ const AdmitCard: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (isMobile) {
+      const printContent = document.querySelector(".print\\:block") as HTMLElement;
+      if (!printContent) { window.print(); return; }
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) { toast.error("Allow popups for printing."); return; }
+      printWindow.document.write(`
+        <html><head><title>Admit Card</title>
+        <style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}</style>
+        </head><body>${printContent.innerHTML}</body></html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    } else {
+      window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const printContent = document.querySelector(".print\\:block") as HTMLElement;
+    if (!printContent) return;
+
+    setDownloadingPdf(true);
+    try {
+      const canvas = await html2canvas(printContent, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Admit-Card.pdf`);
+      toast.success("PDF downloaded!");
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast.error("Failed to generate PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   // ✅ Render single admit card (reusable for both modal and bulk print)

@@ -5,8 +5,9 @@ export default defineConfig({
   plugins: [react()],
 
   build: {
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 600,
     sourcemap: false,
+    cssCodeSplit: true,
   },
 
   server: {

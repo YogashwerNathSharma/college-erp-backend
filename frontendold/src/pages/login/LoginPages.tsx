@@ -62,7 +62,23 @@ export default function LoginPage() {
       localStorage.setItem("token", res.data?.token || res.data?.data?.token || "");
       localStorage.setItem("user", JSON.stringify(res.data?.data || {}));
       localStorage.removeItem("subscriptionExpired");
-      if (res.data?.forcePasswordChange) { navigate("/change-password"); } else { navigate("/dashboard"); }
+      if (res.data?.forcePasswordChange) {
+        navigate("/change-password");
+      } else {
+        // Role-based redirect
+        const userData = res.data?.data || {};
+        const role = userData.role;
+        if (role === "STUDENT") {
+          navigate("/student-portal");
+        } else if (role === "TEACHER") {
+          navigate("/teacher-portal");
+        } else if (role === "PRINCIPAL") {
+          navigate("/principal-portal");
+        } else {
+          // SUPER_ADMIN, ADMIN, STAFF → admin dashboard
+          navigate("/dashboard");
+        }
+      }
     } catch (err: any) {
       alert(err?.response?.data?.message || err?.message || "Login Failed ❌");
     } finally {

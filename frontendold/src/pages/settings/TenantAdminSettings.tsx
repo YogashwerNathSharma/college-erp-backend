@@ -21,8 +21,10 @@ import {
   ChevronRight,
   RefreshCw,
   Upload,
+  Shield,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import PermissionManager from "./PermissionManager";
 
 //////////////////////////////////////////////////////
 // 🏫 TENANT ADMIN SETTINGS PAGE
@@ -79,6 +81,10 @@ export default function TenantAdminSettings() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Permission Manager state
+  const [showPermissionPanel, setShowPermissionPanel] = useState(false);
+  const [permissionUser, setPermissionUser] = useState<any>(null);
 
   // Create user form
   const [createForm, setCreateForm] = useState({
@@ -962,6 +968,16 @@ export default function TenantAdminSettings() {
                               </button>
                               <button
                                 onClick={() => {
+                                  setPermissionUser(user);
+                                  setShowPermissionPanel(true);
+                                }}
+                                className="p-2 hover:bg-amber-50 rounded-lg text-amber-600"
+                                title="Permissions"
+                              >
+                                <Shield size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
                                   setSelectedUser(user);
                                   setShowDeleteConfirm(true);
                                 }}
@@ -1404,6 +1420,17 @@ export default function TenantAdminSettings() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Permission Manager Slide-over */}
+      {showPermissionPanel && permissionUser && (
+        <PermissionManager
+          user={permissionUser}
+          onClose={() => {
+            setShowPermissionPanel(false);
+            setPermissionUser(null);
+          }}
+        />
       )}
     </div>
   );

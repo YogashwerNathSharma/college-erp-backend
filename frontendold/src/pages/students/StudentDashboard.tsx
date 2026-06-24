@@ -6,100 +6,254 @@ import {
   FiUser,
   FiBook,
   FiSun,
-  FiClipboard,
   FiCheckCircle,
   FiFileText,
   FiAward,
   FiDollarSign,
   FiCalendar,
   FiBookOpen,
-  FiMessageSquare,
   FiSettings,
   FiSearch,
   FiBell,
-  FiChevronLeft,
-  FiChevronRight,
   FiClock,
   FiMapPin,
   FiTrendingUp,
+  FiPercent,
+  FiAlertCircle,
+  FiChevronDown,
+  FiChevronRight,
+  FiDownload,
+  FiLogOut,
 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 // Types
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 
-interface StudentInfo {
+interface StudentProfile {
   id: string;
   firstName: string;
   lastName: string;
+  fullName: string;
   email: string;
-  avatarUrl?: string;
-  rollNumber?: string;
-  department?: string;
-  semester?: number;
+  phone: string;
+  gender: string;
+  dob: string;
+  bloodGroup: string;
+  address: string;
+  photoUrl: string;
+  admissionNo: string;
+  rollNumber: string;
+  className: string;
+  sectionName: string;
+  academicYear: string;
+  fatherName: string;
+  motherName: string;
+  fatherPhone: string;
+  motherPhone: string;
+  guardianName: string;
+  guardianPhone: string;
 }
 
-interface OverviewData {
-  totalCourses: number;
-  attendancePercentage: number;
-  pendingAssignments: number;
-  overallGPA: number;
+interface DashboardData {
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    photoUrl: string;
+    rollNumber: string;
+    className: string;
+    sectionName: string;
+    academicYear: string;
+  };
+  overview: {
+    totalSubjects: number;
+    attendancePercentage: number;
+    pendingInstallments: number;
+    pendingFees: number;
+    totalFees: number;
+    paidFees: number;
+    todayClasses: number;
+  };
+  upcomingExams: Array<{
+    id: string;
+    name: string;
+    type: string;
+    startDate: string;
+    endDate: string;
+  }>;
 }
 
-interface ScheduleItem {
+interface TimetableEntry {
   id: string;
-  time: string;
-  startTime: string;
-  endTime: string;
+  period: number;
   subject: string;
   teacher: string;
-  room: string;
-  color: string;
+  day: string;
 }
 
-interface Assignment {
+interface AttendanceSummary {
+  totalDays: number;
+  presentDays: number;
+  absentDays: number;
+  percentage: number;
+  monthlyBreakdown: Array<{
+    month: string;
+    present: number;
+    absent: number;
+    total: number;
+    percentage: number;
+  }>;
+}
+
+interface FeeSummary {
+  totalAmount: number;
+  totalPaid: number;
+  totalBalance: number;
+  totalDiscount: number;
+  totalFine: number;
+  installmentStats: {
+    total: number;
+    paid: number;
+    pending: number;
+    overdue: number;
+    partial: number;
+  };
+  nextDue: {
+    installmentNo: number;
+    amount: number;
+    dueDate: string;
+    status: string;
+  } | null;
+}
+
+interface FeeDetail {
+  id: string;
+  installmentNo: number;
+  structureName: string;
+  totalAmount: number;
+  discountAmount: number;
+  fineAmount: number;
+  netAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  dueDate: string;
+  status: string;
+  payments: Array<{
+    id: string;
+    amount: number;
+    method: string;
+    reference: string;
+    receiptNo: string;
+    paymentDate: string;
+  }>;
+}
+
+interface ExamData {
   id: string;
   name: string;
-  subject: string;
-  dueDate: string;
-  status: 'pending' | 'submitted' | 'overdue';
+  type: string;
+  startDate: string;
+  endDate: string;
+  isPublished: boolean;
+  schedule: Array<{
+    subject: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    room: string;
+  }>;
 }
 
-interface CalendarEvent {
-  date: number;
-  type: 'exam' | 'event' | 'holiday';
+interface MarksData {
+  examId: string;
+  examName: string;
+  examType: string;
+  examDate: string;
+  marks: Array<{
+    subject: string;
+    marksObtained: number;
+    isAbsent: boolean;
+  }>;
+  summary: {
+    totalMarks: number;
+    totalMaxMarks: number;
+    percentage: number;
+    grade: string;
+    rank: number;
+    division: string;
+    status: string;
+  } | null;
 }
 
-// ─────────────────────────────────────────────
+interface SubjectData {
+  id: string;
+  name: string;
+  periodsPerWeek: number;
+  teachers: Array<{
+    id: string;
+    name: string;
+    photoUrl: string;
+  }>;
+}
+
+interface LibraryData {
+  isMember: boolean;
+  membershipId: string | null;
+  issuedBooks: Array<{
+    id: string;
+    book: { id: string; title: string; author: string; isbn: string };
+    issueDate: string;
+    dueDate: string;
+    returnDate: string | null;
+    status: string;
+    fineAmount: number;
+  }>;
+  stats: {
+    totalIssued: number;
+    currentlyIssued: number;
+    returned: number;
+    overdue: number;
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Sidebar Navigation Items
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 
 const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: FiHome },
   { id: 'profile', label: 'Profile', icon: FiUser },
-  { id: 'courses', label: 'Courses', icon: FiBook },
-  { id: 'day-routine', label: 'Day Routine', icon: FiSun },
-  { id: 'assignments', label: 'Assignments', icon: FiClipboard },
+  { id: 'subjects', label: 'Subjects', icon: FiBook },
+  { id: 'timetable', label: 'Timetable', icon: FiCalendar },
   { id: 'attendance', label: 'Attendance', icon: FiCheckCircle },
   { id: 'exams', label: 'Exams', icon: FiFileText },
-  { id: 'marks', label: 'Marks', icon: FiAward },
+  { id: 'marks', label: 'Marks & Results', icon: FiAward },
   { id: 'fees', label: 'Fees', icon: FiDollarSign },
-  { id: 'timetable', label: 'Time Table', icon: FiCalendar },
   { id: 'library', label: 'Library', icon: FiBookOpen },
-  { id: 'messages', label: 'Messages', icon: FiMessageSquare },
-  { id: 'settings', label: 'Settings', icon: FiSettings },
 ];
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 // Sidebar Component
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
   activeItem: string;
   onItemClick: (id: string) => void;
+  student: DashboardData['student'] | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, student }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('tenant');
+    navigate('/');
+  };
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-[#1a237e] text-white flex flex-col z-50">
       {/* Logo Section */}
@@ -145,243 +299,56 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick }) => {
 
       {/* Bottom Section */}
       <div className="px-4 py-4 border-t border-white/10">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-bold">
-            S
+        <div className="flex items-center gap-3 px-3 py-2 mb-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden">
+            {student?.photoUrl ? (
+              <img src={student.photoUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              student?.firstName?.charAt(0) || 'S'
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Student</p>
-            <p className="text-xs text-blue-200/60 truncate">Online</p>
+            <p className="text-sm font-medium text-white truncate">
+              {student ? `${student.firstName} ${student.lastName}` : 'Student'}
+            </p>
+            <p className="text-[10px] text-blue-200 truncate">
+              {student?.className} - {student?.sectionName}
+            </p>
           </div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-200 hover:bg-red-500/20 rounded-lg transition-colors"
+        >
+          <FiLogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   );
 };
 
-// ─────────────────────────────────────────────
-// Skeleton Loader Components
-// ─────────────────────────────────────────────
-
-const SkeletonCard: React.FC = () => (
-  <div className="bg-white rounded-2xl p-6 shadow-sm animate-pulse">
-    <div className="flex items-center justify-between">
-      <div>
-        <div className="h-4 w-24 bg-gray-200 rounded mb-3" />
-        <div className="h-8 w-16 bg-gray-200 rounded" />
-      </div>
-      <div className="w-12 h-12 bg-gray-200 rounded-xl" />
-    </div>
-  </div>
-);
-
-// ─────────────────────────────────────────────
-// Progress Ring Component
-// ─────────────────────────────────────────────
-
-interface ProgressRingProps {
-  percentage: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-}
-
-const ProgressRing: React.FC<ProgressRingProps> = ({
-  percentage,
-  size = 48,
-  strokeWidth = 4,
-  color,
-}) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <svg width={size} height={size} className="transform -rotate-90">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        className="text-gray-200"
-      />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        className="transition-all duration-1000 ease-out"
-      />
-    </svg>
-  );
-};
-
-// ─────────────────────────────────────────────
-// Calendar Widget Component (Compact)
-// ─────────────────────────────────────────────
-
-interface CalendarWidgetProps {
-  events: CalendarEvent[];
-}
-
-const CalendarWidget: React.FC<CalendarWidgetProps> = ({ events }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  const today = new Date();
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-
-  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-  const goToPrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  const hasEvent = (day: number): CalendarEvent | undefined => {
-    return events.find((e) => e.date === day);
-  };
-
-  const isToday = (day: number): boolean => {
-    return (
-      day === today.getDate() &&
-      month === today.getMonth() &&
-      year === today.getFullYear()
-    );
-  };
-
-  const calendarDays: (number | null)[] = [];
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    calendarDays.push(null);
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    calendarDays.push(day);
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-white/90">
-          {monthNames[month]} {year}
-        </h3>
-        <div className="flex gap-1">
-          <button
-            onClick={goToPrevMonth}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <FiChevronLeft className="w-3.5 h-3.5 text-white/70" />
-          </button>
-          <button
-            onClick={goToNextMonth}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <FiChevronRight className="w-3.5 h-3.5 text-white/70" />
-          </button>
-        </div>
-      </div>
-
-      {/* Day Names */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {dayNames.map((day, i) => (
-          <div
-            key={i}
-            className="text-center text-[10px] font-medium text-white/50 py-1"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 flex-1">
-        {calendarDays.map((day, index) => {
-          if (day === null) {
-            return <div key={`empty-${index}`} className="h-7" />;
-          }
-
-          const event = hasEvent(day);
-          const todayClass = isToday(day);
-
-          return (
-            <div
-              key={day}
-              className={`relative h-7 flex items-center justify-center rounded-md text-xs cursor-pointer transition-all ${
-                todayClass
-                  ? 'bg-white text-[#7C3AED] font-bold shadow-md'
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-            >
-              {day}
-              {event && (
-                <div
-                  className={`absolute bottom-0.5 w-1 h-1 rounded-full ${
-                    event.type === 'exam'
-                      ? 'bg-red-300'
-                      : event.type === 'holiday'
-                      ? 'bg-green-300'
-                      : 'bg-yellow-300'
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/10">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-red-300" />
-          <span className="text-[10px] text-white/60">Exam</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-yellow-300" />
-          <span className="text-[10px] text-white/60">Event</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-green-300" />
-          <span className="text-[10px] text-white/60">Holiday</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────
-// Main Dashboard Component
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────────
 
 const StudentDashboard: React.FC = () => {
   const [activeNavItem, setActiveNavItem] = useState<string>('dashboard');
-  const [student, setStudent] = useState<StudentInfo | null>(null);
-  const [overview, setOverview] = useState<OverviewData | null>(null);
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [timetable, setTimetable] = useState<Record<string, TimetableEntry[]> | null>(null);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(null);
+  const [feeSummary, setFeeSummary] = useState<FeeSummary | null>(null);
+  const [feeDetails, setFeeDetails] = useState<FeeDetail[]>([]);
+  const [exams, setExams] = useState<ExamData[]>([]);
+  const [marks, setMarks] = useState<MarksData[]>([]);
+  const [subjects, setSubjects] = useState<SubjectData[]>([]);
+  const [library, setLibrary] = useState<LibraryData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sectionLoading, setSectionLoading] = useState<boolean>(false);
 
   // ─────────────────────────────────────────
-  // Greeting based on time of day
+  // Greeting
   // ─────────────────────────────────────────
 
   const greeting = useMemo(() => {
@@ -392,312 +359,927 @@ const StudentDashboard: React.FC = () => {
   }, []);
 
   // ─────────────────────────────────────────
-  // Fetch Data
+  // Fetch Dashboard Data
   // ─────────────────────────────────────────
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboard = async () => {
       setLoading(true);
       try {
-        const storedUser = localStorage.getItem('user');
-        let studentData: StudentInfo | null = null;
-
-        if (storedUser) {
-          studentData = JSON.parse(storedUser);
-        }
-
-        const [studentRes, scheduleRes, assignmentsRes, attendanceRes] = await Promise.allSettled([
-          !studentData ? axios.get<StudentInfo>('/api/students/me') : Promise.resolve(null),
-          axios.get<ScheduleItem[]>('/api/timetable/my-schedule', {
-            params: { day: 'today' },
-          }),
-          axios.get<Assignment[]>('/api/assignments/my', {
-            params: { status: 'pending' },
-          }),
-          axios.get<{ percentage: number; totalCourses: number; gpa: number }>(
-            '/api/attendance/my-summary'
-          ),
-        ]);
-
-        if (!studentData && studentRes.status === 'fulfilled' && studentRes.value) {
-          studentData = (studentRes.value as any).data;
-        }
-        if (studentData) {
-          setStudent(studentData);
-        } else {
-          setStudent({
-            id: '1',
-            firstName: 'Alex',
-            lastName: 'Johnson',
-            email: 'alex.johnson@university.edu',
-            avatarUrl: '',
-            rollNumber: 'CS2024001',
-            department: 'Computer Science',
-            semester: 4,
-          });
-        }
-
-        if (scheduleRes.status === 'fulfilled' && scheduleRes.value) {
-          setSchedule((scheduleRes.value as any).data || []);
-        } else {
-          setSchedule([
-            {
-              id: '1',
-              time: '09:00 - 10:00',
-              startTime: '09:00',
-              endTime: '10:00',
-              subject: 'Data Structures & Algorithms',
-              teacher: 'Dr. Sarah Miller',
-              room: 'Room 301',
-              color: '#3B82F6',
-            },
-            {
-              id: '2',
-              time: '10:15 - 11:15',
-              startTime: '10:15',
-              endTime: '11:15',
-              subject: 'Operating Systems',
-              teacher: 'Prof. James Wilson',
-              room: 'Room 205',
-              color: '#8B5CF6',
-            },
-            {
-              id: '3',
-              time: '11:30 - 12:30',
-              startTime: '11:30',
-              endTime: '12:30',
-              subject: 'Database Management',
-              teacher: 'Dr. Emily Chen',
-              room: 'Lab 102',
-              color: '#10B981',
-            },
-            {
-              id: '4',
-              time: '14:00 - 15:00',
-              startTime: '14:00',
-              endTime: '15:00',
-              subject: 'Computer Networks',
-              teacher: 'Prof. Robert Kumar',
-              room: 'Room 408',
-              color: '#F59E0B',
-            },
-            {
-              id: '5',
-              time: '15:15 - 16:15',
-              startTime: '15:15',
-              endTime: '16:15',
-              subject: 'Software Engineering',
-              teacher: 'Dr. Lisa Park',
-              room: 'Room 312',
-              color: '#EF4444',
-            },
-          ]);
-        }
-
-        if (assignmentsRes.status === 'fulfilled' && assignmentsRes.value) {
-          setAssignments((assignmentsRes.value as any).data || []);
-        } else {
-          setAssignments([
-            {
-              id: '1',
-              name: 'Binary Tree Implementation',
-              subject: 'Data Structures & Algorithms',
-              dueDate: '2026-06-14',
-              status: 'pending',
-            },
-            {
-              id: '2',
-              name: 'Process Scheduling Simulation',
-              subject: 'Operating Systems',
-              dueDate: '2026-06-16',
-              status: 'pending',
-            },
-            {
-              id: '3',
-              name: 'ER Diagram Design Project',
-              subject: 'Database Management',
-              dueDate: '2026-06-12',
-              status: 'overdue',
-            },
-            {
-              id: '4',
-              name: 'TCP/IP Protocol Analysis',
-              subject: 'Computer Networks',
-              dueDate: '2026-06-18',
-              status: 'pending',
-            },
-            {
-              id: '5',
-              name: 'Agile Sprint Report',
-              subject: 'Software Engineering',
-              dueDate: '2026-06-20',
-              status: 'submitted',
-            },
-          ]);
-        }
-
-        if (attendanceRes.status === 'fulfilled' && attendanceRes.value) {
-          const data = (attendanceRes.value as any).data;
-          setOverview({
-            totalCourses: data.totalCourses || 6,
-            attendancePercentage: data.percentage || 85,
-            pendingAssignments: 4,
-            overallGPA: data.gpa || 3.72,
-          });
-        } else {
-          setOverview({
-            totalCourses: 6,
-            attendancePercentage: 85,
-            pendingAssignments: 4,
-            overallGPA: 3.72,
-          });
-        }
-
-        setCalendarEvents([
-          { date: 5, type: 'event' },
-          { date: 11, type: 'event' },
-          { date: 15, type: 'exam' },
-          { date: 18, type: 'exam' },
-          { date: 20, type: 'exam' },
-          { date: 22, type: 'holiday' },
-          { date: 25, type: 'event' },
-          { date: 28, type: 'exam' },
-        ]);
+        const res = await axios.get('/api/student-portal/dashboard');
+        setDashboardData(res.data.data);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setStudent({
-          id: '1',
-          firstName: 'Alex',
-          lastName: 'Johnson',
-          email: 'alex.johnson@university.edu',
-          avatarUrl: '',
-          rollNumber: 'CS2024001',
-          department: 'Computer Science',
-          semester: 4,
-        });
-        setOverview({
-          totalCourses: 6,
-          attendancePercentage: 85,
-          pendingAssignments: 4,
-          overallGPA: 3.72,
-        });
+        console.error('Error fetching dashboard:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchData();
+    fetchDashboard();
   }, []);
 
   // ─────────────────────────────────────────
-  // Attendance color helper
+  // Fetch section-specific data
   // ─────────────────────────────────────────
 
-  const getAttendanceColor = (percentage: number): string => {
-    if (percentage >= 80) return '#10B981';
-    if (percentage >= 60) return '#F59E0B';
-    return '#EF4444';
-  };
+  useEffect(() => {
+    const fetchSectionData = async () => {
+      if (activeNavItem === 'dashboard') return;
 
-  // ─────────────────────────────────────────
-  // Format date helper
-  // ─────────────────────────────────────────
+      setSectionLoading(true);
+      try {
+        switch (activeNavItem) {
+          case 'profile':
+            if (!profile) {
+              const res = await axios.get('/api/student-portal/me');
+              setProfile(res.data.data);
+            }
+            break;
 
-  const formatDueDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
+          case 'timetable':
+            if (!timetable) {
+              const res = await axios.get('/api/student-portal/timetable');
+              setTimetable(res.data.data.timetable);
+            }
+            break;
+
+          case 'attendance':
+            if (!attendanceSummary) {
+              const res = await axios.get('/api/student-portal/attendance/summary');
+              setAttendanceSummary(res.data.data);
+            }
+            break;
+
+          case 'fees':
+            if (!feeSummary) {
+              const [summaryRes, detailsRes] = await Promise.all([
+                axios.get('/api/student-portal/fees/summary'),
+                axios.get('/api/student-portal/fees/details'),
+              ]);
+              setFeeSummary(summaryRes.data.data);
+              setFeeDetails(detailsRes.data.data);
+            }
+            break;
+
+          case 'exams':
+            if (exams.length === 0) {
+              const res = await axios.get('/api/student-portal/exams');
+              setExams(res.data.data);
+            }
+            break;
+
+          case 'marks':
+            if (marks.length === 0) {
+              const res = await axios.get('/api/student-portal/marks');
+              setMarks(res.data.data);
+            }
+            break;
+
+          case 'subjects':
+            if (subjects.length === 0) {
+              const res = await axios.get('/api/student-portal/subjects');
+              setSubjects(res.data.data);
+            }
+            break;
+
+          case 'library':
+            if (!library) {
+              const res = await axios.get('/api/student-portal/library');
+              setLibrary(res.data.data);
+            }
+            break;
+        }
+      } catch (error) {
+        console.error(`Error fetching ${activeNavItem} data:`, error);
+      } finally {
+        setSectionLoading(false);
+      }
     };
-    return date.toLocaleDateString('en-US', options);
+    fetchSectionData();
+  }, [activeNavItem]);
+
+  // ─────────────────────────────────────────
+  // Loading skeleton
+  // ─────────────────────────────────────────
+
+  const LoadingSkeleton = () => (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-8 w-48 bg-gray-200 rounded-lg" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-32 bg-gray-200 rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="h-64 bg-gray-200 rounded-2xl" />
+        <div className="h-64 bg-gray-200 rounded-2xl" />
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────
+  // RENDER: Dashboard Section
+  // ─────────────────────────────────────────
+
+  const renderDashboard = () => {
+    if (loading || !dashboardData) return <LoadingSkeleton />;
+
+    const { student, overview, upcomingExams } = dashboardData;
+
+    return (
+      <div className="space-y-6">
+        {/* Greeting */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {greeting}, {student.firstName}! 👋
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {student.className} - {student.sectionName} | {student.academicYear}
+          </p>
+        </div>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Attendance */}
+          <div className="bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-xs font-medium mb-1">Attendance</p>
+                <p className="text-3xl font-bold">{overview.attendancePercentage}%</p>
+                <p className="text-green-100 text-[10px] mt-1">
+                  {overview.attendancePercentage >= 75 ? '✓ Good Standing' : '⚠ Below 75%'}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <FiCheckCircle className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Subjects */}
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-xs font-medium mb-1">Subjects</p>
+                <p className="text-3xl font-bold">{overview.totalSubjects}</p>
+                <p className="text-blue-100 text-[10px] mt-1">Enrolled Courses</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <FiBook className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Today's Classes */}
+          <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-xs font-medium mb-1">Today</p>
+                <p className="text-3xl font-bold">{overview.todayClasses}</p>
+                <p className="text-orange-100 text-[10px] mt-1">Classes Today</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <FiClock className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Fees */}
+          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-xs font-medium mb-1">Fees Due</p>
+                <p className="text-3xl font-bold">₹{overview.pendingFees.toLocaleString()}</p>
+                <p className="text-purple-100 text-[10px] mt-1">
+                  {overview.pendingInstallments} installment(s) pending
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <FiDollarSign className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Exams */}
+        {upcomingExams.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FiFileText className="w-5 h-5 text-indigo-500" />
+              Upcoming Exams
+            </h3>
+            <div className="space-y-3">
+              {upcomingExams.map((exam) => (
+                <div key={exam.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{exam.name}</p>
+                    <p className="text-xs text-gray-500">{exam.type}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-indigo-600">
+                      {new Date(exam.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </p>
+                    {exam.endDate && (
+                      <p className="text-xs text-gray-400">
+                        to {new Date(exam.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // ─────────────────────────────────────────
-  // Status badge helper
+  // RENDER: Profile Section
   // ─────────────────────────────────────────
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'submitted':
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-            ✓ Done
-          </span>
-        );
-      case 'overdue':
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
-            ⚠ Overdue
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-700">
-            ⏳ Pending
-          </span>
-        );
+  const renderProfile = () => {
+    if (sectionLoading || !profile) return <LoadingSkeleton />;
+
+    const InfoRow = ({ label, value }: { label: string; value: string | undefined | null }) => (
+      <div className="flex justify-between py-2 border-b border-gray-50">
+        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-sm font-medium text-gray-800">{value || '—'}</span>
+      </div>
+    );
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Profile</h2>
+
+        {/* Profile Header */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+              {profile.photoUrl ? (
+                <img src={profile.photoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                profile.firstName.charAt(0)
+              )}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">{profile.fullName}</h3>
+              <p className="text-sm text-gray-500">
+                {profile.className} - {profile.sectionName} | Roll: {profile.rollNumber}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Admission No: {profile.admissionNo} | {profile.academicYear}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Personal Info */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Personal Information</h4>
+            <InfoRow label="Email" value={profile.email} />
+            <InfoRow label="Phone" value={profile.phone} />
+            <InfoRow label="Gender" value={profile.gender} />
+            <InfoRow label="Date of Birth" value={profile.dob ? new Date(profile.dob).toLocaleDateString('en-IN') : undefined} />
+            <InfoRow label="Blood Group" value={profile.bloodGroup} />
+            <InfoRow label="Address" value={profile.address} />
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Parent / Guardian</h4>
+            <InfoRow label="Father's Name" value={profile.fatherName} />
+            <InfoRow label="Father's Phone" value={profile.fatherPhone} />
+            <InfoRow label="Mother's Name" value={profile.motherName} />
+            <InfoRow label="Mother's Phone" value={profile.motherPhone} />
+            <InfoRow label="Guardian Name" value={profile.guardianName} />
+            <InfoRow label="Guardian Phone" value={profile.guardianPhone} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Timetable Section
+  // ─────────────────────────────────────────
+
+  const renderTimetable = () => {
+    if (sectionLoading || !timetable) return <LoadingSkeleton />;
+
+    const dayOrder = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const dayLabels: Record<string, string> = {
+      MON: 'Monday',
+      TUE: 'Tuesday',
+      WED: 'Wednesday',
+      THU: 'Thursday',
+      FRI: 'Friday',
+      SAT: 'Saturday',
+    };
+
+    const colors = [
+      'from-blue-500 to-indigo-500',
+      'from-emerald-500 to-teal-500',
+      'from-purple-500 to-pink-500',
+      'from-amber-500 to-orange-500',
+      'from-cyan-500 to-blue-500',
+      'from-rose-500 to-red-500',
+    ];
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Timetable</h2>
+
+        <div className="space-y-4">
+          {dayOrder.map((day, dayIndex) => {
+            const entries = timetable[day] || [];
+            if (entries.length === 0) return null;
+
+            return (
+              <div key={day} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
+                  {dayLabels[day]}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {entries
+                    .sort((a, b) => a.period - b.period)
+                    .map((entry, i) => (
+                      <div
+                        key={entry.id}
+                        className={`bg-gradient-to-br ${colors[i % colors.length]} rounded-xl p-3 text-white`}
+                      >
+                        <p className="text-[10px] opacity-80 font-medium">Period {entry.period}</p>
+                        <p className="text-sm font-semibold mt-1 truncate">{entry.subject}</p>
+                        <p className="text-[11px] opacity-80 mt-1 flex items-center gap-1">
+                          <FiUser className="w-3 h-3" />
+                          {entry.teacher}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Attendance Section
+  // ─────────────────────────────────────────
+
+  const renderAttendance = () => {
+    if (sectionLoading || !attendanceSummary) return <LoadingSkeleton />;
+
+    const { totalDays, presentDays, absentDays, percentage, monthlyBreakdown } = attendanceSummary;
+
+    const getProgressColor = (pct: number) => {
+      if (pct >= 90) return 'bg-emerald-500';
+      if (pct >= 75) return 'bg-blue-500';
+      if (pct >= 60) return 'bg-amber-500';
+      return 'bg-red-500';
+    };
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Attendance</h2>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p className="text-3xl font-bold text-indigo-600">{percentage}%</p>
+            <p className="text-xs text-gray-500 mt-1">Overall</p>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p className="text-3xl font-bold text-emerald-600">{presentDays}</p>
+            <p className="text-xs text-gray-500 mt-1">Present</p>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p className="text-3xl font-bold text-red-500">{absentDays}</p>
+            <p className="text-xs text-gray-500 mt-1">Absent</p>
+          </div>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
+            <p className="text-3xl font-bold text-gray-700">{totalDays}</p>
+            <p className="text-xs text-gray-500 mt-1">Total Days</p>
+          </div>
+        </div>
+
+        {/* Monthly Breakdown */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">Monthly Breakdown</h3>
+          <div className="space-y-3">
+            {monthlyBreakdown.map((m) => (
+              <div key={m.month} className="flex items-center gap-4">
+                <span className="text-sm text-gray-600 w-24 flex-shrink-0">{m.month}</span>
+                <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden relative">
+                  <div
+                    className={`h-full rounded-full ${getProgressColor(m.percentage)} transition-all duration-500`}
+                    style={{ width: `${m.percentage}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-gray-700">
+                    {m.present}/{m.total} ({m.percentage}%)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Fees Section
+  // ─────────────────────────────────────────
+
+  const renderFees = () => {
+    if (sectionLoading || !feeSummary) return <LoadingSkeleton />;
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'PAID': return 'bg-emerald-100 text-emerald-700';
+        case 'PENDING': return 'bg-amber-100 text-amber-700';
+        case 'OVERDUE': return 'bg-red-100 text-red-700';
+        case 'PARTIAL': return 'bg-blue-100 text-blue-700';
+        default: return 'bg-gray-100 text-gray-700';
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Fees</h2>
+
+        {/* Fee Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl p-5 text-white">
+            <p className="text-green-100 text-xs font-medium">Total Paid</p>
+            <p className="text-2xl font-bold mt-1">₹{feeSummary.totalPaid.toLocaleString()}</p>
+            <p className="text-green-100 text-[10px] mt-1">{feeSummary.installmentStats.paid} installments</p>
+          </div>
+          <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white">
+            <p className="text-orange-100 text-xs font-medium">Balance Due</p>
+            <p className="text-2xl font-bold mt-1">₹{feeSummary.totalBalance.toLocaleString()}</p>
+            <p className="text-orange-100 text-[10px] mt-1">{feeSummary.installmentStats.pending + feeSummary.installmentStats.overdue} pending</p>
+          </div>
+          <div className="bg-gradient-to-br from-indigo-400 to-purple-600 rounded-2xl p-5 text-white">
+            <p className="text-purple-100 text-xs font-medium">Total Fees</p>
+            <p className="text-2xl font-bold mt-1">₹{feeSummary.totalAmount.toLocaleString()}</p>
+            <p className="text-purple-100 text-[10px] mt-1">{feeSummary.installmentStats.total} installments</p>
+          </div>
+        </div>
+
+        {/* Next Due Alert */}
+        {feeSummary.nextDue && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+            <FiAlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                Next Due: Installment #{feeSummary.nextDue.installmentNo} — ₹{feeSummary.nextDue.amount.toLocaleString()}
+              </p>
+              <p className="text-xs text-amber-600">
+                Due Date: {new Date(feeSummary.nextDue.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Installment Details */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Installment Details</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {feeDetails.map((fee) => (
+              <div key={fee.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      Installment #{fee.installmentNo}
+                    </p>
+                    <p className="text-xs text-gray-500">{fee.structureName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Due: {new Date(fee.dueDate).toLocaleDateString('en-IN')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-gray-800">₹{fee.netAmount.toLocaleString()}</p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full ${getStatusColor(fee.status)}`}>
+                      {fee.status}
+                    </span>
+                  </div>
+                </div>
+                {fee.payments.length > 0 && (
+                  <div className="mt-2 pl-4 border-l-2 border-green-200 space-y-1">
+                    {fee.payments.map((p) => (
+                      <p key={p.id} className="text-[11px] text-gray-500">
+                        ₹{p.amount} via {p.method} • Receipt: {p.receiptNo} • {new Date(p.paymentDate).toLocaleDateString('en-IN')}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Exams Section
+  // ─────────────────────────────────────────
+
+  const renderExams = () => {
+    if (sectionLoading || exams.length === 0) {
+      if (sectionLoading) return <LoadingSkeleton />;
+      return (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-800">My Exams</h2>
+          <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <FiFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No exams scheduled yet</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Exams</h2>
+
+        <div className="space-y-4">
+          {exams.map((exam) => (
+            <div key={exam.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-800">{exam.name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{exam.type}</p>
+                  </div>
+                  <div className="text-right text-sm">
+                    {exam.startDate && (
+                      <p className="text-indigo-600 font-medium">
+                        {new Date(exam.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {exam.endDate && ` — ${new Date(exam.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {exam.schedule.length > 0 && (
+                <div className="p-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-500 uppercase">
+                        <th className="text-left py-2">Subject</th>
+                        <th className="text-left py-2">Date</th>
+                        <th className="text-left py-2">Time</th>
+                        <th className="text-left py-2">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {exam.schedule.map((s, i) => (
+                        <tr key={i} className="text-gray-700">
+                          <td className="py-2 font-medium">{s.subject}</td>
+                          <td className="py-2">{new Date(s.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                          <td className="py-2">{s.startTime} - {s.endTime}</td>
+                          <td className="py-2">{s.room}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Marks Section
+  // ─────────────────────────────────────────
+
+  const renderMarks = () => {
+    if (sectionLoading || marks.length === 0) {
+      if (sectionLoading) return <LoadingSkeleton />;
+      return (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-800">My Marks & Results</h2>
+          <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <FiAward className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No published results yet</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Marks & Results</h2>
+
+        <div className="space-y-4">
+          {marks.map((exam) => (
+            <div key={exam.examId} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-800">{exam.examName}</h3>
+                  <p className="text-xs text-gray-500">{exam.examType}</p>
+                </div>
+                {exam.summary && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-indigo-600">{exam.summary.percentage}%</p>
+                      <p className="text-[10px] text-gray-500">Percentage</p>
+                    </div>
+                    {exam.summary.grade && (
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600">{exam.summary.grade}</p>
+                        <p className="text-[10px] text-gray-500">Grade</p>
+                      </div>
+                    )}
+                    {exam.summary.rank && (
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-amber-600">#{exam.summary.rank}</p>
+                        <p className="text-[10px] text-gray-500">Rank</p>
+                      </div>
+                    )}
+                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                      exam.summary.status === 'PASS' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {exam.summary.status}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Marks Table */}
+              <div className="p-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 uppercase border-b border-gray-100">
+                      <th className="text-left py-2">Subject</th>
+                      <th className="text-right py-2">Marks Obtained</th>
+                      <th className="text-right py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {exam.marks.map((m, i) => (
+                      <tr key={i} className="text-gray-700">
+                        <td className="py-2 font-medium">{m.subject}</td>
+                        <td className="py-2 text-right">
+                          {m.isAbsent ? (
+                            <span className="text-red-500">Absent</span>
+                          ) : (
+                            <span className="font-semibold">{m.marksObtained}</span>
+                          )}
+                        </td>
+                        <td className="py-2 text-right">
+                          {m.isAbsent ? '—' : m.marksObtained >= 33 ? '✓' : '✗'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {exam.summary && (
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-200 font-semibold text-gray-800">
+                        <td className="py-2">Total</td>
+                        <td className="py-2 text-right">{exam.summary.totalMarks} / {exam.summary.totalMaxMarks}</td>
+                        <td className="py-2 text-right">{exam.summary.percentage}%</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Subjects Section
+  // ─────────────────────────────────────────
+
+  const renderSubjects = () => {
+    if (sectionLoading || subjects.length === 0) {
+      if (sectionLoading) return <LoadingSkeleton />;
+      return (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-800">My Subjects</h2>
+          <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <FiBook className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No subjects assigned yet</p>
+          </div>
+        </div>
+      );
+    }
+
+    const subjectColors = [
+      'from-blue-500 to-indigo-600',
+      'from-emerald-500 to-teal-600',
+      'from-purple-500 to-pink-600',
+      'from-amber-500 to-orange-600',
+      'from-cyan-500 to-blue-600',
+      'from-rose-500 to-red-600',
+      'from-violet-500 to-purple-600',
+      'from-lime-500 to-green-600',
+    ];
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">My Subjects</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {subjects.map((subject, i) => (
+            <div key={subject.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+              <div className={`h-2 bg-gradient-to-r ${subjectColors[i % subjectColors.length]}`} />
+              <div className="p-5">
+                <h3 className="text-base font-semibold text-gray-800">{subject.name}</h3>
+                <p className="text-xs text-gray-400 mt-1">{subject.periodsPerWeek} periods/week</p>
+
+                {subject.teachers.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-50">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-2">Teachers</p>
+                    {subject.teachers.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 mt-1">
+                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600 overflow-hidden">
+                          {t.photoUrl ? (
+                            <img src={t.photoUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            t.name.charAt(0)
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-700">{t.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Library Section
+  // ─────────────────────────────────────────
+
+  const renderLibrary = () => {
+    if (sectionLoading || !library) {
+      if (sectionLoading) return <LoadingSkeleton />;
+      return <LoadingSkeleton />;
+    }
+
+    if (!library.isMember) {
+      return (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-800">Library</h2>
+          <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <FiBookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">You are not registered as a library member yet</p>
+            <p className="text-xs text-gray-400 mt-1">Contact the librarian to get a membership</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-xl font-bold text-gray-800">Library</h2>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+            <p className="text-2xl font-bold text-blue-600">{library.stats.currentlyIssued}</p>
+            <p className="text-xs text-gray-500">Currently Issued</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+            <p className="text-2xl font-bold text-emerald-600">{library.stats.returned}</p>
+            <p className="text-xs text-gray-500">Returned</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+            <p className="text-2xl font-bold text-red-500">{library.stats.overdue}</p>
+            <p className="text-xs text-gray-500">Overdue</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
+            <p className="text-2xl font-bold text-gray-700">{library.stats.totalIssued}</p>
+            <p className="text-xs text-gray-500">Total Issued</p>
+          </div>
+        </div>
+
+        {/* Book List */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Issued Books</h3>
+          </div>
+          {library.issuedBooks.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm">No books issued currently</div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {library.issuedBooks.map((issue) => (
+                <div key={issue.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{issue.book.title}</p>
+                    <p className="text-xs text-gray-500">by {issue.book.author}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Issued: {new Date(issue.issueDate).toLocaleDateString('en-IN')} | Due: {new Date(issue.dueDate).toLocaleDateString('en-IN')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                      issue.status === 'ISSUED' ? 'bg-blue-100 text-blue-700' :
+                      issue.status === 'RETURNED' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {issue.status}
+                    </span>
+                    {issue.fineAmount > 0 && (
+                      <p className="text-[10px] text-red-500 mt-1">Fine: ₹{issue.fineAmount}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────
+  // RENDER: Content Router
+  // ─────────────────────────────────────────
+
+  const renderContent = () => {
+    switch (activeNavItem) {
+      case 'dashboard': return renderDashboard();
+      case 'profile': return renderProfile();
+      case 'subjects': return renderSubjects();
+      case 'timetable': return renderTimetable();
+      case 'attendance': return renderAttendance();
+      case 'exams': return renderExams();
+      case 'marks': return renderMarks();
+      case 'fees': return renderFees();
+      case 'library': return renderLibrary();
+      default: return renderDashboard();
     }
   };
 
   // ─────────────────────────────────────────
-  // Render
+  // Main Render
   // ─────────────────────────────────────────
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar activeItem={activeNavItem} onItemClick={setActiveNavItem} />
+      <Sidebar
+        activeItem={activeNavItem}
+        onItemClick={setActiveNavItem}
+        student={dashboardData?.student || null}
+      />
 
       {/* Main Content */}
       <main className="flex-1 ml-64">
         {/* Top Bar */}
         <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-4">
           <div className="flex items-center justify-between">
-            {/* Search Bar */}
-            <div className="relative w-96">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search courses, assignments, teachers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-blue-400 transition-all"
-              />
-            </div>
+            {/* Page Title */}
+            <h2 className="text-lg font-semibold text-gray-700 capitalize">
+              {activeNavItem === 'dashboard' ? `${greeting} 👋` : activeNavItem.replace('-', ' ')}
+            </h2>
 
             {/* Right Section */}
             <div className="flex items-center gap-4">
               <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors">
                 <FiBell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
               </button>
 
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                 <div className="text-right">
                   <p className="text-sm font-semibold text-gray-800">
-                    {loading ? (
-                      <span className="inline-block w-24 h-4 bg-gray-200 rounded animate-pulse" />
-                    ) : (
-                      `${student?.firstName} ${student?.lastName}`
-                    )}
+                    {dashboardData
+                      ? `${dashboardData.student.firstName} ${dashboardData.student.lastName}`
+                      : '...'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {loading ? (
-                      <span className="inline-block w-16 h-3 bg-gray-200 rounded animate-pulse" />
-                    ) : (
-                      student?.rollNumber || 'Student'
-                    )}
+                    {dashboardData?.student.className} - {dashboardData?.student.sectionName}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20">
-                  {student?.avatarUrl ? (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] flex items-center justify-center text-white font-bold text-sm shadow-md shadow-blue-500/20 overflow-hidden">
+                  {dashboardData?.student.photoUrl ? (
                     <img
-                      src={student.avatarUrl}
-                      alt={student.firstName}
-                      className="w-full h-full rounded-full object-cover"
+                      src={dashboardData.student.photoUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    student?.firstName?.charAt(0) || 'S'
+                    dashboardData?.student.firstName?.charAt(0) || 'S'
                   )}
                 </div>
               </div>
@@ -705,297 +1287,9 @@ const StudentDashboard: React.FC = () => {
           </div>
         </header>
 
-        {/* Page Content */}
+        {/* Content Area */}
         <div className="p-8">
-          {/* ─────────────────────────────────────────
-              1. Greeting Section (Compact)
-          ───────────────────────────────────────── */}
-          <section className="mb-6">
-            <div className="bg-gradient-to-r from-[#1E3A8A] via-[#2563EB] to-[#3B82F6] rounded-2xl p-6 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-              <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-white/5 rounded-full translate-y-1/2" />
-
-              <div className="relative flex items-center justify-between">
-                <div>
-                  {loading ? (
-                    <div className="animate-pulse">
-                      <div className="h-7 w-56 bg-white/20 rounded mb-2" />
-                      <div className="h-4 w-40 bg-white/20 rounded" />
-                    </div>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl font-bold mb-1">
-                        {greeting}, {student?.firstName}! 👋
-                      </h2>
-                      <p className="text-blue-100 text-sm">
-                        Welcome back to your learning journey.
-                      </p>
-                      <div className="flex items-center gap-3 mt-3">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-lg text-xs">
-                          <FiBook className="w-3.5 h-3.5" />
-                          {student?.department}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-lg text-xs">
-                          <FiCalendar className="w-3.5 h-3.5" />
-                          Semester {student?.semester}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="hidden md:block">
-                  <div className="w-16 h-16 rounded-full border-3 border-primary-300/50 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center shadow-xl shadow-blue-900/30">
-                    {student?.avatarUrl ? (
-                      <img
-                        src={student.avatarUrl}
-                        alt={student.firstName}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl font-bold text-white">
-                        {student?.firstName?.charAt(0) || 'S'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ─────────────────────────────────────────
-              2. Overview Cards (4 colorful cards)
-          ───────────────────────────────────────── */}
-          <section className="mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {loading ? (
-                <>
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
-                </>
-              ) : (
-                <>
-                  {/* Total Courses */}
-                  <div className="bg-gradient-to-br from-[#1E3A8A] to-[#3B82F6] rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 hover:-translate-y-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-blue-100 text-xs font-medium mb-1">
-                          Total Courses
-                        </p>
-                        <p className="text-3xl font-bold">{overview?.totalCourses}</p>
-                        <p className="text-blue-200 text-[10px] mt-1">This Semester</p>
-                      </div>
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiBook className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Attendance */}
-                  <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300 hover:-translate-y-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-emerald-100 text-xs font-medium mb-1">
-                          Attendance
-                        </p>
-                        <p className="text-3xl font-bold">
-                          {overview?.attendancePercentage}%
-                        </p>
-                        <p className="text-emerald-100 text-[10px] mt-1">
-                          {(overview?.attendancePercentage || 0) >= 80
-                            ? '✓ Great!'
-                            : '↑ Improve'}
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiCheckCircle className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Pending Assignments */}
-                  <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-300 hover:-translate-y-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-orange-100 text-xs font-medium mb-1">
-                          Assignments
-                        </p>
-                        <p className="text-3xl font-bold">
-                          {overview?.pendingAssignments}
-                        </p>
-                        <p className="text-orange-100 text-[10px] mt-1">Pending</p>
-                      </div>
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiClipboard className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Overall GPA */}
-                  <div className="bg-gradient-to-br from-purple-500 to-primary-600 rounded-2xl p-5 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-purple-100 text-xs font-medium mb-1">
-                          Overall GPA
-                        </p>
-                        <p className="text-3xl font-bold">{overview?.overallGPA}</p>
-                        <p className="text-purple-100 text-[10px] mt-1 flex items-center gap-1">
-                          <FiTrendingUp className="w-3 h-3" />
-                          +0.12 from last
-                        </p>
-                      </div>
-                      <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <FiAward className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-
-          {/* ─────────────────────────────────────────
-              3. Three Column Cards — Schedule + Assignments + Calendar
-              Compact, Colorful, One Row
-          ───────────────────────────────────────── */}
-          <section className="mb-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              
-              {/* Today's Schedule Card */}
-              <div className="bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] rounded-2xl p-5 shadow-lg shadow-blue-500/15 text-white">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                      <FiClock className="w-4 h-4" />
-                    </div>
-                    <h3 className="text-sm font-semibold">Today's Schedule</h3>
-                  </div>
-                  <span className="text-[10px] text-blue-200 bg-white/10 px-2 py-0.5 rounded-full">
-                    {schedule.length} classes
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="space-y-2 animate-pulse">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-10 bg-white/10 rounded-lg" />
-                    ))}
-                  </div>
-                ) : schedule.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-white/60">
-                    <FiCalendar className="w-8 h-8 mb-2" />
-                    <p className="text-sm">No classes today 🎉</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
-                    {schedule.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
-                      >
-                        {/* Color dot + Time */}
-                        <div className="flex-shrink-0 text-center">
-                          <div
-                            className="w-2 h-2 rounded-full mx-auto mb-1"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          <p className="text-[10px] text-blue-200 font-mono">
-                            {item.startTime}
-                          </p>
-                        </div>
-
-                        {/* Details */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {item.subject}
-                          </p>
-                          <p className="text-[10px] text-blue-200 flex items-center gap-2 mt-0.5">
-                            <span className="flex items-center gap-0.5">
-                              <FiUser className="w-2.5 h-2.5" />
-                              {item.teacher.split(' ').slice(-1)[0]}
-                            </span>
-                            <span className="flex items-center gap-0.5">
-                              <FiMapPin className="w-2.5 h-2.5" />
-                              {item.room}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Assignments Card */}
-              <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 shadow-lg shadow-pink-500/15 text-white">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                      <FiClipboard className="w-4 h-4" />
-                    </div>
-                    <h3 className="text-sm font-semibold">Assignments</h3>
-                  </div>
-                  <span className="text-[10px] text-pink-100 bg-white/10 px-2 py-0.5 rounded-full">
-                    {assignments.filter(a => a.status === 'pending').length} pending
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="space-y-2 animate-pulse">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-10 bg-white/10 rounded-lg" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
-                    {assignments.map((assignment) => (
-                      <div
-                        key={assignment.id}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
-                      >
-                        {/* Icon */}
-                        <div className="flex-shrink-0">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            assignment.status === 'overdue' ? 'bg-red-400/30' :
-                            assignment.status === 'submitted' ? 'bg-green-400/30' :
-                            'bg-yellow-400/30'
-                          }`}>
-                            <FiFileText className="w-4 h-4" />
-                          </div>
-                        </div>
-
-                        {/* Details */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {assignment.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-pink-100">
-                              {formatDueDate(assignment.dueDate)}
-                            </span>
-                            {getStatusBadge(assignment.status)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Calendar Card */}
-              <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-2xl p-5 shadow-lg shadow-purple-500/15 text-white">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                    <FiCalendar className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-sm font-semibold">Calendar</h3>
-                </div>
-                <CalendarWidget events={calendarEvents} />
-              </div>
-            </div>
-          </section>
+          {renderContent()}
         </div>
       </main>
     </div>
@@ -1003,4 +1297,3 @@ const StudentDashboard: React.FC = () => {
 };
 
 export default StudentDashboard;
-

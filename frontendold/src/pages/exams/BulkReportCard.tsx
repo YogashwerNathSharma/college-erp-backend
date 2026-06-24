@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 interface SubjectResult {
   subjectName: string;
@@ -35,6 +37,10 @@ const BulkReportCard: React.FC = () => {
   const [customTemplate, setCustomTemplate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isMobile] = useState(() =>
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
+  );
 
   useEffect(() => {
     loadAll();
@@ -76,7 +82,64 @@ const BulkReportCard: React.FC = () => {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (isMobile) {
+      const printContent = document.getElementById("bulk-report-print");
+      if (!printContent) { window.print(); return; }
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Please allow popups for printing, or use Download PDF.");
+        return;
+      }
+
+      printWindow.document.write(`
+        <html>
+        <head><title>Bulk Report Cards</title>
+        <style>
+          body { margin: 0; padding: 20px; font-family: 'Times New Roman', Times, serif; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .page-break { page-break-after: always; }
+          table { border-collapse: collapse; width: 100%; }
+          @media print { body { margin: 0; padding: 15px; } }
+        </style>
+        </head>
+        <body>${printContent.innerHTML}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    } else {
+      window.print();
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const printContent = document.getElementById("bulk-report-print");
+    if (!printContent) return;
+
+    setDownloadingPdf(true);
+    try {
+      const canvas = await html2canvas(printContent, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Bulk-Report-Cards.pdf`);
+      toast.success("PDF downloaded!");
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      toast.error("Failed to generate PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   // Fill placeholders for a student
@@ -345,14 +408,26 @@ const BulkReportCard: React.FC = () => {
           Bulk Print — {studentsData.length} Report Cards
         </h1>
         <span className="text-xs text-gray-500 mr-3">⚠️ Enable "Background graphics" in Print settings</span>
-        <button onClick={handlePrint} className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow-sm">
-          <Printer className="w-4 h-4 mr-2" />
-          Print All
-        </button>
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm disabled:opacity-50"
+            >
+              {downloadingPdf ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              {downloadingPdf ? "Generating..." : "Download PDF"}
+            </button>
+          )}
+          <button onClick={handlePrint} className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow-sm">
+            <Printer className="w-4 h-4 mr-2" />
+            {isMobile ? "Print" : "Print All"}
+          </button>
+        </div>
       </div>
 
       {/* Report Cards */}
-      <div className="py-6 print:py-0">
+      <div id="bulk-report-print" className="py-6 print:py-0">
         {studentsData.map((data, idx) =>
           customTemplate ? renderCustomTemplate(data, idx) : renderBuiltInTemplate(data, idx)
         )}

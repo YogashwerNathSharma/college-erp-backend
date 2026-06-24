@@ -77,11 +77,17 @@ import libraryRoutes from "./modules/libraryManagement/library.routes";
 // Import (top of file, with other imports)
 import transportRoutes from "./modules/transport/transport.routes";
 
+// STUDENT PORTAL
+import studentPortalRoutes from "./modules/student-portal/studentPortal.routes";
+
 // SIGNATURE
 import signatureRoutes from "./modules/signature/signature.routes";
 
 // BACKUP
 import backupRoutes from "./modules/backup/backup.routes";
+
+// PERMISSIONS
+import permissionsRoutes from "./modules/permissions/permissions.routes";
 
 
 
@@ -161,6 +167,12 @@ app.use("/api/dashboard", dashboardRoutes);
 // Other app.use ke saath:
 app.use("/api/settings", settingsRoutes);
 //////////////////////////////////////////////////////
+// STUDENT PORTAL (separate layout, student role only)
+//////////////////////////////////////////////////////
+
+app.use("/api/student-portal", studentPortalRoutes);
+
+//////////////////////////////////////////////////////
 // ACADEMIC FLOW
 //////////////////////////////////////////////////////
 
@@ -219,6 +231,12 @@ app.use("/api/fees", feesRoutes);
 app.use("/api/exam", examRoutes);
 app.use("/api/grade", gradeRoutes);
 app.use("/api/room", roomRoutes);
+
+//////////////////////////////////////////////////////
+// PERMISSIONS MODULE
+//////////////////////////////////////////////////////
+app.use("/api/permissions", permissionsRoutes);
+
 app.use("/api/signature", signatureRoutes);
 app.use("/api/backup", backupRoutes);
 

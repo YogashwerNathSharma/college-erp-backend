@@ -97,6 +97,7 @@ routeStops              RouteStop[]
 transportAssignments    TransportAssignment[]
 transportAttendances    TransportAttendance[]
 transportSetting        TransportSetting?
+rolePermissions         RolePermission[]
 
 }
 
@@ -1969,4 +1970,43 @@ model DesignerSettings {
 
   @@unique([tenantId, type])
   @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════
+// ROLE PERMISSION (Permission System)
+// ══════════════════════════════════════════════
+model RolePermission {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  userId    String   @db.ObjectId
+  role      String   // TEACHER, PRINCIPAL, STUDENT, STAFF
+
+  // Module-level permissions (admin toggles these)
+  canViewStudents      Boolean @default(true)
+  canEditStudents      Boolean @default(false)
+  canViewAttendance    Boolean @default(true)
+  canMarkAttendance    Boolean @default(false)
+  canViewResults       Boolean @default(true)
+  canEnterMarks        Boolean @default(false)
+  canViewFees          Boolean @default(false)
+  canCollectFees       Boolean @default(false)
+  canViewReports       Boolean @default(true)
+  canManageLibrary     Boolean @default(false)
+  canViewTimetable     Boolean @default(true)
+  canManageTimetable   Boolean @default(false)
+  canViewLeave         Boolean @default(true)
+  canApproveLeave      Boolean @default(false)
+  canViewSalary        Boolean @default(false)
+
+  // Temporary admin elevation
+  isTemporaryAdmin     Boolean  @default(false)
+  tempAdminExpiry      DateTime?
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, userId])
+  @@index([tenantId, role])
 }

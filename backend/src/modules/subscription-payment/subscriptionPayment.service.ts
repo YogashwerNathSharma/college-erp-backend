@@ -7,6 +7,7 @@ import Razorpay from "razorpay";
 import {
   PaymentStatus,
   SubscriptionStatus,
+  Prisma,
 } from "@prisma/client";
 
 //////////////////////////////////////////////////////////////
@@ -414,20 +415,20 @@ export const createCustomOrderService = async (
   endDate.setDate(endDate.getDate() + 30); // Default 30 days for custom
 
   const subscription = await prisma.tenantSubscription.create({
-    data: {
+    data: ({
       tenantId,
       subscriptionCode,
       amount,
       currency: "INR",
       startDate,
       endDate,
-      status: "PENDING",
+      status: SubscriptionStatus.PENDING,
       isActive: false,
       maxStudents: tenant.maxStudents || 300,
       maxTeachers: tenant.maxTeachers || 20,
       maxAdmins: tenant.maxAdmins || 2,
       maxStorageInGB: tenant.maxStorageInGB || 5,
-    },
+    }) as any,
   });
 
   // Create Razorpay order

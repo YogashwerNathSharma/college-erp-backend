@@ -227,6 +227,22 @@ function Sidebar({
             );
           })}
         </nav>
+
+        {/* Logout Button */}
+        <div className="px-3 py-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              localStorage.removeItem("tenant");
+              window.location.href = "/";
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+          >
+            <FiLogOut className="text-lg" />
+            Logout
+          </button>
+        </div>
       </aside>
     </>
   );
@@ -1510,6 +1526,18 @@ export default function TeacherPortal({ isPrincipal = false }: TeacherPortalProp
             <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
               <FiBell size={18} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                localStorage.removeItem("tenant");
+                window.location.href = "/";
+              }}
+              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Logout"
+            >
+              <FiLogOut size={18} />
             </button>
             <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
               <FiUser className="text-indigo-600 text-sm" />

@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiUsers, FiUserPlus, FiTrendingUp, FiCalendar, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import DashboardDetailModal from '../../components/dashboard/DashboardDetailModal';
 
-// ─── Type Definitions ────────────────────────────────────────────────────────
+// ──── Type Definitions ──────────────────────────────────────────────────────
 
 interface StatsData {
   totalStudents: number;
@@ -47,7 +48,7 @@ interface AttendanceOverview {
   totalStudents: number;
 }
 
-// ─── Skeleton Components ─────────────────────────────────────────────────────
+// ──── Skeleton Components ──────────────────────────────────────────────────
 
 const SkeletonCard: React.FC = () => (
   <div className="animate-pulse bg-white rounded-xl shadow-md p-6">
@@ -87,7 +88,7 @@ const SkeletonTable: React.FC = () => (
   </div>
 );
 
-// ─── Main Dashboard Component ────────────────────────────────────────────────
+// ──── Main Dashboard Component ──────────────────────────────────────────────
 
 const AdminStudentDashboard: React.FC = () => {
   const [academicYearId, setAcademicYearId] = useState<string>('');
@@ -99,6 +100,12 @@ const AdminStudentDashboard: React.FC = () => {
   const [feePending, setFeePending] = useState<FeePendingStudent[]>([]);
   const [attendance, setAttendance] = useState<AttendanceOverview | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Modal state for detail view
+  const [detailModal, setDetailModal] = useState<{ open: boolean; type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments" }>({ 
+    open: false, 
+    type: "students" 
+  });
 
   // Fetch academic years from database
   useEffect(() => {
@@ -177,14 +184,14 @@ const AdminStudentDashboard: React.FC = () => {
 
   const maxClassCount = Math.max(...classStrength.map((c) => c.count), 1);
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ──── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ─── Dashboard Content ──────────────────────────────────────────── */}
+      {/* ──── Dashboard Content ──────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 overflow-x-hidden">
         
-        {/* ─── Stats Cards Row (5 COLORFUL CARDS) ─────────────────────────── */}
+        {/* ──── Stats Cards Row (5 COLORFUL CARDS) ──────────────────── */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -218,8 +225,12 @@ const AdminStudentDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Total Students */}
-            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}>
+            {/* Total Students - CLICKABLE */}
+            <div 
+              onClick={() => setDetailModal({ open: true, type: "students" })}
+              className="cursor-pointer rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" 
+              style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
+            >
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                   <FiUsers className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
@@ -233,8 +244,12 @@ const AdminStudentDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* New Admissions */}
-            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}>
+            {/* New Admissions - CLICKABLE */}
+            <div 
+              onClick={() => setDetailModal({ open: true, type: "students" })}
+              className="cursor-pointer rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" 
+              style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
+            >
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                   <FiUserPlus className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
@@ -249,8 +264,12 @@ const AdminStudentDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Boys / Girls Ratio */}
-            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}>
+            {/* Boys / Girls Ratio - CLICKABLE */}
+            <div 
+              onClick={() => setDetailModal({ open: true, type: "students" })}
+              className="cursor-pointer rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" 
+              style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
+            >
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                   <FiTrendingUp className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
@@ -264,8 +283,12 @@ const AdminStudentDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Active / Inactive */}
-            <div className="rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
+            {/* Active / Inactive - CLICKABLE */}
+            <div 
+              onClick={() => setDetailModal({ open: true, type: "students" })}
+              className="cursor-pointer rounded-xl shadow-lg p-4 sm:p-6 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl" 
+              style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}
+            >
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                   <FiCheckCircle className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
@@ -281,7 +304,7 @@ const AdminStudentDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ─── Row 2: Charts (WHITE cards with data viz) ──────────────────── */}
+        {/* ──── Row 2: Charts (WHITE cards with data viz) ──────────────── */}
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SkeletonChart />
@@ -394,7 +417,7 @@ const AdminStudentDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ─── Row 3: Category + Recent Admissions ────────────────────────── */}
+        {/* ──── Row 3: Category + Recent Admissions ───────────────────── */}
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SkeletonTable />
@@ -489,7 +512,7 @@ const AdminStudentDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ─── Row 4: Fee Pending & Attendance Overview ───────────────────── */}
+        {/* ──── Row 4: Fee Pending & Attendance Overview ─────────────── */}
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SkeletonTable />
@@ -594,7 +617,7 @@ const AdminStudentDashboard: React.FC = () => {
         )}
       </main>
 
-      {/* ─── Footer ───────────────────────────────────────────────────────── */}
+      {/* ──── Footer ─────────────────────────────────────────────────── */}
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
         <div className="border-t border-gray-200 pt-4">
           <p className="text-xs text-gray-400 text-center">
@@ -602,6 +625,13 @@ const AdminStudentDashboard: React.FC = () => {
           </p>
         </div>
       </footer>
+
+      {/* ──── Dashboard Detail Modal ────────────────────────────────── */}
+      <DashboardDetailModal 
+        isOpen={detailModal.open} 
+        type={detailModal.type} 
+        onClose={() => setDetailModal({ ...detailModal, open: false })} 
+      />
     </div>
   );
 };

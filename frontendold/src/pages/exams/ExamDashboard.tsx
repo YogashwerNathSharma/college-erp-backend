@@ -15,6 +15,7 @@ import {
   Calendar,
   ArrowRight,
   TrendingUp,
+  X,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -58,6 +59,14 @@ const ExamDashboard: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Modal states
+  const [examModal, setExamModal] = useState<{ open: boolean; type: string }>({
+    open: false,
+    type: "",
+  });
+  const [modalData, setModalData] = useState<any[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     fetchDropdowns();
@@ -106,6 +115,230 @@ const ExamDashboard: React.FC = () => {
     }
   };
 
+  // Handle card click to fetch and display modal data
+  const handleCardClick = async (type: string) => {
+    setExamModal({ open: true, type });
+    setModalLoading(true);
+    setModalData([]);
+
+    try {
+      let response;
+      const params: Record<string, string> = {};
+      if (selectedYear) params.academicYearId = selectedYear;
+      if (selectedClass) params.classId = selectedClass;
+
+      switch (type) {
+        case "exams":
+          response = await axios.get("/api/exams", { headers, params });
+          setModalData(response.data?.data || response.data || []);
+          break;
+        case "students":
+          response = await axios.get("/api/students?limit=1000", {
+            headers,
+            params,
+          });
+          setModalData(response.data?.data || response.data || []);
+          break;
+        case "subjects":
+          response = await axios.get("/api/subjects", { headers, params });
+          setModalData(response.data?.data || response.data || []);
+          break;
+        case "published":
+          response = await axios.get("/api/exams?status=published", {
+            headers,
+            params,
+          });
+          setModalData(response.data?.data || response.data || []);
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      toast.error(`Failed to load ${type} data`);
+      setModalData([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Get modal title based on type
+  const getModalTitle = () => {
+    switch (examModal.type) {
+      case "exams":
+        return "All Exams";
+      case "students":
+        return "All Students";
+      case "subjects":
+        return "All Subjects";
+      case "published":
+        return "Published Results";
+      default:
+        return "";
+    }
+  };
+
+  // Render modal content based on type
+  const renderModalContent = () => {
+    if (modalLoading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+            <span className="text-gray-600">Loading data...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (modalData.length === 0) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500 text-sm">No data available</p>
+        </div>
+      );
+    }
+
+    // Table for exams
+    if (examModal.type === "exams" || examModal.type === "published") {
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Exam Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Class
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Start Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {modalData.map((exam) => (
+                <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {exam.name || exam.examName || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {exam.className || exam.class?.name || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {exam.startDate
+                      ? new Date(exam.startDate).toLocaleDateString()
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        exam.status === "published"
+                          ? "bg-green-100 text-green-800"
+                          : exam.status === "draft"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {exam.status || "-"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // Table for students
+    if (examModal.type === "students") {
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Student Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Roll No
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Class
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Email
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {modalData.map((student) => (
+                <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {student.name || student.firstName || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {student.rollNo || student.roll || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {student.className || student.class?.name || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {student.email || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // Table for subjects
+    if (examModal.type === "subjects") {
+      return (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Subject Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Code
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Class
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {modalData.map((subject) => (
+                <tr key={subject.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {subject.name || subject.subjectName || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {subject.code || subject.subjectCode || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {subject.className || subject.class?.name || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const statCards = [
     {
       title: "Total Exams",
@@ -113,6 +346,7 @@ const ExamDashboard: React.FC = () => {
       icon: FileSpreadsheet,
       gradient: "linear-gradient(135deg, #4338CA, #6366F1)",
       subtextColor: "#C7D2FE",
+      type: "exams",
     },
     {
       title: "Total Students",
@@ -120,6 +354,7 @@ const ExamDashboard: React.FC = () => {
       icon: Users,
       gradient: "linear-gradient(135deg, #059669, #10B981)",
       subtextColor: "#A7F3D0",
+      type: "students",
     },
     {
       title: "Total Subjects",
@@ -127,6 +362,7 @@ const ExamDashboard: React.FC = () => {
       icon: BookOpen,
       gradient: "linear-gradient(135deg, #1E3A8A, #3B82F6)",
       subtextColor: "#BFDBFE",
+      type: "subjects",
     },
     {
       title: "Results Published",
@@ -134,6 +370,7 @@ const ExamDashboard: React.FC = () => {
       icon: CheckCircle,
       gradient: "linear-gradient(135deg, #7C3AED, #A855F7)",
       subtextColor: "#E9D5FF",
+      type: "published",
     },
   ];
 
@@ -234,12 +471,13 @@ const ExamDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Stat Cards — COLORFUL */}
+        {/* Stat Cards — COLORFUL & CLICKABLE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {statCards.map((card) => (
             <div
               key={card.title}
-              className="rounded-xl shadow-lg p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              onClick={() => handleCardClick(card.type)}
+              className="rounded-xl shadow-lg p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
               style={{ background: card.gradient }}
             >
               <div className="flex items-center gap-4">
@@ -250,12 +488,13 @@ const ExamDashboard: React.FC = () => {
                   <card.icon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium" style={{ color: card.subtextColor }}>
+                  <p
+                    className="text-xs font-medium"
+                    style={{ color: card.subtextColor }}
+                  >
                     {card.title}
                   </p>
-                  <p className="text-2xl font-bold text-white">
-                    {card.value}
-                  </p>
+                  <p className="text-2xl font-bold text-white">{card.value}</p>
                 </div>
               </div>
             </div>
@@ -360,9 +599,39 @@ const ExamDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Inline ExamDetailModal */}
+      {examModal.open && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setExamModal({ open: false, type: "" })}
+        >
+          <div
+            className="bg-white w-full max-w-4xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col rounded-none sm:rounded-2xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+              <h2 className="text-lg font-bold text-gray-900">
+                {getModalTitle()}
+              </h2>
+              <button
+                onClick={() => setExamModal({ open: false, type: "" })}
+                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Content — Scrollable */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-4">
+              {renderModalContent()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default ExamDashboard;
-

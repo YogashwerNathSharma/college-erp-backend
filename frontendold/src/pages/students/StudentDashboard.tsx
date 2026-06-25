@@ -334,6 +334,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, student }) =
 
 const StudentDashboard: React.FC = () => {
   const [activeNavItem, setActiveNavItem] = useState<string>('dashboard');
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('tenant');
+    navigate('/');
+  };
+
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [timetable, setTimetable] = useState<Record<string, TimetableEntry[]> | null>(null);
@@ -1258,6 +1267,13 @@ const StudentDashboard: React.FC = () => {
             <div className="flex items-center gap-4">
               <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors">
                 <FiBell className="w-5 h-5 text-gray-600" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2.5 rounded-xl hover:bg-red-50 transition-colors"
+                title="Logout"
+              >
+                <FiLogOut className="w-5 h-5 text-red-500" />
               </button>
 
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">

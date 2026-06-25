@@ -205,6 +205,9 @@ const LibraryDashboard: React.FC = () => {
 const DashboardTab: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [libraryModal, setLibraryModal] = useState<{ open: boolean; type: string }>({ open: false, type: "" });
+  const [modalData, setModalData] = useState<any[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
@@ -222,25 +225,79 @@ const DashboardTab: React.FC = () => {
     }
   };
 
+  const handleCardClick = async (type: string) => {
+    setLibraryModal({ open: true, type });
+    setModalLoading(true);
+    setModalData([]);
+    try {
+      let res: any;
+      switch (type) {
+        case "totalBooks":
+          res = await apiCall("/books?page=1&limit=100");
+          setModalData(res.data.books || []);
+          break;
+        case "activeMembers":
+          res = await apiCall("/members?page=1&limit=100&status=ACTIVE");
+          setModalData(res.data.members || []);
+          break;
+        case "booksIssued":
+          res = await apiCall("/overdue");
+          // overdue gives currently issued + overdue; for "issued" we show all active
+          const dashRes = await apiCall("/dashboard");
+          setModalData(dashRes.data.recentActivity?.filter((i: any) => i.status === "ISSUED") || dashRes.data.recentActivity || []);
+          break;
+        case "overdueBooks":
+          res = await apiCall("/overdue");
+          setModalData(res.data || []);
+          break;
+        case "fineCollected":
+          res = await apiCall("/overdue");
+          setModalData((res.data || []).filter((item: any) => item.fineAmount > 0 || item.calculatedFine > 0));
+          break;
+        default:
+          setModalData([]);
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const getModalTitle = () => {
+    switch (libraryModal.type) {
+      case "totalBooks": return "All Books";
+      case "activeMembers": return "Active Members";
+      case "booksIssued": return "Books Currently Issued";
+      case "overdueBooks": return "Overdue Books";
+      case "fineCollected": return "Fine Records";
+      default: return "Details";
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!stats) return null;
 
   const statCards = [
-    { label: "Total Books", value: stats.totalBooks, icon: BookOpen, color: "from-primary-500 to-primary-600", subtext: `${stats.uniqueBooks} unique titles` },
-    { label: "Active Members", value: stats.totalMembers, icon: Users, color: "from-green-500 to-green-600", subtext: "Registered members" },
-    { label: "Books Issued", value: stats.booksIssued, icon: BookCopy, color: "from-purple-500 to-purple-600", subtext: "Currently issued" },
-    { label: "Overdue Books", value: stats.overdueBooks, icon: AlertTriangle, color: "from-orange-500 to-orange-600", subtext: "Need attention" },
-    { label: "Fine Collected", value: `₹${stats.totalFineCollected}`, icon: DollarSign, color: "from-emerald-500 to-emerald-600", subtext: "Total collected" },
+    { label: "Total Books", value: stats.totalBooks, icon: BookOpen, color: "from-primary-500 to-primary-600", subtext: `${stats.uniqueBooks} unique titles`, type: "totalBooks" },
+    { label: "Active Members", value: stats.totalMembers, icon: Users, color: "from-green-500 to-green-600", subtext: "Registered members", type: "activeMembers" },
+    { label: "Books Issued", value: stats.booksIssued, icon: BookCopy, color: "from-purple-500 to-purple-600", subtext: "Currently issued", type: "booksIssued" },
+    { label: "Overdue Books", value: stats.overdueBooks, icon: AlertTriangle, color: "from-orange-500 to-orange-600", subtext: "Need attention", type: "overdueBooks" },
+    { label: "Fine Collected", value: `₹${stats.totalFineCollected}`, icon: DollarSign, color: "from-emerald-500 to-emerald-600", subtext: "Total collected", type: "fineCollected" },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Stat Cards — colorful gradient */}
+      {/* Stat Cards — colorful gradient, clickable */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className={`bg-gradient-to-br ${card.color} rounded-xl p-5 text-white shadow-lg`}>
+            <div
+              key={i}
+              onClick={() => handleCardClick(card.type)}
+              className={`bg-gradient-to-br ${card.color} rounded-xl p-5 text-white shadow-lg cursor-pointer hover:scale-[1.03] hover:shadow-xl transition-all duration-200`}
+            >
               <div className="flex items-center justify-between mb-3">
                 <Icon className="w-8 h-8 opacity-80" />
                 <span className="text-2xl font-bold">{card.value}</span>
@@ -306,6 +363,125 @@ const DashboardTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Clickable Card Modal */}
+      {libraryModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-[9000] flex items-center justify-center p-0 sm:p-4" onClick={() => setLibraryModal({ open: false, type: "" })}>
+          <div
+            className="bg-white w-full h-[100vh] sm:h-auto sm:max-h-[92vh] sm:max-w-3xl sm:w-full flex flex-col rounded-none sm:rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <h2 className="text-lg font-bold text-slate-800">{getModalTitle()}</h2>
+              <button
+                onClick={() => setLibraryModal({ open: false, type: "" })}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-6">
+              {modalLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                </div>
+              ) : modalData.length === 0 ? (
+                <p className="text-center text-slate-400 py-12">No records found</p>
+              ) : (
+                <div className="space-y-3">
+                  {/* Total Books List */}
+                  {libraryModal.type === "totalBooks" && modalData.map((book: any) => (
+                    <div key={book.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-primary-200 transition-colors">
+                      <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5 text-primary-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{book.title}</p>
+                        <p className="text-sm text-slate-500">{book.author}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-slate-700">{book.availableCopies}/{book.totalCopies}</p>
+                        <p className="text-xs text-slate-400">available</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Active Members List */}
+                  {libraryModal.type === "activeMembers" && modalData.map((member: any) => (
+                    <div key={member.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-green-200 transition-colors">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+                        <Users className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{member.name}</p>
+                        <p className="text-sm text-slate-500">{member.membershipId} • {member.memberType}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-slate-700">{member.currentBooksIssued}/{member.maxBooksAllowed}</p>
+                        <p className="text-xs text-slate-400">books issued</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Books Issued List */}
+                  {libraryModal.type === "booksIssued" && modalData.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-purple-200 transition-colors">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
+                        <BookCopy className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{item.book?.title || "Unknown Book"}</p>
+                        <p className="text-sm text-slate-500">{item.member?.name || "Unknown"} • {item.member?.membershipId || ""}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-slate-700">{new Date(item.dueDate).toLocaleDateString("en-IN")}</p>
+                        <p className="text-xs text-slate-400">due date</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Overdue Books List */}
+                  {libraryModal.type === "overdueBooks" && modalData.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-orange-200 transition-colors">
+                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{item.book?.title || "Unknown Book"}</p>
+                        <p className="text-sm text-slate-500">{item.member?.name || "Unknown"} • {item.member?.membershipId || ""}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-red-600">{item.overdueDays || 0} days</p>
+                        <p className="text-xs text-slate-400">overdue</p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Fine Collected List */}
+                  {libraryModal.type === "fineCollected" && modalData.map((item: any) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-emerald-200 transition-colors">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+                        <DollarSign className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{item.book?.title || "Unknown Book"}</p>
+                        <p className="text-sm text-slate-500">{item.member?.name || "Unknown"} • {item.member?.membershipId || ""}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-medium text-emerald-700">₹{item.fineAmount || item.calculatedFine || 0}</p>
+                        <p className="text-xs text-slate-400">fine</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1773,4 +1949,3 @@ const MemberStatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 export default LibraryDashboard;
-

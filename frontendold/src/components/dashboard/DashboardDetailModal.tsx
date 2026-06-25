@@ -155,12 +155,17 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         className: item.className || "-",
         section: item.section || "-",
         rollNumber: item.rollNumber || "",
+        session: item.session || "",
         feeHead: item.feeHead || "Fee",
         feeItems: item.feeItems && item.feeItems.length > 0 ? item.feeItems : undefined,
         installmentNo: item.installmentNo || 1,
         amount: item.amount || item.paidAmount || 0,
         method: item.method || "CASH",
         reference: item.reference || null,
+        totalDue: item.totalDue || 0,
+        balance: item.balance || 0,
+        collectedBy: item.collectedBy || "",
+        discountAmount: item.discountAmount || 0,
       });
     } else {
       printItems([item]);

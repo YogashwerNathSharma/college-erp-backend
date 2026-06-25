@@ -221,6 +221,9 @@ const TransportDashboard: React.FC = () => {
 const DashboardTab: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [transportModal, setTransportModal] = useState<{ open: boolean; type: string }>({ open: false, type: "" });
+  const [modalData, setModalData] = useState<any[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
@@ -235,6 +238,39 @@ const DashboardTab: React.FC = () => {
       toast.error("Failed to load dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCardClick = async (type: string) => {
+    setTransportModal({ open: true, type });
+    setModalLoading(true);
+    setModalData([]);
+    try {
+      let res;
+      switch (type) {
+        case "Total Vehicles":
+          res = await api.get("/transport/vehicles", { params: { limit: 100 } });
+          if (res.data.success) setModalData(res.data.data.vehicles || res.data.data || []);
+          break;
+        case "Active Routes":
+          res = await api.get("/transport/routes", { params: { limit: 100, status: "ACTIVE" } });
+          if (res.data.success) setModalData(res.data.data.routes || res.data.data || []);
+          break;
+        case "Total Assignments":
+          res = await api.get("/transport/assignments", { params: { limit: 100 } });
+          if (res.data.success) setModalData(res.data.data.assignments || res.data.data || []);
+          break;
+        case "Today's Attendance":
+          res = await api.get("/transport/attendance", { params: { date: new Date().toISOString().split("T")[0] } });
+          if (res.data.success) setModalData(res.data.data.records || res.data.data || []);
+          break;
+        default:
+          break;
+      }
+    } catch (error) {
+      toast.error("Failed to load data");
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -267,6 +303,132 @@ const DashboardTab: React.FC = () => {
     },
   ];
 
+  const getModalTitle = () => {
+    switch (transportModal.type) {
+      case "Total Vehicles": return "All Vehicles";
+      case "Active Routes": return "Active Routes";
+      case "Total Assignments": return "All Assignments";
+      case "Today's Attendance": return "Today's Attendance";
+      default: return "";
+    }
+  };
+
+  const renderModalContent = () => {
+    if (modalLoading) return <div className="flex items-center justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-primary-500" /></div>;
+    if (modalData.length === 0) return <p className="text-center text-gray-500 py-12">No data found</p>;
+
+    switch (transportModal.type) {
+      case "Total Vehicles":
+        return (
+          <div className="divide-y divide-gray-100">
+            {modalData.map((vehicle: any) => (
+              <div key={vehicle.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+                      <Bus className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{vehicle.vehicleNo}</p>
+                      <p className="text-sm text-gray-500">{vehicle.type} • Capacity: {vehicle.capacity}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      vehicle.status === "ACTIVE" ? "bg-green-100 text-green-700" :
+                      vehicle.status === "MAINTENANCE" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-red-100 text-red-700"
+                    }`}>{vehicle.status}</span>
+                    <p className="text-xs text-gray-500 mt-1">{vehicle.driverName}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      case "Active Routes":
+        return (
+          <div className="divide-y divide-gray-100">
+            {modalData.map((route: any) => (
+              <div key={route.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Route className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{route.name}</p>
+                      <p className="text-sm text-gray-500">{route.startLocation} → {route.endLocation}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{route.distance} km</p>
+                    <p className="text-xs text-gray-500">{route._count?.assignments || 0} students</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      case "Total Assignments":
+        return (
+          <div className="divide-y divide-gray-100">
+            {modalData.map((assignment: any) => (
+              <div key={assignment.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{assignment.studentName}</p>
+                      <p className="text-sm text-gray-500">{assignment.route?.name} - {assignment.stop?.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      assignment.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}>{assignment.status}</span>
+                    <p className="text-xs text-gray-500 mt-1">{assignment.classInfo || ""}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      case "Today's Attendance":
+        return (
+          <div className="divide-y divide-gray-100">
+            {modalData.map((record: any, idx: number) => (
+              <div key={record.id || idx} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                      <UserCheck className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{record.studentName || record.assignment?.studentName || "Student"}</p>
+                      <p className="text-sm text-gray-500">{record.route?.name || record.assignment?.route?.name || ""}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      record.status === "PRESENT" ? "bg-green-100 text-green-700" :
+                      record.status === "LATE" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-red-100 text-red-700"
+                    }`}>{record.status}</span>
+                    <p className="text-xs text-gray-500 mt-1">{record.type || ""}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Stat Cards */}
@@ -276,7 +438,8 @@ const DashboardTab: React.FC = () => {
           return (
             <div
               key={index}
-              className={`bg-gradient-to-br ${card.gradient} rounded-xl p-6 text-white shadow-lg`}
+              className={`bg-gradient-to-br ${card.gradient} rounded-xl p-6 text-white shadow-lg cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-200`}
+              onClick={() => handleCardClick(card.title)}
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -333,6 +496,28 @@ const DashboardTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Transport Modal */}
+      {transportModal.open && (
+        <div className="fixed inset-0 bg-black/60 z-[9000] flex items-center justify-center p-0 sm:p-4" onClick={() => setTransportModal({ open: false, type: "" })}>
+          <div className="bg-white w-full sm:max-w-2xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col rounded-none sm:rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 shrink-0">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">{getModalTitle()}</h2>
+              <button
+                onClick={() => setTransportModal({ open: false, type: "" })}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {renderModalContent()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2061,4 +2246,3 @@ const ConfirmModal: React.FC<{
 );
 
 export default TransportDashboard;
-

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
+import DashboardDetailModal from "../../components/dashboard/DashboardDetailModal";
 
 const API = `${API_BASE_URL}/api`;
 
@@ -31,6 +32,10 @@ const FeeDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
+  const [detailModal, setDetailModal] = useState<{ 
+    open: boolean; 
+    type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments" 
+  }>({ open: false, type: "students" });
 
   useEffect(() => {
     fetchAcademicYears();
@@ -105,11 +110,12 @@ const FeeDashboardPage: React.FC = () => {
 
       {data && (
         <>
-          {/* Summary Cards — COLORFUL */}
+          {/* Summary Cards — COLORFUL & CLICKABLE */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {/* Total Students */}
             <div
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+              onClick={() => setDetailModal({ open: true, type: "students" })}
+              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
             >
               <div className="flex items-center justify-between">
@@ -127,7 +133,8 @@ const FeeDashboardPage: React.FC = () => {
 
             {/* Total Receivable */}
             <div
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+              onClick={() => setDetailModal({ open: true, type: "fees_pending" })}
+              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
             >
               <div className="flex items-center justify-between">
@@ -145,7 +152,8 @@ const FeeDashboardPage: React.FC = () => {
 
             {/* Total Collected */}
             <div
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+              onClick={() => setDetailModal({ open: true, type: "fees_collected" })}
+              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
             >
               <div className="flex items-center justify-between">
@@ -163,7 +171,8 @@ const FeeDashboardPage: React.FC = () => {
 
             {/* Outstanding */}
             <div
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden"
+              onClick={() => setDetailModal({ open: true, type: "fees_pending" })}
+              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #DC2626, #EF4444)' }}
             >
               <div className="flex items-center justify-between">
@@ -311,6 +320,13 @@ const FeeDashboardPage: React.FC = () => {
           </div>
         </>
       )}
+
+      {/* Dashboard Detail Modal */}
+      <DashboardDetailModal 
+        isOpen={detailModal.open} 
+        type={detailModal.type} 
+        onClose={() => setDetailModal({ ...detailModal, open: false })} 
+      />
     </div>
   );
 };

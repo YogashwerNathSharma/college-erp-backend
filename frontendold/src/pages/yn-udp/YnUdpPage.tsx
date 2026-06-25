@@ -18,8 +18,15 @@ import {
   Bell,
 } from "lucide-react";
 
-const YN_UDP_API = "http://localhost:5001/api";
-const YN_UDP_CLIENT = "http://localhost:5173";
+// Auto-detect: use Render URL in production, localhost in development
+const YN_UDP_BASE = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com"
+  : "http://localhost:5001";
+
+const YN_UDP_API = `${YN_UDP_BASE}/api`;
+const YN_UDP_CLIENT = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com"
+  : "http://localhost:5173";
 
 // Get tenant ID from auth
 const getTenantId = () => {

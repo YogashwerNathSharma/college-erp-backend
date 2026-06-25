@@ -1,26 +1,39 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import path from "path";
+import dotenv from "dotenv";
 import templateRoutes from "./routes/template.routes";
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors({
-  origin: true, // Allow all origins in development
+  origin: true,
   credentials: true,
 }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(morgan("dev"));
 
-// Routes
+// API Routes
 app.use("/api/templates", templateRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "yn-udp", timestamp: new Date().toISOString() });
+});
+
+// Serve client build (for Render deployment — single service)
+const clientDistPath = path.join(__dirname, "../../client/dist");
+app.use(express.static(clientDistPath));
+
+// SPA fallback — any non-API route serves index.html
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(clientDistPath, "index.html"));
 });
 
 // Error handler

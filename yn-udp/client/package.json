@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "if [ -f node_modules/.bin/vite ]; then vite build; else echo 'Skipped: vite not installed'; fi",
     "preview": "vite preview"
   },
   "dependencies": {

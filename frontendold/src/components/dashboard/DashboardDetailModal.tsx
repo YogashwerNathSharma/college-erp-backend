@@ -294,7 +294,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[100vh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-none" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl w-full max-w-6xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-none" onClick={(e) => e.stopPropagation()}>
         
         {/* ═══ HEADER ═══ */}
         <div className="flex items-center justify-between px-6 py-3 border-b bg-gradient-to-r from-indigo-50 to-purple-50 flex-shrink-0">
@@ -361,7 +361,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         </div>
 
         {/* ═══ TABLE ═══ */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />

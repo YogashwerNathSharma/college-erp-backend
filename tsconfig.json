@@ -9,5 +9,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "exclude": ["yn-udp", "frontend", "frontendold", "node_modules", "**/node_modules"]
+  "exclude": ["yn-udp/**", "frontend/**", "frontendold/**", "node_modules", "**/node_modules"]
 }

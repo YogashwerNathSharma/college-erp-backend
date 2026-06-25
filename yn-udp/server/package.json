@@ -5,7 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build:local": "tsc",
+    "build": "echo 'yn-udp server: use build:local or deploy via yn-udp root'",
     "start": "node dist/server.js",
     "prisma:generate": "npx prisma@6.19.3 generate",
     "prisma:push": "npx prisma@6.19.3 db push"

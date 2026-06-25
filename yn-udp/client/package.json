@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "if [ -f node_modules/.bin/vite ]; then vite build; else echo 'Skipped: vite not installed'; fi",
+    "build:local": "vite build",
+    "build": "echo 'yn-udp client: use build:local or deploy via yn-udp root'",
     "preview": "vite preview"
   },
   "dependencies": {

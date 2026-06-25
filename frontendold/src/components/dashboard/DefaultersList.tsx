@@ -7,11 +7,12 @@ type Defaulter = {
 
 type Props = {
   data: Defaulter[];
+  onViewAll?: () => void;
 };
 
-export default function DefaultersList({ data }: Props) {
+export default function DefaultersList({ data, onViewAll }: Props) {
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg overflow-hidden">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg overflow-hidden cursor-pointer hover:shadow-xl transition-shadow" onClick={onViewAll}>
 
       {/* HEADER */}
       <div className="mb-4">

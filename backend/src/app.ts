@@ -89,6 +89,9 @@ import backupRoutes from "./modules/backup/backup.routes";
 // PERMISSIONS
 import permissionsRoutes from "./modules/permissions/permissions.routes";
 
+// AI ASSISTANT
+import aiAssistantRoutes from "./modules/ai-assistant/ai.routes";
+
 
 
 
@@ -166,6 +169,12 @@ app.use(subscriptionCheckMiddleware);
 app.use("/api/dashboard", dashboardRoutes);
 // Other app.use ke saath:
 app.use("/api/settings", settingsRoutes);
+
+//////////////////////////////////////////////////////
+// AI ASSISTANT (ynAi)
+//////////////////////////////////////////////////////
+app.use("/api/ai", aiAssistantRoutes);
+
 //////////////////////////////////////////////////////
 // STUDENT PORTAL (separate layout, student role only)
 //////////////////////////////////////////////////////

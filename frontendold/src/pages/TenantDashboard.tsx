@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useOutletContext } from "react-router-dom";
 import {
-  Users, School, IndianRupee, AlertCircle,
-   Zap, CheckCircle,
+  Users, School, IndianRupee, AlertCircle, FileText,
+   Zap, CheckCircle, Receipt,
 } from "lucide-react";
 //import UsageCard from "../components/dashboard/UsageCard";
 import StatsCard from "../components/dashboard/StatsCard";
+import DashboardDetailModal from "../components/dashboard/DashboardDetailModal";
 import RevenueChart from "../components/dashboard/RevenueChart";
 import RecentPayments from "../components/dashboard/RecentPayments";
 import DefaultersList from "../components/dashboard/DefaultersList";
@@ -34,6 +35,7 @@ export default function Dashboard() {
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [detailModal, setDetailModal] = useState<{ open: boolean; type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments" }>({ open: false, type: "students" });
 
   // Separate subscription fetch - runs independently of dashboard data
   useEffect(() => {
@@ -228,11 +230,12 @@ export default function Dashboard() {
 )}
 
     {/* STATS — Compact + Clickable */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-  <StatsCard title="Students" value={data.totalStudents} icon={<Users size={18} />} color="from-primary-500 to-purple-600" link="/students" />
-  <StatsCard title="Classes" value={data.totalClasses} icon={<School size={18} />} color="from-teal-500 to-cyan-600" link="/master" />
-  <StatsCard title="Fees Collected" value={`₹ ${data.totalPaid}`} icon={<IndianRupee size={18} />} color="from-yellow-500 to-orange-500" growth={data?.insights?.growth} link="/fees" />
-  <StatsCard title="Pending Fees" value={`₹ ${data.totalPending}`} icon={<AlertCircle size={18} />} color="from-red-500 to-pink-600" link="/fees" />
+<div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+  <div onClick={() => setDetailModal({ open: true, type: "students" })}><StatsCard title="Students" value={data.totalStudents} icon={<Users size={18} />} color="from-primary-500 to-purple-600" /></div>
+  <div onClick={() => setDetailModal({ open: true, type: "classes" })}><StatsCard title="Classes" value={data.totalClasses} icon={<School size={18} />} color="from-teal-500 to-cyan-600" /></div>
+  <div onClick={() => setDetailModal({ open: true, type: "fees_collected" })}><StatsCard title="Fees Collected" value={`₹ ${data.totalPaid}`} icon={<IndianRupee size={18} />} color="from-yellow-500 to-orange-500" growth={data?.insights?.growth} /></div>
+  <div onClick={() => setDetailModal({ open: true, type: "fees_pending" })}><StatsCard title="Pending Fees" value={`₹ ${data.totalPending}`} icon={<AlertCircle size={18} />} color="from-red-500 to-pink-600" /></div>
+  <div onClick={() => setDetailModal({ open: true, type: "receipts" })}><StatsCard title="Print Receipts" value="🖨️" icon={<Receipt size={18} />} color="from-emerald-500 to-green-600" /></div>
 </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -265,10 +268,10 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RevenueChart data={data.monthlyData} />
-        <RecentPayments data={data.recentPayments} />
+        <RecentPayments data={data.recentPayments} onViewAll={() => setDetailModal({ open: true, type: "recent_payments" })} />
       </div>
 
-      <DefaultersList data={data.defaulters} />
+      <DefaultersList data={data.defaulters} onViewAll={() => setDetailModal({ open: true, type: "fees_pending" })} />
 
       {data.totalPending > 0 && (
         <div className="p-4 bg-red-100 text-red-600 rounded-xl shadow">
@@ -347,6 +350,13 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* 📋 DETAIL MODAL — shows list with print options */}
+      <DashboardDetailModal
+        isOpen={detailModal.open}
+        type={detailModal.type}
+        onClose={() => setDetailModal({ ...detailModal, open: false })}
+      />
 
     </div>
   );

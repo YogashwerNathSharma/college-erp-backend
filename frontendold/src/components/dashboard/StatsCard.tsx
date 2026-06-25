@@ -22,8 +22,7 @@ export default function StatsCard({
   return (
     <div
       onClick={() => link && navigate(link)}
-      className={`p-3 sm:p-4 rounded-xl text-white bg-gradient-to-r ${color} shadow-md overflow-hidden
-        ${link ? "cursor-pointer hover:scale-[1.03] hover:shadow-lg transition-all duration-200" : ""}`}
+      className={`p-3 sm:p-4 rounded-xl text-white bg-gradient-to-r ${color} shadow-md overflow-hidden cursor-pointer hover:scale-[1.03] hover:shadow-lg transition-all duration-200`}
     >
       <div className="flex justify-between items-center">
         <p className="text-xs font-medium opacity-80 truncate">{title}</p>

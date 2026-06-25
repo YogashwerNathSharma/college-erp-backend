@@ -15,6 +15,7 @@ import { API_BASE_URL } from "./config/api";
 // ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
+import YnAiAssistant from "./components/YnAiAssistant";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PAGE LOADER (lightweight spinner shown while pages load)
@@ -305,7 +306,10 @@ function ProtectedRoute() {
     return <Navigate to="/principal-portal" replace />;
   }
 
-  return <Outlet />;
+  return <>
+    <Outlet />
+    <YnAiAssistant />
+  </>;
 }
 
 //////////////////////////////////////////////////////

@@ -1,0 +1,133 @@
+/* ═══════════════════════════════════════════════════
+   yn AI Assistant — Custom Styles & Animations
+   ═══════════════════════════════════════════════════ */
+
+/* Panel entrance animation */
+.animate-in {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 🤖 Floating Action Button */
+.yn-ai-fab {
+  animation: fabPulse 2s infinite;
+}
+
+@keyframes fabPulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 4px 30px rgba(99, 102, 241, 0.7); }
+}
+
+.yn-ai-fab:hover {
+  animation: none;
+  box-shadow: 0 8px 40px rgba(99, 102, 241, 0.6);
+}
+
+/* Robot icon eye glow */
+.yn-ai-eye {
+  animation: eyeGlow 3s infinite;
+}
+
+@keyframes eyeGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Antenna pulse */
+.yn-ai-antenna-pulse {
+  animation: antennaPulse 1.5s infinite;
+}
+
+@keyframes antennaPulse {
+  0%, 100% { fill: #22D3EE; r: 3; }
+  50% { fill: #a855f7; r: 4; }
+}
+
+/* Voice wave animation */
+.voice-wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+
+.voice-wave span {
+  display: inline-block;
+  width: 3px;
+  background: linear-gradient(to top, #ef4444, #f97316);
+  border-radius: 2px;
+  animation: wave 1s infinite ease-in-out;
+}
+
+.voice-wave span:nth-child(1) { animation-delay: 0s; height: 6px; }
+.voice-wave span:nth-child(2) { animation-delay: 0.1s; height: 10px; }
+.voice-wave span:nth-child(3) { animation-delay: 0.2s; height: 14px; }
+.voice-wave span:nth-child(4) { animation-delay: 0.3s; height: 10px; }
+.voice-wave span:nth-child(5) { animation-delay: 0.4s; height: 6px; }
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1.5); }
+}
+
+/* Message appearance */
+.flex.justify-start > div,
+.flex.justify-end > div {
+  animation: messageIn 0.2s ease-out;
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 5px;
+}
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c7d2fe;
+  border-radius: 10px;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #818cf8;
+}
+
+/* Responsive — mobile */
+@media (max-width: 480px) {
+  .fixed.bottom-6.right-6.w-\[420px\].h-\[620px\] {
+    width: calc(100vw - 16px) !important;
+    height: calc(100vh - 80px) !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    border-radius: 16px !important;
+  }
+}
+
+/* Quick command buttons hover */
+.flex-wrap button {
+  transition: all 0.15s ease;
+}
+.flex-wrap button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}

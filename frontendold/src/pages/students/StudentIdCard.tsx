@@ -1629,7 +1629,29 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
         if (el.fill && el.fill !== "transparent") { ctx.fillStyle = el.fill; ctx.fill(); }
         if (el.stroke && el.stroke !== "transparent") { ctx.strokeStyle = el.stroke || "#000"; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke(); }
       } else if (el.type === "text" || el.type === "field") {
-        const text = fillPlaceholder(el.text || "");
+        const rawText = el.text || "";
+        // Check if this text/field element is actually a photo/logo placeholder
+        const isPhotoField = rawText.includes("{{photo}}") || el.fieldKey === "photo" || rawText.trim().toUpperCase() === "PHOTO";
+        const isLogoField = rawText.includes("{{school_logo}}") || el.fieldKey === "school_logo";
+        const isSigField = rawText.includes("{{principal_signature}}") || el.fieldKey === "principal_signature";
+        if (isPhotoField || isLogoField || isSigField) {
+          let imgSrc = "";
+          if (isPhotoField) imgSrc = getFullUrl(student.photoUrl) || "";
+          else if (isLogoField) imgSrc = tenant?.logoUrl || "";
+          else if (isSigField) imgSrc = tenant?.principalSignatureUrl || "";
+          if (imgSrc) {
+            try {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              await new Promise<void>((resolve) => { img.onload = () => { ctx.drawImage(img, el.x, el.y, el.width, el.height); resolve(); }; img.onerror = () => resolve(); img.src = imgSrc; });
+            } catch { /* skip */ }
+          } else {
+            ctx.fillStyle = "#f3e8ff"; ctx.fillRect(el.x, el.y, el.width, el.height);
+            ctx.fillStyle = "#9333ea"; ctx.font = "10px Arial"; ctx.textAlign = "center";
+            ctx.fillText(isPhotoField ? "Photo" : "Logo", el.x + el.width / 2, el.y + el.height / 2 + 4);
+          }
+        } else {
+        const text = fillPlaceholder(rawText);
         const weight = el.fontWeight === "bold" ? "bold" : "";
         const style = el.fontStyle === "italic" ? "italic" : "";
         const fontSize = el.fontSize || 14;
@@ -1653,6 +1675,7 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
           } else { line = testLine; }
         }
         if (line) ctx.fillText(line, textX, lineY);
+        }
       } else if (el.type === "image") {
         // Handle image elements — photo, school_logo, or static images
         let imgSrc = el.imageSrc || el.src || el.url || "";

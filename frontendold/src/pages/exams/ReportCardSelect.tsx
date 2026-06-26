@@ -217,7 +217,7 @@ export default function ReportCardSelect() {
           <div className="flex gap-1">
             <button onClick={() => setUseCustomTemplate(false)} className={`px-3 py-1 text-xs font-medium rounded ${!useCustomTemplate ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>Built-in Templates</button>
             <button onClick={() => setUseCustomTemplate(true)} className={`px-3 py-1 text-xs font-medium rounded ${useCustomTemplate ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>✨ Custom (YN-UDP)</button>
-            <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-blue-600 hover:bg-blue-50 border border-blue-200">+ Create New</a>
+            <a href="https://yn-udp.onrender.com" target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-blue-600 hover:bg-blue-50 border border-blue-200">+ Create New</a>
           </div>
         </div>
         {useCustomTemplate && (
@@ -234,7 +234,7 @@ export default function ReportCardSelect() {
             ) : (
               <div className="text-center py-4">
                 <p className="text-gray-500 text-sm mb-2">No custom report card templates</p>
-                <a href="http://localhost:5173" target="_blank" className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700">✨ Open Designer</a>
+                <a href="https://yn-udp.onrender.com" target="_blank" className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700">✨ Open Designer</a>
               </div>
             )}
           </div>

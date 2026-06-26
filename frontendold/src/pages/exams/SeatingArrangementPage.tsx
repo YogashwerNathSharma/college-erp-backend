@@ -22,7 +22,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-const YN_UDP_API = "http://localhost:5001/api";
+const YN_UDP_API = "https://yn-udp.onrender.com/api";
 
 const getTenantId = () => {
   try {

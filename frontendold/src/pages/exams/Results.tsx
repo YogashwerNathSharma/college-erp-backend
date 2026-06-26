@@ -211,7 +211,7 @@ const fetchResults = async () => {
                   ✨ Custom Designer Templates
                 </button>
                 <a
-                  href="http://localhost:5173"
+                  href="https://yn-udp.onrender.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-blue-600 hover:bg-blue-50 border border-blue-200"
@@ -314,7 +314,7 @@ const fetchResults = async () => {
                   <div className="text-center py-4">
                     <p className="text-gray-500 text-sm mb-2">No custom templates found. Create one in YN-UDP Designer!</p>
                     <a
-                      href="http://localhost:5173"
+                      href="https://yn-udp.onrender.com"
                       target="_blank"
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700"
                     >

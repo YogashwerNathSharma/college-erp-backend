@@ -1558,6 +1558,7 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
       .replace(/\{\{school_address\}\}/g, tenant?.address || "")
       .replace(/\{\{school_phone\}\}/g, tenant?.phone || "")
       .replace(/\{\{school_email\}\}/g, tenant?.email || "")
+      .replace(/\{\{principal_name\}\}/g, tenant?.principalName || "")
       .replace(/\{\{student_name\}\}/g, `${student.firstName || ""} ${student.lastName || ""}`.trim())
       .replace(/\{\{first_name\}\}/g, student.firstName || "")
       .replace(/\{\{last_name\}\}/g, student.lastName || "")
@@ -1566,7 +1567,9 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
       .replace(/\{\{roll_number\}\}/g, (student as any).rollNumber || "")
       .replace(/\{\{admission_no\}\}/g, student.admissionNo || "")
       .replace(/\{\{father_name\}\}/g, student.fatherName || "")
+      .replace(/\{\{father_phone\}\}/g, student.fatherPhone || "")
       .replace(/\{\{mother_name\}\}/g, (student as any).motherName || "")
+      .replace(/\{\{mother_phone\}\}/g, (student as any).motherPhone || "")
       .replace(/\{\{dob\}\}/g, student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "")
       .replace(/\{\{blood_group\}\}/g, student.bloodGroup || "")
       .replace(/\{\{address\}\}/g, student.address || "")
@@ -1575,6 +1578,10 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
       .replace(/\{\{gender\}\}/g, (student as any).gender || "")
       .replace(/\{\{sr_no\}\}/g, (student as any).srNo || "")
       .replace(/\{\{current_date\}\}/g, new Date().toLocaleDateString("en-IN"))
+      .replace(/\{\{category\}\}/g, (student as any).category || "")
+      .replace(/\{\{religion\}\}/g, (student as any).religion || "")
+      .replace(/\{\{aadhar_no\}\}/g, (student as any).aadharNo || "")
+      .replace(/\{\{serial_number\}\}/g, (student as any).serialNumber || "")
       .replace(/\{\{[^}]+\}\}/g, ""); // Remove any remaining unfilled placeholders
   };
 
@@ -1591,8 +1598,9 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
     ctx.fillStyle = pageBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw each element
-    elements.forEach((el: any) => {
+    // Draw each element (async for image loading)
+    const drawElements = async () => {
+    for (const el of elements) {
       ctx.save();
       ctx.globalAlpha = el.opacity ?? 1;
       if (el.rotation) {
@@ -1616,20 +1624,75 @@ const CustomTemplateCard: React.FC<{ template: any; student: StudentData; tenant
       } else if (el.type === "line") {
         ctx.beginPath(); ctx.moveTo(el.x, el.y + el.height / 2); ctx.lineTo(el.x + el.width, el.y + el.height / 2);
         ctx.strokeStyle = el.stroke || "#000"; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke();
+      } else if (el.type === "triangle") {
+        ctx.beginPath(); ctx.moveTo(el.x + el.width / 2, el.y); ctx.lineTo(el.x + el.width, el.y + el.height); ctx.lineTo(el.x, el.y + el.height); ctx.closePath();
+        if (el.fill && el.fill !== "transparent") { ctx.fillStyle = el.fill; ctx.fill(); }
+        if (el.stroke && el.stroke !== "transparent") { ctx.strokeStyle = el.stroke || "#000"; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke(); }
       } else if (el.type === "text" || el.type === "field") {
         const text = fillPlaceholder(el.text || "");
         const weight = el.fontWeight === "bold" ? "bold" : "";
         const style = el.fontStyle === "italic" ? "italic" : "";
-        ctx.font = `${style} ${weight} ${el.fontSize || 14}px ${el.fontFamily || "Arial"}`;
-        ctx.fillStyle = el.color || (el.type === "field" ? "#000000" : "#000000");
+        const fontSize = el.fontSize || 14;
+        ctx.font = `${style} ${weight} ${fontSize}px ${el.fontFamily || "Arial"}`;
+        ctx.fillStyle = el.color || "#000000";
         ctx.textAlign = (el.textAlign as CanvasTextAlign) || "left";
+        if (el.textDecoration === "underline") { /* handled below */ }
         let textX = el.x;
         if (el.textAlign === "center") textX = el.x + el.width / 2;
         else if (el.textAlign === "right") textX = el.x + el.width;
-        ctx.fillText(text, textX, el.y + (el.fontSize || 14));
+        // Multi-line support: wrap text within element width
+        const words = text.split(/\s+/);
+        let line = "";
+        let lineY = el.y + fontSize;
+        for (const word of words) {
+          const testLine = line ? `${line} ${word}` : word;
+          if (ctx.measureText(testLine).width > el.width && line) {
+            ctx.fillText(line, textX, lineY);
+            line = word;
+            lineY += fontSize * 1.2;
+          } else { line = testLine; }
+        }
+        if (line) ctx.fillText(line, textX, lineY);
+      } else if (el.type === "image") {
+        // Handle image elements — photo, school_logo, or static images
+        let imgSrc = el.imageSrc || el.src || el.url || "";
+        // Replace placeholders with actual URLs
+        if (el.fieldKey === "photo" || imgSrc.includes("{{photo}}") || el.text?.includes("{{photo}}")) {
+          imgSrc = getFullUrl(student.photoUrl) || "";
+        } else if (el.fieldKey === "school_logo" || imgSrc.includes("{{school_logo}}") || el.text?.includes("{{school_logo}}")) {
+          imgSrc = tenant?.logoUrl || "";
+        } else if (el.fieldKey === "principal_signature" || imgSrc.includes("{{principal_signature}}") || el.text?.includes("{{principal_signature}}")) {
+          imgSrc = tenant?.principalSignatureUrl || "";
+        } else if (el.fieldKey === "qr_code" || imgSrc.includes("{{qr_code}}")) {
+          imgSrc = ""; // QR code would need a generator — skip for now
+        }
+        if (imgSrc) {
+          try {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            await new Promise<void>((resolve) => {
+              img.onload = () => {
+                ctx.drawImage(img, el.x, el.y, el.width, el.height);
+                resolve();
+              };
+              img.onerror = () => resolve();
+              img.src = imgSrc;
+            });
+          } catch { /* skip broken images */ }
+        } else {
+          // Draw placeholder rectangle
+          ctx.fillStyle = "#f3e8ff";
+          ctx.fillRect(el.x, el.y, el.width, el.height);
+          ctx.fillStyle = "#9333ea";
+          ctx.font = "10px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("Photo", el.x + el.width / 2, el.y + el.height / 2 + 4);
+        }
       }
       ctx.restore();
-    });
+    }
+    };
+    drawElements();
   }, [template, student, tenant, academicYearName]);
 
   const w = template?.pageWidth || 382;

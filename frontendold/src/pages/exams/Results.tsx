@@ -43,6 +43,10 @@ interface Exam {
 }
 
 const Results: React.FC = () => {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const token = localStorage.getItem("token");
@@ -65,13 +69,13 @@ const Results: React.FC = () => {
   useEffect(() => {
     const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
     console.log("[ReportCard] Fetching templates from /api/designer/templates?tenantId=" + tenantId + "");
-    axios.get(`/api/designer/templates?tenantId=${tenantId}`)
+    axios.get(`${YN_UDP_API}/templates?tenantId=${tenantId}`)
       .then((res) => {
         console.log("[ReportCard] Templates response:", res.data);
         const list = res.data?.data || [];
         if (list.length) { setCustomTemplates(list); return; }
         // Fallback to default tenant
-        return axios.get(`/api/designer/templates?tenantId=000000000000000000000000`);
+        return axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000`);
       })
       .then((res: any) => {
         if (res?.data?.data?.length) {

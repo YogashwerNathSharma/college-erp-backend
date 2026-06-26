@@ -56,6 +56,10 @@ interface ReportCardData {
 }
 
 const ReportCard: React.FC = () => {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const template = searchParams.get("template") || "annual-grade";
@@ -85,7 +89,7 @@ const ReportCard: React.FC = () => {
     
     if (customTemplateId) {
       promises.push(
-      axios.get(`/api/designer/templates/${customTemplateId}`, { headers })
+      axios.get(`${YN_UDP_API}/templates/${customTemplateId}`, { headers })
         .then((res) => {
           const tmpl = res.data?.data || res.data;
           setCustomTemplate(tmpl);

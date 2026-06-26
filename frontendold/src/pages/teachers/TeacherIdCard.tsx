@@ -1951,6 +1951,10 @@ const CustomTemplateCard: React.FC<{ template: any; teacher: any; tenant: any; a
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const TeacherIdCardPage: React.FC = () => {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   const [mode, setMode] = useState<"individual" | "all">("individual");
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<TeacherData[]>([]);
@@ -2036,12 +2040,12 @@ const TeacherIdCardPage: React.FC = () => {
       try {
         setLoadingTemplates(true);
         const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
-        let res = await axios.get(`/api/designer/templates?tenantId=${tenantId}&type=id-card`).catch(() => null);
+        let res = await axios.get(`${YN_UDP_API}/templates?tenantId=${tenantId}&type=id-card`).catch(() => null);
         if (!res?.data?.data?.length) {
-          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000&type=id-card`).catch(() => null);
+          res = await axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000&type=id-card`).catch(() => null);
         }
         if (!res?.data?.data?.length) {
-          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+          res = await axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000`).catch(() => null);
         }
         if (res?.data?.success) {
           setCustomTemplates(res.data.data || []);
@@ -2258,7 +2262,7 @@ useEffect(() => {
             ) : customTemplates.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {customTemplates.map((tmpl: any) => (
-                  <div key={tmpl.id} onClick={() => { (async () => { try { const r = await axios.get(`/api/designer/templates/${tmpl.id}`); if (r.data.success) setSelectedCustomTemplate(r.data.data); else setSelectedCustomTemplate(tmpl); } catch(e) { setSelectedCustomTemplate(tmpl); } })(); setSelectedPattern(0); }} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedCustomTemplate?.id === tmpl.id ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-400"}`}>
+                  <div key={tmpl.id} onClick={() => { (async () => { try { const r = await axios.get(`${YN_UDP_API}/templates/${tmpl.id}`); if (r.data.success) setSelectedCustomTemplate(r.data.data); else setSelectedCustomTemplate(tmpl); } catch(e) { setSelectedCustomTemplate(tmpl); } })(); setSelectedPattern(0); }} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedCustomTemplate?.id === tmpl.id ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-400"}`}>
                     <div className="h-20 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
                       <span className="text-2xl">🎨</span>
                     </div>

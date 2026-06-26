@@ -26,6 +26,10 @@ interface StudentReportData {
 }
 
 const BulkReportCard: React.FC = () => {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   const { examId } = useParams<{ examId: string }>();
   const [searchParams] = useSearchParams();
   const studentIds = searchParams.get("students")?.split(",") || [];
@@ -51,7 +55,7 @@ const BulkReportCard: React.FC = () => {
     try {
       // Fetch custom template if specified
       if (customTemplateId) {
-        const tmplRes = await axios.get(`/api/designer/templates/${customTemplateId}`, { headers });
+        const tmplRes = await axios.get(`${YN_UDP_API}/templates/${customTemplateId}`, { headers });
         setCustomTemplate(tmplRes.data?.data || tmplRes.data);
       }
 

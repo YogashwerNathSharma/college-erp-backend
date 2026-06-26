@@ -1736,15 +1736,18 @@ const StudentIdCardPage: React.FC = () => {
     const fetchCustomTemplates = async () => {
       try {
         setLoadingTemplates(true);
+        const YN_UDP_API = window.location.hostname !== "localhost"
+          ? "https://yn-udp.onrender.com/api"
+          : "http://localhost:5001/api";
         const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
         // Try with tenant first, then fallback to default tenant
-        let res = await axios.get(`/api/designer/templates?tenantId=${tenantId}&type=id-card`).catch(() => null);
+        let res = await axios.get(`${YN_UDP_API}/templates?tenantId=${tenantId}&type=id-card`).catch(() => null);
         if (!res?.data?.data?.length) {
-          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000&type=id-card`).catch(() => null);
+          res = await axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000&type=id-card`).catch(() => null);
         }
         // Also try without type filter to get all templates
         if (!res?.data?.data?.length) {
-          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+          res = await axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000`).catch(() => null);
         }
         if (res?.data?.success) {
           setCustomTemplates(res.data.data || []);
@@ -1912,7 +1915,10 @@ useEffect(() => { loadTenant(); fetchClasses(); fetchAcademicYears(); }, []);
                 {customTemplates.map((tmpl) => (
                   <div key={tmpl.id} onClick={() => { (async () => {
                       try {
-                        const fullRes = await axios.get(`/api/designer/templates/${tmpl.id}`);
+                        const YN_API = window.location.hostname !== "localhost"
+                          ? "https://yn-udp.onrender.com/api"
+                          : "http://localhost:5001/api";
+                        const fullRes = await axios.get(`${YN_API}/templates/${tmpl.id}`);
                         if (fullRes.data.success) { setSelectedCustomTemplate(fullRes.data.data); } else { setSelectedCustomTemplate(tmpl); }
                       } catch { setSelectedCustomTemplate(tmpl); }
                     })(); setSelectedPattern(0); }} className={`cursor-pointer rounded-lg overflow-hidden border-2 transition ${selectedCustomTemplate?.id === tmpl.id ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-400"}`}>

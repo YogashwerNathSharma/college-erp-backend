@@ -45,6 +45,10 @@ const templateIcons: Record<string, string> = {
 };
 
 export default function ReportCardSelect() {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const template = searchParams.get("template") || "annual-grade";
@@ -73,10 +77,10 @@ export default function ReportCardSelect() {
   // Fetch custom report card templates from YN-UDP
   useEffect(() => {
     const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
-    axios.get(`/api/designer/templates?tenantId=${tenantId}&type=report-card`).catch(() => null)
+    axios.get(`${YN_UDP_API}/templates?tenantId=${tenantId}&type=report-card`).catch(() => null)
       .then((res: any) => {
         if (res?.data?.data?.length) { setCustomTemplates(res.data.data); return; }
-        return axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+        return axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000`).catch(() => null);
       })
       .then((res: any) => { if (res?.data?.data?.length) setCustomTemplates(res.data.data); });
   }, []);

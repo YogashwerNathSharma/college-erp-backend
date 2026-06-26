@@ -68,6 +68,10 @@ interface CertificateData {
 }
 
 const CertificateGenerator: React.FC = () => {
+  const YN_UDP_API = window.location.hostname !== "localhost"
+  ? "https://yn-udp.onrender.com/api"
+  : "http://localhost:5001/api";
+
   // State Management
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -107,9 +111,9 @@ const CertificateGenerator: React.FC = () => {
       try {
         setLoadingTemplates(true);
         const tenantId = localStorage.getItem("tenantId") || "000000000000000000000000";
-        let res = await axios.get(`/api/designer/templates?tenantId=${tenantId}&type=certificate`).catch(() => null);
+        let res = await axios.get(`${YN_UDP_API}/templates?tenantId=${tenantId}&type=certificate`).catch(() => null);
         if (!res?.data?.data?.length) {
-          res = await axios.get(`/api/designer/templates?tenantId=000000000000000000000000`).catch(() => null);
+          res = await axios.get(`${YN_UDP_API}/templates?tenantId=000000000000000000000000`).catch(() => null);
         }
         if (res?.data?.success) {
           setCustomTemplates(res.data.data || []);

@@ -1,27 +1,31 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+
+  build: {
+    chunkSizeWarningLimit: 600,
+    sourcemap: false,
+    cssCodeSplit: true,
   },
 
-  // ✅ Build optimizations
-  build: {
-    sourcemap: false,
-    minify: "esbuild",
-    target: "es2020",
-    chunkSizeWarningLimit: 500,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-        },
+  server: {
+    port: 5174,
+    proxy: {
+      '/api/designer': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/designer/, '/api'),
+      },
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
       },
     },
   },
-});
+})

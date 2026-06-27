@@ -92,7 +92,14 @@ import permissionsRoutes from "./modules/permissions/permissions.routes";
 // AI ASSISTANT
 import aiAssistantRoutes from "./modules/ai-assistant/ai.routes";
 
-
+// NEW MODULE ROUTES
+import hostelRoutes from "./modules/hostel/hostel.routes";
+import communicationNewRoutes from "./modules/communication/communication.routes";
+import hrRoutes from "./modules/hr/hr.routes";
+import inventoryRoutes from "./modules/inventory/inventory.routes";
+import certificateRoutes from "./modules/certificate/certificate.routes";
+import notificationRoutes from "./modules/notifications/notification.routes";
+import reportRoutes from "./modules/reports/report.routes";
 
 
 const app = express();
@@ -248,6 +255,17 @@ app.use("/api/permissions", permissionsRoutes);
 
 app.use("/api/signature", signatureRoutes);
 app.use("/api/backup", backupRoutes);
+
+//////////////////////////////////////////////////////
+// NEW MODULE ROUTES
+//////////////////////////////////////////////////////
+app.use("/api/hostel", hostelRoutes);
+app.use("/api/communication-new", communicationNewRoutes);
+app.use("/api/hr", hrRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/certificate", certificateRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports-new", reportRoutes);
 
 //////////////////////////////////////////////////////
 // SWAGGER DOCS

@@ -97,7 +97,39 @@ routeStops              RouteStop[]
 transportAssignments    TransportAssignment[]
 transportAttendances    TransportAttendance[]
 transportSetting        TransportSetting?
+vehicleLocations        VehicleLocation[]
+tripLogs                TripLog[]
+geofenceAlerts          GeofenceAlert[]
+studentPickupDrops      StudentPickupDrop[]
+emergencyContacts       EmergencyContact[]
 rolePermissions         RolePermission[]
+
+  // Hostel Module Relations
+  hostels              Hostel[]
+  hostelRooms          HostelRoom[]
+  hostelAllocations    HostelAllocation[]
+  messMenus            MessMenu[]
+
+  // Communication Module Relations
+  notices              Notice[]
+  smsLogs              SMSLog[]
+  whatsAppLogs         WhatsAppLog[]
+  pushNotifications    PushNotification[]
+
+  // HR Module Relations
+  staffAttendances     StaffAttendance[]
+  leaves               Leave[]
+  payrolls             Payroll[]
+
+  // Asset Module Relations
+  assets               Asset[]
+  assetIssues          AssetIssue[]
+
+  // Certificate Module Relations
+  certificates         Certificate[]
+
+  // Audit
+  auditLogs            AuditLog[]
 
 }
 
@@ -1320,18 +1352,28 @@ enum PaymentMethod {
 // ═══════════════════════════════════════════════════════════════
 
 //////////////////////
-// AUDIT LOG
+// AUDIT LOG (Enhanced)
 //////////////////////
 model AuditLog {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  action   String
-  entity   String
-  entityId String
-  userId   String?
-  data     Json?
+  userId    String?  @db.ObjectId
+  action    String
+  entity    String
+  entityId  String
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entity, entityId])
 }
 
 //////////////////////
@@ -1741,6 +1783,15 @@ model Vehicle {
   tenant            Tenant @relation(fields: [tenantId], references: [id])
 
   assignments       TransportAssignment[]
+  locations         VehicleLocation[]
+  tripLogs          TripLog[]
+  geofenceAlerts    GeofenceAlert[]
+
+  // Online Tracking Fields
+  currentLatitude      Float?
+  currentLongitude     Float?
+  lastLocationUpdate   DateTime?
+  isOnline             Boolean @default(false)
 
   isDeleted         Boolean @default(false)
 
@@ -1845,6 +1896,7 @@ model TransportAssignment {
   tenant            Tenant @relation(fields: [tenantId], references: [id])
 
   attendances       TransportAttendance[]
+  studentPickupDrops StudentPickupDrop[]
 
   isDeleted         Boolean @default(false)
 
@@ -1901,6 +1953,13 @@ model TransportSetting {
   smsAlertEnabled        Boolean @default(false)
 
   maxStudentsPerVehicle  Int @default(50)
+
+  // Online Tracking Settings
+  trackingInterval       Int @default(15)       // seconds
+  geofenceRadius         Float @default(200)    // meters
+  speedLimit             Int @default(60)       // km/h
+  sosEnabled             Boolean @default(true)
+  parentAppEnabled       Boolean @default(true)
 
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -2009,4 +2068,598 @@ model RolePermission {
 
   @@unique([tenantId, userId])
   @@index([tenantId, role])
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// 🏠 HOSTEL MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum HostelType {
+  BOYS
+  GIRLS
+  CO_ED
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  TRIPLE
+}
+
+enum HostelAllocationStatus {
+  ACTIVE
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+}
+
+model Hostel {
+  id         String     @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  type       HostelType
+  totalRooms Int
+
+  // Warden Info
+  wardenName  String?
+  wardenPhone String?
+  wardenEmail String?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  rooms       HostelRoom[]
+  allocations HostelAllocation[]
+  messMenus   MessMenu[]
+
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model HostelRoom {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  hostelId         String   @db.ObjectId
+  roomNumber       String
+  capacity         Int
+  currentOccupancy Int      @default(0)
+  floor            Int
+  type             RoomType
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  hostel   Hostel @relation(fields: [hostelId], references: [id])
+
+  allocations HostelAllocation[]
+
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([hostelId])
+  @@unique([hostelId, roomNumber])
+}
+
+model HostelAllocation {
+  id             String                 @id @default(auto()) @map("_id") @db.ObjectId
+  studentId      String                 @db.ObjectId
+  hostelId       String                 @db.ObjectId
+  roomId         String                 @db.ObjectId
+  academicYearId String                 @db.ObjectId
+  checkInDate    DateTime
+  checkOutDate   DateTime?
+  status         HostelAllocationStatus @default(ACTIVE)
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  hostel   Hostel @relation(fields: [hostelId], references: [id])
+  room     HostelRoom @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([hostelId])
+  @@index([roomId])
+}
+
+model MessMenu {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  hostelId String   @db.ObjectId
+  day      String   // Monday, Tuesday, etc.
+  mealType MealType
+  items    String[] // Array of food items
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  hostel   Hostel @relation(fields: [hostelId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([hostelId, day])
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 📢 NOTICE & COMMUNICATION MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum NoticeType {
+  GENERAL
+  ACADEMIC
+  EXAM
+  FEE
+}
+
+enum NoticeAudience {
+  ALL
+  STUDENTS
+  TEACHERS
+  PARENTS
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+model Notice {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  content       String
+  type          NoticeType     @default(GENERAL)
+  audience      NoticeAudience @default(ALL)
+  attachmentUrl String?
+  publishedBy   String         @db.ObjectId
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, audience])
+}
+
+model SMSLog {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  recipientPhone String
+  message        String
+  status         MessageStatus @default(PENDING)
+  provider       String?
+  sentAt         DateTime?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([recipientPhone])
+  @@index([status])
+}
+
+model WhatsAppLog {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  recipientPhone String
+  templateName   String?
+  message        String
+  status         MessageStatus @default(PENDING)
+  sentAt         DateTime?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([recipientPhone])
+  @@index([status])
+}
+
+model PushNotification {
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  body          String
+  recipientType String             // "all", "students", "teachers", "specific"
+  recipientIds  String[]           @db.ObjectId
+  data          Json?
+  status        NotificationStatus @default(SENT)
+  sentAt        DateTime?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 👔 HR / STAFF MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum StaffAttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+}
+
+enum GenericLeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollStatus {
+  PENDING
+  PAID
+}
+
+model StaffAttendance {
+  id           String                @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String                @db.ObjectId
+  date         DateTime
+  status       StaffAttendanceStatus
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId, date])
+}
+
+model Leave {
+  id         String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String             @db.ObjectId
+  leaveType  String             // casual, medical, earned, etc.
+  startDate  DateTime
+  endDate    DateTime
+  reason     String
+  status     GenericLeaveStatus @default(PENDING)
+  approvedBy String?            @db.ObjectId
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Payroll {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String        @db.ObjectId
+  month       Int
+  year        Int
+  basicSalary Float
+  allowances  Float         @default(0)
+  deductions  Float         @default(0)
+  netSalary   Float
+  status      PayrollStatus @default(PENDING)
+  paidDate    DateTime?
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId, month, year])
+  @@index([status])
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🏷️ ASSET MANAGEMENT MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum AssetIssueStatus {
+  ISSUED
+  RETURNED
+  LOST
+}
+
+model Asset {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  category      String
+  serialNumber  String?
+  location      String?
+  condition     AssetCondition @default(GOOD)
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  assignedTo    String?        @db.ObjectId
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  issues AssetIssue[]
+
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([category])
+  @@index([serialNumber])
+}
+
+model AssetIssue {
+  id         String           @id @default(auto()) @map("_id") @db.ObjectId
+  assetId    String           @db.ObjectId
+  issuedTo   String           @db.ObjectId
+  issueDate  DateTime         @default(now())
+  returnDate DateTime?
+  status     AssetIssueStatus @default(ISSUED)
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+  asset    Asset  @relation(fields: [assetId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([assetId])
+  @@index([issuedTo])
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 📜 CERTIFICATE MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum CertificateType {
+  TC
+  CHARACTER
+  MIGRATION
+}
+
+enum CertificateStatus {
+  DRAFT
+  ISSUED
+}
+
+model Certificate {
+  id           String            @id @default(auto()) @map("_id") @db.ObjectId
+  studentId    String            @db.ObjectId
+  type         CertificateType
+  serialNumber String?
+  issueDate    DateTime?
+  reason       String?
+  status       CertificateStatus @default(DRAFT)
+  generatedBy  String?           @db.ObjectId
+
+  tenantId String @db.ObjectId
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([serialNumber])
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// 🚌 ONLINE TRANSPORT TRACKING MODULE
+// ══════════════════════════════════════════════════════════════════
+
+enum TripStatus {
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AlertType {
+  ROUTE_DEVIATION
+  SPEED_LIMIT
+  ZONE_ENTRY
+  ZONE_EXIT
+  SOS
+}
+
+enum PickupDropStatus {
+  WAITING
+  PICKED_UP
+  DROPPED
+  ABSENT
+}
+
+// ──────────────────────────────────────────
+// VehicleLocation — Real-time GPS tracking
+// ──────────────────────────────────────────
+model VehicleLocation {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  vehicleId   String   @db.ObjectId
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  latitude    Float
+  longitude   Float
+  speed       Float?
+  heading     Float?
+  altitude    Float?
+  accuracy    Float?
+
+  timestamp   DateTime
+
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([vehicleId, timestamp])
+  @@index([tenantId])
+}
+
+// ──────────────────────────────────────────
+// TripLog — Trip history
+// ──────────────────────────────────────────
+model TripLog {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+
+  vehicleId     String     @db.ObjectId
+  vehicle       Vehicle    @relation(fields: [vehicleId], references: [id])
+
+  routeId       String     @db.ObjectId
+
+  driverName    String
+
+  startTime     DateTime
+  endTime       DateTime?
+
+  startLat      Float
+  startLng      Float
+  endLat        Float?
+  endLng        Float?
+
+  totalDistance  Float?
+
+  status        TripStatus @default(ONGOING)
+
+  tenantId      String     @db.ObjectId
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+
+  geofenceAlerts GeofenceAlert[]
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([vehicleId, startTime])
+  @@index([tenantId])
+}
+
+// ──────────────────────────────────────────
+// GeofenceAlert — Geofence violation alerts
+// ──────────────────────────────────────────
+model GeofenceAlert {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  vehicleId   String    @db.ObjectId
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+
+  tripId      String?   @db.ObjectId
+  trip        TripLog?  @relation(fields: [tripId], references: [id])
+
+  alertType   AlertType
+
+  latitude    Float
+  longitude   Float
+
+  message     String
+
+  isResolved  Boolean   @default(false)
+  resolvedBy  String?
+
+  tenantId    String    @db.ObjectId
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, alertType])
+  @@index([vehicleId])
+}
+
+// ──────────────────────────────────────────
+// StudentPickupDrop — Student pickup/drop confirmation
+// ──────────────────────────────────────────
+model StudentPickupDrop {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId     String
+
+  assignmentId  String          @db.ObjectId
+  assignment    TransportAssignment @relation(fields: [assignmentId], references: [id])
+
+  date          DateTime
+
+  pickupTime    DateTime?
+  dropTime      DateTime?
+
+  pickupLat     Float?
+  pickupLng     Float?
+  dropLat       Float?
+  dropLng       Float?
+
+  status        PickupDropStatus @default(WAITING)
+
+  confirmedBy   String?
+
+  tenantId      String          @db.ObjectId
+  tenant        Tenant          @relation(fields: [tenantId], references: [id])
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([assignmentId, date])
+  @@index([tenantId])
+}
+
+// ──────────────────────────────────────────
+// EmergencyContact — Transport emergency contacts
+// ──────────────────────────────────────────
+model EmergencyContact {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId   String
+
+  name        String
+  phone       String
+  relation    String
+
+  isPrimary   Boolean
+
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([studentId])
 }

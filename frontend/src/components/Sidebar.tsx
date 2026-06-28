@@ -59,8 +59,6 @@ import {
   ShieldCheck,
   Activity,
   Ticket,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
 
 //////////////////////////////////////////////////
@@ -415,8 +413,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(true);
-  const [pinned, setPinned] = useState(false);
   const location = useLocation();
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
@@ -451,9 +447,12 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   // Close more menu on route change
   useEffect(() => {
     setMoreMenuOpen(false);
-    // Auto-close mobile sidebar on navigation
-    if (onClose) onClose();
   }, [location.pathname]);
+
+  // Sync sidebarOpen prop with moreMenuOpen
+  useEffect(() => {
+    if (sidebarOpen) setMoreMenuOpen(true);
+  }, [sidebarOpen]);
 
   // Flatten all menu items for "More" menu
   const allNavItems = useMemo(() => {
@@ -486,11 +485,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       {/* DESKTOP SIDEBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <aside
-        onMouseEnter={() => { if (!pinned) setCollapsed(false); }}
-        onMouseLeave={() => { if (!pinned) setCollapsed(true); }}
-        className={`sidebar-desktop hidden md:flex fixed left-0 top-0 h-screen z-40 flex-col print:hidden transition-all duration-300 ease-in-out ${
-          collapsed ? "w-[72px]" : "w-[260px]"
-        }`}
+        className="sidebar-desktop hidden md:flex fixed left-0 top-0 h-screen z-40 flex-col print:hidden w-[260px]"
         style={{
           background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
         }}
@@ -508,55 +503,31 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               }}
             />
           )}
-          <div className={`relative z-10 flex items-center gap-3 p-4 ${collapsed ? "justify-center px-2" : ""}`}>
+          <div className="relative z-10 flex items-center gap-3 p-4">
             {/* Logo */}
             {sidebarLogo ? (
               <img
                 src={sidebarLogo}
                 alt="Logo"
-                className={`object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20 ${
-                  collapsed ? "w-10 h-10" : "w-11 h-11"
-                }`}
+                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
                 crossOrigin="anonymous"
                 onError={(e: any) => { e.target.style.display = "none"; }}
               />
             ) : (
-              <div className={`rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0 ${
-                collapsed ? "w-10 h-10 text-sm" : "w-11 h-11 text-lg"
-              }`}>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
                 {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
               </div>
             )}
-            {/* Title (hidden when collapsed) */}
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <h1 className="text-sm font-bold text-white leading-tight truncate">
-                  {safeTenant?.name || sidebarTitle}
-                </h1>
-                <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
-                  {isSuperAdmin ? "System Control" : "Institution ERP"}
-                </p>
-              </div>
-            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-bold text-white leading-tight truncate">
+                {safeTenant?.name || sidebarTitle}
+              </h1>
+              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
+                {isSuperAdmin ? "System Control" : "Institution ERP"}
+              </p>
+            </div>
           </div>
         </div>
-
-        {/* ─── COLLAPSE TOGGLE ─── */}
-        <button
-          onClick={() => {
-            if (pinned) {
-              setPinned(false);
-              setCollapsed(true);
-            } else {
-              setPinned(true);
-              setCollapsed(false);
-            }
-          }}
-          className={`absolute -right-3 top-20 z-50 w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-200 shadow-lg hidden md:flex ${pinned ? "bg-indigo-600 border-indigo-500 text-white" : "bg-slate-700 border-slate-600 text-slate-300 hover:bg-indigo-600 hover:text-white hover:border-indigo-500"}`}
-          title={pinned ? "Auto-hide sidebar" : "Pin sidebar open"}
-        >
-          {pinned ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
-        </button>
 
         {/* ─── MENU ITEMS ─── */}
         <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
@@ -578,19 +549,16 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 
           {menu.map((group, gi) => (
             <div key={gi} className="mb-1">
-              {group.section && !collapsed && (
+              {group.section && (
                 <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
                   {group.section}
                 </p>
               )}
-              {group.section && collapsed && (
-                <div className="my-3 mx-3 border-t border-white/5" />
-              )}
               {group.items.map((item, i) =>
                 item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={collapsed} />
+                  <ParentNavItem key={i} item={item} collapsed={false} />
                 ) : (
-                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={collapsed} />
+                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
                 )
               )}
             </div>
@@ -598,7 +566,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         </div>
 
         {/* ─── DEVELOPER SECTION ─── */}
-        {!isSuperAdmin && devProfile && devProfile.isVisible && !collapsed && (
+        {!isSuperAdmin && devProfile && devProfile.isVisible && (
           <div className="border-t border-white/10 p-3 flex-shrink-0">
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2.5">
@@ -646,91 +614,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Full menu, shown via MainLayout slide-in) */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[999] md:hidden"
-          onClick={onClose}
-        />
-      )}
-      {/* Slide-in panel */}
-      <div
-        className={`fixed inset-y-0 left-0 z-[1000] w-[280px] transform transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{
-          background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
-        }}
-      >
-        {/* Mobile Sidebar Header */}
-        <div className="relative flex-shrink-0 border-b border-white/10">
-          {getFullUrl(safeTenant?.backgroundUrl) && (
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          )}
-          <div className="relative z-10 flex items-center gap-3 p-4">
-            {sidebarLogo ? (
-              <img
-                src={sidebarLogo}
-                alt="Logo"
-                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
-                crossOrigin="anonymous"
-                onError={(e: any) => { e.target.style.display = "none"; }}
-              />
-            ) : (
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
-                {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h1 className="text-sm font-bold text-white leading-tight truncate">
-                {safeTenant?.name || sidebarTitle}
-              </h1>
-              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
-                {isSuperAdmin ? "System Control" : "Institution ERP"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Sidebar Menu */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
-          {menu.map((group, gi) => (
-            <div key={gi} className="mb-1">
-              {group.section && (
-                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
-                  {group.section}
-                </p>
-              )}
-              {group.items.map((item, i) =>
-                item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} />
-                ) : (
-                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
-                )
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Logout button */}
-        <div className="border-t border-white/10 p-3 flex-shrink-0">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-all">
-            <LogOut size={20} />
-            <span className="text-[13px] font-medium">Logout</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════════════ */}
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <div className="bottom-nav" aria-label="Main navigation">
@@ -770,7 +653,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       {/* MOBILE MORE MENU (Full-screen sheet) */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {moreMenuOpen && (
-        <div className="more-menu-overlay" onClick={() => setMoreMenuOpen(false)}>
+        <div className="more-menu-overlay" onClick={() => { setMoreMenuOpen(false); onClose?.(); }}>
           <div className="more-menu-sheet" onClick={(e) => e.stopPropagation()}>
             {/* Drag handle */}
             <div className="flex justify-center py-2">
@@ -780,7 +663,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-200 dark:border-slate-700">
               <h3 className="text-base font-bold text-gray-900 dark:text-white">All Modules</h3>
               <button
-                onClick={() => setMoreMenuOpen(false)}
+                onClick={() => { setMoreMenuOpen(false); onClose?.(); }}
                 className="tap-target rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 p-2"
                 aria-label="Close menu"
               >
@@ -794,7 +677,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                   key={idx}
                   to={item.path}
                   className="more-menu-item"
-                  onClick={() => setMoreMenuOpen(false)}
+                  onClick={() => { setMoreMenuOpen(false); onClose?.(); }}
                 >
                   <span className="text-indigo-500">{item.icon}</span>
                   <span className="line-clamp-2 text-xs">{item.name}</span>

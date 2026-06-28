@@ -113,7 +113,7 @@ export default function MainLayout() {
       <Sidebar tenant={tenant} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* ═══════════ Main Content Area ═══════════ */}
-      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[280px] transition-[margin] duration-300">
+      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[260px]">
         {/* Mobile hamburger button */}
         <button
           className="hamburger-btn fixed top-3 left-3 z-[990] p-2.5 bg-primary-500 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-transform"

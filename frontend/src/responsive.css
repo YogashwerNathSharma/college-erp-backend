@@ -282,23 +282,13 @@ html, body, #root {
     top: 0;
     left: 0;
     bottom: 0;
-    width: 280px;
+    width: 260px;
     z-index: 100;
     overflow-y: auto;
-    transition: width 0.3s ease, transform 0.3s ease;
-  }
-
-  .sidebar-collapsed .sidebar-desktop {
-    width: 72px;
   }
 
   .main-content-wrapper {
-    margin-left: 280px;
-    transition: margin-left 0.3s ease;
-  }
-
-  .sidebar-collapsed .main-content-wrapper {
-    margin-left: 72px;
+    margin-left: 260px;
   }
 
   .modal-drag-handle {
@@ -332,21 +322,7 @@ html, body, #root {
    TABLET-SPECIFIC (768px - 1024px)
    ================================================================ */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .sidebar-desktop {
-    width: 72px;
-  }
-
-  .sidebar-desktop .nav-label {
-    display: none;
-  }
-
-  .sidebar-desktop .section-header {
-    display: none;
-  }
-
-  .main-content-wrapper {
-    margin-left: 72px;
-  }
+  /* Sidebar stays fully expanded on tablet too */
 }
 
 /* ================================================================

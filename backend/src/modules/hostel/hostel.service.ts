@@ -32,7 +32,7 @@ export const getHostelById = async (id: string, tenantId: string) => {
     where: { id, tenantId, isDeleted: false },
     include: {
       rooms: { where: { isDeleted: false }, orderBy: { roomNumber: "asc" } },
-      mess: { where: { isDeleted: false } },
+      messMenus: true,
     },
   });
 };

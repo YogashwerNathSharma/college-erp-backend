@@ -1,9 +1,10 @@
-import admin from "firebase-admin";
+import { initializeApp, getApp, cert, App } from "firebase-admin/app";
+import { getMessaging, Message, MulticastMessage } from "firebase-admin/messaging";
 
 // Initialize Firebase Admin SDK (should be done once at app startup)
-let firebaseApp: admin.app.App;
+let firebaseApp: App;
 
-const getFirebaseApp = (): admin.app.App => {
+const getFirebaseApp = (): App => {
   if (firebaseApp) return firebaseApp;
 
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -13,12 +14,12 @@ const getFirebaseApp = (): admin.app.App => {
   }
 
   try {
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(serviceAccount)),
+    firebaseApp = initializeApp({
+      credential: cert(JSON.parse(serviceAccount)),
     });
   } catch (err) {
     // App might already be initialized
-    firebaseApp = admin.app();
+    firebaseApp = getApp();
   }
 
   return firebaseApp;
@@ -40,9 +41,9 @@ export const sendFCMNotification = async (
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
     const app = getFirebaseApp();
-    const messaging = app.messaging();
+    const messaging = getMessaging(app);
 
-    const message: admin.messaging.Message = {
+    const message: Message = {
       token,
       notification: {
         title: payload.title,
@@ -83,7 +84,7 @@ export const sendFCMMulticast = async (
 ): Promise<{ successCount: number; failureCount: number; errors: string[] }> => {
   try {
     const app = getFirebaseApp();
-    const messaging = app.messaging();
+    const messaging = getMessaging(app);
 
     // FCM allows max 500 tokens per multicast
     const batchSize = 500;
@@ -94,7 +95,7 @@ export const sendFCMMulticast = async (
     for (let i = 0; i < tokens.length; i += batchSize) {
       const batch = tokens.slice(i, i + batchSize);
 
-      const message: admin.messaging.MulticastMessage = {
+      const message: MulticastMessage = {
         tokens: batch,
         notification: {
           title: payload.title,
@@ -123,7 +124,7 @@ export const sendFCMMulticast = async (
       successCount += response.successCount;
       failureCount += response.failureCount;
 
-      response.responses.forEach((resp, idx) => {
+      response.responses.forEach((resp: any, idx: number) => {
         if (!resp.success && resp.error) {
           errors.push(`Token ${batch[idx]}: ${resp.error.message}`);
         }
@@ -145,9 +146,9 @@ export const sendFCMToTopic = async (
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
     const app = getFirebaseApp();
-    const messaging = app.messaging();
+    const messaging = getMessaging(app);
 
-    const message: admin.messaging.Message = {
+    const message: Message = {
       topic,
       notification: {
         title: payload.title,
@@ -169,7 +170,7 @@ export const sendFCMToTopic = async (
  */
 export const subscribeToTopic = async (tokens: string[], topic: string) => {
   const app = getFirebaseApp();
-  const messaging = app.messaging();
+  const messaging = getMessaging(app);
 
   const response = await messaging.subscribeToTopic(tokens, topic);
   return { successCount: response.successCount, failureCount: response.failureCount };
@@ -180,7 +181,7 @@ export const subscribeToTopic = async (tokens: string[], topic: string) => {
  */
 export const unsubscribeFromTopic = async (tokens: string[], topic: string) => {
   const app = getFirebaseApp();
-  const messaging = app.messaging();
+  const messaging = getMessaging(app);
 
   const response = await messaging.unsubscribeFromTopic(tokens, topic);
   return { successCount: response.successCount, failureCount: response.failureCount };

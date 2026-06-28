@@ -1,6 +1,25 @@
 
 import express from "express";
 
+// ENTERPRISE MODULES
+import gatePassRoutes from "./modules/gate-pass/gatepass.routes";
+import eventRoutes from "./modules/events/event.routes";
+import helpdeskRoutes from "./modules/helpdesk/helpdesk.routes";
+import workflowRoutes from "./modules/workflow/workflow.routes";
+import formBuilderRoutes from "./modules/form-builder/form-builder.routes";
+import reportBuilderRoutes from "./modules/report-builder/report-builder.routes";
+import auditRoutes from "./modules/audit/audit.routes";
+import schedulerRoutes from "./modules/scheduler/scheduler.routes";
+import dashboardBuilderRoutes from "./modules/dashboard-builder/dashboard-builder.routes";
+import themeRoutes from "./modules/theme/theme.routes";
+import qrRoutes from "./modules/qr-barcode/qr.routes";
+import paymentGatewayRoutes from "./modules/payment-gateway/payment.routes";
+import fileManagerRoutes from "./modules/file-manager/file-manager.routes";
+import importExportRoutes from "./modules/import-export/import-export.routes";
+import queueRoutes from "./modules/queue/queue.routes";
+import masterRoutes from "./modules/masters/master.routes";
+
+
 import compression from "compression";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
@@ -266,6 +285,26 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports-new", reportRoutes);
+
+//////////////////////////////////////////////////////
+// ENTERPRISE MODULE ROUTES
+//////////////////////////////////////////////////////
+app.use("/api/gate-pass", gatePassRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/helpdesk", helpdeskRoutes);
+app.use("/api/workflows", workflowRoutes);
+app.use("/api/forms", formBuilderRoutes);
+app.use("/api/report-builder", reportBuilderRoutes);
+app.use("/api/audit", auditRoutes);
+app.use("/api/scheduler", schedulerRoutes);
+app.use("/api/dashboard-builder", dashboardBuilderRoutes);
+app.use("/api/theme", themeRoutes);
+app.use("/api/qr", qrRoutes);
+app.use("/api/payment-gateway", paymentGatewayRoutes);
+app.use("/api/files", fileManagerRoutes);
+app.use("/api/import-export", importExportRoutes);
+app.use("/api/queue", queueRoutes);
+app.use("/api/masters", masterRoutes);
 
 //////////////////////////////////////////////////////
 // SWAGGER DOCS

@@ -220,7 +220,7 @@ class TrackingService {
     });
 
     // Get current locations of these vehicles
-    const vehicleIds = activeTrips.map((trip) => trip.vehicleId);
+    const vehicleIds = activeTrips.map((trip: any) => trip.vehicleId);
     const locations = await prisma.vehicleLocation.findMany({
       where: {
         vehicleId: { in: vehicleIds },
@@ -229,7 +229,7 @@ class TrackingService {
     });
 
     // Build response with vehicle positions
-    const vehiclesOnRoute = activeTrips.map((trip) => {
+    const vehiclesOnRoute = activeTrips.map((trip: any) => {
       const location = locations.find((loc) => loc.vehicleId === trip.vehicleId);
       return {
         trip: {
@@ -338,7 +338,7 @@ class TrackingService {
     }
 
     const endedAt = new Date();
-    const durationSeconds = Math.round((endedAt.getTime() - trip.startedAt.getTime()) / 1000);
+    const durationSeconds = Math.round((endedAt.getTime() - trip.startedAt!.getTime()) / 1000);
 
     const updatedTrip = await prisma.transportTrip.update({
       where: { id: tripId },
@@ -580,7 +580,7 @@ class TrackingService {
         vehicleId: data.vehicleId,
         tripId: data.tripId || null,
         stopId: data.stopId || null,
-        type: data.type,
+        eventType: data.type,
         latitude: data.latitude,
         longitude: data.longitude,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
@@ -659,7 +659,7 @@ class TrackingService {
           vehicleLocation.longitude,
           assignment.stop.latitude,
           assignment.stop.longitude,
-          vehicleLocation.speed > 0 ? vehicleLocation.speed : 30 // Default 30 km/h if stationary
+          (vehicleLocation.speed ?? 0) > 0 ? vehicleLocation.speed! : 30 // Default 30 km/h if stationary
         );
         eta = etaSeconds;
       }
@@ -751,7 +751,7 @@ class TrackingService {
       throw new Error("Stop does not have coordinates configured");
     }
 
-    const speed = vehicleLocation.speed > 0 ? vehicleLocation.speed : 30; // Default 30 km/h
+    const speed = (vehicleLocation.speed ?? 0) > 0 ? vehicleLocation.speed! : 30; // Default 30 km/h
     const distance = calculateDistance(
       vehicleLocation.latitude,
       vehicleLocation.longitude,

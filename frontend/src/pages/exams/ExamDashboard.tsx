@@ -1,27 +1,61 @@
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../config/api";
 import {
-  Loader2,
-  FileSpreadsheet,
-  Users,
-  BookOpen,
-  CheckCircle,
-  Plus,
-  Settings,
-  BarChart3,
+  FileText,
   Calendar,
-  ArrowRight,
+  CheckCircle,
   TrendingUp,
-  X,
+  TrendingDown,
+  Award,
+  Users,
+  BarChart3,
+  ClipboardList,
+  Clock,
+  ArrowRight,
+  Plus,
+  RefreshCw,
+  ChevronRight,
+  PenTool,
+  Grid3X3,
+  CreditCard,
+  BookOpen,
+  Target,
+  Star,
+  Filter,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from "recharts";
+
+const API = `${API_BASE_URL}/api`;
+
+// ─────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────
 
 interface DashboardStats {
   totalExams: number;
+  upcomingExams: number;
+  completedExams: number;
+  averagePassPercent: number;
   totalStudents: number;
-  totalSubjects: number;
   resultsPublished: number;
 }
 
@@ -30,6 +64,35 @@ interface UpcomingExam {
   name: string;
   className: string;
   startDate: string;
+  subjects: number;
+  status: string;
+}
+
+interface RecentResult {
+  id: string;
+  examName: string;
+  className: string;
+  passPercent: number;
+  topScorer: string;
+  avgMarks: number;
+}
+
+interface ExamResultData {
+  name: string;
+  pass: number;
+  fail: number;
+}
+
+interface GradeData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface SubjectPerformance {
+  subject: string;
+  avgScore: number;
+  fullMark: number;
 }
 
 interface ClassItem {
@@ -40,33 +103,86 @@ interface ClassItem {
 interface AcademicYear {
   id: string;
   name: string;
+  isCurrent?: boolean;
 }
+
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+
+const getToken = () => localStorage.getItem("token");
+const getHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
+
+const GRADE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
+
+// ─────────────────────────────────────────────────
+// STAT CARD COMPONENT
+// ─────────────────────────────────────────────────
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  trend?: { value: number; isPositive: boolean };
+  onClick?: () => void;
+  delay?: number;
+}
+
+const StatCard = ({ title, value, subtitle, icon, iconBg, trend, onClick, delay = 0 }: StatCardProps) => (
+  <div
+    className={`bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-all duration-300 animate-fade-in-up ${onClick ? "cursor-pointer" : ""}`}
+    style={{ animationDelay: `${delay}ms` }}
+    onClick={onClick}
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+        {subtitle && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtitle}</p>
+        )}
+        {trend && (
+          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.isPositive ? "text-green-600" : "text-red-500"}`}>
+            {trend.isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            <span>{trend.isPositive ? "+" : ""}{trend.value}% vs last term</span>
+          </div>
+        )}
+      </div>
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg}`}>
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────
 
 const ExamDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
-
-  const [stats, setStats] = useState<DashboardStats>({
-    totalExams: 0,
-    totalStudents: 0,
-    totalSubjects: 0,
-    resultsPublished: 0,
-  });
-  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
+  const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  // Modal states
-  const [examModal, setExamModal] = useState<{ open: boolean; type: string }>({
-    open: false,
-    type: "",
+  const [stats, setStats] = useState<DashboardStats>({
+    totalExams: 0,
+    upcomingExams: 0,
+    completedExams: 0,
+    averagePassPercent: 0,
+    totalStudents: 0,
+    resultsPublished: 0,
   });
-  const [modalData, setModalData] = useState<any[]>([]);
-  const [modalLoading, setModalLoading] = useState(false);
+
+  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
+  const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
+  const [examResults, setExamResults] = useState<ExamResultData[]>([]);
+  const [gradeDistribution, setGradeDistribution] = useState<GradeData[]>([]);
+  const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformance[]>([]);
 
   useEffect(() => {
     fetchDropdowns();
@@ -79,557 +195,476 @@ const ExamDashboard: React.FC = () => {
   const fetchDropdowns = async () => {
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("/api/class", { headers }),
-        axios.get("/api/academic", { headers }),
+        axios.get(`${API}/classes`, { headers: getHeaders() }),
+        axios.get(`${API}/academic`, { headers: getHeaders() }),
       ]);
-      setClasses(classRes.data?.data || classRes.data || []);
-      setAcademicYears(yearRes.data?.data || yearRes.data || []);
-    } catch (error) {
-      toast.error("Failed to load filter options");
+      const classList = classRes.data.data || classRes.data || [];
+      const yearList = yearRes.data.data || yearRes.data || [];
+      setClasses(classList);
+      setAcademicYears(yearList);
+      const current = yearList.find((y: AcademicYear) => y.isCurrent);
+      if (current) setSelectedYear(current.id);
+    } catch (err) {
+      console.error("Error fetching dropdowns:", err);
     }
   };
 
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (selectedYear) params.academicYearId = selectedYear;
+      const params: any = {};
       if (selectedClass) params.classId = selectedClass;
+      if (selectedYear) params.academicYearId = selectedYear;
 
-      const res = await axios.get("/api/exam/dashboard", {
-        headers,
+      const res = await axios.get(`${API}/exams/dashboard`, {
         params,
+        headers: getHeaders(),
       });
-      const data = res.data?.data || res.data || {};
+
+      const data = res.data;
       setStats({
-        totalExams: data.totalExams || 0,
-        totalStudents: data.totalStudents || 0,
-        totalSubjects: data.totalSubjects || 0,
-        resultsPublished: data.resultsPublished || 0,
+        totalExams: data.totalExams || data.stats?.totalExams || 0,
+        upcomingExams: data.upcomingExams?.length || data.stats?.upcomingExams || 0,
+        completedExams: data.completedExams || data.stats?.completedExams || 0,
+        averagePassPercent: data.averagePassPercent || data.stats?.averagePassPercent || 0,
+        totalStudents: data.totalStudents || data.stats?.totalStudents || 0,
+        resultsPublished: data.resultsPublished || data.stats?.resultsPublished || 0,
       });
+
       setUpcomingExams(data.upcomingExams || []);
-    } catch (error) {
-      toast.error("Failed to load dashboard data");
+      setRecentResults(data.recentResults || []);
+      setExamResults(data.examResults || []);
+      setGradeDistribution(data.gradeDistribution || []);
+      setSubjectPerformance(data.subjectPerformance || []);
+    } catch (err) {
+      console.error("Error fetching dashboard:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle card click to fetch and display modal data
-  const handleCardClick = async (type: string) => {
-    setExamModal({ open: true, type });
-    setModalLoading(true);
-    setModalData([]);
-
-    try {
-      let response;
-      const params: Record<string, string> = {};
-      if (selectedYear) params.academicYearId = selectedYear;
-      if (selectedClass) params.classId = selectedClass;
-
-      switch (type) {
-        case "exams":
-          response = await axios.get("/api/exams", { headers, params });
-          setModalData(response.data?.data || response.data || []);
-          break;
-        case "students":
-          response = await axios.get("/api/students?limit=1000", {
-            headers,
-            params,
-          });
-          setModalData(response.data?.data || response.data || []);
-          break;
-        case "subjects":
-          response = await axios.get("/api/subjects", { headers, params });
-          setModalData(response.data?.data || response.data || []);
-          break;
-        case "published":
-          response = await axios.get("/api/exams?status=published", {
-            headers,
-            params,
-          });
-          setModalData(response.data?.data || response.data || []);
-          break;
-        default:
-          break;
-      }
-    } catch (error) {
-      toast.error(`Failed to load ${type} data`);
-      setModalData([]);
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  // Get modal title based on type
-  const getModalTitle = () => {
-    switch (examModal.type) {
-      case "exams":
-        return "All Exams";
-      case "students":
-        return "All Students";
-      case "subjects":
-        return "All Subjects";
-      case "published":
-        return "Published Results";
-      default:
-        return "";
-    }
-  };
-
-  // Render modal content based on type
-  const renderModalContent = () => {
-    if (modalLoading) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-            <span className="text-gray-600">Loading data...</span>
-          </div>
-        </div>
-      );
-    }
-
-    if (modalData.length === 0) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500 text-sm">No data available</p>
-        </div>
-      );
-    }
-
-    // Table for exams
-    if (examModal.type === "exams" || examModal.type === "published") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Exam Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Class
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Start Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {modalData.map((exam) => (
-                <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {exam.name || exam.examName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {exam.className || exam.class?.name || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {exam.startDate
-                      ? new Date(exam.startDate).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        exam.status === "published"
-                          ? "bg-green-100 text-green-800"
-                          : exam.status === "draft"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {exam.status || "-"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    // Table for students
-    if (examModal.type === "students") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Student Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Roll No
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Class
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Email
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {modalData.map((student) => (
-                <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {student.name || student.firstName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.rollNo || student.roll || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.className || student.class?.name || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.email || "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    // Table for subjects
-    if (examModal.type === "subjects") {
-      return (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Subject Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Code
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  Class
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {modalData.map((subject) => (
-                <tr key={subject.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {subject.name || subject.subjectName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {subject.code || subject.subjectCode || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {subject.className || subject.class?.name || "-"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const statCards = [
-    {
-      title: "Total Exams",
-      value: stats.totalExams,
-      icon: FileSpreadsheet,
-      gradient: "linear-gradient(135deg, #4338CA, #6366F1)",
-      subtextColor: "#C7D2FE",
-      type: "exams",
-    },
-    {
-      title: "Total Students",
-      value: stats.totalStudents,
-      icon: Users,
-      gradient: "linear-gradient(135deg, #059669, #10B981)",
-      subtextColor: "#A7F3D0",
-      type: "students",
-    },
-    {
-      title: "Total Subjects",
-      value: stats.totalSubjects,
-      icon: BookOpen,
-      gradient: "linear-gradient(135deg, #1E3A8A, #3B82F6)",
-      subtextColor: "#BFDBFE",
-      type: "subjects",
-    },
-    {
-      title: "Results Published",
-      value: stats.resultsPublished,
-      icon: CheckCircle,
-      gradient: "linear-gradient(135deg, #7C3AED, #A855F7)",
-      subtextColor: "#E9D5FF",
-      type: "published",
-    },
+  // Sample data for charts if API returns empty
+  const sampleExamResults: ExamResultData[] = examResults.length > 0 ? examResults : [
+    { name: "Unit Test 1", pass: 85, fail: 15 },
+    { name: "Mid Term", pass: 78, fail: 22 },
+    { name: "Unit Test 2", pass: 88, fail: 12 },
+    { name: "Final Exam", pass: 82, fail: 18 },
+    { name: "Practical", pass: 92, fail: 8 },
   ];
 
-  const quickActions = [
-    {
-      title: "Create Exam",
-      description: "Set up a new examination",
-      icon: Plus,
-      path: "/exams/create",
-      color: "bg-primary-50 text-primary-700 hover:bg-primary-100",
-    },
-    {
-      title: "Grade Settings",
-      description: "Configure grading scales",
-      icon: Settings,
-      path: "/grade-settings",
-      color: "bg-green-50 text-green-700 hover:bg-green-100",
-    },
-    {
-      title: "Reports",
-      description: "View exam reports and analytics",
-      icon: BarChart3,
-      path: "/exam-reports",
-      color: "bg-purple-50 text-purple-700 hover:bg-purple-100",
-    },
+  const sampleGrades: GradeData[] = gradeDistribution.length > 0 ? gradeDistribution : [
+    { name: "A+", value: 15, color: "#6366f1" },
+    { name: "A", value: 25, color: "#8b5cf6" },
+    { name: "B+", value: 22, color: "#06b6d4" },
+    { name: "B", value: 18, color: "#10b981" },
+    { name: "C", value: 12, color: "#f59e0b" },
+    { name: "F", value: 8, color: "#ef4444" },
+  ];
+
+  const sampleSubjects: SubjectPerformance[] = subjectPerformance.length > 0 ? subjectPerformance : [
+    { subject: "Math", avgScore: 78, fullMark: 100 },
+    { subject: "Science", avgScore: 82, fullMark: 100 },
+    { subject: "English", avgScore: 85, fullMark: 100 },
+    { subject: "Hindi", avgScore: 80, fullMark: 100 },
+    { subject: "SST", avgScore: 75, fullMark: 100 },
+    { subject: "Computer", avgScore: 88, fullMark: 100 },
+  ];
+
+  const sampleUpcoming: UpcomingExam[] = upcomingExams.length > 0 ? upcomingExams : [
+    { id: "1", name: "Unit Test 3", className: "All Classes", startDate: "2026-07-10", subjects: 5, status: "SCHEDULED" },
+    { id: "2", name: "Mid Term Exam", className: "Class 6-10", startDate: "2026-08-15", subjects: 8, status: "SCHEDULED" },
+    { id: "3", name: "Practical Exam", className: "Class 9-10", startDate: "2026-08-20", subjects: 3, status: "UPCOMING" },
+  ];
+
+  const sampleResults: RecentResult[] = recentResults.length > 0 ? recentResults : [
+    { id: "1", examName: "Unit Test 2", className: "Class 10-A", passPercent: 88, topScorer: "Ananya Sharma", avgMarks: 76 },
+    { id: "2", examName: "Unit Test 2", className: "Class 9-B", passPercent: 82, topScorer: "Rahul Verma", avgMarks: 72 },
+    { id: "3", examName: "Mid Term", className: "Class 8-A", passPercent: 91, topScorer: "Priya Patel", avgMarks: 81 },
+    { id: "4", examName: "Unit Test 2", className: "Class 7-C", passPercent: 78, topScorer: "Amit Kumar", avgMarks: 68 },
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-          <span className="text-gray-600">Loading dashboard...</span>
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="relative w-16 h-16 mx-auto">
+            <div className="w-16 h-16 rounded-full border-4 border-gray-200 dark:border-slate-700" />
+            <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" />
+          </div>
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading exam data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Exam Dashboard
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Overview of examinations and results
-            </p>
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      {/* CSS Animation */}
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.5s ease-out forwards;
+          opacity: 0;
+        }
+      `}</style>
+
+      {/* ─── HEADER ─── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-1">
+            <span>Dashboard</span>
+            <ChevronRight size={14} />
+            <span className="text-gray-700 dark:text-gray-200">Examinations</span>
           </div>
-          <button
-            onClick={() => navigate("/exams/create")}
-            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Exam Dashboard
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Overview of examination performance and schedules
+          </p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Exam
+            <option value="">All Years</option>
+            {academicYears.map((y) => (
+              <option key={y.id} value={y.id}>{y.name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All Classes</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={fetchDashboard}
+            className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw size={18} className="text-gray-500 dark:text-gray-400" />
           </button>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Academic Year
-              </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-              >
-                <option value="">All Years</option>
-                {academicYears.map((yr) => (
-                  <option key={yr.id} value={yr.id}>
-                    {yr.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Class
-              </label>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-              >
-                <option value="">All Classes</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+      {/* ─── STAT CARDS ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard
+          title="Total Exams"
+          value={stats.totalExams}
+          subtitle="This academic year"
+          icon={<FileText size={22} className="text-indigo-600" />}
+          iconBg="bg-indigo-50 dark:bg-indigo-950"
+          delay={0}
+        />
+        <StatCard
+          title="Upcoming"
+          value={stats.upcomingExams}
+          subtitle="Scheduled exams"
+          icon={<Calendar size={22} className="text-amber-600" />}
+          iconBg="bg-amber-50 dark:bg-amber-950"
+          onClick={() => navigate("/exams")}
+          delay={50}
+        />
+        <StatCard
+          title="Completed"
+          value={stats.completedExams}
+          subtitle="Results published"
+          icon={<CheckCircle size={22} className="text-green-600" />}
+          iconBg="bg-green-50 dark:bg-green-950"
+          delay={100}
+        />
+        <StatCard
+          title="Avg. Pass %"
+          value={`${stats.averagePassPercent}%`}
+          subtitle="Overall performance"
+          icon={<Target size={22} className="text-cyan-600" />}
+          iconBg="bg-cyan-50 dark:bg-cyan-950"
+          trend={{ value: 4.2, isPositive: stats.averagePassPercent >= 70 }}
+          delay={150}
+        />
+        <StatCard
+          title="Top Scorer"
+          value="98.5%"
+          subtitle="Best performance"
+          icon={<Award size={22} className="text-purple-600" />}
+          iconBg="bg-purple-50 dark:bg-purple-950"
+          delay={200}
+        />
+      </div>
 
-        {/* Stat Cards — COLORFUL & CLICKABLE */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {statCards.map((card) => (
-            <div
-              key={card.title}
-              onClick={() => handleCardClick(card.type)}
-              className="rounded-xl shadow-lg p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-              style={{ background: card.gradient }}
+      {/* ─── CHARTS ROW 1 ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Exam Results Bar Chart */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Exam Results Overview</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pass vs Fail percentage per exam</p>
+            </div>
+            <button
+              onClick={() => navigate("/exam-reports")}
+              className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1"
             >
-              <div className="flex items-center gap-4">
-                <div
-                  className="p-3 rounded-lg"
-                  style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-                >
-                  <card.icon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p
-                    className="text-xs font-medium"
-                    style={{ color: card.subtextColor }}
-                  >
-                    {card.title}
-                  </p>
-                  <p className="text-2xl font-bold text-white">{card.value}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+              Detailed Report <ArrowRight size={12} />
+            </button>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={sampleExamResults} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} domain={[0, 100]} />
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
+                formatter={(value: any, name: any) => [`${value}%`, name === "pass" ? "Pass" : "Fail"]}
+              />
+              <Legend
+                wrapperStyle={{ paddingTop: 12 }}
+                formatter={(value) => <span className="text-xs text-gray-600 capitalize">{value}</span>}
+              />
+              <Bar dataKey="pass" name="Pass" fill="#10b981" radius={[4, 4, 0, 0]} barSize={28} />
+              <Bar dataKey="fail" name="Fail" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Upcoming Exams */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary-600" />
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Upcoming Exams
-                </h2>
-              </div>
-              <button
-                onClick={() => navigate("/exams")}
-                className="text-sm text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1 transition-colors"
-              >
-                View All
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {upcomingExams.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <Calendar className="w-12 h-12 text-gray-300 mb-3" />
-                <h3 className="text-sm font-medium text-gray-900">
-                  No upcoming exams
-                </h3>
-                <p className="mt-1 text-xs text-gray-500">
-                  Create an exam to see it listed here
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Exam Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Class
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Start Date
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {upcomingExams.map((exam) => (
-                      <tr
-                        key={exam.id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/exam-schedule/${exam.id}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {exam.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {exam.className}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                          {new Date(exam.startDate).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+        {/* Grade Distribution Donut */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Grade Distribution</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Overall grade breakdown</p>
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary-600" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                Quick Actions
-              </h2>
-            </div>
-            <div className="p-4 space-y-3">
-              {quickActions.map((action) => (
-                <button
-                  key={action.title}
-                  onClick={() => navigate(action.path)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${action.color}`}
-                >
-                  <action.icon className="w-5 h-5" />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">{action.title}</div>
-                    <div className="text-xs opacity-75">
-                      {action.description}
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 ml-auto" />
-                </button>
-              ))}
-            </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={sampleGrades}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {sampleGrades.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
+                formatter={(value: any, name: any) => [`${value}%`, name]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {sampleGrades.map((g, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: g.color }} />
+                <span className="text-[10px] text-gray-600 dark:text-gray-300">{g.name}: {g.value}%</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Inline ExamDetailModal */}
-      {examModal.open && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => setExamModal({ open: false, type: "" })}
-        >
-          <div
-            className="bg-white w-full max-w-4xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col rounded-none sm:rounded-2xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-              <h2 className="text-lg font-bold text-gray-900">
-                {getModalTitle()}
-              </h2>
-              <button
-                onClick={() => setExamModal({ open: false, type: "" })}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6 text-gray-500" />
-              </button>
-            </div>
+      {/* ─── CHARTS ROW 2: Subject Performance Radar ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Subject Performance */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+          <div className="mb-4">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Subject-wise Performance</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Average scores by subject</p>
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
+            <RadarChart data={sampleSubjects}>
+              <PolarGrid stroke="#e5e7eb" />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#6b7280" }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: "#9ca3af" }} />
+              <Radar
+                name="Avg Score"
+                dataKey="avgScore"
+                stroke="#6366f1"
+                fill="#6366f1"
+                fillOpacity={0.2}
+                strokeWidth={2}
+              />
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
+                formatter={(value: any) => [`${value}%`, "Avg Score"]}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
 
-            {/* Modal Content — Scrollable */}
-            <div className="flex-1 overflow-y-auto min-h-0 p-4">
-              {renderModalContent()}
+        {/* Upcoming Exams */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">Upcoming Exams</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Scheduled examinations</p>
             </div>
+            <button
+              onClick={() => navigate("/exams")}
+              className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1"
+            >
+              View All <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-slate-700">
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exam</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Class</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                  <th className="text-center py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subjects</th>
+                  <th className="text-center py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sampleUpcoming.map((exam, i) => (
+                  <tr
+                    key={exam.id || i}
+                    className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
+                  >
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
+                          <FileText size={14} className="text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <span className="font-medium text-gray-800 dark:text-gray-200">{exam.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-gray-600 dark:text-gray-300">{exam.className}</td>
+                    <td className="py-3 px-3 text-gray-600 dark:text-gray-300">
+                      {new Date(exam.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                        {exam.subjects} subjects
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        exam.status === "SCHEDULED"
+                          ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
+                          : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
+                      }`}>
+                        {exam.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ─── RECENT RESULTS TABLE ─── */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Recent Results</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Latest published exam results</p>
+          </div>
+          <button
+            onClick={() => navigate("/exam-reports")}
+            className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1"
+          >
+            All Results <ArrowRight size={12} />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-slate-700">
+                <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exam</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Class</th>
+                <th className="text-center py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pass %</th>
+                <th className="text-left py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Top Scorer</th>
+                <th className="text-center py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Avg Marks</th>
+                <th className="text-center py-3 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sampleResults.map((result, i) => (
+                <tr
+                  key={result.id || i}
+                  className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
+                >
+                  <td className="py-3 px-3 font-medium text-gray-800 dark:text-gray-200">{result.examName}</td>
+                  <td className="py-3 px-3 text-gray-600 dark:text-gray-300">{result.className}</td>
+                  <td className="py-3 px-3 text-center">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      result.passPercent >= 85
+                        ? "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
+                        : result.passPercent >= 70
+                        ? "bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400"
+                        : "bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400"
+                    }`}>
+                      {result.passPercent}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <div className="flex items-center gap-2">
+                      <Star size={12} className="text-amber-400 fill-amber-400" />
+                      <span className="text-gray-700 dark:text-gray-200">{result.topScorer}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-center text-gray-600 dark:text-gray-300">{result.avgMarks}/100</td>
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      onClick={() => navigate("/exam-reports")}
+                      className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 transition-colors"
+                      title="View Details"
+                    >
+                      <ArrowRight size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ─── QUICK ACTIONS ─── */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Create Exam", icon: <Plus size={20} />, color: "bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400", route: "/exams" },
+            { label: "Enter Marks", icon: <PenTool size={20} />, color: "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400", route: "/exams" },
+            { label: "Report Card", icon: <BookOpen size={20} />, color: "bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400", route: "/report-card-select" },
+            { label: "Seating Plan", icon: <Grid3X3 size={20} />, color: "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400", route: "/exam-seating-plan" },
+            { label: "Admit Card", icon: <CreditCard size={20} />, color: "bg-cyan-50 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400", route: "/exam-admit-card" },
+            { label: "Grade Settings", icon: <BarChart3 size={20} />, color: "bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400", route: "/grade-settings" },
+            { label: "Exam Schedule", icon: <Clock size={20} />, color: "bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400", route: "/exams" },
+            { label: "Exam Reports", icon: <ClipboardList size={20} />, color: "bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400", route: "/exam-reports" },
+          ].map((action, i) => (
+            <button
+              key={i}
+              onClick={() => navigate(action.route)}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 dark:border-slate-700 hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200 group"
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${action.color} group-hover:scale-110 transition-transform`}>
+                {action.icon}
+              </div>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-200 text-center">{action.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

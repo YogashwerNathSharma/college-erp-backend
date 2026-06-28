@@ -178,9 +178,9 @@ export const generateAttendanceReport = async (tenantId: string, filters: any) =
       };
     }
     studentMap[key].totalDays++;
-    if (record.status === "PRESENT" || record.status === "present") studentMap[key].present++;
-    else if (record.status === "ABSENT" || record.status === "absent") studentMap[key].absent++;
-    else if (record.status === "LATE" || record.status === "late") studentMap[key].late++;
+    if (record.status === "PRESENT") studentMap[key].present++;
+    else if (record.status === "ABSENT") studentMap[key].absent++;
+    else if (record.status === "LATE") studentMap[key].late++;
   }
 
   const reportData = Object.values(studentMap).map((s: any) => ({
@@ -222,22 +222,13 @@ export const generateExamAnalytics = async (tenantId: string, filters: any) => {
     where: {
       examId,
       tenantId,
-      ...(classId && { enrollment: { classId } }),
-      ...(sectionId && { enrollment: { sectionId } }),
     },
     include: {
-      enrollment: {
-        include: {
-          student: { select: { firstName: true, lastName: true, admissionNo: true } },
-          class: { select: { name: true } },
-          section: { select: { name: true } },
-        },
-      },
       subject: { select: { name: true } },
     },
   });
 
-  const analytics = computeAnalytics(results);
+  const analytics = computeAnalytics(results as any);
 
   if (format === "excel") {
     const buffer = await generateExcel("Exam Analytics", analytics.studentResults, [

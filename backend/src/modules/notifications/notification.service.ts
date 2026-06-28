@@ -17,7 +17,7 @@ export const sendPushNotification = async (data: any, tenantId: string) => {
     throw new Error("No registered device tokens for this user");
   }
 
-  const fcmTokens = tokens.map((t) => t.token);
+  const fcmTokens = tokens.map((t: any) => t.token);
   const result = await sendFCMMulticast(fcmTokens, { title, body, data: notifData, imageUrl });
 
   // Store in-app notification
@@ -48,7 +48,7 @@ export const sendBulkPush = async (data: any, tenantId: string) => {
     throw new Error("No registered device tokens found");
   }
 
-  const fcmTokens = tokens.map((t) => t.token);
+  const fcmTokens = tokens.map((t: any) => t.token);
   const result = await sendFCMMulticast(fcmTokens, { title, body, data: notifData, imageUrl });
 
   // Store in-app notifications for all users

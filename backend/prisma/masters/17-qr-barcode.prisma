@@ -1,0 +1,50 @@
+// ══════════════════════════════════════════════════
+// QR CODE & BARCODE SYSTEM - Prisma Models
+// ══════════════════════════════════════════════════
+
+model QRCode {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  entityType    String   // STUDENT_ID, STAFF_ID, BOOK, ASSET, RECEIPT, GATE_PASS, CERTIFICATE
+  entityId      String
+  data          String   // The actual data encoded in QR/Barcode
+  qrImageUrl    String?  // Stored QR image path
+  barcodeImageUrl String? // Stored barcode image path
+  format        String   @default("QR") // QR, CODE128, EAN13, CODE39
+  size          Int      @default(200)
+
+  isActive      Boolean  @default(true)
+  scannedCount  Int      @default(0)
+  lastScannedAt DateTime?
+  lastScannedBy String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, data])
+}
+
+model QRScanLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  qrCodeId      String?  @db.ObjectId
+  data          String   // Scanned data
+  scannedBy     String   // userId
+  scannedByName String
+  purpose       String?  // ATTENDANCE, LIBRARY, GATE_PASS, VERIFICATION
+  location      String?
+  deviceInfo    String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// Add to Tenant model:
+// qrCodes          QRCode[]
+// qrScanLogs       QRScanLog[]

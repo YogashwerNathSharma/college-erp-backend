@@ -118,6 +118,16 @@ const FeeCollectionPage: React.FC = () => {
   useEffect(() => {
     fetchDiscounts();
     fetchClasses();
+    // Auto-search if student param in URL
+    const params = new URLSearchParams(window.location.search);
+    const studentParam = params.get("student");
+    if (studentParam) {
+      setSearchQuery(studentParam);
+      setTimeout(() => {
+        // Trigger search after state is set
+        document.getElementById("fee-search-btn")?.click();
+      }, 500);
+    }
   }, []);
 
   useEffect(() => {
@@ -152,18 +162,23 @@ const FeeCollectionPage: React.FC = () => {
     setSummary(null);
     setSearchResults([]);
     try {
-      const className = classes.find((c) => c.id === selectedClass)?.name || "";
-      const sectionName = sections.find((s) => s.id === selectedSection)?.name || "";
-      const query = sectionName ? `${className} ${sectionName}` : className;
-      const res = await axios.get(`${API}/fees/collection/search`, {
-        params: { q: query },
+      const res = await axios.get(`${API}/students`, {
+        params: { 
+          classId: selectedClass, 
+          ...(selectedSection && { sectionId: selectedSection }),
+          limit: 100 
+        },
       });
-      if (res.data.type === "multiple" && res.data.results?.length > 0) {
-        setSearchResults(res.data.results);
-      } else if (res.data.type === "single" && res.data.data) {
-        setStudent(res.data.data.student);
-        setFees(res.data.data.fees || []);
-        setSummary(res.data.data.summary || null);
+      const students = res.data?.data?.students || res.data?.data || [];
+      if (students.length > 0) {
+        setSearchResults(students.map((s: any) => ({
+          enrollmentId: s.enrollments?.[0]?.id || s.id,
+          name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+          admissionNo: s.admissionNo || "",
+          fatherName: s.fatherName || "",
+          className: s.enrollments?.[0]?.class?.name || "",
+          sectionName: s.enrollments?.[0]?.section?.name || "",
+        })));
       } else {
         toast.error("No students found for selected class");
       }
@@ -424,6 +439,7 @@ const FeeCollectionPage: React.FC = () => {
             className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
           <button
+            id="fee-search-btn"
             onClick={handleSearch}
             disabled={loading}
             className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"

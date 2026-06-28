@@ -3,9 +3,9 @@ import prisma from "../../../config/prisma";
 interface NoticeTemplate {
   id: string;
   name: string;
-  subject: string;
+  subject: string | null;
   body: string;
-  type: string;
+  type: string | null;
 }
 
 // ============================================

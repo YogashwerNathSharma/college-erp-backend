@@ -1,5 +1,6 @@
 
 
+import prisma from "../../utils/prisma";
 import {
   assignFeesToStudent,
   assignFeesToClass,
@@ -82,10 +83,21 @@ export const collectPaymentController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.userId;
-    const { studentFeeId, amount, method, reference, remarks, discountAmount, discountId } = req.body;
+    const { studentFeeId, amount, method, reference, remarks, discountAmount, discountId, paymentDate } = req.body;
 
     if (!studentFeeId || !method) {
       return res.status(400).json({ error: "studentFeeId and method are required" });
+    }
+
+    // ═══ VALIDATION: Fee collection only allowed on CURRENT DATE ═══
+    if (paymentDate) {
+      const inputDate = new Date(paymentDate);
+      const today = new Date();
+      inputDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      if (inputDate.getTime() !== today.getTime()) {
+        return res.status(400).json({ error: "Fee collection is only allowed on the current date. Back-dated or future-dated payments are not permitted." });
+      }
     }
 
     const parsedAmount = parseFloat(amount) || 0;
@@ -171,6 +183,65 @@ export const getDailyCollectionController = async (req: any, res: any) => {
     res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+// ════════════════════════════════════════════════════════════
+// GET /all-payments — All payments for modal listing
+// ════════════════════════════════════════════════════════════
+export const getAllPaymentsController = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
+
+    const payments = await prisma.payment.findMany({
+      where: { tenantId, isDeleted: false },
+      orderBy: { paymentDate: "desc" },
+      take: 100,
+      include: {
+        studentFee: {
+          include: {
+            enrollment: {
+              include: {
+                student: { select: { firstName: true, lastName: true, admissionNo: true, fatherName: true, rollNumber: true } },
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+              },
+            },
+            feeStructure: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const data = payments.map((p: any) => ({
+      id: p.id,
+      studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+      admissionNo: p.studentFee?.enrollment?.student?.admissionNo || "",
+      fatherName: p.studentFee?.enrollment?.student?.fatherName || "—",
+      rollNumber: p.studentFee?.enrollment?.student?.rollNumber || p.studentFee?.enrollment?.rollNumber || "—",
+      installmentNo: p.studentFee?.installmentNo || 1,
+      dueDate: p.studentFee?.dueDate || null,
+      balance: p.studentFee?.balanceAmount || 0,
+      netAmount: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
+      totalFee: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
+      totalPaidTillDate: p.studentFee?.paidAmount || 0,
+      feeHead: p.studentFee?.feeStructure?.name || "Fee",
+      session: "2025-26",
+      className: p.studentFee?.enrollment?.class?.name || "—",
+      section: p.studentFee?.enrollment?.section?.name || "",
+      amount: p.amount,
+      paidAmount: p.amount,
+      method: p.method,
+      receiptNo: p.receiptNo,
+      paymentDate: p.paymentDate,
+      date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN") : "—",
+    }));
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error("All payments error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 

@@ -10,6 +10,8 @@ import { API_BASE_URL } from "../config/api";
  *   "https://..."       → "https://..." (unchanged)
  *   null/undefined      → undefined
  */
+export function getFullUrl(path: string): string;
+export function getFullUrl(path: string | null | undefined): string | undefined;
 export function getFullUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
   if (path.startsWith("http")) return path;

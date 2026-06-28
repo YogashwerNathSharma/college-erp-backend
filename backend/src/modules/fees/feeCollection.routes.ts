@@ -9,6 +9,7 @@ import {
   applyDiscountController,
   getDefaultersController,
   getDailyCollectionController,
+  getAllPaymentsController,
 } from "./feeCollection.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 
@@ -27,6 +28,7 @@ router.post("/discount", applyDiscountController);
 router.get("/search", searchStudentFeesController);
 router.get("/defaulters", getDefaultersController);
 router.get("/daily-collection", getDailyCollectionController);
+router.get("/all-payments", getAllPaymentsController);
 
 // GET dynamic routes
 router.get("/student/:enrollmentId", getStudentFeesController);

@@ -1,8 +1,109 @@
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * FEE COLLECTION SERVICE — Complete Overhaul
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * Changes from original:
+ * 1. assignFeesToStudent: Respects FeeStructureItem.frequency (ONE_TIME vs PER_INSTALLMENT)
+ * 2. Transport fee auto-link from TransportAssignment
+ * 3. New helper: calculateMonthsCovered() — purely computational month engine
+ * 4. collectPayment: Returns month coverage info
+ * 5. getDailyCollection: Includes monthsCovered per payment for receipt printing
+ *
+ * CRITICAL Prisma rules followed:
+ * - Enrollment status is lowercase: status: "active"
+ * - No { not: null } in where clauses — filter nulls in JS
+ * - No both select and include on same level
+ * - Event model does NOT have isDeleted field
+ */
 
 import prisma from "../../utils/prisma";
 
-// Generate auto-increment receipt number per tenant: RCP/YYYY/XXXXX
+// ═══════════════════════════════════════════════════════════════════════
+// TYPES & INTERFACES
+// ═══════════════════════════════════════════════════════════════════════
+
+interface MonthCoverage {
+  paidFromMonth: string | null; // e.g., "April 2026"
+  paidToMonth: string | null; // e.g., "June 2026"
+  partialMonth: string | null; // partially paid current month
+  pendingFromMonth: string | null; // next unpaid month
+  totalMonthsPaid: number;
+  monthlyRate: number; // recurring fee per month equivalent
+  totalRecurringPerInstallment: number;
+  totalOneTimeCharges: number;
+}
+
+interface MonthsCoveredShort {
+  from: string | null;
+  to: string | null;
+  total: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPER: Month name formatter
+// ═══════════════════════════════════════════════════════════════════════
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * Converts a Date to "Month YYYY" string
+ */
+const formatMonthYear = (date: Date): string => {
+  return `${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+/**
+ * Gets the month offset from academic year start date
+ * e.g., if academic year starts April 2026, installment #1 = April 2026, #2 = May 2026, etc.
+ */
+const getMonthForInstallment = (
+  academicYearStart: Date,
+  installmentNo: number,
+  installmentType: string,
+  totalInstallments: number
+): string => {
+  const startDate = new Date(academicYearStart);
+
+  // Calculate how many months each installment covers
+  let monthsPerInstallment = 1;
+  switch (installmentType) {
+    case "MONTHLY":
+      monthsPerInstallment = 1;
+      break;
+    case "QUARTERLY":
+      monthsPerInstallment = 3;
+      break;
+    case "HALF_YEARLY":
+      monthsPerInstallment = 6;
+      break;
+    case "YEARLY":
+      monthsPerInstallment = 12;
+      break;
+    default:
+      // For CUSTOM or ONE_TIME, estimate from totalInstallments
+      monthsPerInstallment = Math.max(1, Math.floor(12 / totalInstallments));
+  }
+
+  // installment #1 covers the first month(s), so offset = (installmentNo - 1) * monthsPerInstallment
+  const monthOffset = (installmentNo - 1) * monthsPerInstallment;
+  const targetDate = new Date(startDate);
+  targetDate.setMonth(targetDate.getMonth() + monthOffset);
+
+  return formatMonthYear(targetDate);
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// RECEIPT NUMBER GENERATOR
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Generate auto-increment receipt number per tenant: RCP/YYYY/XXXXX
+ */
 export const generateReceiptNo = async (tenantId: string): Promise<string> => {
   const year = new Date().getFullYear();
   const prefix = `RCP/${year}/`;
@@ -25,11 +126,25 @@ export const generateReceiptNo = async (tenantId: string): Promise<string> => {
   return `${prefix}${String(nextNum).padStart(5, "0")}`;
 };
 
-// Assign fees to a single student based on their class's FeeStructure
+// ═══════════════════════════════════════════════════════════════════════
+// ASSIGN FEES TO STUDENT — Fixed with frequency awareness + transport
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Assigns fees to a single student based on their class's FeeStructure.
+ *
+ * KEY LOGIC:
+ * - FeeStructureItem with frequency="PER_INSTALLMENT" (tuition, transport) → added to EVERY installment
+ * - FeeStructureItem with frequency="ONE_TIME" (exam fee, admission, ID card, belt/tie) → added ONLY to installment #1
+ *
+ * After creating base installments, checks for TransportAssignment and adds
+ * transport fee to each recurring installment.
+ */
 export const assignFeesToStudent = async (
   enrollmentId: string,
   tenantId: string
 ) => {
+  // 1. Validate enrollment exists
   const enrollment = await prisma.enrollment.findFirst({
     where: { id: enrollmentId, tenantId, isDeleted: false },
     include: { academicYear: true },
@@ -37,12 +152,14 @@ export const assignFeesToStudent = async (
 
   if (!enrollment) throw new Error("Enrollment not found");
 
+  // 2. Check if fees already assigned (prevent duplicates)
   const existingFees = await prisma.studentFee.findFirst({
     where: { enrollmentId, tenantId, isDeleted: false },
   });
 
   if (existingFees) throw new Error("Fees already assigned for this enrollment");
 
+  // 3. Get fee structures for this class + academic year (with items + feeHead details)
   const feeStructures = await prisma.feeStructure.findMany({
     where: {
       tenantId,
@@ -50,35 +167,84 @@ export const assignFeesToStudent = async (
       academicYearId: enrollment.academicYearId,
       isDeleted: false,
     },
+    include: {
+      items: {
+        include: {
+          feeHead: true,
+        },
+      },
+    },
   });
 
   if (feeStructures.length === 0) {
     throw new Error("No fee structure found for this class");
   }
 
+  // 4. Check for transport assignment for this student
+  //    TransportAssignment.studentId is a plain String (not ObjectId relation)
+  //    It stores the student's ID as string
+  const transportAssignment = await prisma.transportAssignment.findFirst({
+    where: {
+      studentId: enrollment.studentId,
+      tenantId,
+      status: "ACTIVE",
+      isDeleted: false,
+    },
+  });
+
+  const transportMonthlyFee = transportAssignment?.monthlyFee || 0;
+
   const academicYearStart = new Date(enrollment.academicYear.startDate);
   const studentFees: any[] = [];
 
+  // 5. Process each fee structure
   for (const structure of feeStructures) {
     const totalInstallments = structure.totalInstallments || 1;
-    const amountPerInstallment = structure.totalAmount / totalInstallments;
     const dueDay = structure.dueDay || 10;
 
+    // Separate items by frequency
+    const recurringItems = structure.items.filter(
+      (item) => item.frequency === "PER_INSTALLMENT"
+    );
+    const oneTimeItems = structure.items.filter(
+      (item) => item.frequency === "ONE_TIME"
+    );
+
+    // Calculate amounts
+    const recurringTotal = recurringItems.reduce((sum, item) => sum + item.amount, 0);
+    const oneTimeTotal = oneTimeItems.reduce((sum, item) => sum + item.amount, 0);
+
+    // 6. Create installments
     for (let i = 1; i <= totalInstallments; i++) {
+      // Calculate due date for this installment
       const dueDate = new Date(academicYearStart);
       dueDate.setMonth(dueDate.getMonth() + (i - 1));
       dueDate.setDate(dueDay);
+
+      // Base amount = recurring items (every installment)
+      let installmentAmount = recurringTotal;
+
+      // ONE_TIME items only go into installment #1
+      if (i === 1) {
+        installmentAmount += oneTimeTotal;
+      }
+
+      // Add transport fee to EVERY recurring installment (not one-time only)
+      // Transport is inherently a monthly/per-installment charge
+      if (transportMonthlyFee > 0) {
+        installmentAmount += transportMonthlyFee;
+      }
 
       studentFees.push({
         tenantId,
         enrollmentId,
         feeStructureId: structure.id,
-        totalAmount: amountPerInstallment,
+        totalAmount: installmentAmount,
         discountAmount: 0,
         fineAmount: 0,
-        netAmount: amountPerInstallment,
+        netAmount: installmentAmount,
         paidAmount: 0,
-        balanceAmount: amountPerInstallment,
+        balanceAmount: installmentAmount,
         installmentNo: i,
         dueDate,
         status: "PENDING",
@@ -86,15 +252,37 @@ export const assignFeesToStudent = async (
     }
   }
 
+  // 7. Bulk create all installments
   const created = await prisma.studentFee.createMany({ data: studentFees });
 
   return {
     message: `${created.count} fee installments assigned successfully`,
     count: created.count,
+    breakdown: {
+      transportFeeIncluded: transportMonthlyFee > 0,
+      transportMonthlyFee,
+      structures: feeStructures.map((s) => ({
+        name: s.name,
+        totalInstallments: s.totalInstallments,
+        recurringItems: s.items
+          .filter((i) => i.frequency === "PER_INSTALLMENT")
+          .map((i) => ({ name: i.feeHead.name, amount: i.amount })),
+        oneTimeItems: s.items
+          .filter((i) => i.frequency === "ONE_TIME")
+          .map((i) => ({ name: i.feeHead.name, amount: i.amount })),
+      })),
+    },
   };
 };
 
-// Bulk assign fees to ALL students in a class
+// ═══════════════════════════════════════════════════════════════════════
+// BULK ASSIGN FEES TO CLASS
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Bulk assign fees to ALL active students in a class.
+ * Iterates enrollments and calls assignFeesToStudent for each.
+ */
 export const assignFeesToClass = async (
   classId: string,
   academicYearId: string,
@@ -105,7 +293,7 @@ export const assignFeesToClass = async (
       classId,
       academicYearId,
       tenantId,
-      status: "active",
+      status: "active", // lowercase per Prisma rules
       isDeleted: false,
     },
     select: { id: true },
@@ -141,7 +329,264 @@ export const assignFeesToClass = async (
   };
 };
 
-// Get all fees for a student with payments included
+// ═══════════════════════════════════════════════════════════════════════
+// MONTH CALCULATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Calculates months covered by fee payments for a given enrollment.
+ *
+ * Logic:
+ * - Gets all StudentFees for this enrollment, ordered by installmentNo
+ * - Identifies recurring fee items (PER_INSTALLMENT) to determine monthly rate
+ * - Based on payment status of each installment, calculates:
+ *   - paidFromMonth: first month covered (typically academic year start)
+ *   - paidToMonth: last month fully paid
+ *   - partialMonth: if current installment is partially paid
+ *   - pendingFromMonth: next month needing payment
+ *   - totalMonthsPaid: total count of fully paid months
+ *
+ * Edge cases handled:
+ * - Partial payments (PARTIAL status)
+ * - Zero balance / fully paid
+ * - No fees assigned
+ * - Overpayment (capped to available installments)
+ */
+export const calculateMonthsCovered = async (
+  enrollmentId: string,
+  tenantId: string
+): Promise<MonthCoverage> => {
+  // Get all StudentFees for this enrollment with their fee structure details
+  const studentFees = await prisma.studentFee.findMany({
+    where: { enrollmentId, tenantId, isDeleted: false },
+    include: {
+      feeStructure: {
+        include: {
+          items: {
+            include: { feeHead: true },
+          },
+          academicYear: true,
+        },
+      },
+    },
+    orderBy: [{ feeStructureId: "asc" }, { installmentNo: "asc" }],
+  });
+
+  // Default return for no fees
+  if (studentFees.length === 0) {
+    return {
+      paidFromMonth: null,
+      paidToMonth: null,
+      partialMonth: null,
+      pendingFromMonth: null,
+      totalMonthsPaid: 0,
+      monthlyRate: 0,
+      totalRecurringPerInstallment: 0,
+      totalOneTimeCharges: 0,
+    };
+  }
+
+  // Get the first fee structure to determine academic year start and installment type
+  const firstFee = studentFees[0];
+  const academicYearStart = new Date(firstFee.feeStructure.academicYear.startDate);
+  const installmentType = firstFee.feeStructure.installmentType;
+  const totalInstallments = firstFee.feeStructure.totalInstallments || 1;
+
+  // Calculate recurring and one-time amounts from the structure items
+  const recurringItems = firstFee.feeStructure.items.filter(
+    (item) => item.frequency === "PER_INSTALLMENT"
+  );
+  const oneTimeItems = firstFee.feeStructure.items.filter(
+    (item) => item.frequency === "ONE_TIME"
+  );
+
+  const totalRecurringPerInstallment = recurringItems.reduce(
+    (sum, item) => sum + item.amount, 0
+  );
+  const totalOneTimeCharges = oneTimeItems.reduce(
+    (sum, item) => sum + item.amount, 0
+  );
+
+  // Check if transport fee was included (compare installment #2 vs structure recurring total)
+  // Transport fee = actual installment amount (for inst #2+) - recurring items total
+  // For installment #1: amount = recurring + one-time + transport
+  // For installment #2+: amount = recurring + transport
+  let transportFeePerInstallment = 0;
+  if (studentFees.length >= 2) {
+    // Installment #2 should be: recurringTotal + transportFee
+    const inst2 = studentFees.find((f) => f.installmentNo === 2);
+    if (inst2) {
+      transportFeePerInstallment = inst2.totalAmount - totalRecurringPerInstallment;
+      if (transportFeePerInstallment < 0) transportFeePerInstallment = 0;
+    }
+  } else if (studentFees.length === 1) {
+    // Only 1 installment: can't separate transport from one-time easily
+    // Use installment amount - recurring - oneTime
+    const singleFee = studentFees[0];
+    transportFeePerInstallment =
+      singleFee.totalAmount - totalRecurringPerInstallment - totalOneTimeCharges;
+    if (transportFeePerInstallment < 0) transportFeePerInstallment = 0;
+  }
+
+  // Monthly rate = (recurring items + transport) per installment
+  // This represents what is charged each installment for "monthly" services
+  const monthlyRate = totalRecurringPerInstallment + transportFeePerInstallment;
+
+  // Calculate months per installment based on installment type
+  let monthsPerInstallment = 1;
+  switch (installmentType) {
+    case "MONTHLY":
+      monthsPerInstallment = 1;
+      break;
+    case "QUARTERLY":
+      monthsPerInstallment = 3;
+      break;
+    case "HALF_YEARLY":
+      monthsPerInstallment = 6;
+      break;
+    case "YEARLY":
+      monthsPerInstallment = 12;
+      break;
+    default:
+      monthsPerInstallment = Math.max(1, Math.floor(12 / totalInstallments));
+  }
+
+  // Group fees by installment number (in case multiple structures — unlikely but safe)
+  // We track paid/partial status per installment
+  const installmentMap = new Map<number, { totalPaid: number; totalNet: number; status: string }>();
+
+  for (const fee of studentFees) {
+    const existing = installmentMap.get(fee.installmentNo);
+    if (existing) {
+      existing.totalPaid += fee.paidAmount;
+      existing.totalNet += fee.netAmount;
+      // Composite status: if any is PENDING, it's not fully paid
+      if (fee.status === "PENDING" || fee.status === "OVERDUE") {
+        existing.status = existing.status === "PAID" ? "PARTIAL" : existing.status;
+      }
+    } else {
+      installmentMap.set(fee.installmentNo, {
+        totalPaid: fee.paidAmount,
+        totalNet: fee.netAmount,
+        status: fee.status,
+      });
+    }
+  }
+
+  // Sort installments by number
+  const sortedInstallments = Array.from(installmentMap.entries()).sort(
+    ([a], [b]) => a - b
+  );
+
+  // Calculate month coverage
+  let totalMonthsPaid = 0;
+  let lastFullyPaidInstallment = 0;
+  let firstPartialInstallment: number | null = null;
+
+  for (const [instNo, data] of sortedInstallments) {
+    if (data.status === "PAID") {
+      totalMonthsPaid += monthsPerInstallment;
+      lastFullyPaidInstallment = instNo;
+    } else if (data.status === "PARTIAL") {
+      // Partial: calculate fraction of months covered
+      if (data.totalNet > 0) {
+        // For installment #1 which includes one-time charges:
+        // Consider it partially paid towards recurring portion
+        const recurringPortion =
+          instNo === 1 ? monthlyRate : data.totalNet;
+
+        if (instNo === 1 && data.totalPaid >= totalOneTimeCharges) {
+          // One-time charges are covered, check how much of recurring is paid
+          const paidTowardsRecurring = data.totalPaid - totalOneTimeCharges;
+          if (recurringPortion > 0 && paidTowardsRecurring >= recurringPortion) {
+            totalMonthsPaid += monthsPerInstallment;
+            lastFullyPaidInstallment = instNo;
+          } else {
+            firstPartialInstallment = instNo;
+          }
+        } else if (instNo > 1) {
+          // For later installments, partial means not fully covering the month
+          firstPartialInstallment = instNo;
+        } else {
+          firstPartialInstallment = instNo;
+        }
+      }
+      break; // Stop at first partial — subsequent are pending
+    } else {
+      // PENDING or OVERDUE — stop here
+      break;
+    }
+  }
+
+  // Determine month labels
+  let paidFromMonth: string | null = null;
+  let paidToMonth: string | null = null;
+  let partialMonth: string | null = null;
+  let pendingFromMonth: string | null = null;
+
+  if (totalMonthsPaid > 0) {
+    paidFromMonth = formatMonthYear(academicYearStart);
+
+    const lastPaidDate = new Date(academicYearStart);
+    lastPaidDate.setMonth(
+      lastPaidDate.getMonth() + (totalMonthsPaid - 1)
+    );
+    paidToMonth = formatMonthYear(lastPaidDate);
+  }
+
+  if (firstPartialInstallment !== null) {
+    const partialDate = new Date(academicYearStart);
+    partialDate.setMonth(
+      partialDate.getMonth() + ((firstPartialInstallment - 1) * monthsPerInstallment) + totalMonthsPaid
+    );
+    // Adjust: if totalMonthsPaid already accounts for previous installments
+    const partialMonthOffset = totalMonthsPaid; // months already fully paid
+    const pDate = new Date(academicYearStart);
+    pDate.setMonth(pDate.getMonth() + partialMonthOffset);
+    partialMonth = formatMonthYear(pDate);
+  }
+
+  // Pending from month = next month after fully paid (or first month if nothing paid)
+  const pendingOffset = totalMonthsPaid + (firstPartialInstallment !== null ? 1 : 0);
+  if (pendingOffset < totalInstallments * monthsPerInstallment) {
+    const pendingDate = new Date(academicYearStart);
+    pendingDate.setMonth(pendingDate.getMonth() + pendingOffset);
+    pendingFromMonth = formatMonthYear(pendingDate);
+  }
+
+  // If nothing paid at all
+  if (totalMonthsPaid === 0 && firstPartialInstallment === null) {
+    pendingFromMonth = formatMonthYear(academicYearStart);
+  }
+
+  return {
+    paidFromMonth,
+    paidToMonth,
+    partialMonth,
+    pendingFromMonth,
+    totalMonthsPaid,
+    monthlyRate,
+    totalRecurringPerInstallment,
+    totalOneTimeCharges,
+  };
+};
+
+/**
+ * Compact version of month coverage for payment responses
+ */
+const getMonthsCoveredShort = (coverage: MonthCoverage): MonthsCoveredShort => ({
+  from: coverage.paidFromMonth,
+  to: coverage.paidToMonth,
+  total: coverage.totalMonthsPaid,
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// GET STUDENT FEES — With detailed breakdown
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Get all fees for a student with payments, discounts, and month coverage included.
+ */
 export const getStudentFees = async (enrollmentId: string, tenantId: string) => {
   const enrollment = await prisma.enrollment.findFirst({
     where: { id: enrollmentId, tenantId, isDeleted: false },
@@ -179,6 +624,9 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
     orderBy: [{ feeStructureId: "asc" }, { installmentNo: "asc" }],
   });
 
+  // Calculate month coverage
+  const monthCoverage = await calculateMonthsCovered(enrollmentId, tenantId);
+
   return {
     student: {
       name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
@@ -199,10 +647,14 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
       totalPaid: fees.reduce((sum, f) => sum + f.paidAmount, 0),
       totalBalance: fees.reduce((sum, f) => sum + f.balanceAmount, 0),
     },
+    monthCoverage,
   };
 };
 
-// Find student by admission number
+// ═══════════════════════════════════════════════════════════════════════
+// FIND STUDENT BY ADMISSION NUMBER
+// ═══════════════════════════════════════════════════════════════════════
+
 export const getStudentFeesByAdmissionNo = async (
   admissionNo: string,
   tenantId: string
@@ -218,7 +670,7 @@ export const getStudentFeesByAdmissionNo = async (
     where: {
       studentId: student.id,
       tenantId,
-      status: "active",
+      status: "active", // lowercase per Prisma rules
       isDeleted: false,
     },
     orderBy: { createdAt: "desc" },
@@ -229,8 +681,15 @@ export const getStudentFeesByAdmissionNo = async (
   return getStudentFees(enrollment.id, tenantId);
 };
 
-// Universal search — by name, admission number, class, or section
+// ═══════════════════════════════════════════════════════════════════════
+// UNIVERSAL SEARCH
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Search students by name, admission number, class, or section
+ */
 export const searchStudents = async (query: string, tenantId: string) => {
+  // Try exact admission number match first
   const exactStudent = await prisma.student.findFirst({
     where: { admissionNo: { equals: query, mode: "insensitive" }, tenantId, isDeleted: false },
     select: { id: true },
@@ -245,9 +704,11 @@ export const searchStudents = async (query: string, tenantId: string) => {
     if (enrollment) return { type: "single", data: await getStudentFees(enrollment.id, tenantId) };
   }
 
+  // Fuzzy search across multiple fields
   const enrollments = await prisma.enrollment.findMany({
     where: {
-      tenantId, isDeleted: false,
+      tenantId,
+      isDeleted: false,
       OR: [
         { student: { firstName: { contains: query, mode: "insensitive" } } },
         { student: { lastName: { contains: query, mode: "insensitive" } } },
@@ -283,9 +744,24 @@ export const searchStudents = async (query: string, tenantId: string) => {
   };
 };
 
-// ═══════════════════════════════════════════════════════════════
-// COLLECT PAYMENT — With Discount Support + feeItems in response
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+// COLLECT PAYMENT — Enhanced with month coverage
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Collect payment for a student fee installment.
+ *
+ * After recording payment:
+ * - Updates StudentFee amounts and status
+ * - Calculates month coverage for the student
+ * - Returns month coverage info alongside receipt data
+ *
+ * Supports:
+ * - Full payment
+ * - Partial payment
+ * - Payment with discount (discountAmount + discountId)
+ * - 100% discount (amount=0, discountAmount > 0)
+ */
 export const collectPayment = async (data: {
   studentFeeId: string;
   amount: number;
@@ -309,7 +785,7 @@ export const collectPayment = async (data: {
     discountId,
   } = data;
 
-  // Get the student fee with structure items
+  // Get the student fee with structure items and enrollment info
   const studentFee = await prisma.studentFee.findFirst({
     where: { id: studentFeeId, tenantId, isDeleted: false },
     include: {
@@ -350,7 +826,7 @@ export const collectPayment = async (data: {
 
   // Transaction: create payment + apply discount + update student fee
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Create payment record (even if amount is 0 for 100% discount — it's a valid receipt)
+    // 1. Create payment record
     const payment = await tx.payment.create({
       data: {
         tenantId,
@@ -367,7 +843,6 @@ export const collectPayment = async (data: {
 
     // 2. Apply discount if discountId provided
     if (discountId && discountAmount > 0) {
-      // Check if already applied
       const existingDiscount = await tx.studentFeeDiscount.findFirst({
         where: { studentFeeId, feeDiscountId: discountId },
       });
@@ -410,15 +885,30 @@ export const collectPayment = async (data: {
     };
   });
 
+  // 4. Calculate month coverage AFTER payment is recorded
+  const monthCoverage = await calculateMonthsCovered(
+    studentFee.enrollmentId,
+    tenantId
+  );
+
   // Build feeItems array from structure items (for receipt)
-  const feeItems = studentFee.feeStructure.items?.map((item: any) => ({
-    name: item.feeHead?.name || "Fee",
-    code: item.feeHead?.code || "",
-    amount: item.amount || 0,
-  })) || [];
+  const feeItems =
+    studentFee.feeStructure.items?.map((item: any) => ({
+      name: item.feeHead?.name || "Fee",
+      code: item.feeHead?.code || "",
+      amount: item.amount || 0,
+      frequency: item.frequency || "PER_INSTALLMENT",
+    })) || [];
 
   // Build feeHead string (comma-separated names)
   const feeHeadStr = feeItems.map((i: any) => i.name).join(", ") || studentFee.feeStructure.name;
+
+  // Calculate remaining balance across ALL installments for this enrollment
+  const allFees = await prisma.studentFee.findMany({
+    where: { enrollmentId: studentFee.enrollmentId, tenantId, isDeleted: false },
+    select: { balanceAmount: true },
+  });
+  const totalRemainingBalance = allFees.reduce((sum, f) => sum + f.balanceAmount, 0);
 
   return {
     receiptNo,
@@ -448,10 +938,18 @@ export const collectPayment = async (data: {
       balanceAmount: result.newBalanceAmount,
       status: result.newStatus,
     },
+    // NEW: Month coverage info for receipt
+    monthsCovered: getMonthsCoveredShort(monthCoverage),
+    remainingBalance: totalRemainingBalance,
+    nextDueMonth: monthCoverage.pendingFromMonth,
+    monthCoverageDetails: monthCoverage,
   };
 };
 
-// Apply a discount to a student fee (standalone — without payment)
+// ═══════════════════════════════════════════════════════════════════════
+// APPLY DISCOUNT (standalone — without payment)
+// ═══════════════════════════════════════════════════════════════════════
+
 export const applyDiscount = async (
   studentFeeId: string,
   feeDiscountId: string,
@@ -475,19 +973,19 @@ export const applyDiscount = async (
 
   if (existing) throw new Error("This discount is already applied to this fee");
 
-  // Calculate discount amount
-  let discountAmount: number;
+  // Calculate discount amount based on type (percentage vs fixed)
+  let calcDiscountAmount: number;
   if (feeDiscount.type === "PERCENTAGE") {
-    discountAmount = (studentFee.totalAmount * feeDiscount.value) / 100;
+    calcDiscountAmount = (studentFee.totalAmount * feeDiscount.value) / 100;
   } else {
-    discountAmount = feeDiscount.value;
+    calcDiscountAmount = feeDiscount.value;
   }
 
   await prisma.studentFeeDiscount.create({
-    data: { studentFeeId, feeDiscountId, amount: discountAmount },
+    data: { studentFeeId, feeDiscountId, amount: calcDiscountAmount },
   });
 
-  const newDiscountAmount = studentFee.discountAmount + discountAmount;
+  const newDiscountAmount = studentFee.discountAmount + calcDiscountAmount;
   const newNetAmount = studentFee.totalAmount - newDiscountAmount + studentFee.fineAmount;
   const newBalanceAmount = newNetAmount - studentFee.paidAmount;
   const newStatus =
@@ -503,10 +1001,16 @@ export const applyDiscount = async (
     },
   });
 
-  return { message: "Discount applied successfully", discountAmount, updatedFee: updated };
+  return { message: "Discount applied successfully", discountAmount: calcDiscountAmount, updatedFee: updated };
 };
 
-// Get students with PENDING/OVERDUE fees
+// ═══════════════════════════════════════════════════════════════════════
+// GET DEFAULTERS
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Get students with PENDING/OVERDUE fees, grouped by student
+ */
 export const getDefaulters = async (
   tenantId: string,
   filters?: { classId?: string; fromDate?: string; toDate?: string }
@@ -587,7 +1091,17 @@ export const getDefaulters = async (
   };
 };
 
-// Get daily collection report
+// ═══════════════════════════════════════════════════════════════════════
+// GET DAILY COLLECTION — Enhanced with monthsCovered per payment
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Get daily collection report.
+ * Each payment includes monthsCovered info for receipt printing.
+ *
+ * NOTE: monthsCovered is calculated per-enrollment (student-level),
+ * so it shows the cumulative month status at the time of this report.
+ */
 export const getDailyCollection = async (tenantId: string, date: string) => {
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
@@ -619,6 +1133,22 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
     orderBy: { paymentDate: "desc" },
   });
 
+  // Calculate month coverage for each unique enrollment (cache to avoid repeated queries)
+  const enrollmentCoverageCache = new Map<string, MonthsCoveredShort>();
+
+  for (const p of payments) {
+    const eid = p.studentFee.enrollmentId;
+    if (!enrollmentCoverageCache.has(eid)) {
+      try {
+        const coverage = await calculateMonthsCovered(eid, tenantId);
+        enrollmentCoverageCache.set(eid, getMonthsCoveredShort(coverage));
+      } catch {
+        // If calculation fails, set null coverage
+        enrollmentCoverageCache.set(eid, { from: null, to: null, total: 0 });
+      }
+    }
+  }
+
   const byMethod: Record<string, { count: number; total: number }> = {};
   let grandTotal = 0;
 
@@ -647,15 +1177,25 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
       },
       feeStructure: p.studentFee.feeStructure.name,
       installmentNo: p.studentFee.installmentNo,
-      feeItems: p.studentFee.feeStructure.items?.map((item: any) => ({
-        name: item.feeHead?.name || "Fee",
-        amount: item.amount || 0,
-        code: item.feeHead?.code || "",
-      })) || [],
+      feeItems:
+        p.studentFee.feeStructure.items?.map((item: any) => ({
+          name: item.feeHead?.name || "Fee",
+          amount: item.amount || 0,
+          code: item.feeHead?.code || "",
+        })) || [],
+      // NEW: Month coverage for receipt printing
+      monthsCovered: enrollmentCoverageCache.get(p.studentFee.enrollmentId) || {
+        from: null,
+        to: null,
+        total: 0,
+      },
     })),
-    summary: Object.entries(byMethod).map(([method, data]) => ({ method, count: data.count, total: data.total })),
+    summary: Object.entries(byMethod).map(([method, data]) => ({
+      method,
+      count: data.count,
+      total: data.total,
+    })),
     grandTotal,
     totalReceipts: payments.length,
   };
 };
-

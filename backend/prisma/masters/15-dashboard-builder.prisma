@@ -1,0 +1,42 @@
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════════
+
+model DashboardLayout {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  userId     String   @db.ObjectId
+  name       String
+  isDefault  Boolean  @default(false)
+  widgets    Json     // Array of WidgetInstance objects
+  gridConfig Json?    // { cols: 12, rowHeight: 80, gap: 16 }
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId, userId])
+}
+
+model DashboardWidget {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  type       String   // STAT_CARD, BAR_CHART, LINE_CHART, DONUT_CHART, TABLE, CALENDAR, ACTIVITY, CLOCK
+  dataSource String   // Key identifying what data to fetch
+  config     Json     // Widget-specific configuration
+  isPublic   Boolean  @default(false)
+  createdBy  String   @db.ObjectId
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD TO TENANT MODEL:
+// ══════════════════════════════════════════════════════════════
+// dashboardLayouts    DashboardLayout[]
+// dashboardWidgets    DashboardWidget[]

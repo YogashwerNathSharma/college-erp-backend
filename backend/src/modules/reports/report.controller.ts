@@ -13,9 +13,11 @@ export const getStudentReportHandler = async (req: any, res: Response) => {
     });
 
     if (format === "excel" || format === "pdf") {
-      res.setHeader("Content-Type", result.contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
-      return res.send(result.buffer);
+      if ('buffer' in result) {
+        res.setHeader("Content-Type", result.contentType!);
+        res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+        return res.send(result.buffer);
+      }
     }
 
     res.json({ success: true, data: result });
@@ -36,9 +38,11 @@ export const getFeeReportHandler = async (req: any, res: Response) => {
     });
 
     if (format === "excel" || format === "pdf") {
-      res.setHeader("Content-Type", result.contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
-      return res.send(result.buffer);
+      if ('buffer' in result) {
+        res.setHeader("Content-Type", result.contentType!);
+        res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+        return res.send(result.buffer);
+      }
     }
 
     res.json({ success: true, data: result });
@@ -62,9 +66,11 @@ export const getAttendanceReportHandler = async (req: any, res: Response) => {
     });
 
     if (format === "excel" || format === "pdf") {
-      res.setHeader("Content-Type", result.contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
-      return res.send(result.buffer);
+      if ('buffer' in result) {
+        res.setHeader("Content-Type", result.contentType!);
+        res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+        return res.send(result.buffer);
+      }
     }
 
     res.json({ success: true, data: result });
@@ -85,9 +91,11 @@ export const getExamAnalyticsHandler = async (req: any, res: Response) => {
     });
 
     if (format === "excel" || format === "pdf") {
-      res.setHeader("Content-Type", result.contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
-      return res.send(result.buffer);
+      if ('buffer' in result) {
+        res.setHeader("Content-Type", result.contentType!);
+        res.setHeader("Content-Disposition", `attachment; filename="${result.filename}"`);
+        return res.send(result.buffer);
+      }
     }
 
     res.json({ success: true, data: result });

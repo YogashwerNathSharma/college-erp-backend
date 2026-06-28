@@ -1,5 +1,25 @@
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * STUDENT LEDGER SERVICE — Enhanced with Month Summary
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * Changes from original:
+ * - Added monthSummary field using calculateMonthsCovered helper
+ * - Provides a complete month-by-month picture alongside the ledger
+ *
+ * CRITICAL Prisma rules followed:
+ * - Enrollment status is lowercase: status: "active"
+ * - No { not: null } in where clauses
+ * - No both select and include on same level
+ */
+
 import prisma from "../../utils/prisma";
+import { calculateMonthsCovered } from "./feeCollection.service";
+
+// ═══════════════════════════════════════════════════════════════════════
+// GET STUDENT LEDGER — With month summary
+// ═══════════════════════════════════════════════════════════════════════
 
 export const getStudentLedger = async (enrollmentId: string, tenantId: string) => {
   // Get enrollment with student details
@@ -19,7 +39,7 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     throw new Error("Enrollment not found");
   }
 
-  // Get all student fees
+  // Get all student fees with payments, discounts, and structure details
   const fees = await prisma.studentFee.findMany({
     where: { enrollmentId, tenantId, isDeleted: false },
     include: {
@@ -39,13 +59,13 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     orderBy: [{ dueDate: "asc" }, { installmentNo: "asc" }],
   });
 
-  // Calculate summary
+  // Calculate financial summary
   const totalFee = fees.reduce((sum, f) => sum + f.netAmount, 0);
   const totalPaid = fees.reduce((sum, f) => sum + f.paidAmount, 0);
   const totalDiscount = fees.reduce((sum, f) => sum + f.discountAmount, 0);
   const balance = totalFee - totalPaid;
 
-  // Build ledger entries
+  // Build ledger entries (debit/credit format)
   const entries: {
     date: string;
     particulars: string;
@@ -60,7 +80,8 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
   // Add fee assignments as debit entries
   for (const fee of fees) {
     const feeHeadNames = fee.feeStructure.items.map((i) => i.feeHead.name).join(", ");
-    const particulars = `${fee.feeStructure.name} - Inst. #${fee.installmentNo}` +
+    const particulars =
+      `${fee.feeStructure.name} - Inst. #${fee.installmentNo}` +
       (feeHeadNames ? ` (${feeHeadNames})` : "");
 
     runningBalance += fee.netAmount;
@@ -76,7 +97,8 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
 
     // Add discount entries if any
     if (fee.discountAmount > 0) {
-      const discountNames = fee.discounts.map((d) => d.feeDiscount.name).join(", ") || "Discount";
+      const discountNames =
+        fee.discounts.map((d) => d.feeDiscount.name).join(", ") || "Discount";
       runningBalance -= fee.discountAmount;
       entries.push({
         date: new Date(fee.updatedAt).toISOString(),
@@ -127,6 +149,21 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     entry.balance = recalcBalance;
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // NEW: Calculate month coverage summary
+  // ═══════════════════════════════════════════════════════════════════
+  const monthCoverage = await calculateMonthsCovered(enrollmentId, tenantId);
+
+  // Build a per-installment month status summary
+  const installmentMonthStatus = fees.map((fee) => ({
+    installmentNo: fee.installmentNo,
+    dueDate: fee.dueDate,
+    netAmount: fee.netAmount,
+    paidAmount: fee.paidAmount,
+    balanceAmount: fee.balanceAmount,
+    status: fee.status,
+  }));
+
   return {
     student: {
       name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
@@ -144,11 +181,49 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
       totalDiscount: Math.round(totalDiscount),
       balance: Math.round(balance),
     },
+    // NEW: Month-level summary for the student
+    monthSummary: {
+      paidFromMonth: monthCoverage.paidFromMonth,
+      paidToMonth: monthCoverage.paidToMonth,
+      partialMonth: monthCoverage.partialMonth,
+      pendingFromMonth: monthCoverage.pendingFromMonth,
+      totalMonthsPaid: monthCoverage.totalMonthsPaid,
+      monthlyRate: monthCoverage.monthlyRate,
+      totalRecurringPerInstallment: monthCoverage.totalRecurringPerInstallment,
+      totalOneTimeCharges: monthCoverage.totalOneTimeCharges,
+      // Readable status line for display
+      statusLine: monthCoverage.totalMonthsPaid > 0
+        ? `Paid: ${monthCoverage.paidFromMonth} to ${monthCoverage.paidToMonth} (${monthCoverage.totalMonthsPaid} month${monthCoverage.totalMonthsPaid > 1 ? "s" : ""})` +
+          (monthCoverage.partialMonth ? ` | Partial: ${monthCoverage.partialMonth}` : "") +
+          (monthCoverage.pendingFromMonth ? ` | Pending from: ${monthCoverage.pendingFromMonth}` : "")
+        : monthCoverage.partialMonth
+          ? `Partial payment for ${monthCoverage.partialMonth} | Pending from: ${monthCoverage.pendingFromMonth}`
+          : `No months paid yet | Pending from: ${monthCoverage.pendingFromMonth || "N/A"}`,
+    },
+    // Per-installment quick status
+    installmentStatus: installmentMonthStatus,
     entries,
+    // Raw payments for receipt printing
+    payments: fees.flatMap((fee) => 
+      fee.payments.map((p) => ({
+        id: p.id,
+        receiptNo: p.receiptNo,
+        amount: p.amount,
+        method: p.method,
+        reference: p.reference,
+        paymentDate: p.paymentDate,
+        installmentNo: fee.installmentNo,
+        feeStructureName: fee.feeStructure.name,
+        feeItems: fee.feeStructure.items.map((item) => ({ name: item.feeHead.name, amount: item.amount })),
+      }))
+    ),
   };
 };
 
-// Search student for ledger
+// ═══════════════════════════════════════════════════════════════════════
+// SEARCH STUDENT FOR LEDGER
+// ═══════════════════════════════════════════════════════════════════════
+
 export const searchStudentForLedger = async (query: string, tenantId: string) => {
   const enrollments = await prisma.enrollment.findMany({
     where: {
@@ -179,4 +254,3 @@ export const searchStudentForLedger = async (query: string, tenantId: string) =>
     sectionName: e.section?.name || "",
   }));
 };
-

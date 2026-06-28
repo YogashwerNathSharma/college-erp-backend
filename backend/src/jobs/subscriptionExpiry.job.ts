@@ -21,35 +21,35 @@ export const runSubscriptionExpiryJob = async () => {
     oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
 
     // Get subscriptions expiring in 7 days
-    const expiringIn7Days = await prisma.subscription.findMany({
+    const expiringIn7Days = await prisma.tenantSubscription.findMany({
       where: {
         status: "ACTIVE",
         endDate: { gte: now, lte: sevenDaysFromNow },
       },
       include: {
-        tenant: { select: { id: true, name: true, email: true } },
+        tenant: { select: { id: true, name: true } },
       },
     });
 
     // Get subscriptions expiring in 3 days
-    const expiringIn3Days = await prisma.subscription.findMany({
+    const expiringIn3Days = await prisma.tenantSubscription.findMany({
       where: {
         status: "ACTIVE",
         endDate: { gte: now, lte: threeDaysFromNow },
       },
       include: {
-        tenant: { select: { id: true, name: true, email: true } },
+        tenant: { select: { id: true, name: true } },
       },
     });
 
     // Get already expired subscriptions
-    const expired = await prisma.subscription.findMany({
+    const expired = await prisma.tenantSubscription.findMany({
       where: {
         status: "ACTIVE",
         endDate: { lt: now },
       },
       include: {
-        tenant: { select: { id: true, name: true, email: true } },
+        tenant: { select: { id: true, name: true } },
       },
     });
 
@@ -57,32 +57,34 @@ export const runSubscriptionExpiryJob = async () => {
 
     // Send 7-day warnings
     for (const sub of expiringIn7Days) {
-      if (sub.tenant?.email) {
+      const tenantEmail = (sub.tenant as any)?.email;
+      if (tenantEmail) {
         try {
           await sendEmail({
-            to: sub.tenant.email,
+            to: tenantEmail,
             subject: "Subscription Expiring Soon - 7 Days Remaining",
             body: `Dear ${sub.tenant.name},\n\nYour subscription will expire on ${sub.endDate.toLocaleDateString("en-IN")}. Please renew to continue using all features.\n\nThank you.`,
           });
           alertsSent++;
         } catch (err) {
-          console.error(`[SubscriptionExpiryJob] Email failed for ${sub.tenant.email}`);
+          console.error(`[SubscriptionExpiryJob] Email failed for tenant ${sub.tenant.name}`);
         }
       }
     }
 
     // Send 3-day urgent warnings
     for (const sub of expiringIn3Days) {
-      if (sub.tenant?.email) {
+      const tenantEmail = (sub.tenant as any)?.email;
+      if (tenantEmail) {
         try {
           await sendEmail({
-            to: sub.tenant.email,
-            subject: "⚠️ URGENT: Subscription Expiring in 3 Days",
+            to: tenantEmail,
+            subject: "\u26a0\ufe0f URGENT: Subscription Expiring in 3 Days",
             body: `Dear ${sub.tenant.name},\n\nYour subscription expires on ${sub.endDate.toLocaleDateString("en-IN")}. Please renew immediately to avoid service interruption.\n\nThank you.`,
           });
           alertsSent++;
         } catch (err) {
-          console.error(`[SubscriptionExpiryJob] Email failed for ${sub.tenant.email}`);
+          console.error(`[SubscriptionExpiryJob] Email failed for tenant ${sub.tenant.name}`);
         }
       }
     }
@@ -90,7 +92,7 @@ export const runSubscriptionExpiryJob = async () => {
     // Deactivate expired subscriptions
     let deactivatedCount = 0;
     for (const sub of expired) {
-      await prisma.subscription.update({
+      await prisma.tenantSubscription.update({
         where: { id: sub.id },
         data: { status: "EXPIRED" },
       });
@@ -101,15 +103,16 @@ export const runSubscriptionExpiryJob = async () => {
         data: { subscriptionStatus: "EXPIRED" },
       });
 
-      if (sub.tenant?.email) {
+      const tenantEmail = (sub.tenant as any)?.email;
+      if (tenantEmail) {
         try {
           await sendEmail({
-            to: sub.tenant.email,
+            to: tenantEmail,
             subject: "Subscription Expired",
             body: `Dear ${sub.tenant.name},\n\nYour subscription has expired. Some features may be restricted. Please renew to restore full access.\n\nThank you.`,
           });
         } catch (err) {
-          console.error(`[SubscriptionExpiryJob] Expiry email failed for ${sub.tenant.email}`);
+          console.error(`[SubscriptionExpiryJob] Expiry email failed for tenant ${sub.tenant.name}`);
         }
       }
 

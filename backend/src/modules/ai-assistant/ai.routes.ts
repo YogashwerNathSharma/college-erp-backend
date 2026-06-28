@@ -1,26 +1,32 @@
 import { Router } from "express";
-import { processAiCommand, searchFeeReceipts, searchReportCard, searchAttendance, searchStudents } from "./ai.controller";
-import { generateContent } from "./ai-generate.controller";
-import { getAllPayments, getRealDefaulters } from "./dashboard-modal.controller";
+import {
+  analyzePerformance,
+  predictAttendance,
+  predictDefaulters,
+  chat,
+  getInsights,
+  dismissInsight,
+  getConversations,
+} from "./ai.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 
 const router = Router();
+
 router.use(authMiddleware);
+router.use(resolveTenant);
 
-// Main AI command processor
-router.post("/process-command", processAiCommand);
+// Analysis & Predictions
+router.post("/analyze/performance", analyzePerformance);
+router.post("/predict/attendance", predictAttendance);
+router.post("/predict/defaulters", predictDefaulters);
 
-// Specific search endpoints for AI
-router.post("/fees/receipts/search", searchFeeReceipts);
-router.post("/exams/report-card/search", searchReportCard);
-router.post("/attendance/search", searchAttendance);
-router.post("/students/search", searchStudents);
+// Chat
+router.post("/chat", chat);
+router.get("/conversations", getConversations);
 
-// AI Content Generation
-router.post("/generate", generateContent);
-
-// ━━━ DASHBOARD MODAL ENDPOINTS (Prisma direct) ━━━
-router.get("/dashboard/all-payments", getAllPayments);
-router.get("/dashboard/defaulters", getRealDefaulters);
+// Insights
+router.get("/insights", getInsights);
+router.put("/insights/:id/dismiss", dismissInsight);
 
 export default router;

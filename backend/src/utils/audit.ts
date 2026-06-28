@@ -5,12 +5,14 @@ export const createAuditLog = async ({
   entity,
   entityId,
   userId,
+  tenantId,
   data
 }: {
   action: string;
   entity: string;
   entityId: string;
   userId?: string;
+  tenantId?: string;
   data?: any;
 }) => {
   try {
@@ -20,6 +22,7 @@ export const createAuditLog = async ({
         entity,
         entityId,
         userId,
+        tenantId: tenantId || "system",
         data
       }
     });

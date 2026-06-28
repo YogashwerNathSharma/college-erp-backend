@@ -12,6 +12,7 @@ import feeCollectionRoutes from "./feeCollection.routes";
 
 // New controllers
 import { getFeeDashboardController } from "./feeDashboard.controller";
+import { getDueSummaryController } from "./feeDue.controller";
 import { getFeeReportsController } from "./feeReports.controller";
 import { getStudentLedgerController, searchStudentForLedgerController } from "./studentLedger.controller";
 import { getAssignStudentsController, assignFeesToStudentsController } from "./feeAssign.controller";
@@ -38,6 +39,9 @@ router.use("/collection", feeCollectionRoutes);
 
 // Fee Dashboard
 router.get("/dashboard", getFeeDashboardController);
+
+// Due Fees Summary
+router.get("/due-summary", getDueSummaryController);
 
 // Fee Reports
 router.get("/reports", getFeeReportsController);

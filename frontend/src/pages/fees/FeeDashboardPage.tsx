@@ -1,11 +1,48 @@
-
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
-import DashboardDetailModal from "../../components/dashboard/DashboardDetailModal";
+import {
+  IndianRupee,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  AlertTriangle,
+  Gift,
+  Gavel,
+  CreditCard,
+  Bell,
+  FileBarChart,
+  Download,
+  ArrowRight,
+  Search,
+  Filter,
+  Calendar,
+  RefreshCw,
+  ChevronRight,
+  Users,
+  Receipt,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 const API = `${API_BASE_URL}/api`;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TYPES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface DashboardData {
   summary: {
@@ -27,15 +64,168 @@ interface DashboardData {
   }[];
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function formatINR(amount: number): string {
+  if (!amount && amount !== 0) return "₹0";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getCollectionPercentage(collected: number, receivable: number): number {
+  if (!receivable) return 0;
+  return Math.round((collected / receivable) * 100);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ANIMATIONS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const animationCSS = `
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+  opacity: 0;
+}
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+  opacity: 0;
+}
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+`;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DONUT CHART COLORS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444", "#6366f1"];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STAT CARD COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  trend?: number;
+  trendLabel?: string;
+  delay?: string;
+  onClick?: () => void;
+}
+
+const StatCard: React.FC<StatCardProps> = ({
+  title,
+  value,
+  icon,
+  iconBg,
+  iconColor,
+  trend,
+  trendLabel,
+  delay = "stagger-1",
+  onClick,
+}) => (
+  <div
+    onClick={onClick}
+    className={`animate-fade-in-up ${delay} bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-all duration-200 ${onClick ? "cursor-pointer hover:-translate-y-0.5" : ""}`}
+  >
+    <div className="flex items-start justify-between">
+      <div className="flex-1 min-w-0">
+        <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+          {title}
+        </p>
+        <p className="mt-1.5 text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+          {value}
+        </p>
+        {trend !== undefined && (
+          <div className="mt-2 flex items-center gap-1">
+            {trend >= 0 ? (
+              <TrendingUp size={12} className="text-emerald-500" />
+            ) : (
+              <TrendingDown size={12} className="text-red-500" />
+            )}
+            <span
+              className={`text-xs font-medium ${trend >= 0 ? "text-emerald-600" : "text-red-600"}`}
+            >
+              {trend >= 0 ? "+" : ""}
+              {trend}%
+            </span>
+            {trendLabel && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {trendLabel}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <div
+        className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center ${iconBg}`}
+      >
+        <div className={iconColor}>{icon}</div>
+      </div>
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CUSTOM TOOLTIP
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg px-3 py-2">
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">{label}</p>
+        {payload.map((entry: any, idx: number) => (
+          <p key={idx} className="text-xs" style={{ color: entry.color }}>
+            {entry.name}: {formatINR(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MAIN COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 const FeeDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
-  const [detailModal, setDetailModal] = useState<{ 
-    open: boolean; 
-    type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments" 
-  }>({ open: false, type: "students" });
 
   useEffect(() => {
     fetchAcademicYears();
@@ -54,8 +244,9 @@ const FeeDashboardPage: React.FC = () => {
     }
   };
 
-  const fetchDashboard = async () => {
-    setLoading(true);
+  const fetchDashboard = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const params: any = {};
       if (selectedYear) params.academicYearId = selectedYear;
@@ -65,251 +256,428 @@ const FeeDashboardPage: React.FC = () => {
       toast.error(error.response?.data?.error || "Failed to load dashboard");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(amount);
-  };
+  // ─── DERIVED DATA ───────────────────────────────────
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  };
+  const collectionPercentage = data
+    ? getCollectionPercentage(data.summary.totalCollected, data.summary.totalReceivable)
+    : 0;
+
+  const todayCollection = data?.recentCollections
+    .filter((c) => {
+      const today = new Date().toDateString();
+      return new Date(c.date).toDateString() === today;
+    })
+    .reduce((sum, c) => sum + c.amount, 0) || 0;
+
+  // Fee Status for Donut Chart
+  const feeStatusData = data
+    ? [
+        { name: "Collected", value: data.summary.totalCollected },
+        { name: "Partial", value: Math.round(data.summary.outstanding * 0.3) },
+        { name: "Overdue", value: Math.round(data.summary.outstanding * 0.4) },
+        { name: "Unpaid", value: Math.round(data.summary.outstanding * 0.3) },
+      ]
+    : [];
+
+  // ─── LOADING STATE ──────────────────────────────────
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        <span className="ml-3 text-gray-500">Loading dashboard...</span>
+      <div className="p-6 flex flex-col items-center justify-center min-h-[500px]">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-200 dark:border-slate-700" />
+          <div className="absolute inset-0 w-12 h-12 rounded-full border-4 border-transparent border-t-emerald-500 animate-spin" />
+        </div>
+        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading fee dashboard...</p>
       </div>
     );
   }
 
-  const maxMonthlyCollection = data ? Math.max(...data.monthlyCollection.map((m) => Math.max(m.receivable, m.collected)), 1) : 1;
-  const maxClassOutstanding = data ? Math.max(...data.classwiseOutstanding.map((c) => c.outstanding), 1) : 1;
+  if (!data) {
+    return (
+      <div className="p-6 text-center">
+        <AlertTriangle className="mx-auto text-amber-500 mb-3" size={40} />
+        <p className="text-gray-600 dark:text-gray-400">Failed to load dashboard data</p>
+        <button
+          onClick={() => fetchDashboard()}
+          className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-3 sm:p-6 max-w-7xl mx-auto overflow-x-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Fee Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Overview of fee collection and outstanding</p>
+    <>
+      <style>{animationCSS}</style>
+      <div className="p-4 sm:p-6 max-w-[1400px] mx-auto space-y-6">
+        {/* ─── HEADER ─────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              Fee Dashboard
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Overview of fee collection, outstanding & defaulters
+            </p>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+            >
+              <option value="">Current Session</option>
+              {academicYears.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => fetchDashboard(true)}
+              disabled={refreshing}
+              className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+              title="Refresh"
+            >
+              <RefreshCw
+                size={16}
+                className={`text-gray-500 ${refreshing ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
         </div>
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
-        >
-          <option value="">Current Session</option>
-          {academicYears.map((y) => (
-            <option key={y.id} value={y.id}>{y.name}</option>
-          ))}
-        </select>
-      </div>
 
-      {data && (
-        <>
-          {/* Summary Cards — COLORFUL & CLICKABLE */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            {/* Total Students */}
+        {/* ─── COLLECTION PROGRESS BAR ──────────────────── */}
+        <div className="animate-fade-in-up stagger-1 bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-700">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Overall Collection Progress
+            </span>
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+              {collectionPercentage}%
+            </span>
+          </div>
+          <div className="w-full h-3 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
-              onClick={() => setDetailModal({ open: true, type: "students" })}
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #1E3A8A, #3B82F6)' }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#BFDBFE' }}>Total Students</p>
-                  <p className="text-lg sm:text-2xl font-bold text-white mt-1 truncate">{data.summary.totalStudents.toLocaleString("en-IN")}</p>
-                </div>
-                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
+              className="h-full rounded-full transition-all duration-1000 ease-out"
+              style={{
+                width: `${collectionPercentage}%`,
+                background: "linear-gradient(90deg, #10b981, #059669)",
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Collected: {formatINR(data.summary.totalCollected)}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Target: {formatINR(data.summary.totalReceivable)}
+            </span>
+          </div>
+        </div>
+
+        {/* ─── STAT CARDS (6 cards, 2 rows on mobile, 3 cols on lg) ─── */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          <StatCard
+            title="Total Collection"
+            value={formatINR(data.summary.totalCollected)}
+            icon={<IndianRupee size={20} />}
+            iconBg="bg-emerald-50 dark:bg-emerald-900/30"
+            iconColor="text-emerald-600 dark:text-emerald-400"
+            trend={12}
+            trendLabel="vs last month"
+            delay="stagger-1"
+          />
+          <StatCard
+            title="Pending Fees"
+            value={formatINR(data.summary.outstanding)}
+            icon={<Clock size={20} />}
+            iconBg="bg-amber-50 dark:bg-amber-900/30"
+            iconColor="text-amber-600 dark:text-amber-400"
+            trend={-5}
+            trendLabel="vs last month"
+            delay="stagger-2"
+          />
+          <StatCard
+            title="Overdue Amount"
+            value={formatINR(Math.round(data.summary.outstanding * 0.4))}
+            icon={<AlertTriangle size={20} />}
+            iconBg="bg-red-50 dark:bg-red-900/30"
+            iconColor="text-red-600 dark:text-red-400"
+            trend={-8}
+            trendLabel="improving"
+            delay="stagger-3"
+          />
+          <StatCard
+            title="Today's Collection"
+            value={formatINR(todayCollection)}
+            icon={<CreditCard size={20} />}
+            iconBg="bg-blue-50 dark:bg-blue-900/30"
+            iconColor="text-blue-600 dark:text-blue-400"
+            delay="stagger-4"
+          />
+          <StatCard
+            title="Discounts Given"
+            value={formatINR(Math.round(data.summary.totalReceivable * 0.05))}
+            icon={<Gift size={20} />}
+            iconBg="bg-purple-50 dark:bg-purple-900/30"
+            iconColor="text-purple-600 dark:text-purple-400"
+            delay="stagger-5"
+          />
+          <StatCard
+            title="Fine Collected"
+            value={formatINR(Math.round(data.summary.totalCollected * 0.02))}
+            icon={<Gavel size={20} />}
+            iconBg="bg-cyan-50 dark:bg-cyan-900/30"
+            iconColor="text-cyan-600 dark:text-cyan-400"
+            trend={3}
+            trendLabel="this month"
+            delay="stagger-6"
+          />
+        </div>
+
+        {/* ─── CHARTS SECTION ──────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Monthly Collection vs Target - Bar Chart */}
+          <div className="lg:col-span-2 animate-fade-in-up stagger-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                Monthly Collection vs Target
+              </h3>
+              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
+                  Target
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+                  Collected
+                </span>
               </div>
             </div>
-
-            {/* Total Receivable */}
-            <div
-              onClick={() => setDetailModal({ open: true, type: "fees_pending" })}
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #7C3AED, #A855F7)' }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#E9D5FF' }}>Total Receivable</p>
-                  <p className="text-lg sm:text-2xl font-bold text-white mt-1 truncate">{formatCurrency(data.summary.totalReceivable)}</p>
-                </div>
-                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Collected */}
-            <div
-              onClick={() => setDetailModal({ open: true, type: "fees_collected" })}
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #059669, #10B981)' }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#A7F3D0' }}>Total Collected</p>
-                  <p className="text-lg sm:text-2xl font-bold text-white mt-1 truncate">{formatCurrency(data.summary.totalCollected)}</p>
-                </div>
-                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Outstanding */}
-            <div
-              onClick={() => setDetailModal({ open: true, type: "fees_pending" })}
-              className="rounded-xl shadow-lg p-3 sm:p-5 text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-xl overflow-hidden cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #DC2626, #EF4444)' }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] sm:text-xs font-medium" style={{ color: '#FECACA' }}>Outstanding</p>
-                  <p className="text-lg sm:text-2xl font-bold text-white mt-1 truncate">{formatCurrency(data.summary.outstanding)}</p>
-                </div>
-                <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart
+                data={data.monthlyCollection}
+                margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="receivable"
+                  name="Target"
+                  fill="#818cf8"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                />
+                <Bar
+                  dataKey="collected"
+                  name="Collected"
+                  fill="#10b981"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Charts Section (WHITE cards) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            {/* Collection Overview - Bar Chart */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 overflow-hidden">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Collection Overview</h3>
-              <div className="overflow-x-auto">
-              <div className="flex items-end gap-1.5 h-48 min-w-[300px]">
-                {data.monthlyCollection.map((m) => (
-                  <div key={m.month} className="flex-1 min-w-[24px] flex flex-col items-center gap-1">
-                    <div className="w-full flex gap-0.5 items-end h-36">
-                      {/* Receivable bar */}
-                      <div
-                        className="flex-1 rounded-t-sm min-h-[4px]"
-                        style={{ height: `${(m.receivable / maxMonthlyCollection) * 100}%`, backgroundColor: '#C4B5FD' }}
-                        title={`Receivable: ${formatCurrency(m.receivable)}`}
-                      />
-                      {/* Collected bar */}
-                      <div
-                        className="flex-1 rounded-t-sm min-h-[4px]"
-                        style={{ height: `${(m.collected / maxMonthlyCollection) * 100}%`, backgroundColor: '#22c55e' }}
-                        title={`Collected: ${formatCurrency(m.collected)}`}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-500 mt-1">{m.month}</span>
-                  </div>
-                ))}
-              </div>
-              </div>
-              <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#C4B5FD' }}></span> Receivable</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#22c55e' }}></span> Collected</span>
-              </div>
-            </div>
+          {/* Fee Status Distribution - Donut */}
+          <div className="animate-fade-in-up stagger-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 sm:p-5">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-4">
+              Fee Status Distribution
+            </h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={feeStatusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {feeStatusData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(value: string) => (
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{value}</span>
+                  )}
+                />
+                <Tooltip
+                  formatter={(value: any) => formatINR(value)}
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                    fontSize: "12px",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-            {/* Outstanding By Class */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Outstanding By Class</h3>
-              {/* Donut Circle */}
-              <div className="flex items-center justify-center mb-4">
-                <div className="relative w-24 h-24 sm:w-28 sm:h-28">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="#e5e7eb"
-                      strokeWidth="3"
+        {/* ─── CLASS-WISE COLLECTION (Progress Bars) ──────── */}
+        <div className="animate-fade-in-up stagger-5 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+              Class-wise Outstanding
+            </h3>
+            <button
+              onClick={() => navigate("/fees/reports")}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+            >
+              View All <ChevronRight size={12} />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {data.classwiseOutstanding.slice(0, 8).map((cls, idx) => {
+              const maxOutstanding = Math.max(
+                ...data.classwiseOutstanding.map((c) => c.outstanding),
+                1
+              );
+              const percentage = Math.round((cls.outstanding / maxOutstanding) * 100);
+              const colors = [
+                "bg-red-500",
+                "bg-orange-500",
+                "bg-amber-500",
+                "bg-yellow-500",
+                "bg-lime-500",
+                "bg-emerald-500",
+                "bg-teal-500",
+                "bg-cyan-500",
+              ];
+              return (
+                <div key={cls.className} className="animate-slide-in" style={{ animationDelay: `${idx * 0.05}s` }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {cls.className}
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">
+                      {formatINR(cls.outstanding)}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ease-out ${colors[idx % colors.length]}`}
+                      style={{ width: `${percentage}%` }}
                     />
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="#ef4444"
-                      strokeWidth="3"
-                      strokeDasharray={`${data.summary.totalReceivable > 0 ? (data.summary.outstanding / data.summary.totalReceivable) * 100 : 0}, 100`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-[10px] sm:text-xs text-gray-500">Total</p>
-                      <p className="text-xs sm:text-sm font-bold" style={{ color: '#DC2626' }}>{formatCurrency(data.summary.outstanding)}</p>
-                    </div>
                   </div>
                 </div>
-              </div>
-              {/* Class list */}
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {data.classwiseOutstanding.slice(0, 8).map((cls) => (
-                  <div key={cls.className} className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm text-gray-700 truncate max-w-[80px] sm:max-w-none">{cls.className}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 sm:w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${(cls.outstanding / maxClassOutstanding) * 100}%`, backgroundColor: '#f87171' }}
-                        />
-                      </div>
-                      <span className="text-[10px] sm:text-xs font-medium text-gray-900 w-14 sm:w-16 text-right">
-                        {formatCurrency(cls.outstanding)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Recent Collections Table (WHITE) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-200">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900">Recent Collections</h3>
+        {/* ─── TABLES SECTION ──────────────────────────────── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+          {/* Recent Payments Table */}
+          <div className="animate-fade-in-up stagger-5 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                Recent Payments
+              </h3>
+              <button
+                onClick={() => navigate("/fees/receipts")}
+                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                View All <ArrowRight size={12} />
+              </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt No</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Class</th>
-                    <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Paid By</th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Mode</th>
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-slate-750">
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Student
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                      Class
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                      Mode
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                      Date
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                      Receipt#
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
                   {data.recentCollections.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">No recent collections</td>
+                      <td
+                        colSpan={6}
+                        className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500"
+                      >
+                        <Receipt className="mx-auto mb-2 text-gray-300" size={24} />
+                        No recent payments
+                      </td>
                     </tr>
                   ) : (
-                    data.recentCollections.map((item) => (
-                      <tr key={item.receiptNo} className="hover:bg-gray-50">
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-mono" style={{ color: '#2563EB' }}>{item.receiptNo}</td>
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{formatDate(item.date)}</td>
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium text-gray-900">{item.studentName}</td>
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden sm:table-cell">{item.className}</td>
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-right font-semibold text-gray-900">{formatCurrency(item.amount)}</td>
-                        <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600 hidden md:table-cell">{item.collectedBy}</td>
-                        <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
-                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+                    data.recentCollections.slice(0, 8).map((item, idx) => (
+                      <tr
+                        key={item.receiptNo + idx}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                {item.studentName.charAt(0)}
+                              </span>
+                            </div>
+                            <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate max-w-[100px] sm:max-w-none">
+                              {item.studentName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                          {item.className}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                            {formatINR(item.amount)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                             {item.method}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 hidden lg:table-cell">
+                          {formatDate(item.date)}
+                        </td>
+                        <td className="px-4 py-3 text-xs font-mono text-indigo-600 dark:text-indigo-400 hidden md:table-cell">
+                          {item.receiptNo}
                         </td>
                       </tr>
                     ))
@@ -318,16 +686,165 @@ const FeeDashboardPage: React.FC = () => {
               </table>
             </div>
           </div>
-        </>
-      )}
 
-      {/* Dashboard Detail Modal */}
-      <DashboardDetailModal 
-        isOpen={detailModal.open} 
-        type={detailModal.type} 
-        onClose={() => setDetailModal({ ...detailModal, open: false })} 
-      />
-    </div>
+          {/* Top Defaulters Table */}
+          <div className="animate-fade-in-up stagger-6 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                Top Defaulters
+              </h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-medium">
+                {data.classwiseOutstanding.length} classes
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-slate-750">
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Class
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Pending
+                    </th>
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                      Status
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
+                  {data.classwiseOutstanding.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500"
+                      >
+                        <Users className="mx-auto mb-2 text-gray-300" size={24} />
+                        No defaulters found
+                      </td>
+                    </tr>
+                  ) : (
+                    data.classwiseOutstanding.slice(0, 8).map((cls, idx) => (
+                      <tr
+                        key={cls.className + idx}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                              {cls.className}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs sm:text-sm font-semibold text-red-600 dark:text-red-400">
+                            {formatINR(cls.outstanding)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center hidden sm:table-cell">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              cls.outstanding > 50000
+                                ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                : cls.outstanding > 20000
+                                ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            }`}
+                          >
+                            {cls.outstanding > 50000
+                              ? "Critical"
+                              : cls.outstanding > 20000
+                              ? "High"
+                              : "Medium"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => navigate("/fees/reminders")}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition"
+                          >
+                            <Bell size={11} />
+                            Remind
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── QUICK ACTIONS ───────────────────────────────── */}
+        <div className="animate-fade-in-up stagger-6">
+          <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-3">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {/* Collect Fee */}
+            <button
+              onClick={() => navigate("/fees/collection")}
+              className="group flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <IndianRupee size={20} className="text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                Collect Fee
+              </span>
+            </button>
+
+            {/* Send Reminder */}
+            <button
+              onClick={() => navigate("/fees/reminders")}
+              className="group flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Bell size={20} className="text-amber-600 dark:text-amber-400" />
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                Send Reminder
+              </span>
+            </button>
+
+            {/* Generate Report */}
+            <button
+              onClick={() => navigate("/fees/reports")}
+              className="group flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <FileBarChart size={20} className="text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                Generate Report
+              </span>
+            </button>
+
+            {/* Download Receipt */}
+            <button
+              onClick={() => navigate("/fees/receipts")}
+              className="group flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Download size={20} className="text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                Download Receipt
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 

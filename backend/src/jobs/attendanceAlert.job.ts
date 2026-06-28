@@ -32,7 +32,7 @@ export const runAttendanceAlertJob = async () => {
         where: {
           tenantId,
           date: { gte: today, lt: tomorrow },
-          status: { in: ["ABSENT", "absent"] },
+          status: "ABSENT",
         },
         include: {
           student: {
@@ -87,7 +87,7 @@ export const runAttendanceAlertJob = async () => {
         if (attendanceRecords.length < 5) continue; // Not enough data
 
         const presentCount = attendanceRecords.filter(
-          (a) => a.status === "PRESENT" || a.status === "present"
+          (a) => a.status === "PRESENT"
         ).length;
         const percentage = (presentCount / attendanceRecords.length) * 100;
 

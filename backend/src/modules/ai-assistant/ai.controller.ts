@@ -1,467 +1,567 @@
 import { Request, Response } from "express";
-import dotenv from "dotenv"; dotenv.config();
 import { PrismaClient } from "@prisma/client";
-import axios from "axios";
 
 const prisma = new PrismaClient();
 
+// ══════════════════════════════════════════════════
+// AI ASSISTANT CONTROLLER (Enhanced)
+// Rule-based analysis + statistical predictions
+// ══════════════════════════════════════════════════
+
 /**
- * yn AI — Backend Command Processor
- * 
- * FLOW:
- * 1. Try to understand as ERP command (fee, attendance, report card, etc.)
- * 2. If ERP command → query database
- * 3. If general question → use Gemini AI to answer (ChatGPT-style)
- * 4. Always give a helpful response — NEVER say "samajh nahi aaya"
+ * Analyze student performance
+ * POST /api/ai/analyze/performance
  */
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// GEMINI AI INTEGRATION
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
-async function askGemini(question: string, context?: string): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    return `🤖 "${question}"\n\n⚠️ GEMINI_API_KEY not found in .env. Please restart server after adding it.`;
-  }
-
+export const analyzePerformance = async (req: Request, res: Response) => {
   try {
-    const systemPrompt = `You are yn AI, a smart school ERP assistant for Indian schools. 
-You speak fluent Hindi + English (Hinglish). Always be helpful and friendly.
-${context ? `\nERP Context: ${context}` : ""}
-Answer in a mix of Hindi and English (Hinglish). Keep answers concise but complete.
-Use emojis sparingly. Format nicely with bullet points where needed.`;
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const { studentId, classId } = req.body;
 
-    const response = await axios.post(GEMINI_URL, {
-      contents: [
-        { role: "user", parts: [{ text: systemPrompt + "\n\nUser: " + question }] }
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      },
-    }, {
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-      },
-      timeout: 15000,
-    });
+    let students: any[] = [];
 
-    const data = response.data;
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return text || "🤖 Kuch response nahi mila AI se.";
-  } catch (error: any) {
-    console.error("Gemini error:", error?.response?.data || error.message);
-    return `🤖 AI se connect nahi ho paya: ${error?.response?.data?.error?.message || error.message}`;
-  }
-}
+    if (studentId) {
+      // Single student analysis
+      const student = await prisma.student.findFirst({
+        where: { id: studentId, tenantId },
+      });
+      if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MAIN COMMAND PROCESSOR
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const marks = await prisma.marksEntry.findMany({
+        where: { tenantId, studentId },
+        include: { examSubject: true },
+      });
 
-export async function processAiCommand(req: Request, res: Response) {
-  try {
-    const { command } = req.body;
-    const tenantId = (req as any).user?.tenantId;
-    
-    console.log("[yn AI] Command received:", command, "| Tenant:", tenantId, "| Gemini key exists:", !!GEMINI_API_KEY);
+      const attendance = await prisma.attendance.findMany({
+        where: { tenantId, studentId },
+      });
 
-    if (!command) {
-      return res.status(400).json({ message: "Command is required" });
-    }
+      // Calculate performance metrics
+      const totalMarks = marks.reduce((sum, m) => sum + (m.marksObtained || 0), 0);
+      const maxMarks = marks.reduce((sum, m) => sum + ((m.examSubject as any)?.maxMarks || 100), 0);
+      const percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
 
-    // Step 1: Try to parse as ERP intent
-    const intent = parseIntent(command);
+      const totalAttendance = attendance.length;
+      const presentDays = attendance.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
+      const attendanceRate = totalAttendance > 0 ? (presentDays / totalAttendance) * 100 : 0;
 
-    // Step 2: Handle ERP intents
-    switch (intent.type) {
-      case "fee_receipt":
-        return await handleFeeReceiptQuery(intent, tenantId, res);
-      case "report_card":
-        return await handleReportCardQuery(intent, tenantId, res);
-      case "attendance":
-        return await handleAttendanceQuery(intent, tenantId, res);
-      case "student_search":
-        return await handleStudentSearch(intent, tenantId, res);
-      case "stats":
-        return await handleStatsQuery(tenantId, res);
-      default:
-        // Step 3: NOT an ERP command → Use Gemini AI (ChatGPT mode)
-        const aiAnswer = await askGemini(command, `School: tenant ${tenantId}`);
-        return res.json({ message: aiAnswer });
-    }
-  } catch (error: any) {
-    console.error("AI Command Error:", error);
-    return res.status(500).json({
-      message: "❌ Server error. Please try again.",
-    });
-  }
-}
+      // Generate insights
+      const insights: string[] = [];
+      const recommendations: string[] = [];
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SEARCH ENDPOINTS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (percentage < 40) {
+        insights.push("⚠️ Student is performing below passing threshold");
+        recommendations.push("Schedule parent-teacher meeting");
+        recommendations.push("Assign extra practice worksheets");
+      } else if (percentage < 60) {
+        insights.push("📊 Student is performing at average level");
+        recommendations.push("Focus on weak subjects identified below");
+      } else if (percentage >= 80) {
+        insights.push("🌟 Student is excelling academically");
+        recommendations.push("Consider for advanced programs or competitions");
+      }
 
-export async function searchFeeReceipts(req: Request, res: Response) {
-  try {
-    const { query } = req.body;
-    const tenantId = (req as any).user?.tenantId;
-    const intent = parseIntent(query || "");
-    return await handleFeeReceiptQuery(intent, tenantId, res);
-  } catch (error) {
-    return res.status(500).json({ message: "Error searching fee receipts" });
-  }
-}
+      if (attendanceRate < 75) {
+        insights.push("🚨 Attendance is critically low (below 75%)");
+        recommendations.push("Send attendance warning to parents");
+      }
 
-export async function searchReportCard(req: Request, res: Response) {
-  try {
-    const { query } = req.body;
-    const tenantId = (req as any).user?.tenantId;
-    const intent = parseIntent(query || "");
-    return await handleReportCardQuery(intent, tenantId, res);
-  } catch (error) {
-    return res.status(500).json({ message: "Error searching report cards" });
-  }
-}
+      // Subject-wise analysis
+      const subjectPerformance: Record<string, { marks: number; max: number; percentage: number }> = {};
+      for (const mark of marks) {
+        const subjectName = (mark.examSubject as any)?.subject?.name || "Unknown";
+        if (!subjectPerformance[subjectName]) {
+          subjectPerformance[subjectName] = { marks: 0, max: 0, percentage: 0 };
+        }
+        subjectPerformance[subjectName].marks += mark.marksObtained || 0;
+        subjectPerformance[subjectName].max += (mark.examSubject as any)?.maxMarks || 100;
+      }
+      for (const sub of Object.keys(subjectPerformance)) {
+        subjectPerformance[sub].percentage = subjectPerformance[sub].max > 0
+          ? (subjectPerformance[sub].marks / subjectPerformance[sub].max) * 100
+          : 0;
+      }
 
-export async function searchAttendance(req: Request, res: Response) {
-  try {
-    const { query } = req.body;
-    const tenantId = (req as any).user?.tenantId;
-    const intent = parseIntent(query || "");
-    return await handleAttendanceQuery(intent, tenantId, res);
-  } catch (error) {
-    return res.status(500).json({ message: "Error searching attendance" });
-  }
-}
+      const weakSubjects = Object.entries(subjectPerformance)
+        .filter(([_, v]) => v.percentage < 50)
+        .map(([name]) => name);
 
-export async function searchStudents(req: Request, res: Response) {
-  try {
-    const { query } = req.body;
-    const tenantId = (req as any).user?.tenantId;
-    const intent = parseIntent(query || "");
-    return await handleStudentSearch(intent, tenantId, res);
-  } catch (error) {
-    return res.status(500).json({ message: "Error searching students" });
-  }
-}
+      const strongSubjects = Object.entries(subjectPerformance)
+        .filter(([_, v]) => v.percentage >= 75)
+        .map(([name]) => name);
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// INTENT PARSER (Flexible — handles Hinglish & typos)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (weakSubjects.length > 0) {
+        insights.push(`📉 Weak in: ${weakSubjects.join(", ")}`);
+      }
+      if (strongSubjects.length > 0) {
+        insights.push(`💪 Strong in: ${strongSubjects.join(", ")}`);
+      }
 
-interface ParsedIntent {
-  type: "fee_receipt" | "report_card" | "attendance" | "student_search" | "stats" | "general";
-  studentName?: string;
-  className?: string;
-  section?: string;
-  fatherName?: string;
-  rollNo?: string;
-  raw: string;
-}
-
-function parseIntent(command: string): ParsedIntent {
-  // Pre-process: fix typos & split joined words
-  let lower = command.toLowerCase();
-  lower = lower.replace(/\breciept\b/g, "receipt").replace(/\brecepit\b/g, "receipt");
-  lower = lower.replace(/daski\b/g, "das ki").replace(/kaski\b/g, "kas ki");
-
-  const intent: ParsedIntent = { type: "general", raw: command };
-
-  // Extract class
-  const classMatch = lower.match(/class\s*[-]?\s*(\d+)/i) || lower.match(/(\d+)\s*(?:th|st|nd|rd)/i);
-  if (classMatch) intent.className = classMatch[1];
-
-  // Extract section
-  const secMatch = lower.match(/(?:section|sec)\s*[-]?\s*([a-z])/i);
-  if (secMatch) intent.section = secMatch[1].toUpperCase();
-
-  // Extract father name
-  const fatherMatch = lower.match(/(?:father|papa|pita)(?:'s)?\s*(?:name)?\s*(?:is|hai)?\s*(\w+)/i);
-  if (fatherMatch) intent.fatherName = fatherMatch[1];
-
-  // Extract roll
-  const rollMatch = lower.match(/roll\s*(?:no|number)?\s*\.?\s*(\d+)/i);
-  if (rollMatch) intent.rollNo = rollMatch[1];
-
-  // Determine type using keyword presence
-  const feeWords = ["fee", "fees", "receipt", "raseed", "slip", "challan", "payment", "paid", "jama", "paisa"];
-  const reportWords = ["report card", "report", "marksheet", "result", "marks", "nateeja"];
-  const attendanceWords = ["attendance", "haziri", "hajiri", "present", "absent", "upasthiti"];
-  const studentWords = ["student", "vidyarthi", "search", "find", "dhundo", "khojo"];
-  const statsWords = ["stats", "total", "count", "kitne", "how many", "statistics"];
-
-  const hasFee = feeWords.some(w => lower.includes(w));
-  const hasReport = reportWords.some(w => lower.includes(w));
-  const hasAttendance = attendanceWords.some(w => lower.includes(w));
-  const hasStudent = studentWords.some(w => lower.includes(w));
-  const hasStats = statsWords.some(w => lower.includes(w));
-
-  if (hasFee) intent.type = "fee_receipt";
-  else if (hasReport) intent.type = "report_card";
-  else if (hasAttendance) intent.type = "attendance";
-  else if (hasStudent) intent.type = "student_search";
-  else if (hasStats) intent.type = "stats";
-  else intent.type = "general"; // → Goes to Gemini AI
-
-  // Extract student name — remove all known keywords
-  const cleanName = command
-    .replace(/(?:show|get|find|print|search|dikhao|kholo|batao|nikalo|lao|do|karo|open|fee|fees|receipt|reciept|report|card|attendance|student|class\s*\d+|section\s*[a-z]|roll\s*(?:no)?\s*\d+|father(?:'s)?\s*(?:name)?\s*\w*|\d+(?:th|st|nd|rd)?|marks|result|all|ab|tak|ki|ka|ke|se|me|of|for|the|wise|page|module|kholo|dikhao|batao)/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (cleanName.length >= 2 && cleanName.length <= 40) {
-    intent.studentName = cleanName;
-  }
-
-  return intent;
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ERP QUERY HANDLERS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-async function handleFeeReceiptQuery(intent: ParsedIntent, tenantId: string, res: Response) {
-  try {
-    const where: any = { tenantId };
-
-    // Build filters through StudentFee → Enrollment → Student
-    const enrollmentWhere: any = {};
-    const studentWhere: any = {};
-
-    if (intent.studentName) {
-      studentWhere.OR = [
-        { firstName: { contains: intent.studentName, mode: "insensitive" } },
-        { lastName: { contains: intent.studentName, mode: "insensitive" } },
-        { fatherName: { contains: intent.studentName, mode: "insensitive" } },
-      ];
-    }
-    if (intent.className) {
-      enrollmentWhere.class = { name: { contains: intent.className, mode: "insensitive" } };
-    }
-    if (intent.section) {
-      enrollmentWhere.section = { name: { contains: intent.section, mode: "insensitive" } };
-    }
-    if (intent.fatherName) {
-      studentWhere.fatherName = { contains: intent.fatherName, mode: "insensitive" };
-    }
-
-    if (Object.keys(studentWhere).length > 0 || Object.keys(enrollmentWhere).length > 0) {
-      where.studentFee = {
-        enrollment: {
-          ...enrollmentWhere,
-          ...(Object.keys(studentWhere).length > 0 ? { student: studentWhere } : {}),
-        },
+      const output = {
+        overallPercentage: Math.round(percentage * 100) / 100,
+        attendanceRate: Math.round(attendanceRate * 100) / 100,
+        totalExams: marks.length,
+        subjectPerformance,
+        weakSubjects,
+        strongSubjects,
+        insights,
+        recommendations,
+        riskLevel: percentage < 40 ? "HIGH" : percentage < 60 ? "MEDIUM" : "LOW",
       };
+
+      // Save analysis
+      await prisma.aIAnalysis.create({
+        data: {
+          tenantId,
+          type: "PERFORMANCE",
+          entityId: studentId,
+          entityType: "STUDENT",
+          input: { studentId },
+          output,
+          summary: `Overall: ${percentage.toFixed(1)}%, Attendance: ${attendanceRate.toFixed(1)}%`,
+          confidence: 0.85,
+          model: "rule-based",
+        },
+      });
+
+      return res.status(200).json({ success: true, data: output });
     }
 
-    const receipts = await prisma.payment.findMany({
-      where,
+    // Class-wide analysis
+    if (classId) {
+      const classStudents = await prisma.enrollment.findMany({
+        where: { tenantId, classId, status: "active" },
+        include: { student: true },
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalStudents: classStudents.length,
+          message: "Class-wide analysis would aggregate individual performances",
+        },
+      });
+    }
+
+    return res.status(400).json({ success: false, message: "studentId or classId required" });
+  } catch (error: any) {
+    console.error("Performance analysis error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Predict attendance patterns
+ * POST /api/ai/predict/attendance
+ */
+export const predictAttendance = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const { classId, days = 7 } = req.body;
+
+    // Get historical attendance data
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    const where: any = { tenantId, date: { gte: startDate } };
+    if (classId) where.classId = classId;
+
+    const attendance = await prisma.attendance.findMany({ where });
+
+    // Calculate patterns
+    const dayWise: Record<number, { total: number; present: number }> = {};
+    for (const a of attendance) {
+      const day = new Date(a.date).getDay();
+      if (!dayWise[day]) dayWise[day] = { total: 0, present: 0 };
+      dayWise[day].total++;
+      if (a.status === "PRESENT" || a.status === "LATE") dayWise[day].present++;
+    }
+
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const predictions = [];
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      const dayOfWeek = date.getDay();
+      const dayData = dayWise[dayOfWeek];
+      const predictedRate = dayData && dayData.total > 0
+        ? Math.round((dayData.present / dayData.total) * 100)
+        : 85; // Default 85%
+
+      predictions.push({
+        date: date.toISOString().split("T")[0],
+        dayName: dayNames[dayOfWeek],
+        predictedAttendanceRate: predictedRate,
+        confidence: dayData && dayData.total > 5 ? 0.8 : 0.5,
+      });
+    }
+
+    // Identify at-risk students (low attendance in last 30 days)
+    const studentAttendance: Record<string, { total: number; present: number }> = {};
+    for (const a of attendance) {
+      if (!a.studentId) continue;
+      if (!studentAttendance[a.studentId]) studentAttendance[a.studentId] = { total: 0, present: 0 };
+      studentAttendance[a.studentId].total++;
+      if (a.status === "PRESENT" || a.status === "LATE") studentAttendance[a.studentId].present++;
+    }
+
+    const atRiskStudents = Object.entries(studentAttendance)
+      .filter(([_, v]) => v.total > 0 && (v.present / v.total) < 0.75)
+      .map(([studentId, v]) => ({
+        studentId,
+        attendanceRate: Math.round((v.present / v.total) * 100),
+      }))
+      .sort((a, b) => a.attendanceRate - b.attendanceRate)
+      .slice(0, 10);
+
+    const output = { predictions, atRiskStudents, historicalAverage: 0 };
+    const totalP = Object.values(dayWise).reduce((s, d) => s + d.present, 0);
+    const totalT = Object.values(dayWise).reduce((s, d) => s + d.total, 0);
+    output.historicalAverage = totalT > 0 ? Math.round((totalP / totalT) * 100) : 0;
+
+    await prisma.aIAnalysis.create({
+      data: {
+        tenantId,
+        type: "ATTENDANCE",
+        input: { classId, days },
+        output,
+        confidence: 0.75,
+        model: "statistical",
+      },
+    });
+
+    return res.status(200).json({ success: true, data: output });
+  } catch (error: any) {
+    console.error("Attendance prediction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Predict fee defaulters
+ * POST /api/ai/predict/defaulters
+ */
+export const predictDefaulters = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers["x-tenant-id"] as string;
+
+    // Get students with pending fees
+    const pendingFees = await prisma.studentFee.findMany({
+      where: {
+        tenantId,
+        status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] },
+      },
       include: {
-        studentFee: {
-          include: {
-            enrollment: {
-              include: {
-                student: true,
-                class: true,
-                section: true,
-              },
-            },
-          },
+        enrollment: {
+          include: { student: true, class: true },
         },
       },
+    });
+
+    // Score each student based on risk factors
+    const riskAssessment = [];
+
+    for (const fee of pendingFees) {
+      const student = fee.enrollment?.student;
+      if (!student) continue;
+
+      let riskScore = 0;
+      const riskFactors: string[] = [];
+
+      // Factor 1: Overdue duration
+      if (fee.dueDate) {
+        const daysOverdue = Math.floor((Date.now() - new Date(fee.dueDate).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysOverdue > 60) {
+          riskScore += 40;
+          riskFactors.push(`${daysOverdue} days overdue`);
+        } else if (daysOverdue > 30) {
+          riskScore += 25;
+          riskFactors.push(`${daysOverdue} days overdue`);
+        } else if (daysOverdue > 0) {
+          riskScore += 10;
+          riskFactors.push(`${daysOverdue} days overdue`);
+        }
+      }
+
+      // Factor 2: Amount
+      const pendingAmount = (fee.totalAmount || 0) - (fee.paidAmount || 0);
+      if (pendingAmount > 50000) {
+        riskScore += 20;
+        riskFactors.push("High pending amount");
+      } else if (pendingAmount > 20000) {
+        riskScore += 10;
+      }
+
+      // Factor 3: Status
+      if (fee.status === "OVERDUE") {
+        riskScore += 15;
+        riskFactors.push("Already overdue");
+      }
+
+      riskAssessment.push({
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        className: fee.enrollment?.class?.name || "",
+        pendingAmount,
+        dueDate: fee.dueDate,
+        status: fee.status,
+        riskScore: Math.min(riskScore, 100),
+        riskLevel: riskScore >= 60 ? "HIGH" : riskScore >= 30 ? "MEDIUM" : "LOW",
+        riskFactors,
+      });
+    }
+
+    // Sort by risk score
+    riskAssessment.sort((a, b) => b.riskScore - a.riskScore);
+
+    const output = {
+      totalAtRisk: riskAssessment.length,
+      highRisk: riskAssessment.filter((r) => r.riskLevel === "HIGH").length,
+      mediumRisk: riskAssessment.filter((r) => r.riskLevel === "MEDIUM").length,
+      lowRisk: riskAssessment.filter((r) => r.riskLevel === "LOW").length,
+      topDefaulters: riskAssessment.slice(0, 20),
+      totalPendingAmount: riskAssessment.reduce((s, r) => s + r.pendingAmount, 0),
+      recommendations: [
+        "Send reminders to HIGH risk students immediately",
+        "Schedule parent meetings for top 10 defaulters",
+        "Consider offering installment plans for amounts > ₹50,000",
+      ],
+    };
+
+    await prisma.aIAnalysis.create({
+      data: {
+        tenantId,
+        type: "FEE_PREDICTION",
+        input: {},
+        output,
+        confidence: 0.78,
+        model: "rule-based",
+      },
+    });
+
+    return res.status(200).json({ success: true, data: output });
+  } catch (error: any) {
+    console.error("Defaulter prediction error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Chat with AI assistant (natural language queries)
+ * POST /api/ai/chat
+ */
+export const chat = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const userId = (req as any).user?.id;
+    const { message, conversationId } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, message: "message is required" });
+    }
+
+    // Simple NL query parsing (rule-based for now)
+    const query = message.toLowerCase();
+    let response = "";
+    let actionUrl = "";
+
+    if (query.includes("how many students") || query.includes("total students")) {
+      const count = await prisma.student.count({ where: { tenantId, isDeleted: false } });
+      response = `There are **${count} students** in the system currently.`;
+      actionUrl = "/students";
+    } else if (query.includes("how many teachers") || query.includes("total teachers")) {
+      const count = await prisma.teacher.count({ where: { tenantId, isActive: true } });
+      response = `There are **${count} active teachers** in the system.`;
+      actionUrl = "/teachers";
+    } else if (query.includes("fee") && (query.includes("pending") || query.includes("due"))) {
+      const pending = await prisma.studentFee.aggregate({
+        where: { tenantId, status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] } },
+        _sum: { totalAmount: true },
+      });
+      const amount = pending._sum?.totalAmount || 0;
+      response = `Total pending fees: **₹${amount.toLocaleString("en-IN")}**. Would you like me to list the defaulters?`;
+      actionUrl = "/fees/dashboard";
+    } else if (query.includes("attendance") && query.includes("today")) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const total = await prisma.attendance.count({ where: { tenantId, date: { gte: today } } });
+      const present = await prisma.attendance.count({ where: { tenantId, date: { gte: today }, status: "PRESENT" } });
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      response = `Today's attendance: **${rate}%** (${present}/${total} students marked present).`;
+      actionUrl = "/attendance-dashboard";
+    } else if (query.includes("upcoming exam")) {
+      const exams = await prisma.exam.findMany({
+        where: { tenantId, startDate: { gte: new Date() } },
+        orderBy: { startDate: "asc" },
+        take: 3,
+      });
+      if (exams.length > 0) {
+        response = `Upcoming exams:\n${exams.map((e) => `- **${e.name}** (${new Date(e.startDate || Date.now()).toLocaleDateString("en-IN")})`).join("\n")}`;
+      } else {
+        response = "No upcoming exams scheduled.";
+      }
+      actionUrl = "/exams";
+    } else {
+      response = "I can help you with:\n- Student/Teacher counts\n- Fee status and defaulters\n- Attendance reports\n- Upcoming exams\n- Performance analysis\n\nTry asking: *\"How many students are there?\"* or *\"What's the pending fee?\"*";
+    }
+
+    // Save conversation
+    let conversation;
+    if (conversationId) {
+      conversation = await prisma.aIConversation.findFirst({
+        where: { id: conversationId, tenantId, userId },
+      });
+    }
+
+    const newMessages = conversation
+      ? [...(conversation.messages as any[]), { role: "user", content: message, timestamp: new Date() }, { role: "assistant", content: response, timestamp: new Date() }]
+      : [{ role: "user", content: message, timestamp: new Date() }, { role: "assistant", content: response, timestamp: new Date() }];
+
+    if (conversation) {
+      await prisma.aIConversation.update({
+        where: { id: conversation.id },
+        data: { messages: newMessages, messageCount: newMessages.length, lastMessageAt: new Date() },
+      });
+    } else {
+      conversation = await prisma.aIConversation.create({
+        data: {
+          tenantId,
+          userId,
+          title: message.substring(0, 50),
+          messages: newMessages,
+          messageCount: 2,
+          lastMessageAt: new Date(),
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        response,
+        actionUrl,
+        conversationId: conversation.id,
+      },
+    });
+  } catch (error: any) {
+    console.error("AI chat error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Get auto-generated insights
+ * GET /api/ai/insights
+ */
+export const getInsights = async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    // Get stored insights
+    const insights = await prisma.aIInsight.findMany({
+      where: { tenantId, isDismissed: false },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: limit,
     });
 
-    if (receipts.length === 0) {
-      // No receipts found — use AI to give helpful response
-      const aiHelp = await askGemini(
-        `User asked for fee receipt: "${intent.raw}". No records found in database. Give a helpful response in Hinglish telling them to check the student name or that no payment exists yet. Keep it short.`
-      );
-      return res.json({ message: aiHelp || `❌ "${intent.studentName || "this student"}" ki koi fee receipt nahi mili.\n\n💡 Check karein:\n• Student ka naam sahi hai?\n• Payment hua hai?\n• Spelling check karein` });
-    }
+    // If no insights, generate some basic ones
+    if (insights.length === 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const formatted = receipts.map((r) => ({
-      receiptNo: r.receiptNo || r.id.slice(-6),
-      studentName: `${r.studentFee?.enrollment?.student?.firstName || ""} ${r.studentFee?.enrollment?.student?.lastName || ""}`.trim(),
-      class: r.studentFee?.enrollment?.class?.name || "",
-      section: r.studentFee?.enrollment?.section?.name || "",
-      amount: r.amount,
-      date: r.paymentDate?.toLocaleDateString("en-IN"),
-      method: r.method,
-    }));
+      // Check attendance
+      const totalToday = await prisma.attendance.count({ where: { tenantId, date: { gte: today } } });
+      const absentToday = await prisma.attendance.count({ where: { tenantId, date: { gte: today }, status: "ABSENT" } });
 
-    return res.json({
-      receipts: formatted,
-      message: `💰 **${formatted.length} Fee Receipt(s) mili:**\n\n${formatted.map((r, i) => `${i + 1}. **${r.studentName}** — Class ${r.class}-${r.section}\n   Receipt: #${r.receiptNo} | ₹${r.amount} | ${r.date} | ${r.method}`).join("\n\n")}`,
-      action: { type: "navigate", payload: { path: "/fees/receipts" } },
-    });
-  } catch (error: any) {
-    console.error("Fee receipt error:", error);
-    return res.json({ message: "❌ Fee receipt search me error. Database connection check karein.", receipts: [] });
-  }
-}
+      const generatedInsights: any[] = [];
 
-async function handleReportCardQuery(intent: ParsedIntent, tenantId: string, res: Response) {
-  try {
-    const enrollmentWhere: any = { tenantId, status: "active" };
+      if (absentToday > 0 && totalToday > 0) {
+        const absentRate = Math.round((absentToday / totalToday) * 100);
+        if (absentRate > 20) {
+          generatedInsights.push({
+            type: "ALERT",
+            category: "ATTENDANCE",
+            title: "High Absence Rate Today",
+            description: `${absentRate}% students are absent today (${absentToday} out of ${totalToday}). This is higher than usual.`,
+            severity: absentRate > 40 ? "CRITICAL" : "WARNING",
+            actionUrl: "/attendance-dashboard",
+            actionLabel: "View Attendance",
+          });
+        }
+      }
 
-    if (intent.className) {
-      enrollmentWhere.class = { name: { contains: intent.className, mode: "insensitive" } };
-    }
-    if (intent.section) {
-      enrollmentWhere.section = { name: { contains: intent.section, mode: "insensitive" } };
-    }
-    if (intent.studentName) {
-      enrollmentWhere.student = {
-        OR: [
-          { firstName: { contains: intent.studentName, mode: "insensitive" } },
-          { lastName: { contains: intent.studentName, mode: "insensitive" } },
-        ],
-      };
-    }
-
-    const enrollments = await prisma.enrollment.findMany({
-      where: enrollmentWhere,
-      include: { student: true, class: true, section: true },
-      take: 10,
-    });
-
-    if (enrollments.length === 0) {
-      return res.json({ message: `❌ "${intent.studentName || intent.className || "specified"}" ke liye koi student nahi mila.\n\n💡 Check: naam, class, ya section sahi hai?` });
-    }
-
-    const formatted = enrollments.map((e) => ({
-      id: e.studentId,
-      name: `${e.student?.firstName || ""} ${e.student?.lastName || ""}`.trim(),
-      class: e.class?.name || "",
-      section: e.section?.name || "",
-      rollNo: e.rollNumber || "",
-    }));
-
-    return res.json({
-      students: formatted,
-      message: `📝 **${formatted.length} Student(s) ke Report Card:**\n\n${formatted.map((s, i) => `${i + 1}. **${s.name}** — Class ${s.class}-${s.section} (Roll: ${s.rollNo})`).join("\n")}`,
-      action: { type: "navigate", payload: { path: "/exams/report-card" } },
-    });
-  } catch (error: any) {
-    console.error("Report card error:", error);
-    return res.json({ message: "❌ Report card search me error.", students: [] });
-  }
-}
-
-async function handleAttendanceQuery(intent: ParsedIntent, tenantId: string, res: Response) {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const where: any = { tenantId, date: { gte: today, lt: tomorrow }, isDeleted: false };
-
-    if (intent.className) {
-      const classRecord = await prisma.class.findFirst({
-        where: { tenantId, name: { contains: intent.className, mode: "insensitive" } },
+      // Check overdue fees
+      const overdueFees = await prisma.studentFee.count({
+        where: { tenantId, status: "OVERDUE" },
       });
-      if (classRecord) where.classId = classRecord.id;
+      if (overdueFees > 0) {
+        generatedInsights.push({
+          type: "ALERT",
+          category: "FEES",
+          title: `${overdueFees} Students Have Overdue Fees`,
+          description: "Consider sending reminders or scheduling parent meetings.",
+          severity: overdueFees > 50 ? "CRITICAL" : "WARNING",
+          actionUrl: "/fees/dashboard",
+          actionLabel: "View Defaulters",
+        });
+      }
+
+      // Save generated insights
+      for (const insight of generatedInsights) {
+        await prisma.aIInsight.create({
+          data: { tenantId, ...insight },
+        });
+      }
+
+      return res.status(200).json({ success: true, data: generatedInsights });
     }
-    if (intent.section) {
-      const sectionRecord = await prisma.section.findFirst({
-        where: { tenantId, name: { contains: intent.section, mode: "insensitive" } },
-      });
-      if (sectionRecord) where.sectionId = sectionRecord.id;
-    }
 
-    const records = await prisma.attendance.findMany({ where });
-
-    const total = records.length;
-    const present = records.filter((a) => a.status === "PRESENT").length;
-    const absent = records.filter((a) => a.status === "ABSENT").length;
-
-    if (total === 0) {
-      return res.json({ message: `📋 Aaj ki attendance abhi tak mark nahi hui ya koi record nahi mila.\n\n💡 Attendance page pe jaake mark kar sakte hain.` });
-    }
-
-    return res.json({
-      message: `📋 **Aaj ki Attendance (${today.toLocaleDateString("en-IN")}):**\n\n👥 Total: ${total}\n✅ Present: ${present} (${Math.round((present / total) * 100)}%)\n❌ Absent: ${absent}`,
-    });
+    return res.status(200).json({ success: true, data: insights });
   } catch (error: any) {
-    console.error("Attendance error:", error);
-    return res.json({ message: "❌ Attendance fetch me error." });
+    console.error("Get insights error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
-async function handleStudentSearch(intent: ParsedIntent, tenantId: string, res: Response) {
+/**
+ * Dismiss an insight
+ * PUT /api/ai/insights/:id/dismiss
+ */
+export const dismissInsight = async (req: Request, res: Response) => {
   try {
-    const enrollmentWhere: any = { tenantId, status: "active" };
-    const studentWhere: any = {};
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const id = req.params.id as string;
 
-    if (intent.studentName) {
-      studentWhere.OR = [
-        { firstName: { contains: intent.studentName, mode: "insensitive" } },
-        { lastName: { contains: intent.studentName, mode: "insensitive" } },
-        { fatherName: { contains: intent.studentName, mode: "insensitive" } },
-      ];
-    }
-    if (intent.className) {
-      enrollmentWhere.class = { name: { contains: intent.className, mode: "insensitive" } };
-    }
-    if (intent.fatherName) {
-      studentWhere.fatherName = { contains: intent.fatherName, mode: "insensitive" };
-    }
-    if (intent.rollNo) {
-      enrollmentWhere.rollNumber = intent.rollNo;
-    }
-    if (Object.keys(studentWhere).length > 0) {
-      enrollmentWhere.student = studentWhere;
-    }
-
-    const enrollments = await prisma.enrollment.findMany({
-      where: enrollmentWhere,
-      include: { student: true, class: true, section: true },
-      take: 10,
+    await prisma.aIInsight.updateMany({
+      where: { id, tenantId },
+      data: { isDismissed: true },
     });
 
-    if (enrollments.length === 0) {
-      return res.json({ message: `🔍 "${intent.studentName || "specified"}" naam ka koi student nahi mila.\n\n💡 Full name ya class ke saath try karein.` });
-    }
-
-    const formatted = enrollments.map((e) => ({
-      name: `${e.student?.firstName || ""} ${e.student?.lastName || ""}`.trim(),
-      class: e.class?.name || "",
-      section: e.section?.name || "",
-      rollNo: e.rollNumber || "",
-      father: e.student?.fatherName || "",
-      phone: e.student?.phone || "",
-    }));
-
-    return res.json({
-      students: formatted,
-      message: `🔍 **${formatted.length} Student(s) Found:**\n\n${formatted.map((s, i) => `${i + 1}. **${s.name}** — Class ${s.class}-${s.section}\n   Roll: ${s.rollNo} | Father: ${s.father} | Ph: ${s.phone}`).join("\n\n")}`,
-    });
+    return res.status(200).json({ success: true, message: "Insight dismissed" });
   } catch (error: any) {
-    console.error("Student search error:", error);
-    return res.json({ message: "❌ Student search me error." });
+    return res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
-async function handleStatsQuery(tenantId: string, res: Response) {
+/**
+ * Get conversation history
+ * GET /api/ai/conversations
+ */
+export const getConversations = async (req: Request, res: Response) => {
   try {
-    const [students, teachers, classes] = await Promise.all([
-      prisma.student.count({ where: { tenantId, isDeleted: false } }),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-      prisma.class.count({ where: { tenantId } }),
-    ]);
+    const tenantId = req.headers["x-tenant-id"] as string;
+    const userId = (req as any).user?.id;
 
-    return res.json({
-      message: `📊 **School Statistics:**\n\n👨‍🎓 Students: ${students}\n👨‍🏫 Teachers: ${teachers}\n🏫 Classes: ${classes}`,
+    const conversations = await prisma.aIConversation.findMany({
+      where: { tenantId, userId, isActive: true },
+      orderBy: { lastMessageAt: "desc" },
+      take: 20,
+      select: { id: true, title: true, messageCount: true, lastMessageAt: true, createdAt: true },
     });
-  } catch (error) {
-    return res.json({ message: "❌ Stats fetch me error." });
+
+    return res.status(200).json({ success: true, data: conversations });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
-}
+};

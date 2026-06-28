@@ -180,7 +180,6 @@ export const generateMigrationCert = async (data: any, tenantId: string, generat
       certNumber,
       studentId,
       tenantId,
-      migratingTo,
       purpose,
       remarks,
       generatedBy,

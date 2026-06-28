@@ -1,0 +1,711 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// MASTER MODELS - Part 1: Organization + Academic + Student + Staff
+// ══════════════════════════════════════════════════════════════════════════════
+// APPEND these models to backend/prisma/schema.prisma
+// Also add the relation arrays listed at the bottom to the Tenant model.
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 1. ORGANIZATION MASTERS                                                    ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model SchoolMaster {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  name            String
+  code            String
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  email           String?
+  website         String?
+  logo            String?
+  affiliation     String?
+  establishedYear Int?
+  principalName   String?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BranchMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  code      String
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  phone     String?
+  email     String?
+  isMain    Boolean  @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campuses  CampusMaster[]
+
+  @@index([tenantId])
+}
+
+model CampusMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  branchId   String   @db.ObjectId
+  branch     BranchMaster @relation(fields: [branchId], references: [id])
+
+  name       String
+  address    String?
+  capacity   Int?
+  facilities String[]
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model AcademicSessionMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ShiftMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  startTime String   // "08:00"
+  endTime   String   // "14:00"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workingDays WorkingDayMaster[]
+
+  @@index([tenantId])
+}
+
+model WorkingDayMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  dayOfWeek Int      // 0=Sunday, 1=Monday ... 6=Saturday
+  isWorking Boolean  @default(true)
+  halfDay   Boolean  @default(false)
+  startTime String?  // Override shift time if needed
+  endTime   String?
+
+  shiftId   String?  @db.ObjectId
+  shift     ShiftMaster? @relation(fields: [shiftId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([shiftId])
+}
+
+model HolidayMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  date        DateTime
+  type        String   // NATIONAL | STATE | SCHOOL | RESTRICTED
+  isOptional  Boolean  @default(false)
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([date])
+}
+
+model HouseMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  color       String?  // Hex color e.g. "#FF5733"
+  motto       String?
+  captain     String?  // Student name or ID
+  viceCaptain String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SchoolTimingMaster {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String   @db.ObjectId
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+
+  name             String   // e.g. "Summer Timing", "Winter Timing"
+  assemblyStart    String   // "07:30"
+  assemblyEnd      String   // "07:45"
+  firstPeriodStart String   // "07:50"
+  lastPeriodEnd    String   // "13:30"
+  lunchStart       String?  // "12:00"
+  lunchEnd         String?  // "12:30"
+  dispersalTime    String   // "13:45"
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 2. ACADEMIC MASTERS                                                        ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model StreamMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Science, Commerce, Arts, etc.
+  code        String
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjectGroups   SubjectGroupMaster[]
+  electiveSubjects ElectiveSubjectMaster[]
+
+  @@index([tenantId])
+}
+
+model SubjectGroupMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // e.g. "PCM Group", "Commerce Core"
+  classId   String?  @db.ObjectId
+  streamId  String?  @db.ObjectId
+  stream    StreamMaster? @relation(fields: [streamId], references: [id])
+  subjects  String[] // Array of subject IDs
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([streamId])
+}
+
+model ElectiveSubjectMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  subjectId   String   @db.ObjectId
+  classId     String   @db.ObjectId
+  streamId    String?  @db.ObjectId
+  stream      StreamMaster? @relation(fields: [streamId], references: [id])
+  maxStudents Int?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([classId])
+  @@index([streamId])
+}
+
+model MediumMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindi, English, Urdu, etc.
+  code     String
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BoardMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Central Board of Secondary Education
+  code        String   // CBSE, ICSE, STATE, IB, IGCSE
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  syllabi     SyllabusMaster[]
+
+  @@index([tenantId])
+}
+
+model CourseMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // B.Tech, BCA, MBA, etc.
+  code         String
+  duration     Int      // e.g. 4 (years), 6 (semesters)
+  durationUnit String   // YEAR | SEMESTER | MONTH
+  description  String?
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SyllabusMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  classId   String   @db.ObjectId
+  subjectId String   @db.ObjectId
+  boardId   String?  @db.ObjectId
+  board     BoardMaster? @relation(fields: [boardId], references: [id])
+  content   String?  // Rich text / JSON syllabus content
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([classId])
+  @@index([boardId])
+}
+
+model PeriodMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // "Period 1", "Lunch Break"
+  number    Int      // Order sequence
+  startTime String   // "08:00"
+  endTime   String   // "08:40"
+  duration  Int      // Minutes, e.g. 40
+  type      String   // REGULAR | BREAK | LUNCH | FREE
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetableSlots TimetableSlotMaster[]
+
+  @@index([tenantId])
+}
+
+model TimetableSlotMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  dayOfWeek  Int      // 0=Sunday ... 6=Saturday
+  periodId   String   @db.ObjectId
+  period     PeriodMaster @relation(fields: [periodId], references: [id])
+  classId    String   @db.ObjectId
+  sectionId  String   @db.ObjectId
+  subjectId  String?  @db.ObjectId
+  teacherId  String?  @db.ObjectId
+  roomId     String?  @db.ObjectId
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([periodId])
+  @@index([classId, sectionId, dayOfWeek])
+  @@index([teacherId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 3. STUDENT MASTERS                                                         ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model AdmissionTypeMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // New Admission, Transfer, RTE, Management Quota
+  code        String
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model CategoryMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // General, OBC, SC, ST, EWS
+  code        String   // GEN, OBC, SC, ST, EWS
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  castes      CasteMaster[]
+
+  @@index([tenantId])
+}
+
+model ReligionMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindu, Muslim, Christian, Sikh, Buddhist, Jain, Other
+  code     String?
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model CasteMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String
+  categoryId String   @db.ObjectId
+  category   CategoryMaster @relation(fields: [categoryId], references: [id])
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([categoryId])
+}
+
+model NationalityMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Indian, Nepalese, etc.
+  code     String?  // IN, NP, etc.
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BloodGroupMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // A+, A-, B+, B-, O+, O-, AB+, AB-
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model MotherTongueMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindi, English, Punjabi, Tamil, Telugu, etc.
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model StudentStatusMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Active, Left, TC Issued, Passed Out, Suspended, Expelled
+  code     String   // ACTIVE, LEFT, TC, PASSOUT, SUSPENDED, EXPELLED
+  color    String?  // Hex color for UI badge
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SiblingRelationMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Brother, Sister, Twin, Step-Brother, Step-Sister
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 4. STAFF MASTERS                                                           ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model DepartmentMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Mathematics, Science, English, Hindi, Computer, Admin, etc.
+  code        String
+  hodId       String?  @db.ObjectId  // Head of Department (Teacher ID)
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  designations DesignationMaster[]
+
+  @@index([tenantId])
+}
+
+model DesignationMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // Principal, Vice Principal, HOD, PGT, TGT, PRT, Lab Assistant, etc.
+  code         String
+  level        Int?     // Hierarchy level (1=highest)
+  description  String?
+  departmentId String?  @db.ObjectId
+  department   DepartmentMaster? @relation(fields: [departmentId], references: [id])
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([departmentId])
+}
+
+model EmploymentTypeMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Permanent, Contract, Temporary, Ad-hoc, Part-time, Guest Faculty
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model QualificationMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Ph.D., M.Tech, M.Sc., B.Ed., B.A., 12th, D.El.Ed.
+  level    String   // PHD, MASTERS, BACHELORS, DIPLOMA, 12TH, 10TH
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model LeaveTypeMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // Casual Leave, Sick Leave, Earned Leave, Maternity, Paternity
+  code         String   // CL, SL, EL, ML, PL
+  maxDays      Int      // Max days per year
+  carryForward Boolean  @default(false)
+  encashable   Boolean  @default(false)
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model StaffCategoryMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Teaching, Non-Teaching, Administrative, Support, Contract
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SalaryGradeMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // Grade A, Grade B, Level-7, etc.
+  minPay    Float    // Minimum pay in this grade
+  maxPay    Float    // Maximum pay in this grade
+  increment Float?   // Annual increment amount
+  level     Int?     // Hierarchy level
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BankMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // State Bank of India, Punjab National Bank, etc.
+  code     String   // IFSC prefix, e.g. "SBIN", "PUNB"
+  branch   String?  // Branch name
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TENANT MODEL ADDITIONS
+// ══════════════════════════════════════════════════════════════════════════════
+// Add these relation arrays inside the existing Tenant model:
+//
+// // Organization Masters
+// schoolMasters          SchoolMaster[]
+// branchMasters          BranchMaster[]
+// campusMasters          CampusMaster[]
+// academicSessionMasters AcademicSessionMaster[]
+// shiftMasters           ShiftMaster[]
+// workingDayMasters      WorkingDayMaster[]
+// holidayMasters         HolidayMaster[]
+// houseMasters           HouseMaster[]
+// schoolTimingMasters    SchoolTimingMaster[]
+//
+// // Academic Masters
+// streamMasters          StreamMaster[]
+// subjectGroupMasters    SubjectGroupMaster[]
+// electiveSubjectMasters ElectiveSubjectMaster[]
+// mediumMasters          MediumMaster[]
+// boardMasters           BoardMaster[]
+// courseMasters          CourseMaster[]
+// syllabusMasters        SyllabusMaster[]
+// periodMasters          PeriodMaster[]
+// timetableSlotMasters   TimetableSlotMaster[]
+//
+// // Student Masters
+// admissionTypeMasters   AdmissionTypeMaster[]
+// categoryMasters        CategoryMaster[]
+// religionMasters        ReligionMaster[]
+// casteMasters           CasteMaster[]
+// nationalityMasters     NationalityMaster[]
+// bloodGroupMasters      BloodGroupMaster[]
+// motherTongueMasters    MotherTongueMaster[]
+// studentStatusMasters   StudentStatusMaster[]
+// siblingRelationMasters SiblingRelationMaster[]
+//
+// // Staff Masters
+// departmentMasters      DepartmentMaster[]
+// designationMasters     DesignationMaster[]
+// employmentTypeMasters  EmploymentTypeMaster[]
+// qualificationMasters   QualificationMaster[]
+// leaveTypeMasters       LeaveTypeMaster[]
+// staffCategoryMasters   StaffCategoryMaster[]
+// salaryGradeMasters     SalaryGradeMaster[]
+// bankMasters            BankMaster[]
+// ══════════════════════════════════════════════════════════════════════════════

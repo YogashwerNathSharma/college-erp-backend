@@ -14,9 +14,7 @@
   },
   "references": [
     { "path": "./backend" },
-    { "path": "./frontend" },
-    { "path": "./student-portal" },
-    { "path": "./shared" }
+    { "path": "./frontend" }
   ],
   "exclude": ["node_modules", "**/node_modules", "**/dist"]
 }

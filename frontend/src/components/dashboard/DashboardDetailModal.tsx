@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Printer, Download, Search, Filter } from "lucide-react";
 import axios from "axios";
-import { FeeReceiptPrint } from "../../pages/fees/FeeReceiptPrint";
+import { printDocument, printMultipleReceipts } from "../../utils/print";
 
 type ModalType = "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments";
 
@@ -86,13 +86,13 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         case "fees_collected":
         case "receipts":
         case "recent_payments": {
-          const res = await axios.get("/api/ai/dashboard/all-payments", { headers });
+          const res = await axios.get("/api/fees/collection/all-payments", { headers });
           result = res.data?.data || [];
           break;
         }
         case "fees_pending": {
-          const res = await axios.get("/api/ai/dashboard/defaulters", { headers });
-          result = res.data?.data || [];
+          const res = await axios.get("/api/fees/collection/defaulters", { headers });
+          result = res.data?.data?.defaulters || res.data?.defaulters || res.data?.data || [];
           break;
         }
       }
@@ -145,28 +145,8 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
   // ━━━ PRINT ━━━
   const handlePrintSingle = (item: any) => {
     if (type === "fees_collected" || type === "receipts" || type === "recent_payments") {
-      // Use proper receipt format (Student Copy + School Copy on half A4)
-      FeeReceiptPrint({
-        receiptNo: item.receiptNo || "-",
-        paymentDate: item.paymentDate || new Date().toISOString(),
-        studentName: item.studentName || "-",
-        admissionNo: item.admissionNo || "-",
-        fatherName: item.fatherName || "-",
-        className: item.className || "-",
-        section: item.section || "-",
-        rollNumber: item.rollNumber || "",
-        session: item.session || "",
-        feeHead: item.feeHead || "Fee",
-        feeItems: item.feeItems && item.feeItems.length > 0 ? item.feeItems : undefined,
-        installmentNo: item.installmentNo || 1,
-        amount: item.amount || item.paidAmount || 0,
-        method: item.method || "CASH",
-        reference: item.reference || null,
-        totalDue: item.totalDue || 0,
-        balance: item.balance || 0,
-        collectedBy: item.collectedBy || "",
-        discountAmount: item.discountAmount || 0,
-      });
+      // Use Unified Print System
+      printDocument("fee_receipt", item);
     } else {
       printItems([item]);
     }
@@ -175,10 +155,8 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
     const items = filteredData.filter((d: any) => selectedItems.has(d.id || d._id));
     if (items.length === 0) { alert("Koi item select nahi kiya!"); return; }
     if (type === "fees_collected" || type === "receipts" || type === "recent_payments") {
-      // Print each receipt in proper format one by one
-      items.forEach((item: any) => {
-        handlePrintSingle(item);
-      });
+      // Print ALL selected receipts in ONE window with page breaks
+      printMultipleReceipts(items);
     } else {
       printItems(items);
     }
@@ -299,21 +277,21 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-6xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-none" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-6xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-none" onClick={(e) => e.stopPropagation()}>
         
         {/* ═══ HEADER ═══ */}
-        <div className="flex items-center justify-between px-6 py-3 border-b bg-gradient-to-r from-indigo-50 to-purple-50 flex-shrink-0">
-          <h2 className="text-lg font-bold text-slate-800">{getTitle()}</h2>
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 flex-shrink-0">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">{getTitle()}</h2>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500 bg-white px-2 py-0.5 rounded">{filteredData.length} records</span>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-lg">
+            <span className="text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded">{filteredData.length} records</span>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
               <X size={20} />
             </button>
           </div>
         </div>
 
         {/* ═══ FILTERS ═══ */}
-        <div className="px-6 py-3 border-b bg-slate-50 flex-shrink-0 space-y-2">
+        <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex-shrink-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[150px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -322,7 +300,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                 placeholder={type === "students" ? "Search name, admission no, phone..." : "Search name..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500"
               />
             </div>
 
@@ -330,7 +308,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
               <select
                 value={classFilter}
                 onChange={(e) => setClassFilter(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white min-w-[120px]"
+                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-white min-w-[120px]"
               >
                 <option value="">All Classes</option>
                 {classes.map((c: any) => (
@@ -341,10 +319,10 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
 
             {type === "students" && (
               <>
-                <input type="text" placeholder="Father name..." value={fatherFilter} onChange={(e) => setFatherFilter(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm w-[130px]" />
-                <input type="text" placeholder="Address..." value={addressFilter} onChange={(e) => setAddressFilter(e.target.value)}
-                  className="px-3 py-2 rounded-lg border border-slate-200 text-sm w-[130px]" />
+                <input type="text" placeholder="Father name..." value={fatherFilter} onChange={(e) => setFatherFilter(e.target.value)} 
+                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
+                <input type="text" placeholder="Address..." value={addressFilter} onChange={(e) => setAddressFilter(e.target.value)} 
+                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
               </>
             )}
           </div>
@@ -366,20 +344,20 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         </div>
 
         {/* ═══ TABLE ═══ */}
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-slate-900">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
             </div>
           ) : filteredData.length === 0 ? (
-            <div className="text-center text-slate-400 py-16">
+            <div className="text-center text-slate-400 dark:text-slate-500 py-16">
               <p className="text-lg">😕 Koi data nahi mila</p>
               <p className="text-sm mt-1">Search type karein ya class select karein</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-100 z-10">
-                <tr className="text-left text-slate-600 text-xs uppercase">
+            <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+              <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10">
+                <tr className="text-left text-slate-600 dark:text-slate-300 text-xs uppercase">
                   <th className="p-2.5 w-8"><input type="checkbox" checked={selectAll} onChange={handleSelectAll} /></th>
                   <th className="p-2.5 w-8">#</th>
                   {type === "students" && (
@@ -389,7 +367,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                     <><th className="p-2.5">Class</th><th className="p-2.5">Sections</th></>
                   )}
                   {(type === "fees_collected" || type === "receipts" || type === "recent_payments") && (
-                    <><th className="p-2.5">Student</th><th className="p-2.5">Class</th><th className="p-2.5">Receipt</th><th className="p-2.5">Amount</th><th className="p-2.5">Date</th><th className="p-2.5">Method</th></>
+                    <><th className="p-2.5">Student</th><th className="p-2.5">Class</th><th className="p-2.5">Section</th><th className="p-2.5">Receipt</th><th className="p-2.5">Amount</th><th className="p-2.5">Date</th><th className="p-2.5">Method</th></>
                   )}
                   {type === "fees_pending" && (
                     <><th className="p-2.5">Student</th><th className="p-2.5">Class</th><th className="p-2.5">Pending</th><th className="p-2.5">Total</th></>
@@ -402,7 +380,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                   const id = item.id || item._id || `row-${i}`;
                   const isSelected = selectedItems.has(id);
                   return (
-                    <tr key={id} className={`border-b border-slate-50 hover:bg-indigo-50/40 ${isSelected ? "bg-indigo-50" : ""}`}>
+                    <tr key={id} className={`border-b border-slate-100 dark:border-slate-700 hover:bg-indigo-50/40 dark:hover:bg-slate-800 ${isSelected ? "bg-indigo-50 dark:bg-indigo-950" : ""}`}>
                       <td className="p-2.5"><input type="checkbox" checked={isSelected} onChange={() => toggleItem(id)} /></td>
                       <td className="p-2.5 text-slate-400 text-xs">{i + 1}</td>
 
@@ -426,10 +404,11 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                         <>
                           <td className="p-2.5 font-medium">{item.studentName || item.student?.name || "-"}</td>
                           <td className="p-2.5">{item.className || item.class || "-"}</td>
+                          <td className="p-2.5">{item.section || item.sectionName || "-"}</td>
                           <td className="p-2.5 font-mono text-indigo-600 text-xs">{item.receiptNo || "-"}</td>
                           <td className="p-2.5 font-bold text-green-600">₹{item.amount || item.paidAmount || 0}</td>
                           <td className="p-2.5 text-xs">{item.paymentDate ? new Date(item.paymentDate).toLocaleDateString("en-IN") : item.date || "-"}</td>
-                          <td className="p-2.5"><span className="px-1.5 py-0.5 bg-slate-100 rounded text-xs">{item.method || "-"}</span></td>
+                          <td className="p-2.5"><span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded text-xs font-medium">{item.method || "-"}</span></td>
                         </>
                       )}
                       {type === "fees_pending" && (
@@ -455,7 +434,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         </div>
 
         {/* ═══ FOOTER ═══ */}
-        <div className="px-6 py-2 border-t bg-slate-50 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
+        <div className="px-6 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
           <span>{filteredData.length} of {data.length}</span>
           <span>Selected: {selectedItems.size}</span>
         </div>

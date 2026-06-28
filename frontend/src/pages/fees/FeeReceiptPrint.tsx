@@ -30,6 +30,8 @@ interface ReceiptData {
   balance?: number;
   collectedBy?: string;
   discountAmount?: number;
+  feePeriod?: string; // "Apr 2025 - Jun 2025"
+  dueDate?: string; // ISO date to derive month
 }
 
 const numberToWords = (num: number): string => {
@@ -47,6 +49,29 @@ const numberToWords = (num: number): string => {
     return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 ? " " + convert(n % 10000000) : "");
   };
   return convert(Math.round(num)) + " only.";
+};
+
+// Get fee period text from installment number or dates
+const getFeePeriodText = (data: ReceiptData): string => {
+  // If explicit feePeriod provided, use it
+  if (data.feePeriod) return data.feePeriod;
+
+  // Derive from installment number (Indian academic year: Apr=1, May=2, ..., Mar=12)
+  const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+  const installment = data.installmentNo || 1;
+
+  if (data.dueDate) {
+    const d = new Date(data.dueDate);
+    const monthName = d.toLocaleString("en-IN", { month: "short", year: "numeric" });
+    return `${monthName} (Installment #${installment})`;
+  }
+
+  // Fallback: map installment to month
+  const monthIdx = ((installment - 1) % 12);
+  const monthName = months[monthIdx];
+  const year = new Date().getFullYear();
+  const displayYear = monthIdx >= 9 ? year + 1 : year; // Jan-Mar = next year
+  return `${monthName} ${displayYear} (Installment #${installment})`;
 };
 
 export const FeeReceiptPrint = async (data: ReceiptData) => {
@@ -145,7 +170,7 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
         </tr>
         <tr>
           <td style="padding: 1px 0;"><strong>Month.</strong></td>
-          <td colspan="3">Installment #${data.installmentNo}</td>
+          <td colspan="3">${getFeePeriodText(data)}</td>
         </tr>
       </table>
 
@@ -197,8 +222,8 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
       </div>
 
       <!-- Balance -->
-      <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 9px;">
-        <div><strong>Balance:</strong> ₹${balance.toLocaleString("en-IN")}</div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 3px; padding: 3px 5px; background: #fff3cd; border: 1px solid #ffc107; font-size: 10px;">
+        <div><strong>Balance Due:</strong> ₹${balance.toLocaleString("en-IN")}</div>
         ${data.reference ? `<div><strong>Ref:</strong> ${data.reference}</div>` : ""}
       </div>
 

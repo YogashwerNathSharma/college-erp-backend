@@ -82,7 +82,7 @@ try {
   env = envSchema.parse(process.env);
 } catch (error) {
   if (error instanceof z.ZodError) {
-    const missing = error.errors.map((e) => `  - ${e.path.join(".")}: ${e.message}`).join("\n");
+    const missing = error.issues.map((e) => `  - ${e.path.join(".")}: ${e.message}`).join("\n");
     console.error(`\n❌ Environment validation failed:\n${missing}\n`);
     process.exit(1);
   }

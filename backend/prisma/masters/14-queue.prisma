@@ -1,0 +1,49 @@
+// ══════════════════════════════════════════════════════════
+// QUEUE SYSTEM - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model QueueJob {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String    @db.ObjectId
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  type          String    // SMS | EMAIL | PDF_GENERATION | BACKUP | BULK_OPERATION | REPORT
+  payload       Json      // job-specific data
+  priority      String    @default("NORMAL") // LOW | NORMAL | HIGH | CRITICAL
+  status        String    @default("QUEUED") // QUEUED | PROCESSING | COMPLETED | FAILED | RETRYING
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  lastError     String?
+  processedAt   DateTime?
+  completedAt   DateTime?
+  result        Json?     // output/result data
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status, priority])
+  @@index([type, status])
+}
+
+model QueueConfig {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String    @db.ObjectId
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  type          String    // SMS | EMAIL | PDF_GENERATION | BACKUP | BULK_OPERATION | REPORT
+  maxConcurrent Int       @default(5)
+  retryDelay    Int       @default(60000) // milliseconds
+  maxRetries    Int       @default(3)
+  isActive      Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, type])
+}
+
+// Add to Tenant model:
+// queueJobs       QueueJob[]
+// queueConfigs    QueueConfig[]

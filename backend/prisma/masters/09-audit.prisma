@@ -1,0 +1,82 @@
+// ══════════════════════════════════════════════════════════
+// AUDIT & ACTIVITY TRACKING - Prisma Models
+// ══════════════════════════════════════════════════════════
+
+model AuditLog {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Who
+  userId    String @db.ObjectId
+  userName  String
+  userRole  String
+
+  // What
+  action    String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, PRINT, APPROVE, REJECT, VIEW
+  module    String // student, fee, exam, attendance, etc.
+  entityId  String? @db.ObjectId
+  entityType String? // Student, Payment, Exam, etc.
+
+  // Data Changes
+  previousData Json?
+  newData      Json?
+  changes      Json? // [{field, oldValue, newValue}]
+
+  // Context
+  ipAddress   String?
+  userAgent   String?
+  browser     String?
+  device      String?
+  os          String?
+  sessionId   String?
+  duration    Int? // in milliseconds (for page views)
+
+  // Rollback
+  isRollbackable Boolean @default(false)
+  rolledBack     Boolean @default(false)
+  rolledBackBy   String? @db.ObjectId
+  rolledBackAt   DateTime?
+
+  // Tenant
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId])
+  @@index([tenantId, module])
+  @@index([tenantId, action])
+  @@index([tenantId, entityType, entityId])
+}
+
+model LoginHistory {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId    String @db.ObjectId
+  userName  String
+  userRole  String
+
+  action    String // LOGIN, LOGOUT, FAILED_LOGIN, SESSION_EXPIRED
+  ipAddress String?
+  userAgent String?
+  browser   String?
+  device    String?
+  os        String?
+  location  String? // geo-location from IP
+
+  sessionId   String?
+  loginAt     DateTime @default(now())
+  logoutAt    DateTime?
+  duration    Int? // session duration in seconds
+
+  isSuccessful Boolean @default(true)
+  failReason   String? // WRONG_PASSWORD, ACCOUNT_LOCKED, etc.
+
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, createdAt])
+}

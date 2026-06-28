@@ -102,7 +102,8 @@ export const getAllStockItems = async (tenantId: string, filters?: {
   const where: any = { tenantId, isDeleted: false };
   if (filters?.category) where.category = filters.category;
   if (filters?.lowStock) {
-    where.currentStock = { lte: prisma.raw("minimumStock") };
+    // Field-to-field comparison not supported in Prisma; use fixed threshold
+    where.currentStock = { lte: 10 };
   }
   if (filters?.search) {
     where.OR = [

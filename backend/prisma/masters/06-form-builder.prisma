@@ -1,0 +1,74 @@
+// ══════════════════════════════════════════════════════════
+// DYNAMIC FORM BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model FormTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  description String?
+  module      String?  // Optional: link to a module (ADMISSION, ENQUIRY, FEEDBACK, VISITOR, etc.)
+
+  // Fields JSON array:
+  // [{ id: "field_1", label: "Full Name", type: "TEXT", required: true, placeholder: "Enter name",
+  //    options: [], validation: { minLength: 2, maxLength: 100, pattern: "" }, order: 1, width: "FULL/HALF",
+  //    helpText: "", defaultValue: "", conditional: { dependsOn: "field_id", value: "..." } }]
+  fields      Json     @default("[]")
+
+  // Settings JSON:
+  // { allowAnonymous: false, requireLogin: true, submitLabel: "Submit", successMessage: "Thank you!",
+  //   redirectUrl: "", notifyOnSubmission: true, notifyEmails: [], maxSubmissions: 0 (unlimited),
+  //   startDate: null, endDate: null, showProgressBar: true }
+  settings    Json     @default("{}")
+
+  isPublished Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+
+  createdBy   String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  submissions FormSubmission[]
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, module])
+}
+
+model FormSubmission {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  formId         String   @db.ObjectId
+  form           FormTemplate @relation(fields: [formId], references: [id])
+
+  // Submitted data as key-value JSON: { "field_1": "John Doe", "field_2": "john@email.com" }
+  data           Json
+
+  submittedBy    String?  @db.ObjectId   // userId if logged in
+  submittedByName String?
+  submittedByEmail String?
+
+  status         String   @default("SUBMITTED") // DRAFT, SUBMITTED, REVIEWED, APPROVED, REJECTED
+  reviewedBy     String?  @db.ObjectId
+  reviewRemarks  String?
+  reviewedAt     DateTime?
+
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId, formId])
+  @@index([tenantId, status])
+  @@index([formId, createdAt])
+}
+
+// Also add to Tenant model:
+// formTemplates     FormTemplate[]
+// formSubmissions   FormSubmission[]

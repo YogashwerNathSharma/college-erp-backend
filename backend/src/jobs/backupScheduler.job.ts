@@ -69,8 +69,8 @@ export const runBackupSchedulerJob = async () => {
 
     for (const backup of oldBackups) {
       try {
-        if (fs.existsSync(backup.filepath)) {
-          fs.unlinkSync(backup.filepath);
+        if (backup.filepath && fs.existsSync(backup.filepath)) {
+          fs.unlinkSync(backup.filepath!);
         }
         await prisma.backupLog.delete({ where: { id: backup.id } });
       } catch (err) {

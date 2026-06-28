@@ -94,7 +94,7 @@ export const createGeofenceAlertSchema = z.object({
   geofenceName: z.string().optional(),
   description: z.string().min(1, "Description is required"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).default("MEDIUM"),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const listAlertsQuerySchema = z.object({

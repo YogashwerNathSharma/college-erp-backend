@@ -124,6 +124,7 @@ const FeeDashboardPage = lazy(() => import("./pages/fees/FeeDashboardPage"));
 const AssignFeeStructurePage = lazy(() => import("./pages/fees/AssignFeeStructurePage"));
 const FeeReportsPage = lazy(() => import("./pages/fees/FeeReportsPage"));
 const FeeReceiptsPage = lazy(() => import("./pages/fees/FeeReceiptsPage"));
+const DueFeesPage = lazy(() => import("./pages/fees/DueFeesPage"));
 const StudentLedgerPage = lazy(() => import("./pages/fees/StudentLedgerPage"));
 const FeeReminderPage = lazy(() => import("./pages/fees/FeeReminderPage"));
 const FeeSettingsPage = lazy(() => import("./pages/fees/FeeSettingsPage"));
@@ -207,6 +208,49 @@ const AdmissionList = lazy(() => import("./pages/admission/AdmissionList"));
 const NewAdmission = lazy(() => import("./pages/admission/NewAdmission"));
 const AdmissionDetail = lazy(() => import("./pages/admission/AdmissionDetail"));
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ENTERPRISE MODULE IMPORTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Gate Pass
+const GatePassDashboard = lazy(() => import("./pages/gate-pass/GatePassDashboard"));
+// Events
+const EventDashboard = lazy(() => import("./pages/events/EventDashboard"));
+// Help Desk
+const HelpDeskDashboard = lazy(() => import("./pages/helpdesk/HelpDeskDashboard"));
+// Workflow Engine
+const WorkflowEngine = lazy(() => import("./pages/workflow/WorkflowEngine"));
+// Form Builder
+const FormBuilder = lazy(() => import("./pages/form-builder/FormBuilder"));
+// Report Builder
+const ReportBuilder = lazy(() => import("./pages/report-builder/ReportBuilder"));
+// Audit
+const AuditDashboard = lazy(() => import("./pages/audit/AuditDashboard"));
+// Scheduler
+const SchedulerDashboard = lazy(() => import("./pages/scheduler/SchedulerDashboard"));
+// Dashboard Builder
+const DashboardBuilder = lazy(() => import("./pages/dashboard-builder/DashboardBuilder"));
+// QR / Barcode
+const QRManager = lazy(() => import("./pages/qr-barcode/QRManager"));
+// Payment Gateway
+const PaymentGateway = lazy(() => import("./pages/payment-gateway/PaymentGateway"));
+// File Manager
+const FileManager = lazy(() => import("./pages/file-manager/FileManager"));
+// Notifications
+const NotificationCenter = lazy(() => import("./pages/notifications/NotificationCenter"));
+// Import/Export
+const ImportExport = lazy(() => import("./pages/import-export/ImportExport"));
+// Queue Monitor
+const QueueMonitor = lazy(() => import("./pages/queue/QueueMonitor"));
+// Digital Signature
+const DigitalSignature = lazy(() => import("./pages/digital-signature/DigitalSignature"));
+// Multi-Language
+const LanguageManager = lazy(() => import("./pages/i18n/LanguageManager"));
+// AI Assistant
+const AIAssistant = lazy(() => import("./pages/ai-assistant/AIAssistant"));
+// Master Module
+const MasterModule = lazy(() => import("./pages/masters/MasterModule"));
 
 //////////////////////////////////////////////////////
 // AXIOS GLOBAL CONFIG
@@ -338,7 +382,7 @@ function ProtectedRoute() {
   // Role-based route guards
   const userData = localStorage.getItem("user");
   const userRole = userData ? JSON.parse(userData)?.role : null;
-  const adminRoutes = ["/dashboard", "/tenants", "/students", "/teachers", "/fees", "/exams", "/settings", "/classes", "/subjects", "/academic-years", "/attendance", "/reports", "/library", "/transport", "/backup", "/subscriptions", "/hostel", "/hr", "/communication", "/certificates", "/inventory", "/admission"];
+  const adminRoutes = ["/dashboard", "/tenants", "/students", "/teachers", "/fees", "/exams", "/settings", "/classes", "/subjects", "/academic-years", "/attendance", "/reports", "/library", "/transport", "/backup", "/subscriptions", "/hostel", "/hr", "/communication", "/certificates", "/inventory", "/admission", "/gate-pass", "/events", "/helpdesk", "/workflow", "/form-builder", "/report-builder", "/audit", "/scheduler", "/dashboard-builder", "/qr-barcode", "/payment-gateway", "/file-manager", "/notifications", "/import-export", "/queue-monitor", "/digital-signature", "/languages", "/ai-assistant", "/masters"];
   const isAdminRoute = adminRoutes.some(route => location.pathname === route || location.pathname.startsWith(route + "/"));
 
   if (userRole === "STUDENT" && isAdminRoute) {
@@ -446,7 +490,7 @@ function Layout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[280px] transition-[margin] duration-300">
+      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[72px] transition-all duration-300 bg-slate-50 dark:bg-slate-950 min-h-screen">
         {/* Hamburger (mobile only) */}
         <button
           className="hamburger-btn fixed top-3 left-3 z-[990] p-2.5 bg-primary-500 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-transform"
@@ -615,6 +659,7 @@ export default function App() {
               <Route path="/fees/fine-rules" element={<FineRulePage />} />
               <Route path="/fees/reports" element={<FeeReportsPage />} />
               <Route path="/fees/receipts" element={<FeeReceiptsPage />} />
+              <Route path="/fees/due" element={<DueFeesPage />} />
               <Route path="/fees/ledger" element={<StudentLedgerPage />} />
               <Route path="/fees/reminders" element={<FeeReminderPage />} />
               <Route path="/fees/settings" element={<FeeSettingsPage />} />
@@ -690,6 +735,44 @@ export default function App() {
 
               {/* BACKUP */}
               <Route path="/backup" element={<BackupPage />} />
+
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+              {/* ENTERPRISE MODULES                                  */}
+              {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+
+              {/* GATE PASS */}
+              <Route path="/gate-pass" element={<GatePassDashboard />} />
+
+              {/* EVENTS */}
+              <Route path="/events" element={<EventDashboard />} />
+
+              {/* HELP DESK */}
+              <Route path="/helpdesk" element={<HelpDeskDashboard />} />
+
+              {/* FOUNDATION ENGINES */}
+              <Route path="/workflow" element={<WorkflowEngine />} />
+              <Route path="/form-builder" element={<FormBuilder />} />
+              <Route path="/report-builder" element={<ReportBuilder />} />
+              <Route path="/audit" element={<AuditDashboard />} />
+              <Route path="/scheduler" element={<SchedulerDashboard />} />
+              <Route path="/dashboard-builder" element={<DashboardBuilder />} />
+
+              {/* ENTERPRISE FEATURES */}
+              <Route path="/qr-barcode" element={<QRManager />} />
+              <Route path="/payment-gateway" element={<PaymentGateway />} />
+              <Route path="/file-manager" element={<FileManager />} />
+              <Route path="/notifications" element={<NotificationCenter />} />
+              <Route path="/import-export" element={<ImportExport />} />
+              <Route path="/queue-monitor" element={<QueueMonitor />} />
+              <Route path="/digital-signature" element={<DigitalSignature />} />
+              <Route path="/languages" element={<LanguageManager />} />
+              <Route path="/ai-assistant" element={<AIAssistant />} />
+
+              {/* MASTER MODULE */}
+              <Route path="/masters" element={<MasterModule />} />
+              <Route path="/masters/:category" element={<MasterModule />} />
+              <Route path="/masters/:category/:model" element={<MasterModule />} />
+
             </Route>
           </Route>
 

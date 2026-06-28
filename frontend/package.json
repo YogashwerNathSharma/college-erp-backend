@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "dependencies": {
     "axios": "^1.15.2",
@@ -38,6 +38,8 @@
     "tailwindcss": "^3.4.19",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^5.4.19"
+    "vite": "5.4.19",
+    "rollup": "4.52.3",
+    "@rollup/rollup-linux-x64-gnu": "4.52.3"
   }
 }

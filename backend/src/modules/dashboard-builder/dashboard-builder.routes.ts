@@ -11,7 +11,15 @@ import {
   getWidgetData,
 } from "./dashboard-builder.controller";
 
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
+
 const router = Router();
+
+// Auth + Tenant middleware
+router.use(authMiddleware);
+router.use(resolveTenant);
+
 
 // Layout CRUD
 router.get("/layouts", getLayouts);

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import { useNavigate } from "react-router-dom";
 import {
   GraduationCap, IndianRupee, CalendarCheck, ClipboardList,
@@ -43,7 +45,28 @@ export default function ReportsDashboard() {
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
   // ── Report Categories Grid ──
-  const reportCategories: ReportCategory[] = [
+  
+  // ── Real-time Stats from API ──
+  const [stats, setStats] = useState<any>({ totalStudents: 0, totalTeachers: 0, totalClasses: 0, totalPaid: 0, totalPending: 0 });
+  const [apiReports, setApiReports] = useState<any[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [dashRes, reportsRes] = await Promise.all([
+          axios.get(getFullUrl("/api/dashboard")).catch(() => null),
+          axios.get(getFullUrl("/api/report-builder/generated?limit=7")).catch(() => null),
+        ]);
+        if (dashRes?.data?.data) setStats(dashRes.data.data);
+        if (reportsRes?.data?.data) setApiReports(reportsRes.data.data);
+      } catch(e) {}
+      setStatsLoading(false);
+    };
+    fetchData();
+  }, []);
+
+const reportCategories: ReportCategory[] = [
     { title: "Student Reports", description: "Class lists, strength, demographics, profiles", icon: <GraduationCap size={24} />, color: "text-blue-600", bgColor: "bg-blue-50 dark:bg-blue-950", route: "/students/reports" },
     { title: "Fee Reports", description: "Collection, pending, defaulters, receipts", icon: <IndianRupee size={24} />, color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-950", route: "/fees/reports" },
     { title: "Attendance Reports", description: "Daily, monthly, class-wise, student-wise", icon: <CalendarCheck size={24} />, color: "text-purple-600", bgColor: "bg-purple-50 dark:bg-purple-950", route: "/attendance-report" },
@@ -59,14 +82,14 @@ export default function ReportsDashboard() {
   ];
 
   // ── Recent Reports Data ──
-  const recentReports: RecentReport[] = [
+  const recentReports: RecentReport[] = apiReports.length > 0 
+    ? apiReports.map((r: any, i: number) => ({ id: r.id || String(i), name: r.name || r.title || "Report", module: r.module || "General", generatedBy: r.createdBy || "Admin", date: r.createdAt?.split("T")[0] || "", format: r.format || "PDF", size: r.size || "-" }))
+    : [
     { id: "1", name: "Class X Fee Collection - June 2026", module: "Fees", generatedBy: "Admin", date: "2026-06-27", format: "PDF", size: "2.1 MB" },
     { id: "2", name: "Monthly Attendance Summary", module: "Attendance", generatedBy: "Admin", date: "2026-06-26", format: "Excel", size: "854 KB" },
     { id: "3", name: "Mid-Term Results - All Classes", module: "Exams", generatedBy: "Principal", date: "2026-06-25", format: "PDF", size: "5.3 MB" },
     { id: "4", name: "Student Strength Report 2026-27", module: "Students", generatedBy: "Admin", date: "2026-06-24", format: "Excel", size: "412 KB" },
     { id: "5", name: "Teacher Salary Statement - June", module: "HR", generatedBy: "Accountant", date: "2026-06-23", format: "PDF", size: "1.8 MB" },
-    { id: "6", name: "Transport Route Utilization", module: "Transport", generatedBy: "Admin", date: "2026-06-22", format: "PDF", size: "920 KB" },
-    { id: "7", name: "Library Overdue Books List", module: "Library", generatedBy: "Librarian", date: "2026-06-21", format: "Excel", size: "156 KB" },
   ];
 
   const filteredReports = recentReports.filter((r) => {

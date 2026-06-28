@@ -1,8 +1,10 @@
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 // MASTER MODULE - ROUTES
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
 
 import { Router } from 'express';
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
 import {
   getCategories,
   listEntries,
@@ -20,14 +22,20 @@ import {
 
 const router = Router();
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// All master routes require authentication + tenant resolution
+// ─────────────────────────────────────────────────────────────────
+router.use(authMiddleware);
+router.use(resolveTenant);
+
+// ─────────────────────────────────────────────────────────────────
 // Categories (no modelName param)
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 router.get('/categories', getCategories);
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 // CRUD operations per model
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 
 // List entries with pagination, search, sort
 router.get('/:modelName', listEntries);

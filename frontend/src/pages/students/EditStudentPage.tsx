@@ -2,11 +2,40 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import { toast } from "react-hot-toast";
 
 export default function EditStudentPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  
+  // ── Master Dropdowns ──
+  const [masterBloodGroups, setMasterBloodGroups] = useState<{id:string,name:string}[]>([]);
+  const [masterCategories, setMasterCategories] = useState<{id:string,name:string}[]>([]);
+  const [masterReligions, setMasterReligions] = useState<{id:string,name:string}[]>([]);
+  const [masterNationalities, setMasterNationalities] = useState<{id:string,name:string}[]>([]);
+  const [masterCastes, setMasterCastes] = useState<{id:string,name:string}[]>([]);
+
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const [bg, cat, rel, nat, cas] = await Promise.all([
+          axios.get(getFullUrl("/api/masters/blood-group-master/dropdown")).catch(() => ({data:{data:[]}})),
+          axios.get(getFullUrl("/api/masters/category-master/dropdown")).catch(() => ({data:{data:[]}})),
+          axios.get(getFullUrl("/api/masters/religion-master/dropdown")).catch(() => ({data:{data:[]}})),
+          axios.get(getFullUrl("/api/masters/nationality-master/dropdown")).catch(() => ({data:{data:[]}})),
+          axios.get(getFullUrl("/api/masters/caste-master/dropdown")).catch(() => ({data:{data:[]}})),
+        ]);
+        setMasterBloodGroups(bg?.data?.data || []);
+        setMasterCategories(cat?.data?.data || []);
+        setMasterReligions(rel?.data?.data || []);
+        setMasterNationalities(nat?.data?.data || []);
+        setMasterCastes(cas?.data?.data || []);
+      } catch(e) {}
+    };
+    fetchMasters();
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -305,11 +334,17 @@ export default function EditStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Religion</label>
-              <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              <select name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Religion</option>
+                    {masterReligions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Caste</label>
-              <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              <select name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Caste</option>
+                    {masterCastes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Aadhar No</label>
@@ -317,7 +352,10 @@ export default function EditStudentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Nationality</label>
-              <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              <select name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Nationality</option>
+                    {masterNationalities.map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+                  </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Status</label>

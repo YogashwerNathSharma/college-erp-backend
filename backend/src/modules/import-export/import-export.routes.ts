@@ -14,11 +14,14 @@ import {
   getStats,
 } from "./import-export.controller";
 
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
+
 const router = Router({ mergeParams: true });
 
 // ══════════════════════════════════════════════════════════
 // IMPORT/EXPORT ROUTES
-// Base: /api/:tenantId/import-export
+// Base: /api/import-export
 // ══════════════════════════════════════════════════════════
 
 // Multer config for file uploads
@@ -55,6 +58,9 @@ const upload = multer({
 });
 
 // Stats
+router.use(authMiddleware);
+router.use(resolveTenant);
+
 router.get("/stats", getStats);
 
 // Import routes

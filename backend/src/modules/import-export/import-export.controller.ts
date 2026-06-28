@@ -146,7 +146,7 @@ function validateRow(
 // ──────────────────────────────────────────────────────────
 export const uploadForImport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id || "system";
     const { module } = req.body;
 
@@ -189,7 +189,7 @@ export const uploadForImport = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const validateImport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { jobId, mapping, previewRows = 10 } = req.body;
 
     if (!jobId || !mapping) {
@@ -261,7 +261,7 @@ export const validateImport = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const processImport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { jobId, skipErrors = true } = req.body;
 
     if (!jobId) {
@@ -346,7 +346,7 @@ export const processImport = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const listImportJobs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { module, status, page = "1", limit = "20" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -382,7 +382,7 @@ export const listImportJobs = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getImportTemplate = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const module = req.params.module as string;
 
     if (!MODULE_FIELDS[module]) {
@@ -421,7 +421,7 @@ export const getImportTemplate = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const generateExport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id || "system";
     const { module, format = "EXCEL", filters, columns } = req.body;
 
@@ -483,7 +483,7 @@ export const generateExport = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const listExportJobs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { module, status, page = "1", limit = "20" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -519,7 +519,7 @@ export const listExportJobs = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const downloadExport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const jobId = req.params.id as string;
 
     const job = await prisma.exportJob.findFirst({
@@ -546,7 +546,7 @@ export const downloadExport = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const cancelImportJob = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const jobId = req.params.id as string;
 
     const job = await prisma.importJob.findFirst({
@@ -578,7 +578,7 @@ export const cancelImportJob = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
 
     const [totalImports, successfulImports, totalExports, pendingJobs] = await Promise.all([
       prisma.importJob.count({ where: { tenantId } }),

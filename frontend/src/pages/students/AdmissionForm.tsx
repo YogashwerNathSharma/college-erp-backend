@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import { toast } from "react-hot-toast";
 import {
   FiUser,
@@ -18,6 +19,34 @@ import {
 export default function AdmissionForm() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  // ── Master Dropdown Data ──
+  const [masterBloodGroups, setMasterBloodGroups] = useState<{id:string,name:string}[]>([]);
+  const [masterReligions, setMasterReligions] = useState<{id:string,name:string}[]>([]);
+  const [masterCategories, setMasterCategories] = useState<{id:string,name:string}[]>([]);
+  const [masterNationalities, setMasterNationalities] = useState<{id:string,name:string}[]>([]);
+  const [masterCastes, setMasterCastes] = useState<{id:string,name:string}[]>([]);
+
+  useEffect(() => {
+    const fetchMasterDropdowns = async () => {
+      try {
+        const endpoints = [
+          "blood-group-master", "religion-master", "category-master",
+          "nationality-master", "caste-master"
+        ];
+        const results = await Promise.all(
+          endpoints.map(e => axios.get(getFullUrl(`/api/masters/${e}/dropdown`)).catch(() => ({ data: { data: [] } })))
+        );
+        setMasterBloodGroups(results[0]?.data?.data || []);
+        setMasterReligions(results[1]?.data?.data || []);
+        setMasterCategories(results[2]?.data?.data || []);
+        setMasterNationalities(results[3]?.data?.data || []);
+        setMasterCastes(results[4]?.data?.data || []);
+      } catch (err) { console.error("Master dropdowns fetch failed:", err); }
+    };
+    fetchMasterDropdowns();
+  }, []);
+
   const [ageValidation, setAgeValidation] = useState<any>(null);
   const [ageChecking, setAgeChecking] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -419,30 +448,29 @@ export default function AdmissionForm() {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Blood Group</label>
                   <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Select</option>
-                    <option value="A+">A+</option><option value="A-">A-</option>
-                    <option value="B+">B+</option><option value="B-">B-</option>
-                    <option value="O+">O+</option><option value="O-">O-</option>
-                    <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                    {masterBloodGroups.map(bg => <option key={bg.id} value={bg.name}>{bg.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
                   <select name="category" value={formData.category} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                     <option value="">Select</option>
-                    <option value="General">General</option>
-                    <option value="OBC">OBC</option>
-                    <option value="SC">SC</option>
-                    <option value="ST">ST</option>
-                    <option value="EWS">EWS</option>
+                    {masterCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Religion</label>
-                  <input type="text" name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="e.g. Hindu" />
+                  <select name="religion" value={formData.religion} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Religion</option>
+                    {masterReligions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Caste</label>
-                  <input type="text" name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Enter caste" />
+                  <select name="caste" value={formData.caste} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Caste</option>
+                    {masterCastes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Aadhar No</label>
@@ -450,7 +478,10 @@ export default function AdmissionForm() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nationality</label>
-                  <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+                  <select name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                    <option value="">Select Nationality</option>
+                    {masterNationalities.map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+                  </select>
                 </div>
               </div>
             </div>

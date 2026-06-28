@@ -10,7 +10,9 @@
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
     "seed-demo": "ts-node prisma/seed-demo.ts",
-    "seed-fresh": "ts-node prisma/seed-fresh.ts"
+    "seed-fresh": "ts-node prisma/seed-fresh.ts",
+    "seed-masters": "ts-node prisma/seed-masters.ts",
+    "seed-erp": "ts-node prisma/seed-full-erp.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

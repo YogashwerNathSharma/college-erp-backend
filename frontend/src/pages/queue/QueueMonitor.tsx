@@ -115,9 +115,9 @@ export default function QueueMonitor() {
   const fetchData = async () => {
     try {
       const [statsRes, jobsRes, configRes] = await Promise.all([
-        axios.get(getFullUrl(`/api/${tenantId}/queue/status`)),
-        axios.get(getFullUrl(`/api/${tenantId}/queue/jobs?limit=50`)),
-        axios.get(getFullUrl(`/api/${tenantId}/queue/config`)),
+        axios.get(getFullUrl(`/api/queue/status`)),
+        axios.get(getFullUrl(`/api/queue/jobs?limit=50`)),
+        axios.get(getFullUrl(`/api/queue/config`)),
       ]);
       setStats(statsRes.data.data);
       setJobs(jobsRes.data.data || []);
@@ -131,7 +131,7 @@ export default function QueueMonitor() {
 
   const handleRetry = async (jobId: string) => {
     try {
-      await axios.post(getFullUrl(`/api/${tenantId}/queue/retry/${jobId}`));
+      await axios.post(getFullUrl(`/api/queue/retry/${jobId}`));
       fetchData();
     } catch (err) {
       console.error("Retry failed:", err);
@@ -141,7 +141,7 @@ export default function QueueMonitor() {
   const handleRetryAll = async () => {
     if (!confirm("Retry all failed jobs?")) return;
     try {
-      await axios.post(getFullUrl(`/api/${tenantId}/queue/retry-all`));
+      await axios.post(getFullUrl(`/api/queue/retry-all`));
       fetchData();
     } catch (err) {
       console.error("Retry all failed:", err);
@@ -150,7 +150,7 @@ export default function QueueMonitor() {
 
   const handleCancel = async (jobId: string) => {
     try {
-      await axios.delete(getFullUrl(`/api/${tenantId}/queue/jobs/${jobId}`));
+      await axios.delete(getFullUrl(`/api/queue/jobs/${jobId}`));
       fetchData();
     } catch (err) {
       console.error("Cancel failed:", err);
@@ -159,7 +159,7 @@ export default function QueueMonitor() {
 
   const handleTriggerProcessing = async () => {
     try {
-      await axios.post(getFullUrl(`/api/${tenantId}/queue/process`));
+      await axios.post(getFullUrl(`/api/queue/process`));
       fetchData();
     } catch (err) {
       console.error("Trigger failed:", err);
@@ -169,7 +169,7 @@ export default function QueueMonitor() {
   const handleUpdateConfig = async () => {
     if (!editingConfig) return;
     try {
-      await axios.put(getFullUrl(`/api/${tenantId}/queue/config`), editingConfig);
+      await axios.put(getFullUrl(`/api/queue/config`), editingConfig);
       setShowConfigModal(false);
       setEditingConfig(null);
       fetchData();
@@ -181,7 +181,7 @@ export default function QueueMonitor() {
   const handleCleanup = async () => {
     if (!confirm("Delete completed jobs older than 30 days?")) return;
     try {
-      const res = await axios.post(getFullUrl(`/api/${tenantId}/queue/cleanup`), { olderThanDays: 30 });
+      const res = await axios.post(getFullUrl(`/api/queue/cleanup`), { olderThanDays: 30 });
       alert(res.data.message);
       fetchData();
     } catch (err) {

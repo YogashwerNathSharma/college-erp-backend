@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const {
       page = "1",
       limit = "20",
@@ -83,7 +83,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
  */
 export const getAuditLogDetail = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const logId = req.params.id as string;
 
     const log = await prisma.auditLog.findFirst({
@@ -107,7 +107,7 @@ export const getAuditLogDetail = async (req: Request, res: Response) => {
  */
 export const getUserActivity = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = req.params.userId as string;
     const { page = "1", limit = "50" } = req.query;
 
@@ -147,7 +147,7 @@ export const getUserActivity = async (req: Request, res: Response) => {
  */
 export const getLoginHistory = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { page = "1", limit = "20", userId, startDate, endDate } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -194,7 +194,7 @@ export const getLoginHistory = async (req: Request, res: Response) => {
  */
 export const rollbackChange = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const logId = req.params.id as string;
     const userId = (req as any).user?.id;
 
@@ -286,7 +286,7 @@ export const rollbackChange = async (req: Request, res: Response) => {
  */
 export const getAuditStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

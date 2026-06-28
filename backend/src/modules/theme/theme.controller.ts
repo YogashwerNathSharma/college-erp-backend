@@ -153,7 +153,7 @@ const THEME_PRESETS = [
  */
 export const getTheme = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const theme = await prisma.themeConfig.findFirst({
       where: { tenantId, isActive: true },
@@ -177,7 +177,7 @@ export const getTheme = async (req: Request, res: Response) => {
  */
 export const updateTheme = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const {
       name,
       primaryColor,
@@ -311,7 +311,7 @@ export const previewTheme = async (req: Request, res: Response) => {
  */
 export const resetTheme = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     // Deactivate all themes
     await prisma.themeConfig.updateMany({
@@ -351,7 +351,7 @@ export const getPresets = async (req: Request, res: Response) => {
  */
 export const getThemeHistory = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const themes = await prisma.themeConfig.findMany({
       where: { tenantId },

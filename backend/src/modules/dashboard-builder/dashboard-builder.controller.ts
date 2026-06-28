@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 export const getLayouts = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
 
     const layouts = await prisma.dashboardLayout.findMany({
@@ -34,7 +34,7 @@ export const getLayouts = async (req: Request, res: Response) => {
  */
 export const getLayoutById = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const layout = await prisma.dashboardLayout.findFirst({
@@ -58,7 +58,7 @@ export const getLayoutById = async (req: Request, res: Response) => {
  */
 export const createLayout = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { name, widgets, gridConfig, isDefault } = req.body;
 
@@ -98,7 +98,7 @@ export const createLayout = async (req: Request, res: Response) => {
  */
 export const updateLayout = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { id } = req.params;
     const { name, widgets, gridConfig, isDefault } = req.body;
@@ -142,7 +142,7 @@ export const updateLayout = async (req: Request, res: Response) => {
  */
 export const deleteLayout = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { id } = req.params;
 
@@ -169,7 +169,7 @@ export const deleteLayout = async (req: Request, res: Response) => {
  */
 export const getWidgets = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const widgets = await prisma.dashboardWidget.findMany({
       where: {
@@ -213,7 +213,7 @@ export const getWidgets = async (req: Request, res: Response) => {
  */
 export const createWidget = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { name, type, dataSource, config, isPublic } = req.body;
 
@@ -247,7 +247,7 @@ export const createWidget = async (req: Request, res: Response) => {
  */
 export const deleteWidget = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     await prisma.dashboardWidget.update({
@@ -268,7 +268,7 @@ export const deleteWidget = async (req: Request, res: Response) => {
  */
 export const getWidgetData = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { widgetType } = req.params;
     const { dataSource } = req.query;
 

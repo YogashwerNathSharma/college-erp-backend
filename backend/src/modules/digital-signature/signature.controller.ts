@@ -30,7 +30,7 @@ function generateHash(content: string): string {
  */
 export const uploadSignature = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const {
       name,
@@ -115,7 +115,7 @@ export const uploadSignature = async (req: Request, res: Response) => {
  */
 export const listSignatures = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = req.query.userId as string;
 
     const where: any = { tenantId, isActive: true };
@@ -139,7 +139,7 @@ export const listSignatures = async (req: Request, res: Response) => {
  */
 export const getSignature = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const id = req.params.id as string;
 
     const signature = await prisma.digitalSignature.findFirst({
@@ -163,7 +163,7 @@ export const getSignature = async (req: Request, res: Response) => {
  */
 export const signDocument = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name;
     const documentId = req.params.documentId as string;
@@ -293,7 +293,7 @@ export const verifySignature = async (req: Request, res: Response) => {
  */
 export const revokeSignature = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const signedDocId = req.params.signedDocId as string;
     const { reason } = req.body;
 
@@ -319,7 +319,7 @@ export const revokeSignature = async (req: Request, res: Response) => {
  */
 export const deleteSignature = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const id = req.params.id as string;
 
     await prisma.digitalSignature.updateMany({
@@ -340,7 +340,7 @@ export const deleteSignature = async (req: Request, res: Response) => {
  */
 export const getSignedDocuments = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const documentType = req.query.type as string;

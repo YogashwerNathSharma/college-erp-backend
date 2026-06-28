@@ -89,7 +89,7 @@ const PREDEFINED_TASKS = [
 // ──────────────────────────────────────────────────────────
 export const listTasks = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { type, status, search, page = "1", limit = "20" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -139,7 +139,7 @@ export const listTasks = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const createTask = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id || "system";
     const { name, description, type, cronExpression, handler, params, isActive } = req.body;
 
@@ -180,7 +180,7 @@ export const createTask = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const updateTask = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const taskId = req.params.id as string;
     const { name, description, type, cronExpression, handler, params, isActive } = req.body;
 
@@ -225,7 +225,7 @@ export const updateTask = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const deleteTask = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const taskId = req.params.id as string;
 
     const existing = await prisma.scheduledTask.findFirst({
@@ -253,7 +253,7 @@ export const deleteTask = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const runTaskNow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const taskId = req.params.id as string;
 
     const task = await prisma.scheduledTask.findFirst({
@@ -353,7 +353,7 @@ export const runTaskNow = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const toggleTask = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const taskId = req.params.id as string;
 
     const task = await prisma.scheduledTask.findFirst({
@@ -389,7 +389,7 @@ export const toggleTask = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getLogs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { taskId, status, from, to, page = "1", limit = "50" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -437,7 +437,7 @@ export const getLogs = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getTaskLogs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const taskId = req.params.taskId as string;
     const { page = "1", limit = "20" } = req.query;
 
@@ -484,7 +484,7 @@ export const getTemplates = async (_req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

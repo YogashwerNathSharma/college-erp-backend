@@ -29,7 +29,7 @@ const SUPPORTED_LOCALES = [
  */
 export const getTranslations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const locale = req.params.locale as string;
 
     const translations = await prisma.translation.findMany({
@@ -66,7 +66,7 @@ export const getTranslations = async (req: Request, res: Response) => {
  */
 export const getModuleTranslations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const locale = req.params.locale as string;
     const module = req.params.module as string;
 
@@ -93,7 +93,7 @@ export const getModuleTranslations = async (req: Request, res: Response) => {
  */
 export const updateTranslations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const locale = req.params.locale as string;
     const { translations } = req.body;
     // translations: [{ module, key, value }]
@@ -143,7 +143,7 @@ export const updateTranslations = async (req: Request, res: Response) => {
  */
 export const importTranslations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { locale, data } = req.body;
     // data: { module: { key: value } } format
 
@@ -181,7 +181,7 @@ export const importTranslations = async (req: Request, res: Response) => {
  */
 export const exportTranslations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const locale = req.params.locale as string;
 
     const translations = await prisma.translation.findMany({
@@ -211,7 +211,7 @@ export const exportTranslations = async (req: Request, res: Response) => {
  */
 export const getConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     let config = await prisma.languageConfig.findUnique({
       where: { tenantId },
@@ -252,7 +252,7 @@ export const getConfig = async (req: Request, res: Response) => {
  */
 export const updateConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { defaultLocale, enabledLocales, rtlLocales, showLanguageSelector, fallbackLocale } = req.body;
 
     const config = await prisma.languageConfig.upsert({
@@ -274,7 +274,7 @@ export const updateConfig = async (req: Request, res: Response) => {
  */
 export const getTranslationStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const stats = await prisma.translation.groupBy({
       by: ["locale"],
@@ -320,7 +320,7 @@ export const getTranslationStats = async (req: Request, res: Response) => {
  */
 export const deleteTranslation = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { locale, module, key } = req.params;
 
     await prisma.translation.updateMany({

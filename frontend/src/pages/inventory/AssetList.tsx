@@ -125,7 +125,8 @@ export default function AssetList() {
       if (filterLocation) params.location = filterLocation;
 
       const res = await axios.get("/api/inventory/assets", { headers, params });
-      const data = res.data.data || [];
+      const rawData = res.data?.data || {};
+      const data = Array.isArray(rawData) ? rawData : (rawData.assets || []);
       setAssets(data);
 
       // Calculate stats

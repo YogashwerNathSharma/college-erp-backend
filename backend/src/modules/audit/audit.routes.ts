@@ -8,9 +8,15 @@ import {
   getAuditStats,
 } from "./audit.controller";
 
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
+
 const router = Router({ mergeParams: true });
 
 // Dashboard stats
+router.use(authMiddleware);
+router.use(resolveTenant);
+
 router.get("/stats", getAuditStats);
 
 // Login history

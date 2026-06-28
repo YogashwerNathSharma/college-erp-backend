@@ -259,7 +259,7 @@ export const getTenantSubscription =
 
       const subscription =
         await getTenantActiveSubscriptionService(
-          String(req.params.tenantId)
+          String(((req as any).tenantId || req.user?.tenantId))
         );
 
       return res.status(200).json({

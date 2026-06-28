@@ -67,7 +67,9 @@ export const createRoomHandler = async (req: any, res: Response) => {
 
 export const getRoomsByHostelHandler = async (req: any, res: Response) => {
   try {
-    const result = await hostelService.getRoomsByHostel(req.params.hostelId, req.tenantId);
+    const hostelId = req.params.hostelId || req.query.hostelId;
+    if (!hostelId) return res.json({ success: true, data: [] });
+    const result = await hostelService.getRoomsByHostel(hostelId, req.tenantId);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -170,7 +172,9 @@ export const setMessMenuHandler = async (req: any, res: Response) => {
 
 export const getMessMenuHandler = async (req: any, res: Response) => {
   try {
-    const result = await hostelService.getMessMenu(req.params.messId, req.tenantId);
+    const messId = req.params.messId || req.query.messId;
+    if (!messId) return res.json({ success: true, data: [] });
+    const result = await hostelService.getMessMenu(messId, req.tenantId);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

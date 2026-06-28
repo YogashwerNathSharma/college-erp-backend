@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import toast from "react-hot-toast";
 
 const API = `${API_BASE_URL}/api`;
@@ -190,11 +191,10 @@ const FeeSettingsPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Default Payment Mode</label>
                   <select value={settings.general.defaultPaymentMode} onChange={(e) => updateGeneral("defaultPaymentMode", e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500">
-                    <option value="CASH">Cash</option>
-                    <option value="ONLINE">Online</option>
-                    <option value="UPI">UPI</option>
-                    <option value="CHEQUE">Cheque</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    {masterPaymentModes.length > 0 ? masterPaymentModes.map(pm => <option key={pm.id} value={pm.name}>{pm.name}</option>) : <>
+                    <option value="CASH">Cash</option><option value="ONLINE">Online</option>
+                    <option value="UPI">UPI</option><option value="CHEQUE">Cheque</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option></>}
                   </select>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">

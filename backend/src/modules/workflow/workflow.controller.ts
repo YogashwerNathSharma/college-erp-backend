@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 export const createWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const { name, module, triggerEvent, description, steps } = req.body;
 
@@ -64,7 +64,7 @@ export const createWorkflow = async (req: Request, res: Response) => {
  */
 export const listWorkflows = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { module, isActive } = req.query;
 
     const where: any = { tenantId, isDeleted: false };
@@ -98,7 +98,7 @@ export const listWorkflows = async (req: Request, res: Response) => {
  */
 export const getWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
 
     const workflow = await prisma.workflow.findFirst({
@@ -128,7 +128,7 @@ export const getWorkflow = async (req: Request, res: Response) => {
  */
 export const updateWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
     const { name, description, steps, isActive } = req.body;
 
@@ -163,7 +163,7 @@ export const updateWorkflow = async (req: Request, res: Response) => {
  */
 export const deleteWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
 
     await prisma.workflow.update({
@@ -185,7 +185,7 @@ export const deleteWorkflow = async (req: Request, res: Response) => {
  */
 export const initiateWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "System";
     const { workflowId, entityId, entityType, data } = req.body;
@@ -259,7 +259,7 @@ export const initiateWorkflow = async (req: Request, res: Response) => {
  */
 export const approveWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { id } = req.params;
@@ -358,7 +358,7 @@ export const approveWorkflow = async (req: Request, res: Response) => {
  */
 export const rejectWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { id } = req.params;
@@ -418,7 +418,7 @@ export const rejectWorkflow = async (req: Request, res: Response) => {
  */
 export const getPendingApprovals = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userRole = (req as any).user?.role;
 
@@ -464,7 +464,7 @@ export const getPendingApprovals = async (req: Request, res: Response) => {
  */
 export const getWorkflowHistory = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
 
     const instance = await prisma.workflowInstance.findFirst({
@@ -491,7 +491,7 @@ export const getWorkflowHistory = async (req: Request, res: Response) => {
  */
 export const listWorkflowInstances = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { status, entityType, page = "1", limit = "20" } = req.query;
 
     const where: any = { tenantId };
@@ -532,7 +532,7 @@ export const listWorkflowInstances = async (req: Request, res: Response) => {
  */
 export const cancelWorkflow = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { id } = req.params;
@@ -584,7 +584,7 @@ export const cancelWorkflow = async (req: Request, res: Response) => {
  */
 export const getWorkflowStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const [totalWorkflows, activeWorkflows, pendingInstances, approvedToday, rejectedToday] =
       await Promise.all([

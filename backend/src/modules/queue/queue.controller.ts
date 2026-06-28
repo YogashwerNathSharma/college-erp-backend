@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 // ──────────────────────────────────────────────────────────
 export const getStatus = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const stats = await queueService.getQueueStatus(tenantId);
 
     // Get recent activity
@@ -53,7 +53,7 @@ export const getStatus = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const listJobs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { type, status, priority, page = "1", limit = "30" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -96,7 +96,7 @@ export const listJobs = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const addJob = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { type, payload, priority = "NORMAL", maxAttempts = 3 } = req.body;
 
     if (!type || !payload) {
@@ -133,7 +133,7 @@ export const addJob = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const retryJob = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const jobId = req.params.id as string;
 
     const job = await prisma.queueJob.findFirst({
@@ -171,7 +171,7 @@ export const retryJob = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const retryAllFailed = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
 
     const result = await prisma.queueJob.updateMany({
       where: { tenantId, status: "FAILED" },
@@ -198,7 +198,7 @@ export const retryAllFailed = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const cancelJob = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const jobId = req.params.id as string;
 
     const job = await prisma.queueJob.findFirst({
@@ -237,7 +237,7 @@ export const cancelJob = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const updateConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { type, maxConcurrent, retryDelay, maxRetries, isActive } = req.body;
 
     if (!type) {
@@ -275,7 +275,7 @@ export const updateConfig = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const getConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
 
     const configs = await prisma.queueConfig.findMany({
       where: { tenantId },
@@ -307,7 +307,7 @@ export const getConfig = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const triggerProcessing = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     queueService.processQueue(tenantId);
     res.json({ success: true, message: "Queue processing triggered" });
   } catch (error: any) {
@@ -321,7 +321,7 @@ export const triggerProcessing = async (req: Request, res: Response) => {
 // ──────────────────────────────────────────────────────────
 export const cleanup = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { olderThanDays = 30 } = req.body;
 
     const count = await queueService.cleanupOldJobs(tenantId, olderThanDays);

@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 export const createForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const { name, description, module, fields, settings } = req.body;
 
@@ -63,7 +63,7 @@ export const createForm = async (req: Request, res: Response) => {
  */
 export const listForms = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { module, isPublished, page = "1", limit = "20" } = req.query;
 
     const where: any = { tenantId, isDeleted: false };
@@ -104,7 +104,7 @@ export const listForms = async (req: Request, res: Response) => {
  */
 export const getForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
 
     const form = await prisma.formTemplate.findFirst({
@@ -131,7 +131,7 @@ export const getForm = async (req: Request, res: Response) => {
  */
 export const updateForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
     const { name, description, module, fields, settings, isPublished } = req.body;
 
@@ -168,7 +168,7 @@ export const updateForm = async (req: Request, res: Response) => {
  */
 export const deleteForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
 
     const existing = await prisma.formTemplate.findFirst({
@@ -197,7 +197,7 @@ export const deleteForm = async (req: Request, res: Response) => {
  */
 export const duplicateForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const { id } = req.params;
 
@@ -235,7 +235,7 @@ export const duplicateForm = async (req: Request, res: Response) => {
  */
 export const submitForm = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id || null;
     const userName = (req as any).user?.name || null;
     const userEmail = (req as any).user?.email || null;
@@ -344,7 +344,7 @@ export const submitForm = async (req: Request, res: Response) => {
  */
 export const getFormSubmissions = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
     const { status, page = "1", limit = "20", sortBy = "createdAt", sortOrder = "desc" } = req.query;
 
@@ -382,7 +382,7 @@ export const getFormSubmissions = async (req: Request, res: Response) => {
  */
 export const getSubmission = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id, subId } = req.params;
 
     const submission = await prisma.formSubmission.findFirst({
@@ -407,7 +407,7 @@ export const getSubmission = async (req: Request, res: Response) => {
  */
 export const updateSubmissionStatus = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const { id, subId } = req.params;
     const { status, remarks } = req.body;
@@ -447,7 +447,7 @@ export const updateSubmissionStatus = async (req: Request, res: Response) => {
  */
 export const exportSubmissions = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { id } = req.params;
     const { format = "json" } = req.query;
 
@@ -510,7 +510,7 @@ export const exportSubmissions = async (req: Request, res: Response) => {
  */
 export const getFormStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const [totalForms, publishedForms, totalSubmissions, todaySubmissions] = await Promise.all([
       prisma.formTemplate.count({ where: { tenantId, isDeleted: false } }),

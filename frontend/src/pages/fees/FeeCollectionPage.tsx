@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import toast from "react-hot-toast";
 import { FeeReceiptPrint } from "./FeeReceiptPrint";
 

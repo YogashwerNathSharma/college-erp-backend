@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 export const globalSearch = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { q, type, limit = "20" } = req.query;
 
     if (!q || (q as string).trim().length < 2) {
@@ -102,7 +102,7 @@ export const globalSearch = async (req: Request, res: Response) => {
  */
 export const getSuggestions = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const { q } = req.query;
 
     if (!q || (q as string).trim().length < 1) {
@@ -141,7 +141,7 @@ export const getSuggestions = async (req: Request, res: Response) => {
  */
 export const reindexAll = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
 
     // Delete existing index for this tenant
     await prisma.searchIndex.deleteMany({ where: { tenantId } });
@@ -310,7 +310,7 @@ export const reindexAll = async (req: Request, res: Response) => {
  */
 export const getRecentSearches = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
 
     const recent = await prisma.searchHistory.findMany({

@@ -12,14 +12,20 @@ import {
   getStats,
 } from "./scheduler.controller";
 
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
+
 const router = Router({ mergeParams: true });
 
 // ══════════════════════════════════════════════════════════
 // SCHEDULER ROUTES
-// Base: /api/:tenantId/scheduler
+// Base: /api/scheduler
 // ══════════════════════════════════════════════════════════
 
 // Dashboard stats
+router.use(authMiddleware);
+router.use(resolveTenant);
+
 router.get("/stats", getStats);
 
 // Predefined templates

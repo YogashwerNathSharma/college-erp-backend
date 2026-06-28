@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
  */
 export const analyzePerformance = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { studentId, classId } = req.body;
 
     let students: any[] = [];
@@ -117,9 +117,9 @@ export const analyzePerformance = async (req: Request, res: Response) => {
           entityType: "STUDENT",
           input: { studentId },
           output,
-          summary: `Overall: ${percentage.toFixed(1)}%, Attendance: ${attendanceRate.toFixed(1)}%`,
-          confidence: 0.85,
-          model: "rule-based",
+          insights,
+          recommendations,
+          score: percentage,
         },
       });
 
@@ -155,7 +155,7 @@ export const analyzePerformance = async (req: Request, res: Response) => {
  */
 export const predictAttendance = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { classId, days = 7 } = req.body;
 
     // Get historical attendance data
@@ -225,8 +225,6 @@ export const predictAttendance = async (req: Request, res: Response) => {
         type: "ATTENDANCE",
         input: { classId, days },
         output,
-        confidence: 0.75,
-        model: "statistical",
       },
     });
 
@@ -243,7 +241,7 @@ export const predictAttendance = async (req: Request, res: Response) => {
  */
 export const predictDefaulters = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     // Get students with pending fees
     const pendingFees = await prisma.studentFee.findMany({
@@ -334,8 +332,6 @@ export const predictDefaulters = async (req: Request, res: Response) => {
         type: "FEE_PREDICTION",
         input: {},
         output,
-        confidence: 0.78,
-        model: "rule-based",
       },
     });
 
@@ -352,7 +348,7 @@ export const predictDefaulters = async (req: Request, res: Response) => {
  */
 export const chat = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const { message, conversationId } = req.body;
 
@@ -420,7 +416,7 @@ export const chat = async (req: Request, res: Response) => {
     if (conversation) {
       await prisma.aIConversation.update({
         where: { id: conversation.id },
-        data: { messages: newMessages, messageCount: newMessages.length, lastMessageAt: new Date() },
+        data: { messages: newMessages },
       });
     } else {
       conversation = await prisma.aIConversation.create({
@@ -429,8 +425,6 @@ export const chat = async (req: Request, res: Response) => {
           userId,
           title: message.substring(0, 50),
           messages: newMessages,
-          messageCount: 2,
-          lastMessageAt: new Date(),
         },
       });
     }
@@ -455,7 +449,7 @@ export const chat = async (req: Request, res: Response) => {
  */
 export const getInsights = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const limit = parseInt(req.query.limit as string) || 10;
 
     // Get stored insights
@@ -485,8 +479,7 @@ export const getInsights = async (req: Request, res: Response) => {
             title: "High Absence Rate Today",
             description: `${absentRate}% students are absent today (${absentToday} out of ${totalToday}). This is higher than usual.`,
             severity: absentRate > 40 ? "CRITICAL" : "WARNING",
-            actionUrl: "/attendance-dashboard",
-            actionLabel: "View Attendance",
+            data: { actionUrl: "/attendance-dashboard", actionLabel: "View Attendance" },
           });
         }
       }
@@ -502,8 +495,7 @@ export const getInsights = async (req: Request, res: Response) => {
           title: `${overdueFees} Students Have Overdue Fees`,
           description: "Consider sending reminders or scheduling parent meetings.",
           severity: overdueFees > 50 ? "CRITICAL" : "WARNING",
-          actionUrl: "/fees/dashboard",
-          actionLabel: "View Defaulters",
+          data: { actionUrl: "/fees/dashboard", actionLabel: "View Defaulters" },
         });
       }
 
@@ -530,7 +522,7 @@ export const getInsights = async (req: Request, res: Response) => {
  */
 export const dismissInsight = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const id = req.params.id as string;
 
     await prisma.aIInsight.updateMany({
@@ -550,14 +542,14 @@ export const dismissInsight = async (req: Request, res: Response) => {
  */
 export const getConversations = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
 
     const conversations = await prisma.aIConversation.findMany({
-      where: { tenantId, userId, isActive: true },
-      orderBy: { lastMessageAt: "desc" },
+      where: { tenantId, userId },
+      orderBy: { createdAt: "desc" },
       take: 20,
-      select: { id: true, title: true, messageCount: true, lastMessageAt: true, createdAt: true },
+      select: { id: true, title: true, messages: true, createdAt: true },
     });
 
     return res.status(200).json({ success: true, data: conversations });

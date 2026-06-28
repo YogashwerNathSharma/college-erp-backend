@@ -19,7 +19,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
  */
 export const uploadFiles = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { category = "GENERAL", entityId, entityType, folderId, description, tags } = req.body;
@@ -88,7 +88,7 @@ export const uploadFiles = async (req: Request, res: Response) => {
  */
 export const getFiles = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const {
       page = "1",
       limit = "20",
@@ -158,7 +158,7 @@ export const getFiles = async (req: Request, res: Response) => {
  */
 export const getFileById = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const fileId = req.params.id as string;
 
     const file = await prisma.fileStorage.findFirst({
@@ -182,7 +182,7 @@ export const getFileById = async (req: Request, res: Response) => {
  */
 export const updateFile = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const fileId = req.params.id as string;
     const { description, tags, category, folderId, isPublic } = req.body;
 
@@ -218,7 +218,7 @@ export const updateFile = async (req: Request, res: Response) => {
  */
 export const deleteFile = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const fileId = req.params.id as string;
     const userId = (req as any).user?.id;
 
@@ -248,7 +248,7 @@ export const deleteFile = async (req: Request, res: Response) => {
  */
 export const moveFile = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const fileId = req.params.id as string;
     const { folderId } = req.body;
 
@@ -288,7 +288,7 @@ export const moveFile = async (req: Request, res: Response) => {
  */
 export const createFolder = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { name, parentId, color, icon } = req.body;
@@ -343,7 +343,7 @@ export const createFolder = async (req: Request, res: Response) => {
  */
 export const getFolders = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { parentId } = req.query;
 
     const where: any = { tenantId, isActive: true };
@@ -384,7 +384,7 @@ export const getFolders = async (req: Request, res: Response) => {
  */
 export const deleteFolder = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const folderId = req.params.id as string;
 
     const folder = await prisma.fileFolder.findFirst({
@@ -428,7 +428,7 @@ export const deleteFolder = async (req: Request, res: Response) => {
  */
 export const getFileStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.params.tenantId as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const [
       totalFiles,

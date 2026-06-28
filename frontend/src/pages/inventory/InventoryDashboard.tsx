@@ -66,12 +66,26 @@ export default function InventoryDashboard() {
       const res = await axios.get(getFullUrl("/api/inventory/dashboard"), {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (res.data) {
-        setStats(res.data.stats || stats);
-        setCategoryData(res.data.categoryDistribution || defaultCategoryData);
-        setMonthlyData(res.data.monthlyIssueReturn || defaultMonthlyData);
-        setConditionData(res.data.conditionData || defaultConditionData);
-        setRecentIssues(res.data.recentIssues || defaultRecentIssues);
+      if (res.data?.success && res.data.data) {
+        const d = res.data.data;
+        // Map backend response to frontend state
+        setStats({
+          totalAssets: d.totalAssets || 0,
+          issuedAssets: d.issuedAssets || 0,
+          lowStock: d.lowStockItems || 0,
+          totalValue: d.totalValue || 0,
+        });
+        // Category data from groupBy
+        if (d.assetsByCategory?.length) {
+          setCategoryData(d.assetsByCategory.map((c: any) => ({ name: c.category, count: c._count })));
+        }
+      } else {
+        // Fallback defaults
+        setStats(stats);
+        setCategoryData(defaultCategoryData);
+        setMonthlyData(defaultMonthlyData);
+        setConditionData(defaultConditionData);
+        setRecentIssues(defaultRecentIssues);
       }
     } catch (error) {
       console.error("Failed to fetch inventory dashboard:", error);

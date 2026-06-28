@@ -26,7 +26,7 @@ function generateOrderId(): string {
  */
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const {
       amount,
       currency = "INR",
@@ -119,7 +119,7 @@ export const createOrder = async (req: Request, res: Response) => {
  */
 export const verifyPayment = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const {
       orderId,
       razorpay_payment_id,
@@ -298,7 +298,7 @@ export const webhookHandler = async (req: Request, res: Response) => {
  */
 export const initiateRefund = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const paymentId = req.params.id as string;
     const { amount, reason } = req.body;
 
@@ -352,7 +352,7 @@ export const initiateRefund = async (req: Request, res: Response) => {
  */
 export const getTransactions = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const status = req.query.status as string;
@@ -395,7 +395,7 @@ export const getTransactions = async (req: Request, res: Response) => {
  */
 export const generatePaymentLink = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const {
       studentId,
       studentName,
@@ -474,7 +474,7 @@ export const generatePaymentLink = async (req: Request, res: Response) => {
  */
 export const getConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const configs = await prisma.paymentGatewayConfig.findMany({
       where: { tenantId },
@@ -504,7 +504,7 @@ export const getConfig = async (req: Request, res: Response) => {
  */
 export const updateConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { provider, merchantId, apiKey, apiSecret, webhookSecret, callbackUrl, isActive, isTest } = req.body;
 
     if (!provider) {
@@ -530,7 +530,7 @@ export const updateConfig = async (req: Request, res: Response) => {
  */
 export const getPaymentStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

@@ -12,14 +12,20 @@ import {
   cleanup,
 } from "./queue.controller";
 
+import { authMiddleware } from '../../middleware/auth.middleware';
+import { resolveTenant } from '../../middleware/tenant.middleware';
+
 const router = Router({ mergeParams: true });
 
 // ══════════════════════════════════════════════════════════
 // QUEUE ROUTES
-// Base: /api/:tenantId/queue
+// Base: /api/queue
 // ══════════════════════════════════════════════════════════
 
 // Dashboard & Monitoring
+router.use(authMiddleware);
+router.use(resolveTenant);
+
 router.get("/status", getStatus);
 router.get("/jobs", listJobs);
 

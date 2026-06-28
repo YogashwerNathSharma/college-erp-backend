@@ -1,5 +1,6 @@
 import express from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 import {
   getGatePassDashboard,
   getAllGatePasses,
@@ -13,16 +14,16 @@ import {
 const router = express.Router();
 
 // Dashboard
-router.get("/dashboard", authMiddleware, getGatePassDashboard);
+router.get("/dashboard", authMiddleware, resolveTenant, getGatePassDashboard);
 
 // Settings
-router.get("/settings", authMiddleware, getGatePassSettings);
-router.put("/settings", authMiddleware, updateGatePassSettings);
+router.get("/settings", authMiddleware, resolveTenant, getGatePassSettings);
+router.put("/settings", authMiddleware, resolveTenant, updateGatePassSettings);
 
 // CRUD
-router.get("/", authMiddleware, getAllGatePasses);
-router.post("/", authMiddleware, createGatePass);
-router.patch("/:id/status", authMiddleware, updateGatePassStatus);
-router.delete("/:id", authMiddleware, deleteGatePass);
+router.get("/", authMiddleware, resolveTenant, getAllGatePasses);
+router.post("/", authMiddleware, resolveTenant, createGatePass);
+router.patch("/:id/status", authMiddleware, resolveTenant, updateGatePassStatus);
+router.delete("/:id", authMiddleware, resolveTenant, deleteGatePass);
 
 export default router;

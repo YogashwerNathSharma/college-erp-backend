@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 export const createTemplate = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
 
     const {
@@ -62,7 +62,7 @@ export const createTemplate = async (req: Request, res: Response) => {
 
 export const getTemplates = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { module, search, page = "1", limit = "20" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -113,7 +113,7 @@ export const getTemplates = async (req: Request, res: Response) => {
 
 export const getTemplateById = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const template = await prisma.reportTemplate.findFirst({
@@ -140,7 +140,7 @@ export const getTemplateById = async (req: Request, res: Response) => {
 
 export const updateTemplate = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const existing = await prisma.reportTemplate.findFirst({
@@ -169,7 +169,7 @@ export const updateTemplate = async (req: Request, res: Response) => {
 
 export const deleteTemplate = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     await prisma.reportTemplate.update({
@@ -190,7 +190,7 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 
 export const generateReport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { templateId, parameters, format } = req.body;
 
@@ -250,7 +250,7 @@ export const generateReport = async (req: Request, res: Response) => {
 
 export const previewReport = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { templateId, parameters } = req.query;
 
     if (!templateId) {
@@ -286,7 +286,7 @@ export const previewReport = async (req: Request, res: Response) => {
 
 export const getGeneratedReports = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { page = "1", limit = "20", templateId } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -328,7 +328,7 @@ export const getGeneratedReports = async (req: Request, res: Response) => {
 
 export const createSchedule = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const {
       templateId, name, frequency, dayOfWeek, dayOfMonth,
       time, recipients, format, parameters
@@ -372,7 +372,7 @@ export const createSchedule = async (req: Request, res: Response) => {
 
 export const getSchedules = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const schedules = await prisma.scheduledReport.findMany({
       where: { tenantId },
@@ -389,7 +389,7 @@ export const getSchedules = async (req: Request, res: Response) => {
 
 export const updateSchedule = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const existing = await prisma.scheduledReport.findFirst({
@@ -428,7 +428,7 @@ export const updateSchedule = async (req: Request, res: Response) => {
 
 export const deleteSchedule = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     await prisma.scheduledReport.delete({
@@ -448,7 +448,7 @@ export const deleteSchedule = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const [
       totalTemplates,

@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
  */
 export const generateQR = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { entityType, entityId, data, format = "QR", size = 200 } = req.body;
 
     if (!entityType || !entityId || !data) {
@@ -107,7 +107,7 @@ export const generateQR = async (req: Request, res: Response) => {
  */
 export const scanQR = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const userId = (req as any).user?.id;
     const userName = (req as any).user?.name || "Unknown";
     const { data, purpose, location, deviceInfo } = req.body;
@@ -182,7 +182,7 @@ export const scanQR = async (req: Request, res: Response) => {
  */
 export const getEntityQR = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const entityType = req.params.type as string;
     const entityId = req.params.id as string;
 
@@ -210,7 +210,7 @@ export const getEntityQR = async (req: Request, res: Response) => {
  */
 export const bulkGenerateQR = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const { entityType, entityIds, dataTemplate, format = "QR", size = 200 } = req.body;
 
     if (!entityType || !entityIds?.length) {
@@ -297,7 +297,7 @@ export const bulkGenerateQR = async (req: Request, res: Response) => {
  */
 export const getScanLogs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const purpose = req.query.purpose as string;
@@ -331,7 +331,7 @@ export const getScanLogs = async (req: Request, res: Response) => {
  */
 export const deleteQR = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
     const id = req.params.id as string;
 
     await prisma.qRCode.updateMany({
@@ -352,7 +352,7 @@ export const deleteQR = async (req: Request, res: Response) => {
  */
 export const getQRStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId || req.user?.tenantId;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

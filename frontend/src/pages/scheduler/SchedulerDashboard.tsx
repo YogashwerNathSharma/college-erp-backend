@@ -130,10 +130,10 @@ export default function SchedulerDashboard() {
     setLoading(true);
     try {
       const [statsRes, tasksRes, logsRes, templatesRes] = await Promise.all([
-        axios.get(getFullUrl(`/api/${tenantId}/scheduler/stats`)),
-        axios.get(getFullUrl(`/api/${tenantId}/scheduler/tasks`)),
-        axios.get(getFullUrl(`/api/${tenantId}/scheduler/logs?limit=30`)),
-        axios.get(getFullUrl(`/api/${tenantId}/scheduler/templates`)),
+        axios.get(getFullUrl(`/api/scheduler/stats`)),
+        axios.get(getFullUrl(`/api/scheduler/tasks`)),
+        axios.get(getFullUrl(`/api/scheduler/logs?limit=30`)),
+        axios.get(getFullUrl(`/api/scheduler/templates`)),
       ]);
       setStats(statsRes.data.data);
       setTasks(tasksRes.data.data || []);
@@ -152,7 +152,7 @@ export default function SchedulerDashboard() {
         ...formData,
         params: formData.params ? JSON.parse(formData.params) : undefined,
       };
-      await axios.post(getFullUrl(`/api/${tenantId}/scheduler/tasks`), payload);
+      await axios.post(getFullUrl(`/api/scheduler/tasks`), payload);
       setShowCreateModal(false);
       setFormData({
         name: "",
@@ -171,7 +171,7 @@ export default function SchedulerDashboard() {
 
   const handleToggle = async (taskId: string) => {
     try {
-      await axios.post(getFullUrl(`/api/${tenantId}/scheduler/tasks/${taskId}/toggle`));
+      await axios.post(getFullUrl(`/api/scheduler/tasks/${taskId}/toggle`));
       fetchData();
     } catch (err) {
       console.error("Toggle failed:", err);
@@ -180,7 +180,7 @@ export default function SchedulerDashboard() {
 
   const handleRunNow = async (taskId: string) => {
     try {
-      await axios.post(getFullUrl(`/api/${tenantId}/scheduler/tasks/${taskId}/run`));
+      await axios.post(getFullUrl(`/api/scheduler/tasks/${taskId}/run`));
       fetchData();
     } catch (err) {
       console.error("Run failed:", err);
@@ -190,7 +190,7 @@ export default function SchedulerDashboard() {
   const handleDelete = async (taskId: string) => {
     if (!confirm("Are you sure you want to delete this scheduled task?")) return;
     try {
-      await axios.delete(getFullUrl(`/api/${tenantId}/scheduler/tasks/${taskId}`));
+      await axios.delete(getFullUrl(`/api/scheduler/tasks/${taskId}`));
       fetchData();
     } catch (err) {
       console.error("Delete failed:", err);

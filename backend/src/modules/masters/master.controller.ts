@@ -192,10 +192,16 @@ export async function createEntry(req: Request, res: Response) {
           data[field] = Number(req.body[field]);
         } else if (fieldConfig?.type === 'boolean') {
           data[field] = Boolean(req.body[field]);
+        } else if (fieldConfig?.type === 'date' || fieldConfig?.type === 'datetime') {
+          data[field] = new Date(req.body[field]);
         } else if (fieldConfig?.type === 'array') {
           data[field] = Array.isArray(req.body[field])
             ? req.body[field]
             : req.body[field].split(',').map((s: string) => s.trim());
+        } else if (fieldConfig?.type === 'select' && fieldConfig.options?.length && 
+          fieldConfig.options.every(opt => !isNaN(Number(opt.value)))) {
+          // Select fields where ALL option values are numeric (e.g., dayOfWeek: 0-6) — store as number
+          data[field] = Number(req.body[field]);
         } else {
           data[field] = req.body[field];
         }
@@ -249,10 +255,15 @@ export async function updateEntry(req: Request, res: Response) {
           data[field] = Number(req.body[field]);
         } else if (fieldConfig?.type === 'boolean') {
           data[field] = Boolean(req.body[field]);
+        } else if (fieldConfig?.type === 'date' || fieldConfig?.type === 'datetime') {
+          data[field] = new Date(req.body[field]);
         } else if (fieldConfig?.type === 'array') {
           data[field] = Array.isArray(req.body[field])
             ? req.body[field]
             : req.body[field].split(',').map((s: string) => s.trim());
+        } else if (fieldConfig?.type === 'select' && fieldConfig.options?.length && 
+          fieldConfig.options.every(opt => !isNaN(Number(opt.value)))) {
+          data[field] = Number(req.body[field]);
         } else {
           data[field] = req.body[field];
         }

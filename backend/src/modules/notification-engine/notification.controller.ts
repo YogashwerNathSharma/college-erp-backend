@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 export const sendNotification = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const {
       channel, to, toName, subject, body, htmlBody,
       data, priority, scheduledAt, module, entityId, entityType
@@ -72,7 +72,7 @@ export const sendNotification = async (req: Request, res: Response) => {
 
 export const sendBulkNotification = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { channel, recipients, subject, body, htmlBody, data, module } = req.body;
 
     if (!channel || !recipients?.length || !body) {
@@ -133,7 +133,7 @@ export const sendBulkNotification = async (req: Request, res: Response) => {
 
 export const getQueue = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { status, channel, page = "1", limit = "50" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -166,7 +166,7 @@ export const getQueue = async (req: Request, res: Response) => {
 
 export const retryFailed = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const notification = await prisma.notificationQueue.findFirst({
@@ -201,7 +201,7 @@ export const retryFailed = async (req: Request, res: Response) => {
 
 export const cancelQueued = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     await prisma.notificationQueue.updateMany({
@@ -222,7 +222,7 @@ export const cancelQueued = async (req: Request, res: Response) => {
 
 export const getLogs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { channel, status, dateFrom, dateTo, page = "1", limit = "50" } = req.query;
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -264,7 +264,7 @@ export const getLogs = async (req: Request, res: Response) => {
 
 export const getInAppNotifications = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { unreadOnly, category, page = "1", limit = "20" } = req.query;
 
@@ -306,7 +306,7 @@ export const getInAppNotifications = async (req: Request, res: Response) => {
 
 export const markAsRead = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id;
     const { id } = req.params;
 
@@ -348,7 +348,7 @@ export const dismissNotification = async (req: Request, res: Response) => {
 
 export const createInAppNotification = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { userId, title, body, type, category, actionUrl, actionLabel, imageUrl, expiresAt } = req.body;
 
     if (!userId || !title || !body) {
@@ -383,7 +383,7 @@ export const createInAppNotification = async (req: Request, res: Response) => {
 
 export const createSchedule = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { name, description, event, channel, templateId, templateBody, recipients, timing, conditions } = req.body;
 
     if (!name || !event || !channel?.length || !recipients || !timing) {
@@ -422,7 +422,7 @@ export const createSchedule = async (req: Request, res: Response) => {
 
 export const getSchedules = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const schedules = await prisma.notificationSchedule.findMany({
       where: { tenantId },
@@ -438,7 +438,7 @@ export const getSchedules = async (req: Request, res: Response) => {
 
 export const updateSchedule = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { id } = req.params;
 
     const schedule = await prisma.notificationSchedule.update({
@@ -470,7 +470,7 @@ export const deleteSchedule = async (req: Request, res: Response) => {
 
 export const getChannelConfigs = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const configs = await prisma.notificationConfig.findMany({
       where: { tenantId },
@@ -493,7 +493,7 @@ export const getChannelConfigs = async (req: Request, res: Response) => {
 
 export const upsertChannelConfig = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { channel } = req.params;
     const { provider, apiKey, apiSecret, senderId, baseUrl, webhookUrl, dailyLimit, monthlyLimit, isActive } = req.body;
 
@@ -542,7 +542,7 @@ export const upsertChannelConfig = async (req: Request, res: Response) => {
 
 export const testChannel = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
     const { channel } = req.params;
     const { testTo } = req.body;
 
@@ -585,7 +585,7 @@ export const testChannel = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = (req as any).tenantId as string;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

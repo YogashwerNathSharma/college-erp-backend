@@ -112,9 +112,9 @@ export default function ImportExport() {
   const fetchHistory = async () => {
     try {
       const [statsRes, importsRes, exportsRes] = await Promise.all([
-        axios.get(getFullUrl(`/api/${tenantId}/import-export/stats`)),
-        axios.get(getFullUrl(`/api/${tenantId}/import-export/import/jobs?limit=10`)),
-        axios.get(getFullUrl(`/api/${tenantId}/import-export/export/jobs?limit=10`)),
+        axios.get(getFullUrl(`/api/import-export/stats`)),
+        axios.get(getFullUrl(`/api/import-export/import/jobs?limit=10`)),
+        axios.get(getFullUrl(`/api/import-export/export/jobs?limit=10`)),
       ]);
       setStats(statsRes.data.data);
       setImportJobs(importsRes.data.data || []);
@@ -129,7 +129,7 @@ export default function ImportExport() {
   const handleModuleSelect = async (module: string) => {
     setSelectedModule(module);
     try {
-      const res = await axios.get(getFullUrl(`/api/${tenantId}/import-export/import/templates/${module}`));
+      const res = await axios.get(getFullUrl(`/api/import-export/import/templates/${module}`));
       setTemplateFields(res.data.data.fields || []);
       setStep(2);
     } catch (err) {
@@ -165,7 +165,7 @@ export default function ImportExport() {
       formData.append("file", file);
       formData.append("module", selectedModule);
 
-      const res = await axios.post(getFullUrl(`/api/${tenantId}/import-export/import/upload`), formData, {
+      const res = await axios.post(getFullUrl(`/api/import-export/import/upload`), formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setJobId(res.data.data.id);
@@ -177,7 +177,7 @@ export default function ImportExport() {
 
   const handleValidate = async () => {
     try {
-      const res = await axios.post(getFullUrl(`/api/${tenantId}/import-export/import/validate`), {
+      const res = await axios.post(getFullUrl(`/api/import-export/import/validate`), {
         jobId,
         mapping: columnMapping,
         previewRows: 10,
@@ -192,7 +192,7 @@ export default function ImportExport() {
   const handleProcessImport = async () => {
     setImporting(true);
     try {
-      const res = await axios.post(getFullUrl(`/api/${tenantId}/import-export/import/process`), {
+      const res = await axios.post(getFullUrl(`/api/import-export/import/process`), {
         jobId,
         skipErrors: true,
       });
@@ -224,7 +224,7 @@ export default function ImportExport() {
     if (!exportModule) return alert("Select a module to export");
     setExporting(true);
     try {
-      const res = await axios.post(getFullUrl(`/api/${tenantId}/import-export/export/generate`), {
+      const res = await axios.post(getFullUrl(`/api/import-export/export/generate`), {
         module: exportModule,
         format: exportFormat,
         columns: exportColumns.length > 0 ? exportColumns : undefined,

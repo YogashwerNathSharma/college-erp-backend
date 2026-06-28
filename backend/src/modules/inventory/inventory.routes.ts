@@ -25,6 +25,7 @@ router.use(authMiddleware, resolveTenant);
 // DASHBOARD / STATS
 // ============================================
 router.get("/stats", allowRoles("ADMIN"), getInventoryStatsHandler);
+router.get("/dashboard", allowRoles("ADMIN"), getInventoryStatsHandler); // Frontend alias
 
 // ============================================
 // ASSET ROUTES

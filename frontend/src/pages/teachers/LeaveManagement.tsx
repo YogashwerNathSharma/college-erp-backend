@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 import toast from "react-hot-toast";
 import { FiPlus, FiCheckCircle, FiClock, FiXCircle, FiX } from "react-icons/fi";
 
@@ -28,6 +29,13 @@ interface LeaveStats {
 }
 
 const LeaveManagement = () => {
+  const [masterLeaveTypes, setMasterLeaveTypes] = useState<{id:string,name:string}[]>([]);
+  useEffect(() => {
+    axios.get(getFullUrl("/api/masters/leave-type-master/dropdown"))
+      .then(res => { if(res.data?.data) setMasterLeaveTypes(res.data.data); })
+      .catch(() => {});
+  }, []);
+
   const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
   const [stats, setStats] = useState<LeaveStats>({ total: 0, approved: 0, pending: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);

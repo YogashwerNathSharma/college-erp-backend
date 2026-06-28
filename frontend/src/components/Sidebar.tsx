@@ -402,13 +402,15 @@ const mobileNavItems = [
 
 type SidebarProps = {
   tenant?: any;
+  sidebarOpen?: boolean;
+  onClose?: () => void;
 };
 
 //////////////////////////////////////////////////
 // SIDEBAR COMPONENT
 //////////////////////////////////////////////////
 
-export default function Sidebar({ tenant }: SidebarProps) {
+export default function Sidebar({ tenant, sidebarOpen = false, onClose }: SidebarProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
@@ -449,6 +451,8 @@ export default function Sidebar({ tenant }: SidebarProps) {
   // Close more menu on route change
   useEffect(() => {
     setMoreMenuOpen(false);
+    // Auto-close mobile sidebar on navigation
+    if (onClose) onClose();
   }, [location.pathname]);
 
   // Flatten all menu items for "More" menu
@@ -484,7 +488,7 @@ export default function Sidebar({ tenant }: SidebarProps) {
       <aside
         onMouseEnter={() => { if (!pinned) setCollapsed(false); }}
         onMouseLeave={() => { if (!pinned) setCollapsed(true); }}
-        className={`sidebar-desktop fixed left-0 top-0 h-screen z-40 flex flex-col print:hidden transition-all duration-300 ease-in-out ${
+        className={`sidebar-desktop hidden md:flex fixed left-0 top-0 h-screen z-40 flex-col print:hidden transition-all duration-300 ease-in-out ${
           collapsed ? "w-[72px]" : "w-[260px]"
         }`}
         style={{
@@ -640,6 +644,91 @@ export default function Sidebar({ tenant }: SidebarProps) {
         )}
 
       </aside>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* MOBILE SIDEBAR (Full menu, shown via MainLayout slide-in) */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[999] md:hidden"
+          onClick={onClose}
+        />
+      )}
+      {/* Slide-in panel */}
+      <div
+        className={`fixed inset-y-0 left-0 z-[1000] w-[280px] transform transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{
+          background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+        }}
+      >
+        {/* Mobile Sidebar Header */}
+        <div className="relative flex-shrink-0 border-b border-white/10">
+          {getFullUrl(safeTenant?.backgroundUrl) && (
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          )}
+          <div className="relative z-10 flex items-center gap-3 p-4">
+            {sidebarLogo ? (
+              <img
+                src={sidebarLogo}
+                alt="Logo"
+                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
+                crossOrigin="anonymous"
+                onError={(e: any) => { e.target.style.display = "none"; }}
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
+                {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-bold text-white leading-tight truncate">
+                {safeTenant?.name || sidebarTitle}
+              </h1>
+              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
+                {isSuperAdmin ? "System Control" : "Institution ERP"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Sidebar Menu */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+          {menu.map((group, gi) => (
+            <div key={gi} className="mb-1">
+              {group.section && (
+                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
+                  {group.section}
+                </p>
+              )}
+              {group.items.map((item, i) =>
+                item.children ? (
+                  <ParentNavItem key={i} item={item} collapsed={false} />
+                ) : (
+                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
+                )
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Logout button */}
+        <div className="border-t border-white/10 p-3 flex-shrink-0">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-all">
+            <LogOut size={20} />
+            <span className="text-[13px] font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
 
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* MOBILE BOTTOM NAVIGATION BAR */}

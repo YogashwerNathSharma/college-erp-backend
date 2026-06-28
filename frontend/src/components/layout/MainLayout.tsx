@@ -108,24 +108,9 @@ export default function MainLayout() {
 
   return (
     <div className={`flex min-h-screen min-h-[100dvh] relative bg-gray-50 dark:bg-slate-900 transition-colors duration-200 ${isPrinting ? "printing" : ""}`}>
-      {/* ═══════════ Sidebar Backdrop (mobile) ═══════════ */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[999] md:hidden animate-fade-in"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
 
-      {/* ═══════════ Sidebar ═══════════ */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-[1000] w-[280px] transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-label="Sidebar navigation"
-      >
-        <Sidebar tenant={tenant} />
-      </aside>
+      {/* ═══════════ Sidebar (single render) ═══════════ */}
+      <Sidebar tenant={tenant} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* ═══════════ Main Content Area ═══════════ */}
       <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[280px] transition-[margin] duration-300">

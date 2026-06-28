@@ -419,17 +419,21 @@ export default function Dashboard() {
   return (
     <>
       <style>{animationCSS}</style>
-      <div className="p-3 sm:p-5 space-y-3 max-w-[1600px] mx-auto overflow-x-hidden">
+      <div className="p-3 sm:p-5 space-y-2.5 sm:space-y-3 max-w-[1600px] mx-auto overflow-x-hidden pb-24 sm:pb-5">
 
         {/* ═══ GREETING HEADER + QUICK ACTIONS ═══ */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-fade-in-up stagger-1">
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
               {getGreetingEmoji()} {getGreeting()}, {user?.name?.split(" ")[0] || "Admin"}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
+            <div className="flex sm:hidden items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">2026-27</b></span>
+              <span className="flex items-center gap-1"><Building2 size={10} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Session: <b className="text-slate-700 dark:text-slate-300">2026-27</b>
@@ -463,7 +467,7 @@ export default function Dashboard() {
         </div>
 
         {/* ═══ STAT CARDS ═══ */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 animate-fade-in-up stagger-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 animate-fade-in-up stagger-2">
           <MiniStat label="Students" value={data.totalStudents} icon={<GraduationCap size={16} />} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-950/50" onClick={() => setDetailModal({ open: true, type: "students" })} />
           <MiniStat label="Teachers" value={data.totalTeachers || 0} icon={<UserCog size={16} />} color="text-green-600" bg="bg-green-50 dark:bg-green-950/50" onClick={() => navigate("/teachers")} />
           <MiniStat label="Fee Collected" value={data.totalPaid >= 100000 ? `₹${formatCompact(data.totalPaid)}` : formatINR(data.totalPaid)} icon={<IndianRupee size={16} />} color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-950/50" onClick={() => setDetailModal({ open: true, type: "fees_collected" })} />
@@ -473,8 +477,8 @@ export default function Dashboard() {
         </div>
 
         {/* ═══ LIVE UPDATES CARD ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-in-up stagger-3">
-          <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm hover:shadow-md transition-all overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 animate-fade-in-up stagger-3">
+          <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-all overflow-hidden">
             <div className="flex items-center gap-2 mb-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 flex items-center justify-center">
                 <Zap size={14} className="text-indigo-600 dark:text-indigo-400" />
@@ -536,17 +540,17 @@ export default function Dashboard() {
         </div>
 
         {/* ═══ CHARTS ROW: Fee Collection + Attendance Trend (compact) ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-fade-in-up stagger-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 animate-fade-in-up stagger-4">
           {/* Monthly Fee Collection */}
-          <div onClick={() => setDetailModal({ open: true, type: "fees_collected" })} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div onClick={() => setDetailModal({ open: true, type: "fees_collected" })} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Monthly Fee Collection</h3>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">Monthly Fee Collection</h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Revenue trends</p>
               </div>
               <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-indigo-500" /> Collected</span>
             </div>
-            <div className="h-36">
+            <div className="h-32 sm:h-36">
               {data.monthlyData && data.monthlyData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={data.monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -573,15 +577,15 @@ export default function Dashboard() {
           </div>
 
           {/* Attendance Trend */}
-          <div onClick={() => navigate("/attendance")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div onClick={() => navigate("/attendance")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Attendance Trend</h3>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">Attendance Trend</h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">Last 7 days</p>
               </div>
               <span className="flex items-center gap-1 text-[10px] text-slate-500"><span className="w-2 h-2 rounded-full bg-purple-500" /> Attendance %</span>
             </div>
-            <div className="h-36">
+            <div className="h-32 sm:h-36">
               {attendanceTrend.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={attendanceTrend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
@@ -603,11 +607,11 @@ export default function Dashboard() {
         </div>
 
         {/* ═══ ROW: Class Strength + Gender ═══ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-in-up stagger-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 animate-fade-in-up stagger-5">
           {/* Class-wise Strength */}
-          <div onClick={() => navigate("/students")} className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">Class-wise Strength</h3>
-            <div className="h-44">
+          <div onClick={() => navigate("/students")} className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white mb-2">Class-wise Strength</h3>
+            <div className="h-36 sm:h-44">
               {classStrength.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={classStrength} layout="vertical" margin={{ top: 0, right: 10, left: 30, bottom: 0 }}>
@@ -629,9 +633,9 @@ export default function Dashboard() {
           </div>
 
           {/* Gender Donut */}
-          <div onClick={handleGenderClick} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">Gender Ratio</h3>
-            <div className="h-28 flex items-center justify-center">
+          <div onClick={handleGenderClick} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white mb-2">Gender Ratio</h3>
+            <div className="h-24 sm:h-28 flex items-center justify-center">
               {genderData.length > 0 ? (
                 <ResponsiveContainer width="80%" height="100%">
                   <RechartPie>
@@ -658,11 +662,11 @@ export default function Dashboard() {
 
         {/* ═══ ROW: Today's Timetable (full-width) ═══ */}
         <div className="animate-fade-in-up stagger-6">
-          <div onClick={() => navigate("/timetable")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-all cursor-pointer">
+          <div onClick={() => navigate("/timetable")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-4 shadow-sm hover:shadow-md transition-all cursor-pointer">
             <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
               <Clock size={16} className="text-cyan-500" /> Today's Timetable
             </h4>
-            <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar">
+            <div className="space-y-1.5 sm:space-y-2 max-h-40 sm:max-h-52 overflow-y-auto no-scrollbar">
               {data.todayTimetable?.length > 0 ? data.todayTimetable.map((t: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-100 dark:border-cyan-900/30">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.subject || t.name || "Subject"}</span>
@@ -676,9 +680,9 @@ export default function Dashboard() {
         </div>
 
         {/* ═══ ROW: Recent Payments (compact) + Activity + Defaulters ═══ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-fade-in-up stagger-9">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 animate-fade-in-up stagger-9">
           {/* Recent Payments - Compact Table */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                 <Receipt size={14} className="text-emerald-500" /> Recent Payments
@@ -767,8 +771,8 @@ export default function Dashboard() {
 
         {/* ═══ PLANS MODAL ═══ */}
         {showPlansModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-8 shadow-2xl animate-fade-in">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-8 shadow-2xl animate-fade-in">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Choose a Plan</h2>
@@ -831,8 +835,8 @@ export default function Dashboard() {
 
         {/* Student Fee History Modal */}
         {paymentStudent && (
-          <div className="fixed inset-0 bg-black/60 z-[9000] flex items-center justify-center p-4" onClick={() => setPaymentStudent(null)}>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center sm:p-4" onClick={() => setPaymentStudent(null)}>
+            <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800 dark:text-white">{paymentStudent.studentName}</h2>
@@ -907,8 +911,8 @@ export default function Dashboard() {
 
         {/* Gender Breakdown Modal */}
         {genderModal && (
-          <div className="fixed inset-0 bg-black/60 z-[9000] flex items-center justify-center p-4" onClick={() => setGenderModal(false)}>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center sm:p-4" onClick={() => setGenderModal(false)}>
+            <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-5xl max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">Student Gender & Category Breakdown</h2>
                 <div className="flex items-center gap-2">

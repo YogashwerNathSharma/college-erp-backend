@@ -15,11 +15,6 @@ html, body, #root {
    MOBILE LAYOUT (≤768px) — Bottom Navigation Pattern
    ================================================================ */
 @media (max-width: 767px) {
-  /* Sidebar becomes hidden on mobile — replaced by bottom nav */
-  .sidebar-desktop {
-    display: none !important;
-  }
-
   /* Bottom navigation bar */
   .bottom-nav {
     position: fixed;
@@ -142,15 +137,6 @@ html, body, #root {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-  }
-
-  /* Grids collapse on mobile */
-  .grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  .grid-cols-2-mobile {
-    grid-template-columns: repeat(2, 1fr) !important;
   }
 
   /* Forms stack vertically */

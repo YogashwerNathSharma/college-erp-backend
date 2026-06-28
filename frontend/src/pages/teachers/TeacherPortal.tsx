@@ -119,7 +119,7 @@ type SectionId =
 interface NavItem {
   id: SectionId;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ElementType;
   principalOnly?: boolean;
 }
 

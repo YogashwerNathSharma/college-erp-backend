@@ -429,7 +429,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, []);
 
-  // Handler to close mobile sidebar on nav item click
+  // Defined the missing click handler to avoid build compilation breaks
   const handleMobileNavClick = useCallback(() => {
     onClose?.();
   }, [onClose]);
@@ -576,7 +576,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Synchronized with layout state controls) */}
+      {/* MOBILE SIDEBAR (Fully Synchronized with React Context) */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <aside
         className={`md:hidden fixed inset-y-0 left-0 w-[280px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
@@ -655,4 +655,153 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         <div className="border-t border-white/10 p-3 flex-shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          >
+            <LogOut size={18} />
+            <span className="text-[13px] font-medium">Logout</span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+//////////////////////////////////////////////////
+// PARENT NAV ITEM (Collapsible)
+//////////////////////////////////////////////////
+
+const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; collapsed: boolean; onItemClick?: () => void }) => {
+  const location = useLocation();
+
+  const isChildActive = item.children?.some(
+    (child) => location.pathname === child.path || location.pathname.startsWith(child.path + "/")
+  );
+
+  const [open, setOpen] = useState(!!isChildActive);
+
+  if (collapsed) {
+    return (
+      <div className="relative group mb-0.5">
+        <NavLink
+          to={item.children?.[0]?.path || "#"}
+          className={`flex items-center justify-center w-full h-10 rounded-lg transition-all duration-200 ${
+            isChildActive
+              ? "bg-indigo-600/20 text-indigo-400 border-l-[3px] border-indigo-400"
+              : "text-slate-400 hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          <span className="flex-shrink-0">{item.icon}</span>
+        </NavLink>
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
+          {item.name}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-0.5">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
+          isChildActive
+            ? "bg-indigo-600/15 text-white border-l-[3px] border-indigo-400 pl-[9px]"
+            : open
+            ? "bg-white/5 text-white"
+            : "text-slate-300 hover:bg-white/5 hover:text-white"
+        }`}
+        aria-expanded={open}
+        aria-label={item.name}
+      >
+        <div className="flex items-center gap-3">
+          <span className={`flex-shrink-0 ${isChildActive ? "text-indigo-400" : ""}`}>{item.icon}</span>
+          <span className="text-[13px] font-medium">{item.name}</span>
+        </div>
+        <span className={`transition-transform duration-300 ${open ? "rotate-0" : "-rotate-90"}`}>
+          <ChevronDown size={14} className="text-slate-500" />
+        </span>
+      </button>
+
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          open ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
+          {item.children?.map((child, ci) => (
+            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} onItemClick={onItemClick} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+//////////////////////////////////////////////////
+// NAV ITEM
+//////////////////////////////////////////////////
+
+type NavItemProps = {
+  to: string;
+  icon: any;
+  label: string;
+  badge?: number;
+  compact?: boolean;
+  collapsed?: boolean;
+  onItemClick?: () => void;
+};
+
+const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: NavItemProps) => {
+  if (collapsed) {
+    return (
+      <div className="relative group mb-0.5">
+        <NavLink
+          to={to}
+          className={({ isActive }) =>
+            `flex items-center justify-center w-full h-10 rounded-lg transition-all duration-200 ${
+              isActive
+                ? "bg-indigo-600/20 text-indigo-400 border-l-[3px] border-indigo-400"
+                : "text-slate-400 hover:bg-white/5 hover:text-white"
+            }`
+          }
+          aria-label={label}
+        >
+          <span className="flex-shrink-0">{icon}</span>
+          {badge && badge > 0 && (
+            <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+              {badge > 9 ? "9+" : badge}
+            </span>
+          )}
+        </NavLink>
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
+          {label}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <NavLink
+      to={to}
+      onClick={onItemClick}
+      className={({ isActive }) =>
+        `group flex items-center gap-3 rounded-lg transition-all duration-200 ${
+          compact ? "px-3 py-2" : "px-3 py-2.5"
+        } ${
+          isActive
+            ? "bg-indigo-600/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
+            : "text-slate-400 hover:text-white hover:bg-white/5"
+        }`
+      }
+      aria-label={label}
+    >
+      <span className="flex-shrink-0">{icon}</span>
+      <span className="truncate text-[13px]">{label}</span>
+      {badge && badge > 0 && (
+        <span className="ml-auto bg-red-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+    </NavLink>
+  );
+};

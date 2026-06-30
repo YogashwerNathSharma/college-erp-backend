@@ -146,7 +146,13 @@ export const generateReceiptNo = async (tenantId: string): Promise<string> => {
  */
 export const assignFeesToStudent = async (
   enrollmentId: string,
-  tenantId: string
+  tenantId: string,
+  selectedItems?: Array<{
+    feeHeadId: string;
+    amount: number;
+    feeHeadName?: string;
+    frequency?: string;
+  }>
 ) => {
   // 1. Validate enrollment exists
   const enrollment = await prisma.enrollment.findFirst({

@@ -503,10 +503,10 @@ function Layout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[72px] transition-all duration-300 bg-slate-50 dark:bg-slate-950 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[260px] transition-all duration-300 bg-slate-50 dark:bg-slate-950 min-h-screen">
         {/* Hamburger (mobile only) */}
         <button
-          className="hamburger-btn fixed top-3 left-3 z-[990] p-2.5 bg-primary-500 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-transform"
+          className={`hamburger-btn fixed top-3 left-3 z-[9999] p-2.5 bg-primary-600 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-all duration-300 ${sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           onClick={() => setSidebarOpen(true)}
           aria-label="Open navigation menu"
         >

@@ -398,7 +398,9 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                       {type === "classes" && (
                         <>
                           <td className="p-2.5 font-medium">{item.name}</td>
-                          <td className="p-2.5">{item.sections?.length || "-"}</td>
+                          <td className="p-2.5">
+                            {item.sections?.length > 0 ? item.sections.map((s: any) => s.name).join(", ") : "-"}
+                          </td>
                         </>
                       )}
                       {(type === "fees_collected" || type === "receipts" || type === "recent_payments") && (

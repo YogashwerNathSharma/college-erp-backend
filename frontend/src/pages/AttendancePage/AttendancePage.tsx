@@ -355,42 +355,40 @@ const AttendancePage = () => {
             )}
           </div>
 
-          {/* 📱 MOBILE VIEW CARD LIST — Hidden on desktop, safe on mobile device screens */}
-          <div className="block md:hidden space-y-3">
+          {/* 📱 MOBILE VIEW (Ultra Compact Panel - Name ke turant baad switches) */}
+          <div className="block md:hidden space-y-2">
             {students.map((student, index) => (
               <div
                 key={student.studentId}
-                className={`p-4 bg-white rounded-xl border transition-all flex items-center justify-between shadow-sm ${
+                className={`p-3 bg-white rounded-xl border transition-all flex items-center justify-between shadow-sm ${
                   student.status === "PRESENT"
-                    ? "border-green-300 bg-green-50/20"
+                    ? "border-green-300 bg-green-50/10"
                     : student.status === "ABSENT"
-                    ? "border-red-300 bg-red-50/20"
+                    ? "border-red-300 bg-red-50/10"
                     : "border-gray-200"
                 }`}
               >
-                <div className="space-y-1 min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-bold">
-                      #{index + 1}
-                    </span>
-                    <span className="text-xs text-gray-500 font-medium">
-                      Roll: {student.rollNumber || "—"}
-                    </span>
+                {/* #, Roll No and Name Row */}
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                  <span className="text-[11px] bg-gray-100 text-gray-500 font-bold w-6 h-6 flex items-center justify-center rounded-md flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-gray-900 truncate">
+                      {student.name}
+                    </h3>
+                    <p className="text-[11px] text-gray-400 font-medium">
+                      Roll No: {student.rollNumber || "—"}
+                    </p>
                   </div>
-                  <h3 className="text-sm font-bold text-gray-900 truncate">
-                    {student.name}
-                  </h3>
-                  <p className="text-[11px] text-gray-400 font-mono">
-                    Adm: {student.admissionNo || "—"}
-                  </p>
                 </div>
 
-                {/* Pill Controls inside a flex block wrapper - Zero truncation layout */}
-                <div className="flex-shrink-0 inline-flex p-1 bg-gray-100 rounded-full border border-gray-200/80 shadow-inner">
+                {/* Immediate Status Button Controls */}
+                <div className="flex-shrink-0 inline-flex p-0.5 bg-gray-100 rounded-full border border-gray-200 shadow-inner">
                   <button
                     type="button"
                     onClick={() => setStudentStatus(student.studentId, "PRESENT")}
-                    className={`w-10 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all duration-150 ${
+                    className={`w-9 h-7 flex items-center justify-center rounded-full text-xs font-black transition-all duration-150 ${
                       student.status === "PRESENT"
                         ? "bg-green-600 text-white shadow"
                         : "text-gray-400 hover:text-gray-600"
@@ -401,7 +399,7 @@ const AttendancePage = () => {
                   <button
                     type="button"
                     onClick={() => setStudentStatus(student.studentId, "ABSENT")}
-                    className={`w-10 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all duration-150 ${
+                    className={`w-9 h-7 flex items-center justify-center rounded-full text-xs font-black transition-all duration-150 ${
                       student.status === "ABSENT"
                         ? "bg-red-600 text-white shadow"
                         : "text-gray-400 hover:text-gray-600"
@@ -414,7 +412,7 @@ const AttendancePage = () => {
             ))}
           </div>
 
-          {/* 💻 DESKTOP VIEW TABLE — Completely adaptive grid */}
+          {/* 💻 DESKTOP VIEW TABLE (Adm No completely removed for layout balance) */}
           <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table className="w-full table-fixed">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -425,13 +423,10 @@ const AttendancePage = () => {
                   <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%]">
                     Roll No
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[45%]">
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[62%]">
                     Student Name
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%]">
-                    Adm. No
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[12%]">
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%]">
                     Status
                   </th>
                 </tr>
@@ -456,9 +451,6 @@ const AttendancePage = () => {
                     </td>
                     <td className="px-4 py-3.5 text-sm text-gray-900 font-semibold truncate">
                       {student.name}
-                    </td>
-                    <td className="px-4 py-3.5 text-sm font-medium text-gray-500">
-                      {student.admissionNo || "—"}
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <div className="inline-flex p-0.5 bg-gray-100 rounded-full border border-gray-200/60 shadow-inner">

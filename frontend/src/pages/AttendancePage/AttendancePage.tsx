@@ -214,7 +214,7 @@ const AttendancePage = () => {
   };
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto min-h-screen pb-24">
+    <div className="w-full max-w-6xl mx-auto p-3 md:p-6 min-h-screen pb-32 box-border overflow-x-hidden">
       {/* Header */}
       <div className="mb-4 md:mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">📋 Mark Attendance</h1>
@@ -355,85 +355,141 @@ const AttendancePage = () => {
             )}
           </div>
 
-          {/* Responsive Register Table Container */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="w-full overflow-x-auto scrollbar-thin">
-              <table className="w-full min-w-[600px] table-fixed">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[8%]">
-                      #
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%]">
-                      Roll No
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[45%]">
-                      Student Name
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%]">
-                      Adm. No
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[22%]">
-                      Status
-                    </th>
+          {/* 📱 MOBILE VIEW CARD LIST — Hidden on desktop, safe on mobile device screens */}
+          <div className="block md:hidden space-y-3">
+            {students.map((student, index) => (
+              <div
+                key={student.studentId}
+                className={`p-4 bg-white rounded-xl border transition-all flex items-center justify-between shadow-sm ${
+                  student.status === "PRESENT"
+                    ? "border-green-300 bg-green-50/20"
+                    : student.status === "ABSENT"
+                    ? "border-red-300 bg-red-50/20"
+                    : "border-gray-200"
+                }`}
+              >
+                <div className="space-y-1 min-w-0 flex-1 pr-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-bold">
+                      #{index + 1}
+                    </span>
+                    <span className="text-xs text-gray-500 font-medium">
+                      Roll: {student.rollNumber || "—"}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900 truncate">
+                    {student.name}
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-mono">
+                    Adm: {student.admissionNo || "—"}
+                  </p>
+                </div>
+
+                {/* Pill Controls inside a flex block wrapper - Zero truncation layout */}
+                <div className="flex-shrink-0 inline-flex p-1 bg-gray-100 rounded-full border border-gray-200/80 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setStudentStatus(student.studentId, "PRESENT")}
+                    className={`w-10 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all duration-150 ${
+                      student.status === "PRESENT"
+                        ? "bg-green-600 text-white shadow"
+                        : "text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    P
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStudentStatus(student.studentId, "ABSENT")}
+                    className={`w-10 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all duration-150 ${
+                      student.status === "ABSENT"
+                        ? "bg-red-600 text-white shadow"
+                        : "text-gray-400 hover:text-gray-600"
+                    }`}
+                  >
+                    A
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 💻 DESKTOP VIEW TABLE — Completely adaptive grid */}
+          <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table className="w-full table-fixed">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[8%]">
+                    #
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%]">
+                    Roll No
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[45%]">
+                    Student Name
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%]">
+                    Adm. No
+                  </th>
+                  <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[12%]">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {students.map((student, index) => (
+                  <tr
+                    key={student.studentId}
+                    className={`hover:bg-gray-50/80 transition-colors ${
+                      student.status === "PRESENT"
+                        ? "bg-green-50/30"
+                        : student.status === "ABSENT"
+                        ? "bg-red-50/30"
+                        : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3.5 text-sm text-gray-500 font-medium">
+                      {index + 1}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm font-semibold text-gray-700">
+                      {student.rollNumber || "—"}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-gray-900 font-semibold truncate">
+                      {student.name}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm font-medium text-gray-500">
+                      {student.admissionNo || "—"}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="inline-flex p-0.5 bg-gray-100 rounded-full border border-gray-200/60 shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => setStudentStatus(student.studentId, "PRESENT")}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
+                            student.status === "PRESENT"
+                              ? "bg-green-600 text-white shadow"
+                              : "text-gray-400 hover:text-gray-600"
+                          }`}
+                        >
+                          P
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStudentStatus(student.studentId, "ABSENT")}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
+                            student.status === "ABSENT"
+                              ? "bg-red-600 text-white shadow"
+                              : "text-gray-400 hover:text-gray-600"
+                          }`}
+                        >
+                          A
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {students.map((student, index) => (
-                    <tr
-                      key={student.studentId}
-                      className={`hover:bg-gray-50/80 transition-colors ${
-                        student.status === "PRESENT"
-                          ? "bg-green-50/30"
-                          : student.status === "ABSENT"
-                          ? "bg-red-50/30"
-                          : ""
-                      }`}
-                    >
-                      <td className="px-4 py-3.5 text-sm text-gray-500 font-medium">
-                        {index + 1}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm font-semibold text-gray-700">
-                        {student.rollNumber || "—"}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm text-gray-900 font-semibold truncate">
-                        {student.name}
-                      </td>
-                      <td className="px-4 py-3.5 text-sm font-medium text-gray-500">
-                        {student.admissionNo || "—"}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        {/* Two-State Pill Design (Perfect for mobile touch-targets) */}
-                        <div className="inline-flex p-0.5 bg-gray-100 rounded-full border border-gray-200/60 shadow-inner">
-                          <button
-                            type="button"
-                            onClick={() => setStudentStatus(student.studentId, "PRESENT")}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
-                              student.status === "PRESENT"
-                                ? "bg-green-600 text-white shadow"
-                                : "text-gray-400 hover:text-gray-600"
-                            }`}
-                          >
-                            P
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setStudentStatus(student.studentId, "ABSENT")}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
-                              student.status === "ABSENT"
-                                ? "bg-red-600 text-white shadow"
-                                : "text-gray-400 hover:text-gray-600"
-                            }`}
-                          >
-                            A
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* Save Button */}
@@ -441,7 +497,7 @@ const AttendancePage = () => {
             <button
               onClick={saveAttendance}
               disabled={saving || unmarkedCount > 0}
-              className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm shadow-sm transition-all"
+              className="w-full md:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm shadow-sm transition-all"
             >
               {saving
                 ? "Saving..."

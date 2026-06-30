@@ -134,11 +134,12 @@ export const getAllStudents = async (
     academicYearId?: string;
     status?: string;
     search?: string;
+    gender?: string;
     page?: number;
     limit?: number;
   }
 ) => {
-  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters as any;
+  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters;
 
   const where: any = {
     tenantId,
@@ -192,6 +193,10 @@ export const getAllStudents = async (
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
             academicYear: { select: { id: true, name: true } },
+            studentFees: {
+              where: { isDeleted: false },
+              select: { totalAmount: true, paidAmount: true, balanceAmount: true },
+            },
           },
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -204,8 +209,24 @@ export const getAllStudents = async (
     prisma.student.count({ where }),
   ]);
 
+  // Aggregate fee data from enrollments
+  const studentsWithFees = students.map((student: any) => {
+    const enrollment = student.enrollments?.[0];
+    const fees = enrollment?.studentFees || [];
+    const totalFee = fees.reduce((sum: number, f: any) => sum + (f.totalAmount || 0), 0);
+    const paidFee = fees.reduce((sum: number, f: any) => sum + (f.paidAmount || 0), 0);
+    const balanceFee = fees.reduce((sum: number, f: any) => sum + (f.balanceAmount || 0), 0);
+
+    return {
+      ...student,
+      totalFee,
+      paidFee,
+      balanceFee,
+    };
+  });
+
   return {
-    students,
+    students: studentsWithFees,
     total,
     page,
     limit,

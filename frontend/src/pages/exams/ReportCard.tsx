@@ -188,6 +188,8 @@ const ReportCard: React.FC = () => {
       printWindow.document.write(`
         <html>
         <head><title>Report Card - ${data?.student?.name || "Student"}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="format-detection" content="telephone=no">
         <style>
           body { margin: 0; padding: 20px; font-family: 'Times New Roman', Times, serif; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -202,10 +204,16 @@ const ReportCard: React.FC = () => {
       `);
       printWindow.document.close();
 
+      // Give mobile browsers more time to render content + images
       setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 500);
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch (e) {
+          console.error("Print failed:", e);
+        }
+        // Don't auto-close on mobile — let user close after printing
+      }, 1000);
     } else {
       // Desktop: normal print
       window.print();
@@ -426,8 +434,16 @@ const ReportCard: React.FC = () => {
         </div>
 
         {/* Canvas Render */}
-        <div className="max-w-[850px] mx-auto py-8 print:py-0 print:max-w-none">
-          <div id="report-card-print" className="bg-white shadow-lg print:shadow-none mx-auto" style={{ width: pageW, minHeight: pageH, position: "relative", background: pageBg }}>
+        <div className="mx-auto py-4 md:py-8 print:py-0 print:max-w-none" style={{
+          maxWidth: '850px',
+          overflowX: isMobile ? 'auto' : undefined,
+          WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
+        }}>
+          <div id="report-card-print" className="bg-white shadow-lg print:shadow-none mx-auto" style={{ 
+            width: pageW, minHeight: pageH, position: "relative", background: pageBg,
+            transform: isMobile ? `scale(${Math.min(1, (window.innerWidth - 32) / pageW)})` : undefined,
+            transformOrigin: isMobile ? 'top left' : undefined,
+          }}>
             {finalElements.map((el: any, idx: number) => {
               const style: React.CSSProperties = {
                 position: "absolute",
@@ -524,8 +540,8 @@ const ReportCard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white print:min-h-0">
       {/* Action Bar - Hidden on print */}
-      <div className="print:hidden bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-[850px] mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="print:hidden bg-white shadow-sm border-b border-gray-200 sticky top-0 z-[100]">
+        <div className="max-w-[850px] mx-auto px-3 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center">
             <button
               onClick={() => navigate(`/exams/${examId}/results`)}
@@ -579,14 +595,14 @@ const ReportCard: React.FC = () => {
       </div>
 
       {/* Report Card Content */}
-      <div className="max-w-[850px] mx-auto p-6 print:p-0 print:max-w-none print:mx-0">
+      <div className="mx-auto p-2 md:p-6 print:p-0 print:max-w-none print:mx-0" style={{ maxWidth: '850px' }}>
         <div
           id="report-card-print"
           style={{
             fontFamily: "'Times New Roman', Times, serif",
             backgroundColor: "#fff",
             border: "3px solid #222",
-            padding: "30px 40px",
+            padding: isMobile ? "15px 12px" : "30px 40px",
             position: "relative",
             overflow: "hidden",
           }}
@@ -858,6 +874,23 @@ const ReportCard: React.FC = () => {
 
       {/* Print Styles */}
       <style>{`
+        /* Mobile responsive scaling for report card */
+        @media screen and (max-width: 767px) {
+          #report-card-print {
+            transform: scale(${Math.min(1, (window.innerWidth - 24) / 850)});
+            transform-origin: top left;
+            width: 850px !important;
+          }
+          #report-card-print h1 {
+            font-size: 20px !important;
+          }
+          #report-card-print table {
+            font-size: 10px !important;
+          }
+          #report-card-print td, #report-card-print th {
+            padding: 3px 4px !important;
+          }
+        }
         @media print {
           body * { visibility: hidden !important; }
           #report-card-print, #report-card-print * { visibility: visible !important; }
@@ -869,6 +902,7 @@ const ReportCard: React.FC = () => {
             padding: 20px 30px !important;
             border: 3px solid #222 !important;
             box-shadow: none !important;
+            transform: none !important;
           }
           body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           aside, nav, .sidebar, [class*="sidebar"], [class*="TopNavbar"] { display: none !important; }

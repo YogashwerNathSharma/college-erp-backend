@@ -184,6 +184,11 @@ html, body, #root {
   h2 { font-size: 1.125rem !important; }
   h3 { font-size: 1rem !important; }
 
+  /* Preserve heading sizes inside report cards / print areas */
+  #report-card-print h1, #print-area h1 { font-size: 26px !important; margin: 0 !important; }
+  #report-card-print h2, #print-area h2 { font-size: 18px !important; }
+  #report-card-print h3, #print-area h3 { font-size: 15px !important; }
+
   /* Reduce padding/gaps */
   .space-y-6 { gap: 1rem; }
 

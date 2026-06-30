@@ -136,14 +136,21 @@ const ConsolidatedReportCard: React.FC = () => {
       const el = printRef.current;
       if (!el) { window.print(); return; }
       const printWindow = window.open("", "_blank");
-      if (!printWindow) return;
+      if (!printWindow) {
+        // Popup blocked — fall back to direct print
+        window.print();
+        return;
+      }
       printWindow.document.write(`
         <html><head><title>Consolidated Report</title>
-        <style>body{margin:0;padding:20px;font-family:'Times New Roman',Times,serif;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}table{border-collapse:collapse;width:100%;}</style>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>body{margin:0;padding:20px;font-family:'Times New Roman',Times,serif;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}table{border-collapse:collapse;width:100%;}img{max-width:100%;}</style>
         </head><body>${el.innerHTML}</body></html>
       `);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+      setTimeout(() => {
+        try { printWindow.focus(); printWindow.print(); } catch(e) { console.error(e); }
+      }, 1000);
     } else {
       window.print();
     }
@@ -216,13 +223,14 @@ const ConsolidatedReportCard: React.FC = () => {
   // ============================================================
   return (
     <>
-      {/* Print button */}
-      <div className="print:hidden fixed top-4 right-4 z-50 flex items-center gap-2">
+
+      {/* Print/Download buttons */}
+      <div className="print:hidden fixed top-4 right-4 z-[100] flex items-center gap-2">
         {isMobile && (
           <button
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 py-2 md:py-2.5 rounded-lg shadow-lg flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -242,20 +250,26 @@ const ConsolidatedReportCard: React.FC = () => {
       </div>
 
       {/* Report Card Container */}
-      <div
-        ref={printRef}
-        id="print-area"
-        style={{
-          fontFamily: "'Times New Roman', Times, serif",
-          maxWidth: "850px",
-          margin: "30px auto",
-          backgroundColor: "#fff",
-          border: "3px solid #222",
-          padding: "30px 40px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div style={{
+        maxWidth: '850px',
+        margin: isMobile ? '16px auto' : '30px auto',
+        padding: isMobile ? '0 8px' : '0',
+        overflowX: isMobile ? 'auto' : undefined,
+        WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
+      }}>
+        <div
+          ref={printRef}
+          id="print-area"
+          style={{
+            fontFamily: "'Times New Roman', Times, serif",
+            minWidth: isMobile ? "700px" : undefined,
+            backgroundColor: "#fff",
+            border: "3px solid #222",
+            padding: isMobile ? "20px 16px" : "30px 40px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
         {/* Watermark */}
         {logoUrl && (
           <div
@@ -597,9 +611,18 @@ const ConsolidatedReportCard: React.FC = () => {
 
         </div>
       </div>
+      </div>
 
       {/* Print Styles */}
       <style>{`
+        @media screen and (max-width: 767px) {
+          #print-area h1 {
+            font-size: 18px !important;
+          }
+          #print-area table {
+            font-size: 9px !important;
+          }
+        }
         @media print {
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
@@ -611,6 +634,7 @@ const ConsolidatedReportCard: React.FC = () => {
             padding: 20px 30px !important;
             border: 3px solid #222 !important;
             box-shadow: none !important;
+            min-width: unset !important;
           }
           body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           aside, nav, .sidebar, [class*="sidebar"], [class*="TopNavbar"] { display: none !important; }

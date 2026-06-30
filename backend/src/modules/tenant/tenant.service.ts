@@ -158,7 +158,7 @@ export const getAllPlansService = async () => {
 
 export const tenantSelfSubscribeService = async (
   tenantId: string,
-  planId: string
+  planId: string,
 ) => {
   // Get plan
   const plan = await prisma.subscriptionPlan.findUnique({
@@ -170,7 +170,7 @@ export const tenantSelfSubscribeService = async (
   }
 
   // Create subscription
-  const subscriptionCode = `SUB-${Date.now()}`;
+  const subscriptionCode = `SUB-${tenantId.slice(-6)}-${Date.now()}`;
 
   // ✅ Calculate endDate
   const startDate = new Date();
@@ -190,11 +190,33 @@ export const tenantSelfSubscribeService = async (
       maxStorageInGB: plan.maxStorageInGB,
       startDate,
       endDate,
-      status: "PENDING",
-      isActive: false,
+      status: plan.price === 0 ? "ACTIVE" : "PENDING",
+      isActive: plan.price === 0 ? true : false,
     },
   });
 
+  // ═══ FREE PLAN — Skip Razorpay, directly activate ═══
+  if (plan.price === 0) {
+    // Create payment entry as FREE
+    await prisma.subscriptionPayment.create({
+      data: {
+        subscriptionId: subscription.id,
+        amount: 0,
+        currency: "INR",
+        gateway: "FREE",
+        status: "PAID",
+        razorpayOrderId: `FREE-${Date.now()}`,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Free plan activated successfully",
+      subscriptionId: subscription.id,
+    };
+  }
+
+  // ═══ PAID PLAN — Create Razorpay order ═══
   // Create Razorpay order
   let order;
   try {

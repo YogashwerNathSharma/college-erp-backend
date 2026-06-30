@@ -1,6 +1,9 @@
 
 import { PrismaClient } from "@prisma/client";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary";
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -21,13 +24,35 @@ export const uploadStudentPhoto = async (
     throw new Error("Student not found");
   }
 
+  // Validate file size: min 39KB, max 2MB
+  if (file.size < 39 * 1024) {
+    throw new Error("Photo too small. Minimum 39KB required for clear print quality.");
+  }
+
   // Delete old photo from Cloudinary if exists
   if (student.photoUrl && student.photoUrl.startsWith("http")) {
     await deleteFromCloudinary(student.photoUrl);
   }
 
-  // Upload to Cloudinary
-  const photoUrl = await uploadToCloudinary(file.buffer, "students/photos");
+  // Upload to Cloudinary OR save locally if Cloudinary not configured
+  let photoUrl: string;
+
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    // Cloudinary configured — upload there
+    photoUrl = await uploadToCloudinary(file.buffer, "students/photos");
+  } else {
+    // Local fallback — save to /uploads/students/photos/
+    const uploadsDir = path.resolve(__dirname, "../../../uploads/students/photos");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const ext = path.extname(file.originalname) || ".jpg";
+    const filename = `${studentId}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, file.buffer);
+    // Serve via /uploads/ static route
+    photoUrl = `/uploads/students/photos/${filename}`;
+  }
 
   // Update student record
   await prisma.student.update({

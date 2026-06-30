@@ -43,13 +43,14 @@ export const createStudentHandler = async (req: any, res: any) => {
 
 export const getAllStudentsHandler = async (req: any, res: any) => {
   try {
-    const { classId, sectionId, academicYearId, status, search, page, limit } = req.query;
+    const { classId, sectionId, academicYearId, status, search, gender, page, limit } = req.query;
     const result = await getAllStudents(req.tenantId, {
       classId,
       sectionId,
       academicYearId,
       status,
       search,
+      gender,
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 50,
     });

@@ -273,6 +273,10 @@ axios.interceptors.response.use(
       error?.response?.status === 403 &&
       error?.response?.data?.subscriptionExpired === true
     ) {
+      // Skip on localhost (dev mode)
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        return Promise.reject(error);
+      }
       // Skip redirect for SUPER_ADMIN
       const userData = localStorage.getItem("user");
       const userRole = userData ? JSON.parse(userData)?.role : null;
@@ -313,6 +317,15 @@ function ProtectedRoute() {
         setChecking(false);
         return;
       }
+
+      // ═══ DEV MODE: Skip subscription check on localhost ═══
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        localStorage.removeItem("subscriptionExpired");
+        setExpired(false);
+        setChecking(false);
+        return;
+      }
+
       // Skip check if payment was just completed (grace period)
       const paymentJustCompleted = localStorage.getItem("subscriptionPaymentTime");
       if (paymentJustCompleted) {

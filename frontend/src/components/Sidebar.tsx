@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
@@ -42,8 +42,6 @@ import {
   Database,
   Palette,
   Brush,
-  Home,
-  MoreHorizontal,
   X,
   Award,
   Package,
@@ -383,18 +381,6 @@ const superAdminMenu: SectionGroup[] = [
 ];
 
 //////////////////////////////////////////////////
-// MOBILE BOTTOM NAV ITEMS
-//////////////////////////////////////////////////
-
-const mobileNavItems = [
-  { name: "Home", icon: <Home size={22} />, path: "/dashboard" },
-  { name: "Students", icon: <Users size={22} />, path: "/students" },
-  { name: "Attendance", icon: <ClipboardCheck size={22} />, path: "/attendance" },
-  { name: "Fees", icon: <IndianRupee size={22} />, path: "/fees/collection" },
-  { name: "More", icon: <MoreHorizontal size={22} />, path: "__more__" },
-];
-
-//////////////////////////////////////////////////
 // TYPES
 //////////////////////////////////////////////////
 
@@ -412,7 +398,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const location = useLocation();
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
@@ -444,33 +429,10 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, []);
 
-  // Close more menu on route change
-  useEffect(() => {
-    setMoreMenuOpen(false);
-  }, [location.pathname]);
-
-  // Sync sidebarOpen prop with moreMenuOpen
-  useEffect(() => {
-    if (sidebarOpen) setMoreMenuOpen(true);
-  }, [sidebarOpen]);
-
-  // Flatten all menu items for "More" menu
-  const allNavItems = useMemo(() => {
-    const items: { name: string; icon: any; path: string }[] = [];
-    menu.forEach((group) => {
-      group.items.forEach((item) => {
-        if (item.path) {
-          items.push({ name: item.name, icon: item.icon, path: item.path });
-        }
-        if (item.children) {
-          item.children.forEach((child) => {
-            items.push({ name: child.name, icon: child.icon, path: child.path });
-          });
-        }
-      });
-    });
-    return items;
-  }, [menu]);
+  // Handler to close mobile sidebar on nav item click
+  const handleMobileNavClick = useCallback(() => {
+    onClose?.();
+  }, [onClose]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -614,79 +576,98 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      {/* MOBILE SIDEBAR (Same design as desktop - slides in/out) */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className="bottom-nav" aria-label="Main navigation">
-        <div className="bottom-nav-inner">
-          {mobileNavItems.map((item) => {
-            if (item.path === "__more__") {
-              return (
-                <button
-                  key="more"
-                  onClick={() => setMoreMenuOpen(true)}
-                  className={`bottom-nav-item ${moreMenuOpen ? 'active' : ''}`}
-                  aria-label="More options"
-                  type="button"
-                >
-                  {item.icon}
-                  <span>{item.name}</span>
-                </button>
-              );
-            }
-            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={`bottom-nav-item ${isActive ? 'active' : ''}`}
-                aria-label={item.name}
-              >
-                {item.icon}
-                <span>{item.name}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE MORE MENU (Full-screen sheet) */}
-      {/* ════════════════════════════════════════════════════════════════ */}
-      {moreMenuOpen && (
-        <div className="more-menu-overlay" onClick={() => { setMoreMenuOpen(false); onClose?.(); }}>
-          <div className="more-menu-sheet" onClick={(e) => e.stopPropagation()}>
-            {/* Drag handle */}
-            <div className="flex justify-center py-2">
-              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-600" />
-            </div>
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-3 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">All Modules</h3>
+      <div className={`md:hidden fixed inset-0 z-[1000] transition-opacity duration-300 ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => onClose?.()}
+        />
+        {/* Sidebar panel */}
+        <aside
+          className={`absolute left-0 top-0 h-full w-[280px] flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          style={{
+            background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+          }}
+        >
+          {/* ─── HEADER ─── */}
+          <div className="relative flex-shrink-0 border-b border-white/10">
+            {getFullUrl(safeTenant?.backgroundUrl) && (
+              <div
+                className="absolute inset-0 opacity-20"
+                style={{
+                  backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              />
+            )}
+            <div className="relative z-10 flex items-center gap-3 p-4">
+              {sidebarLogo ? (
+                <img
+                  src={sidebarLogo}
+                  alt="Logo"
+                  className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
+                  crossOrigin="anonymous"
+                  onError={(e: any) => { e.target.style.display = "none"; }}
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
+                  {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <h1 className="text-sm font-bold text-white leading-tight truncate">
+                  {safeTenant?.name || sidebarTitle}
+                </h1>
+                <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
+                  {isSuperAdmin ? "System Control" : "Institution ERP"}
+                </p>
+              </div>
+              {/* Close button */}
               <button
-                onClick={() => { setMoreMenuOpen(false); onClose?.(); }}
-                className="tap-target rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 p-2"
-                aria-label="Close menu"
+                onClick={() => onClose?.()}
+                className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                aria-label="Close sidebar"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
-            {/* Grid of items */}
-            <div className="more-menu-grid">
-              {allNavItems.slice(0, 30).map((item, idx) => (
-                <NavLink
-                  key={idx}
-                  to={item.path}
-                  className="more-menu-item"
-                  onClick={() => { setMoreMenuOpen(false); onClose?.(); }}
-                >
-                  <span className="text-indigo-500">{item.icon}</span>
-                  <span className="line-clamp-2 text-xs">{item.name}</span>
-                </NavLink>
-              ))}
-            </div>
           </div>
-        </div>
-      )}
+
+          {/* ─── MENU ITEMS ─── */}
+          <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+            {menu.map((group, gi) => (
+              <div key={gi} className="mb-1">
+                {group.section && (
+                  <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
+                    {group.section}
+                  </p>
+                )}
+                {group.items.map((item, i) =>
+                  item.children ? (
+                    <ParentNavItem key={i} item={item} collapsed={false} onItemClick={handleMobileNavClick} />
+                  ) : (
+                    <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ─── LOGOUT ─── */}
+          <div className="border-t border-white/10 p-3 flex-shrink-0">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+            >
+              <LogOut size={18} />
+              <span className="text-[13px] font-medium">Logout</span>
+            </button>
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
@@ -695,7 +676,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 // PARENT NAV ITEM (Collapsible)
 //////////////////////////////////////////////////
 
-const ParentNavItem = ({ item, collapsed }: { item: MenuItem; collapsed: boolean }) => {
+const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; collapsed: boolean; onItemClick?: () => void }) => {
   const location = useLocation();
 
   const isChildActive = item.children?.some(
@@ -757,7 +738,7 @@ const ParentNavItem = ({ item, collapsed }: { item: MenuItem; collapsed: boolean
       >
         <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
           {item.children?.map((child, ci) => (
-            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} />
+            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} onItemClick={onItemClick} />
           ))}
         </div>
       </div>
@@ -776,9 +757,10 @@ type NavItemProps = {
   badge?: number;
   compact?: boolean;
   collapsed?: boolean;
+  onItemClick?: () => void;
 };
 
-const NavItem = ({ to, icon, label, badge, compact, collapsed }: NavItemProps) => {
+const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: NavItemProps) => {
   if (collapsed) {
     return (
       <div className="relative group mb-0.5">
@@ -811,6 +793,7 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed }: NavItemProps) =
   return (
     <NavLink
       to={to}
+      onClick={onItemClick}
       className={({ isActive }) =>
         `group flex items-center gap-3 rounded-lg transition-all duration-200 ${
           compact ? "px-3 py-2" : "px-3 py-2.5"

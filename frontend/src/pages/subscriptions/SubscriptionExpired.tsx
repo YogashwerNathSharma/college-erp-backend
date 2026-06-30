@@ -95,6 +95,8 @@ export default function SubscriptionExpired() {
   // 🔥 FIX: Better free trial check — check via tenant subscription API
   const checkFreeTrialUsed = async () => {
     try {
+      if (!tenant?.id) return; // No tenant data yet — skip check
+
       const res = await axios.get(
         `/api/subscriptions/tenant/${tenant.id}`,
         { headers: getHeaders() }

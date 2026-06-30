@@ -82,7 +82,12 @@ export const subscriptionCheckMiddleware = async (
       return next();
     }
 
-    // Check active subscription
+// Check active subscription
+    // ═══ DEV MODE: Skip subscription check ═══
+    if (process.env.NODE_ENV !== "production") {
+      return next();
+    }
+
     const activeSubscription = await prisma.tenantSubscription.findFirst({
       where: {
         tenantId: user.tenantId,

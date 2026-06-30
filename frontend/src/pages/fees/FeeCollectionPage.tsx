@@ -69,7 +69,6 @@ interface PaymentModalData {
   balance: number;
   feeHead: string;
   installmentNo: number;
-  feeItems: { name: string; amount: number; code?: string }[];
 }
 
 // Discount from database
@@ -284,25 +283,13 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // Open payment modal — extract fee items from feeStructure
+  // Open payment modal
   const openPaymentModal = (fee: FeeRecord) => {
-    const feeItems = fee.feeStructure?.items?.map((item) => ({
-      name: item.feeHead?.name || "Fee",
-      amount: item.amount || 0,
-      code: item.feeHead?.code || "",
-    })) || [];
-
-    const feeHeadStr =
-      feeItems.length > 0
-        ? feeItems.map((i) => i.name).join(", ")
-        : fee.feeStructure?.name || "Fee";
-
     setPaymentModal({
       studentFeeId: fee.id,
       balance: fee.balanceAmount,
-      feeHead: feeHeadStr,
+      feeHead: fee.feeStructure?.name || "Fee",
       installmentNo: fee.installmentNo,
-      feeItems,
     });
     setPaymentForm({
       amount: fee.balanceAmount.toString(),
@@ -401,7 +388,6 @@ const FeeCollectionPage: React.FC = () => {
       className: student.class,
       section: student.section,
       feeHead: lastReceipt.feeInfo.feeHead,
-      feeItems: lastReceipt.feeInfo.feeItems || undefined,
       installmentNo: lastReceipt.feeInfo.installmentNo,
       amount: lastReceipt.payment.amount,
       method: lastReceipt.payment.method,
@@ -619,7 +605,7 @@ const FeeCollectionPage: React.FC = () => {
                   <tr key={fee.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900">{fee.installmentNo}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {fee.feeStructure?.items?.map((i) => i.feeHead?.name).join(", ") || fee.feeStructure?.name}
+                      {fee.feeStructure?.name || `Installment #${fee.installmentNo}`}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{formatDate(fee.dueDate)}</td>
                     <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(fee.totalAmount)}</td>
@@ -673,23 +659,6 @@ const FeeCollectionPage: React.FC = () => {
             <p className="text-sm text-gray-600 mb-4">
               Installment #{paymentModal.installmentNo}
             </p>
-
-            {/* Fee Head Breakdown (read-only) */}
-            {paymentModal.feeItems.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Fee Heads Included:</p>
-                <table className="w-full text-sm">
-                  <tbody>
-                    {paymentModal.feeItems.map((item, idx) => (
-                      <tr key={idx} className="border-b border-gray-100 last:border-0">
-                        <td className="py-1.5 text-gray-800">{item.name} <span className="text-xs text-gray-400">({item.code})</span></td>
-                        <td className="py-1.5 text-right font-medium text-gray-900">{formatCurrency(item.amount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
 
             {/* Balance Info */}
             <div className="bg-primary-50 border border-primary-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between">
@@ -773,7 +742,6 @@ const FeeCollectionPage: React.FC = () => {
                   <option value="UPI">UPI</option>
                   <option value="CHEQUE">Cheque</option>
                   <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="DD">Demand Draft</option>
                 </select>
               </div>
 

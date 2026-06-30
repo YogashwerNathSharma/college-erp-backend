@@ -1,8 +1,17 @@
 import { getPrintSignatureHTML } from "../../components/PrintSignature";
 
-// Fee Receipt Print — Dual Copy (Student + School)
-// Portrait A4 — 2 copies side by side
-// Shows all fee head entries in SEPARATE ROWS with amounts, discount, after discount
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * FEE RECEIPT PRINT — Unified Receipt (No Individual Fee Heads)
+ * ═══════════════════════════════════════════════════════════════════
+ * 
+ * RULES:
+ * 1. NO individual fee head breakdown (no Tuition, Transport, Lab rows)
+ * 2. Just ONE row showing total amount collected
+ * 3. Transport & Hostel are already included in the total if student has them
+ * 4. Dual copy (Student + School) side by side
+ * 5. Same receipt format used everywhere in the ERP
+ */
 
 interface FeeHeadEntry {
   name: string;
@@ -21,7 +30,7 @@ interface ReceiptData {
   rollNumber?: string;
   session?: string;
   feeHead: string;
-  feeItems?: FeeHeadEntry[]; // Individual fee head entries with amounts
+  feeItems?: FeeHeadEntry[];
   installmentNo: number;
   amount: number;
   method: string;
@@ -30,8 +39,8 @@ interface ReceiptData {
   balance?: number;
   collectedBy?: string;
   discountAmount?: number;
-  feePeriod?: string; // "Apr 2025 - Jun 2025"
-  dueDate?: string; // ISO date to derive month
+  feePeriod?: string;
+  dueDate?: string;
 }
 
 const numberToWords = (num: number): string => {
@@ -53,10 +62,8 @@ const numberToWords = (num: number): string => {
 
 // Get fee period text from installment number or dates
 const getFeePeriodText = (data: ReceiptData): string => {
-  // If explicit feePeriod provided, use it
   if (data.feePeriod) return data.feePeriod;
 
-  // Derive from installment number (Indian academic year: Apr=1, May=2, ..., Mar=12)
   const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   const installment = data.installmentNo || 1;
 
@@ -66,11 +73,10 @@ const getFeePeriodText = (data: ReceiptData): string => {
     return `${monthName} (Installment #${installment})`;
   }
 
-  // Fallback: map installment to month
   const monthIdx = ((installment - 1) % 12);
   const monthName = months[monthIdx];
   const year = new Date().getFullYear();
-  const displayYear = monthIdx >= 9 ? year + 1 : year; // Jan-Mar = next year
+  const displayYear = monthIdx >= 9 ? year + 1 : year;
   return `${monthName} ${displayYear} (Installment #${installment})`;
 };
 
@@ -98,25 +104,8 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
   const discount = data.discountAmount || 0;
   const paidWords = numberToWords(data.amount);
 
-  // Build fee rows from feeItems (preferred) or fallback to comma-separated feeHead
-  let feeRows: { name: string; amount: number | null }[] = [];
-
-  if (data.feeItems && data.feeItems.length > 0) {
-    // Use backend-provided feeItems with individual amounts
-    feeRows = data.feeItems.map((item) => ({ name: item.name, amount: item.amount }));
-  } else {
-    // Fallback: split comma-separated feeHead string
-    const feeHeadNames = (data.feeHead || "Fee")
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-    feeRows = feeHeadNames.map((name) => ({ name, amount: null }));
-  }
-
-  // Calculate sub-total
-  const subTotal = feeRows.some((r) => r.amount !== null)
-    ? feeRows.reduce((sum, r) => sum + (r.amount || 0), 0)
-    : data.amount + discount;
+  // UNIFIED: No individual fee head rows — just total
+  const totalAmount = data.amount + discount; // gross before discount
 
   const generateCopy = (copyType: string) => `
     <div class="receipt-copy">
@@ -174,128 +163,99 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
         </tr>
       </table>
 
-      <!-- Fee Table - Each fee head in SEPARATE ROW -->
+      <!-- Fee Table — UNIFIED: Single row, no individual fee heads -->
       <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px;">
         <thead>
           <tr style="background: #f0f0f0;">
-            <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 8px; width: 25px;">S.No</th>
             <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px;">Particulars</th>
-            <th style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 8px; width: 70px;">Amount (Rs)</th>
+            <th style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 8px; width: 80px;">Amount (₹)</th>
           </tr>
         </thead>
         <tbody>
-          ${feeRows.map((row, index) => `
           <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; text-align: center;">${index + 1}</td>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px;">${row.name}</td>
-            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px;">${row.amount !== null ? row.amount.toLocaleString("en-IN") : ""}</td>
-          </tr>
-          `).join("")}
-          <tr style="background: #f9f9f9;">
-            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
-            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">Sub Total</td>
-            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 9px;">${subTotal.toLocaleString("en-IN")}</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-size: 9px;">Monthly Fee (Installment #${data.installmentNo})</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-size: 9px; font-weight: bold;">${totalAmount.toLocaleString("en-IN")}</td>
           </tr>
           ${discount > 0 ? `
           <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
             <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #6b21a8;"><strong>Discount</strong></td>
             <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #6b21a8;">- ${discount.toLocaleString("en-IN")}</td>
           </tr>
-          <tr style="background: #f9f9f9;">
-            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
-            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">After Discount</td>
-            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 9px;">${(subTotal - discount).toLocaleString("en-IN")}</td>
-          </tr>
           ` : ""}
-          <tr style="background: #e8f5e9;">
-            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
-            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 10px;">Total Paid</td>
+          <tr style="background: #f9f9f9;">
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">Amount Paid</td>
             <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 10px;">${data.amount.toLocaleString("en-IN")}</td>
           </tr>
+          ${balance > 0 ? `
+          <tr>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #dc2626;"><strong>Balance Due</strong></td>
+            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #dc2626; font-weight: bold;">${balance.toLocaleString("en-IN")}</td>
+          </tr>
+          ` : ""}
         </tbody>
       </table>
 
-      <!-- Paid in words -->
-      <div style="margin-bottom: 3px; font-size: 8px;">
-        <strong>In Words: Rs. ${paidWords}</strong>
+      <!-- Amount in words -->
+      <div style="font-size: 8px; margin-bottom: 5px; padding: 2px 4px; border: 1px solid #ccc; background: #fafafa;">
+        <strong>Amount in words:</strong> ₹ ${paidWords}
       </div>
 
-      <!-- Balance -->
-      <div style="display: flex; justify-content: space-between; margin-bottom: 3px; padding: 3px 5px; background: #fff3cd; border: 1px solid #ffc107; font-size: 10px;">
-        <div><strong>Balance Due:</strong> ₹${balance.toLocaleString("en-IN")}</div>
-        ${data.reference ? `<div><strong>Ref:</strong> ${data.reference}</div>` : ""}
-      </div>
-
-      ${data.totalDue ? `<div style="border-top: 1px solid #000; padding-top: 2px; margin-top: 2px; font-weight: bold; font-size: 9px;">Total Due - ₹${data.totalDue.toLocaleString("en-IN")}</div>` : ""}
+      ${data.reference ? `<div style="font-size: 8px; margin-bottom: 4px;"><strong>Ref:</strong> ${data.reference}</div>` : ""}
 
       <!-- Signature -->
-      <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 8px;">
-        <div>
-          <div style="border-top: 1px solid #000; padding-top: 1px; width: 90px; text-align: center;">
-            Student/Guardian
-          </div>
+      <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 8px;">
+        <div style="text-align: center;">
+          <div style="border-top: 1px solid #000; padding-top: 2px; min-width: 80px;">Parent/Guardian</div>
         </div>
         <div style="text-align: center;">
-          ${principalSignatureHTML || `<div style="border-top: 1px solid #000; padding-top: 1px; width: 90px; text-align: center;">${data.collectedBy || "Authorized Sign."}</div>`}
+          ${principalSignatureHTML}
+          <div style="border-top: 1px solid #000; padding-top: 2px; min-width: 80px;">Authorized Signatory</div>
         </div>
       </div>
     </div>
   `;
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
+  const html = `
     <html>
     <head>
       <title>Fee Receipt - ${data.receiptNo}</title>
       <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; }
-        
-        .receipt-row {
+        @page { size: A4 portrait; margin: 8mm; }
+        body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; }
+        .receipt-container {
           display: flex;
-          gap: 8px;
-          justify-content: center;
-          padding: 4px 10px;
+          gap: 10px;
+          width: 100%;
+          max-width: 210mm;
+          margin: 0 auto;
         }
-        
         .receipt-copy {
-          width: 48%;
+          flex: 1;
           border: 1.5px solid #000;
-          padding: 8px 10px;
-          font-size: 9px;
+          padding: 8px;
+          box-sizing: border-box;
         }
-
         @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; }
-          @page { 
-            size: A4 portrait; 
-            margin: 5mm; 
-          }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .receipt-container { gap: 8px; }
         }
       </style>
     </head>
     <body>
-      <!-- Print Button -->
-      <div class="no-print" style="text-align: center; padding: 12px;">
-        <button onclick="window.print()" style="padding: 10px 30px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
-          🖨️ Print Receipt
-        </button>
-      </div>
-
-      <!-- Student Copy + School Copy -->
-      <div class="receipt-row">
+      <div class="receipt-container">
         ${generateCopy("Student Copy")}
         ${generateCopy("School Copy")}
       </div>
     </body>
     </html>
-  `);
+  `;
 
-  printWindow.document.close();
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (printWindow) {
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  }
 };
-

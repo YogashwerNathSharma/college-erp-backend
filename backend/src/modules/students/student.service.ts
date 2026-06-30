@@ -138,7 +138,7 @@ export const getAllStudents = async (
     limit?: number;
   }
 ) => {
-  const { classId, sectionId, academicYearId, status, search, page = 1, limit = 50 } = filters;
+  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters as any;
 
   const where: any = {
     tenantId,
@@ -146,6 +146,13 @@ export const getAllStudents = async (
   };
 
   if (status) where.status = status;
+  if (gender) {
+    const genderMap: Record<string, string[]> = {
+      male: ["Male", "male", "M", "MALE"],
+      female: ["Female", "female", "F", "FEMALE"],
+    };
+    where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
+  }
   if (search) {
     where.OR = [
       { firstName: { contains: search, mode: "insensitive" } },

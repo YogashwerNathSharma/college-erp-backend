@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, UserPlus, UserCheck, UserX, GraduationCap,
   TrendingUp, TrendingDown, Calendar, Filter,
   Download, RefreshCw, Eye, ArrowRight, Search,
-  ChevronDown, MoreVertical, Activity,
+  ChevronDown, MoreVertical, Activity, X, Printer,
+  CheckSquare, Square, FileText,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
   AreaChart, Area, LineChart, Line,
 } from 'recharts';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CONSTANTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
+const API = `${API_BASE_URL}/api`;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES
@@ -28,6 +36,7 @@ interface StatsData {
 
 interface ClassStrength {
   class: string;
+  classId?: string;
   count: number;
 }
 
@@ -52,12 +61,695 @@ interface MonthlyAdmission {
   count: number;
 }
 
+interface StudentRecord {
+  id: string;
+  name: string;
+  admNo: string;
+  fatherName?: string;
+  class: string;
+  section?: string;
+  status?: string;
+  gender?: string;
+  category?: string;
+  totalFee?: number;
+  paidFee?: number;
+  balanceFee?: number;
+  admissionDate?: string;
+  phone?: string;
+}
+
+interface ClassOption {
+  id: string;
+  name: string;
+}
+
+interface SectionOption {
+  id: string;
+  name: string;
+}
+
+type ModalType =
+  | 'active'
+  | 'inactive'
+  | 'boys'
+  | 'girls'
+  | 'classwise'
+  | 'gender'
+  | 'monthly'
+  | 'category'
+  | 'recent'
+  | null;
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CHART COLORS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const CHART_COLORS = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 const GENDER_COLORS = ['#3b82f6', '#ec4899', '#8b5cf6'];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PRINT UTILITY
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface PrintConfig {
+  title: string;
+  columns: { key: string; label: string; width?: string }[];
+  data: any[];
+  showFeeColumns?: boolean;
+  showCategoryColumn?: boolean;
+}
+
+const printStudentList = (config: PrintConfig) => {
+  const tenant = JSON.parse(localStorage.getItem('tenant') || '{}');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const logoUrl = tenant.logo || '';
+  const schoolName = tenant.name || 'School Name';
+  const schoolAddress = tenant.address || '';
+  const printedBy = user.name || user.username || 'Admin';
+
+  const tableHeaders = config.columns
+    .map((col) => `<th style="border:1px solid #ddd;padding:8px 10px;text-align:left;font-size:12px;background:#f8f9fa;font-weight:600;">${col.label}</th>`)
+    .join('');
+
+  const tableRows = config.data
+    .map((row, idx) => {
+      const cells = config.columns
+        .map((col) => {
+          let value = '';
+          if (col.key === 'sno') value = String(idx + 1);
+          else value = row[col.key] ?? '-';
+          return `<td style="border:1px solid #ddd;padding:6px 10px;font-size:11px;">${value}</td>`;
+        })
+        .join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${config.title}</title>
+      <style>
+        @media print {
+          body { margin: 0; padding: 15px; }
+          .no-print { display: none !important; }
+        }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 10px; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-center { text-align: center; flex: 1; }
+        .header-right { text-align: right; font-size: 11px; color: #555; }
+        .report-meta { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="header-left">
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="height:50px;width:50px;object-fit:contain;" />` : '<div style="width:50px;height:50px;background:#e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;">LOGO</div>'}
+        </div>
+        <div class="header-center">
+          <h2 style="margin:0;font-size:18px;font-weight:bold;">${schoolName}</h2>
+          <p style="margin:2px 0 0 0;font-size:12px;color:#555;">${schoolAddress}</p>
+        </div>
+        <div class="header-right">
+          <p style="margin:0;">Printed by: <strong>${printedBy}</strong></p>
+          <p style="margin:2px 0 0 0;">Date: ${dateStr}</p>
+          <p style="margin:2px 0 0 0;">Time: ${timeStr}</p>
+        </div>
+      </div>
+      <div class="report-meta">
+        <div>
+          <h3 style="margin:0;font-size:14px;">Report: ${config.title}</h3>
+        </div>
+        <div>
+          <span style="font-size:12px;color:#555;">Total Records: <strong>${config.data.length}</strong></span>
+        </div>
+      </div>
+      <table>
+        <thead><tr>${tableHeaders}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <button class="no-print" onclick="window.print()" style="margin-top:20px;padding:8px 16px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">
+        Print
+      </button>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  }
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STUDENT LIST MODAL COMPONENT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface StudentListModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  modalType: ModalType;
+  showFeeColumns?: boolean;
+  showCategoryColumn?: boolean;
+  defaultGenderTab?: 'boys' | 'girls';
+}
+
+const StudentListModal: React.FC<StudentListModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  modalType,
+  showFeeColumns = false,
+  showCategoryColumn = false,
+  defaultGenderTab = 'boys',
+}) => {
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [sections, setSections] = useState<SectionOption[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [genderTab, setGenderTab] = useState<'boys' | 'girls'>(defaultGenderTab);
+
+  // Fetch classes on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetchClasses();
+      setSearchQuery('');
+      setSelectedClassId('');
+      setSelectedSectionId('');
+      setSelectedIds(new Set());
+      setGenderTab(defaultGenderTab);
+    }
+  }, [isOpen, defaultGenderTab]);
+
+  // Fetch students when modal opens or filters change
+  useEffect(() => {
+    if (isOpen) {
+      fetchStudents();
+    }
+  }, [isOpen, selectedClassId, selectedSectionId, genderTab, modalType]);
+
+  // Fetch sections when class changes
+  useEffect(() => {
+    if (selectedClassId) {
+      fetchSections(selectedClassId);
+    } else {
+      setSections([]);
+      setSelectedSectionId('');
+    }
+  }, [selectedClassId]);
+
+  const fetchClasses = async () => {
+    try {
+      const res = await axios.get(`${API}/class`);
+      setClasses(res.data?.data || res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch classes:', err);
+    }
+  };
+
+  const fetchSections = async (classId: string) => {
+    try {
+      const res = await axios.get(`${API}/section`, { params: { classId } });
+      setSections(res.data?.data || res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch sections:', err);
+    }
+  };
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const params: any = {};
+
+      switch (modalType) {
+        case 'active':
+          params.status = 'active';
+          break;
+        case 'inactive':
+          params.status = 'inactive';
+          break;
+        case 'boys':
+          params.status = 'active';
+          params.gender = 'male';
+          break;
+        case 'girls':
+          params.status = 'active';
+          params.gender = 'female';
+          break;
+        case 'classwise':
+          params.status = 'active';
+          break;
+        case 'gender':
+          params.status = 'active';
+          params.gender = genderTab === 'boys' ? 'male' : 'female';
+          break;
+        case 'monthly':
+          params.type = 'monthly-admissions';
+          break;
+        case 'category':
+          break;
+        case 'recent':
+          params.type = 'recent-admissions';
+          params.limit = 50;
+          break;
+      }
+
+      if (selectedClassId) params.classId = selectedClassId;
+      if (selectedSectionId) params.sectionId = selectedSectionId;
+
+      const res = await axios.get(`${API}/students`, { params });
+      const raw = res.data?.data;
+      // Backend returns { students: [...], total, page } OR direct array
+      const list = raw?.students || raw?.data || (Array.isArray(raw) ? raw : []);
+      // Map backend fields to StudentRecord format
+      const mapped = (Array.isArray(list) ? list : []).map((s: any) => ({
+        id: s.id,
+        name: s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || '-',
+        admNo: s.admNo || s.admissionNo || '-',
+        fatherName: s.fatherName || '-',
+        class: s.class?.name || s.className || s.enrollments?.[0]?.class?.name || '-',
+        section: s.section?.name || s.sectionName || s.enrollments?.[0]?.section?.name || '-',
+        status: s.status || 'active',
+        gender: s.gender || '-',
+        category: s.category || '-',
+        totalFee: s.totalFee || 0,
+        paidFee: s.paidFee || 0,
+        balanceFee: s.balanceFee || 0,
+        admissionDate: s.admissionDate || s.createdAt || '',
+        phone: s.phone || s.fatherPhone || '-',
+      }));
+      setStudents(mapped);
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter students by search query
+  const filteredStudents = students.filter((s) => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return true;
+    return (
+      s.name?.toLowerCase().includes(query) ||
+      s.admNo?.toLowerCase().includes(query) ||
+      s.fatherName?.toLowerCase().includes(query) ||
+      s.class?.toLowerCase().includes(query)
+    );
+  });
+
+  // Selection handlers
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredStudents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStudents.map((s) => s.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  // Print handlers
+  const getColumns = () => {
+    const baseCols: { key: string; label: string }[] = [
+      { key: 'sno', label: 'S.No' },
+      { key: 'name', label: 'Name' },
+      { key: 'admNo', label: 'Adm No' },
+      { key: 'fatherName', label: 'Father Name' },
+      { key: 'class', label: 'Class' },
+      { key: 'section', label: 'Section' },
+      { key: 'status', label: 'Status' },
+    ];
+
+    if (showFeeColumns) {
+      baseCols.push(
+        { key: 'totalFee', label: 'Total Fee' },
+        { key: 'paidFee', label: 'Paid' },
+        { key: 'balanceFee', label: 'Balance' }
+      );
+    }
+
+    if (showCategoryColumn) {
+      // Insert category after section
+      const sectionIdx = baseCols.findIndex((c) => c.key === 'section');
+      baseCols.splice(sectionIdx + 1, 0, { key: 'category', label: 'Category' });
+    }
+
+    return baseCols;
+  };
+
+  const handlePrintSingle = (student: StudentRecord) => {
+    printStudentList({
+      title,
+      columns: getColumns(),
+      data: [student],
+      showFeeColumns,
+      showCategoryColumn,
+    });
+  };
+
+  const handlePrintBulk = () => {
+    const selectedStudents = filteredStudents.filter((s) => selectedIds.has(s.id));
+    if (selectedStudents.length === 0) {
+      alert('Please select at least one student to print.');
+      return;
+    }
+    printStudentList({
+      title,
+      columns: getColumns(),
+      data: selectedStudents,
+      showFeeColumns,
+      showCategoryColumn,
+    });
+  };
+
+  const handlePrintAll = () => {
+    printStudentList({
+      title,
+      columns: getColumns(),
+      data: filteredStudents,
+      showFeeColumns,
+      showCategoryColumn,
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-6xl max-h-[90vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {filteredStudents.length} record(s) found
+              {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Print All Button */}
+            <button
+              onClick={handlePrintAll}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+              title="Print all visible records"
+            >
+              <Printer size={14} />
+              Print All
+            </button>
+            {/* Print Selected Button */}
+            <button
+              onClick={handlePrintBulk}
+              disabled={selectedIds.size === 0}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                selectedIds.size > 0
+                  ? 'text-white bg-indigo-600 hover:bg-indigo-700'
+                  : 'text-gray-400 bg-gray-100 dark:bg-slate-700 cursor-not-allowed'
+              }`}
+              title="Print selected records"
+            >
+              <FileText size={14} />
+              Print Selected ({selectedIds.size})
+            </button>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <X size={18} className="text-gray-500 dark:text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-850">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, admission no..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-700 dark:text-gray-200"
+              />
+            </div>
+
+            {/* Class Filter */}
+            <div className="relative">
+              <select
+                value={selectedClassId}
+                onChange={(e) => {
+                  setSelectedClassId(e.target.value);
+                  setSelectedSectionId('');
+                }}
+                className="appearance-none bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Classes</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Section Filter */}
+            <div className="relative">
+              <select
+                value={selectedSectionId}
+                onChange={(e) => setSelectedSectionId(e.target.value)}
+                disabled={!selectedClassId}
+                className="appearance-none bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 pr-8 text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">All Sections</option>
+                {sections.map((sec) => (
+                  <option key={sec.id} value={sec.id}>{sec.name}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Gender Tabs (only for gender modal) */}
+            {modalType === 'gender' && (
+              <div className="flex items-center bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setGenderTab('boys')}
+                  className={`px-4 py-2 text-xs font-medium transition-colors ${
+                    genderTab === 'boys'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  Boys
+                </button>
+                <button
+                  onClick={() => setGenderTab('girls')}
+                  className={`px-4 py-2 text-xs font-medium transition-colors ${
+                    genderTab === 'girls'
+                      ? 'bg-pink-600 text-white'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  Girls
+                </button>
+              </div>
+            )}
+
+            {/* Refresh Button */}
+            <button
+              onClick={fetchStudents}
+              className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw size={14} className="text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loading students...</p>
+              </div>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-750 z-10">
+                <tr>
+                  <th className="py-3 px-4 text-left w-10">
+                    <button onClick={toggleSelectAll} className="text-gray-400 hover:text-indigo-600 transition-colors">
+                      {selectedIds.size === filteredStudents.length && filteredStudents.length > 0 ? (
+                        <CheckSquare size={16} className="text-indigo-600" />
+                      ) : (
+                        <Square size={16} />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">S.No</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student Name</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Adm No</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Father Name</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Class</th>
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Section</th>
+                  {showCategoryColumn && (
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                  )}
+                  <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  {showFeeColumns && (
+                    <>
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Fee</th>
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Paid</th>
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance</th>
+                    </>
+                  )}
+                  <th className="py-3 px-4 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">Print</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                {filteredStudents.length > 0 ? (
+                  filteredStudents.map((student, idx) => (
+                    <tr
+                      key={student.id}
+                      className={`hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors ${
+                        selectedIds.has(student.id) ? 'bg-indigo-50 dark:bg-indigo-950/30' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => toggleSelect(student.id)}
+                          className="text-gray-400 hover:text-indigo-600 transition-colors"
+                        >
+                          {selectedIds.has(student.id) ? (
+                            <CheckSquare size={16} className="text-indigo-600" />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs">{idx + 1}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                              {student.name?.charAt(0)?.toUpperCase() || '?'}
+                            </span>
+                          </div>
+                          <span className="font-medium text-gray-800 dark:text-white text-sm">{student.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600 dark:text-gray-300 font-mono text-xs">{student.admNo || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600 dark:text-gray-300 text-xs">{student.fatherName || '-'}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                          {student.class || '-'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-gray-600 dark:text-gray-300 text-xs">{student.section || '-'}</td>
+                      {showCategoryColumn && (
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                            {student.category || '-'}
+                          </span>
+                        </td>
+                      )}
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            student.status === 'active' || !student.status
+                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300'
+                          }`}
+                        >
+                          {student.status || 'Active'}
+                        </span>
+                      </td>
+                      {showFeeColumns && (
+                        <>
+                          <td className="py-3 px-4 text-right text-gray-700 dark:text-gray-300 text-xs font-medium">
+                            ₹{(student.totalFee || 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-3 px-4 text-right text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                            ₹{(student.paidFee || 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-3 px-4 text-right text-red-600 dark:text-red-400 text-xs font-medium">
+                            ₹{(student.balanceFee || 0).toLocaleString('en-IN')}
+                          </td>
+                        </>
+                      )}
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handlePrintSingle(student)}
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-indigo-600 transition-colors"
+                          title="Print this student"
+                        >
+                          <Printer size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={showFeeColumns ? 13 : showCategoryColumn ? 10 : 9} className="py-16 text-center">
+                      <Users size={36} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                      <p className="text-gray-400 dark:text-gray-500 text-sm">No students found</p>
+                      <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">Try adjusting your filters</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-850 flex items-center justify-between">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Showing {filteredStudents.length} of {students.length} records
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SKELETON COMPONENTS
@@ -165,11 +857,34 @@ const AdminStudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Modal state
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [modalTitle, setModalTitle] = useState<string>('');
+  const [modalShowFee, setModalShowFee] = useState<boolean>(false);
+  const [modalShowCategory, setModalShowCategory] = useState<boolean>(false);
+  const [modalGenderTab, setModalGenderTab] = useState<'boys' | 'girls'>('boys');
+
+  // Open modal helper
+  const openModal = (type: ModalType, title: string, options?: { showFee?: boolean; showCategory?: boolean; genderTab?: 'boys' | 'girls' }) => {
+    setActiveModal(type);
+    setModalTitle(title);
+    setModalShowFee(options?.showFee || false);
+    setModalShowCategory(options?.showCategory || false);
+    setModalGenderTab(options?.genderTab || 'boys');
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setModalTitle('');
+    setModalShowFee(false);
+    setModalShowCategory(false);
+  };
+
   // Fetch academic years
   useEffect(() => {
     const fetchAcademicYears = async () => {
       try {
-        const res = await axios.get('/api/academic');
+        const res = await axios.get(`${API}/academic`);
         const years = res.data.data || res.data || [];
         setAcademicYears(years);
         const current = years.find((y: any) => y.isCurrent);
@@ -190,10 +905,10 @@ const AdminStudentDashboard: React.FC = () => {
     setLoading(true);
     try {
       const results = await Promise.allSettled([
-        axios.get('/api/students/stats', { params: { academicYearId } }),
-        axios.get('/api/students/class-strength', { params: { academicYearId } }),
-        axios.get('/api/students/recent-admissions', { params: { limit: 8 } }),
-        axios.get('/api/students/category-distribution', { params: { academicYearId } }),
+        axios.get(`${API}/students/stats`, { params: { academicYearId } }),
+        axios.get(`${API}/students/class-strength`, { params: { academicYearId } }),
+        axios.get(`${API}/students/recent-admissions`, { params: { limit: 8 } }),
+        axios.get(`${API}/students/category-distribution`, { params: { academicYearId } }),
       ]);
 
       if (results[0].status === 'fulfilled') {
@@ -313,6 +1028,7 @@ const AdminStudentDashboard: React.FC = () => {
               iconColor="text-emerald-600 dark:text-emerald-400"
               trend={8}
               trendLabel="this month"
+              onClick={() => navigate('/students/new-admission')}
             />
             <StatCard
               title="Active"
@@ -320,6 +1036,7 @@ const AdminStudentDashboard: React.FC = () => {
               icon={<UserCheck size={22} />}
               iconBg="bg-green-50 dark:bg-green-950"
               iconColor="text-green-600 dark:text-green-400"
+              onClick={() => openModal('active', 'Active Students List')}
             />
             <StatCard
               title="Inactive"
@@ -327,6 +1044,7 @@ const AdminStudentDashboard: React.FC = () => {
               icon={<UserX size={22} />}
               iconBg="bg-red-50 dark:bg-red-950"
               iconColor="text-red-600 dark:text-red-400"
+              onClick={() => openModal('inactive', 'Inactive Students (Class-wise)')}
             />
             <StatCard
               title="Boys"
@@ -334,6 +1052,7 @@ const AdminStudentDashboard: React.FC = () => {
               icon={<Users size={22} />}
               iconBg="bg-indigo-50 dark:bg-indigo-950"
               iconColor="text-indigo-600 dark:text-indigo-400"
+              onClick={() => openModal('boys', 'Active Boys List')}
             />
             <StatCard
               title="Girls"
@@ -341,6 +1060,7 @@ const AdminStudentDashboard: React.FC = () => {
               icon={<Users size={22} />}
               iconBg="bg-pink-50 dark:bg-pink-950"
               iconColor="text-pink-600 dark:text-pink-400"
+              onClick={() => openModal('girls', 'Active Girls List')}
             />
           </div>
         )}
@@ -354,7 +1074,10 @@ const AdminStudentDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Class-wise Distribution - Horizontal Bar Chart (2/3 width) */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700">
+            <div
+              className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200"
+              onClick={() => openModal('classwise', 'Class-wise Student Distribution')}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-base font-semibold text-gray-800 dark:text-white">
                   Class-wise Student Distribution
@@ -379,7 +1102,10 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Gender Ratio - Donut Chart (1/3 width) */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700">
+            <div
+              className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200"
+              onClick={() => openModal('gender', 'Gender-wise Student List', { genderTab: 'boys' })}
+            >
               <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-6">
                 Gender Ratio
               </h3>
@@ -438,7 +1164,10 @@ const AdminStudentDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Monthly Admissions - Area Chart */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700">
+            <div
+              className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200"
+              onClick={() => openModal('monthly', 'Monthly Admissions List', { showFee: true })}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-base font-semibold text-gray-800 dark:text-white">
                   Monthly Admissions
@@ -472,7 +1201,10 @@ const AdminStudentDashboard: React.FC = () => {
             </div>
 
             {/* Category Distribution - Progress Bars */}
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700">
+            <div
+              className="bg-white dark:bg-slate-800 rounded-xl p-6 border border-gray-100 dark:border-slate-700 cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200"
+              onClick={() => openModal('category', 'Category-wise Student List', { showCategory: true })}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-base font-semibold text-gray-800 dark:text-white">
                   Category Distribution
@@ -523,7 +1255,10 @@ const AdminStudentDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Admissions Table */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div
+              className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 transition-all duration-200"
+              onClick={() => openModal('recent', 'Recent Admissions List', { showFee: true })}
+            >
               <div className="p-5 border-b border-gray-100 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <h3 className="text-base font-semibold text-gray-800 dark:text-white">
@@ -531,7 +1266,7 @@ const AdminStudentDashboard: React.FC = () => {
                   </h3>
                   <div className="flex items-center gap-2">
                     {/* Search */}
-                    <div className="relative">
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
@@ -542,7 +1277,10 @@ const AdminStudentDashboard: React.FC = () => {
                       />
                     </div>
                     <button
-                      onClick={() => navigate('/students')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal('recent', 'Recent Admissions List', { showFee: true });
+                      }}
                       className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors"
                     >
                       View All <ArrowRight size={12} />
@@ -699,6 +1437,17 @@ const AdminStudentDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* ━━━━ Student List Modal ━━━━ */}
+      <StudentListModal
+        isOpen={activeModal !== null}
+        onClose={closeModal}
+        title={modalTitle}
+        modalType={activeModal}
+        showFeeColumns={modalShowFee}
+        showCategoryColumn={modalShowCategory}
+        defaultGenderTab={modalGenderTab}
+      />
     </div>
   );
 };

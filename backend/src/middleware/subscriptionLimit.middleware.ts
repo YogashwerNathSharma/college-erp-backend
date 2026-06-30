@@ -24,6 +24,11 @@ export const checkLimit = (resource: "students" | "teachers" | "admins") => {
     try {
       const tenantId = req.user?.tenantId;
 
+      // ═══ DEV MODE: Skip limit check in development ═══
+      if (process.env.NODE_ENV !== "production") {
+        return next();
+      }
+
       // Super Admin bypass — no limits for god mode
       if (req.user?.role === "SUPER_ADMIN") {
         return next();

@@ -7,7 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, Component, ReactNode } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./config/api";
 
@@ -32,6 +32,27 @@ const PageLoader = () => (
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // LAZY IMPORTS — Each page loads ONLY when user visits it
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// 🔄 Retry wrapper for lazy imports — handles chunk load failures on slow mobile networks
+function lazyWithRetry(importFn: () => Promise<any>) {
+  return lazy(() =>
+    importFn().catch((error: any) => {
+      // On chunk load failure, retry once after a short delay
+      return new Promise<any>((resolve) => setTimeout(resolve, 1500))
+        .then(() => importFn())
+        .catch(() => {
+          // If retry also fails, reload the page to clear stale chunk cache
+          // Only reload if we haven't already (prevent infinite loop)
+          const hasReloaded = sessionStorage.getItem("chunk_reload");
+          if (!hasReloaded) {
+            sessionStorage.setItem("chunk_reload", "1");
+            window.location.reload();
+          }
+          throw error; // let ErrorBoundary handle it
+        });
+    })
+  );
+}
 
 // Auth
 const LoginPage = lazy(() => import("./pages/login/LoginPages"));
@@ -135,9 +156,9 @@ const CreateEditExam = lazy(() => import("./pages/exams/CreateEditExam"));
 const ExamSubjects = lazy(() => import("./pages/exams/ExamSubjects"));
 const MarksEntry = lazy(() => import("./pages/exams/MarksEntry"));
 const Results = lazy(() => import("./pages/exams/Results"));
-const ReportCard = lazy(() => import("./pages/exams/ReportCard"));
-const BulkReportCard = lazy(() => import("./pages/exams/BulkReportCard"));
-const ConsolidatedReportCard = lazy(() => import("./pages/exams/ConsolidatedReportCard"));
+const ReportCard = lazyWithRetry(() => import("./pages/exams/ReportCard"));
+const BulkReportCard = lazyWithRetry(() => import("./pages/exams/BulkReportCard"));
+const ConsolidatedReportCard = lazyWithRetry(() => import("./pages/exams/ConsolidatedReportCard"));
 const ExamSchedule = lazy(() => import("./pages/exams/ExamSchedule"));
 const SeatingArrangement = lazy(() => import("./pages/exams/SeatingArrangement"));
 const AdmitCard = lazy(() => import("./pages/exams/AdmitCard"));
@@ -290,6 +311,47 @@ axios.interceptors.response.use(
 );
 
 //////////////////////////////////////////////////////
+// 🛡️ Error Boundary — catches chunk load failures on mobile
+//////////////////////////////////////////////////////
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const isChunkError = this.state.error?.message?.includes('Loading chunk') || 
+                           this.state.error?.message?.includes('Failed to fetch dynamically imported module') ||
+                           this.state.error?.message?.includes('error loading dynamically imported module');
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-gray-50">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            {isChunkError ? "Page failed to load" : "Something went wrong"}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            {isChunkError ? "Please check your internet connection and try again." : (this.state.error?.message || "An unexpected error occurred.")}
+          </p>
+          <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+//////////////////////////////////////////////////////
 // Protected Route
 //////////////////////////////////////////////////////
 function ProtectedRoute() {
@@ -394,10 +456,12 @@ function ProtectedRoute() {
   // 🔥 FIXED: Direct allow print paths on mobile browser redirects to bypass strict structural array blockers
   if (location.pathname.startsWith("/print/")) {
     return (
-      <>
-        <Outlet />
-        <YnAiAssistant />
-      </>
+      <AppErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+          <YnAiAssistant />
+        </Suspense>
+      </AppErrorBoundary>
     );
   }
 
@@ -417,10 +481,12 @@ function ProtectedRoute() {
     return <Navigate to="/principal-portal" replace />;
   }
 
-  return <>
-    <Outlet />
-    <YnAiAssistant />
-  </>;
+  return (
+    <AppErrorBoundary>
+      <Outlet />
+      <YnAiAssistant />
+    </AppErrorBoundary>
+  );
 }
 
 //////////////////////////////////////////////////////
@@ -524,11 +590,13 @@ function Layout() {
         <TopNavbar tenant={tenant} />
 
         <main className="flex-1 p-2 md:p-3 overflow-auto" role="main">
-          <Suspense fallback={<PageLoader />}>
-            <div className="page-container">
-              <Outlet context={{ setTenant }} />
-            </div>
-          </Suspense>
+          <AppErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <div className="page-container">
+                <Outlet context={{ setTenant }} />
+              </div>
+            </Suspense>
+          </AppErrorBoundary>
         </main>
       </div>
     </div>
@@ -559,6 +627,8 @@ function RoleSettings() {
 // App
 //////////////////////////////////////////////////////
 export default function App() {
+  // Clear chunk reload flag on successful app mount
+  sessionStorage.removeItem("chunk_reload");
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>

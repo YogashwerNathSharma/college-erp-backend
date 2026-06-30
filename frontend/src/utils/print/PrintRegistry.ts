@@ -38,12 +38,19 @@ export interface PrintConfig {
 // These can be overridden from Settings page and saved in localStorage/DB
 export const getSchoolInfo = () => {
   const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
+  const rawLogo = tenant.logoUrl || tenant.logo || '';
+  const API_BASE = (import.meta as any).env?.VITE_API_URL || (window.location.hostname !== 'localhost' ? 'https://college-erp-backend-91zi.onrender.com' : '');
+  const resolvedLogo = rawLogo
+    ? rawLogo.startsWith('http') ? rawLogo
+      : rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}`
+      : `${API_BASE}/uploads/${rawLogo}`
+    : '';
   return {
     name: tenant.schoolName || tenant.name || "R.M.S. ACADEMY",
     address: tenant.address || "",
     phone: tenant.phone || "",
     email: tenant.email || "",
-    logoUrl: tenant.logoUrl || "",
+    logoUrl: resolvedLogo,
   };
 };
 

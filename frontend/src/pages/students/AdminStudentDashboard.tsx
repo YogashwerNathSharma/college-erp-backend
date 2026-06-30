@@ -120,13 +120,20 @@ interface PrintConfig {
 }
 
 const printStudentList = (config: PrintConfig) => {
+  const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' ? 'https://college-erp-backend-91zi.onrender.com' : '');
   const tenant = JSON.parse(localStorage.getItem('tenant') || '{}');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const logoUrl = tenant.logo || '';
+  // Resolve logo URL properly
+  const rawLogo = tenant.logoUrl || tenant.logo || '';
+  const logoUrl = rawLogo
+    ? rawLogo.startsWith('http') ? rawLogo
+      : rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}`
+      : `${API_BASE}/uploads/${rawLogo}`
+    : '';
   const schoolName = tenant.name || 'School Name';
   const schoolAddress = tenant.address || '';
   const printedBy = user.name || user.username || 'Admin';
@@ -171,7 +178,7 @@ const printStudentList = (config: PrintConfig) => {
     <body>
       <div class="header">
         <div class="header-left">
-          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="height:50px;width:50px;object-fit:contain;" />` : '<div style="width:50px;height:50px;background:#e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;">LOGO</div>'}
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" crossorigin="anonymous" style="height:50px;width:50px;object-fit:contain;" onerror="this.style.display='none'" />` : '<div style="width:50px;height:50px;background:#e5e7eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#6b7280;">LOGO</div>'}
         </div>
         <div class="header-center">
           <h2 style="margin:0;font-size:18px;font-weight:bold;">${schoolName}</h2>

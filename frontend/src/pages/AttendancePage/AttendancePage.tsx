@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
@@ -141,16 +139,12 @@ const AttendancePage = () => {
     }
   };
 
-  // Toggle individual student status
-  const toggleStatus = (studentId: string) => {
+  // Set explicit status for a specific student
+  const setStudentStatus = (studentId: string, status: "PRESENT" | "ABSENT") => {
     setStudents((prev) =>
       prev.map((s) => {
         if (s.studentId === studentId) {
-          if (s.status === null || s.status === "ABSENT") {
-            return { ...s, status: "PRESENT" };
-          } else {
-            return { ...s, status: "ABSENT" };
-          }
+          return { ...s, status: s.status === status ? null : status };
         }
         return s;
       })
@@ -220,25 +214,25 @@ const AttendancePage = () => {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-3 md:p-6 max-w-6xl mx-auto min-h-screen pb-24">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">📋 Mark Attendance</h1>
-        <p className="text-gray-500 mt-1">Mark daily attendance class-wise</p>
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">📋 Mark Attendance</h1>
+        <p className="text-xs md:text-sm text-gray-500 mt-1">Mark daily attendance class-wise</p>
       </div>
 
       {/* Filters Row */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
           {/* Academic Year */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
               Academic Year
             </label>
             <select
               value={selectedAcademicYear}
               onChange={(e) => setSelectedAcademicYear(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Year</option>
               {academicYears.map((ay) => (
@@ -251,13 +245,13 @@ const AttendancePage = () => {
 
           {/* Class */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
               Class
             </label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Class</option>
               {classes.map((c) => (
@@ -270,13 +264,13 @@ const AttendancePage = () => {
 
           {/* Section */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
               Section
             </label>
             <select
               value={selectedSection}
               onChange={(e) => setSelectedSection(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               disabled={!selectedClass}
             >
               <option value="">Select Section</option>
@@ -290,23 +284,23 @@ const AttendancePage = () => {
 
           {/* Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">
               Date
             </label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           {/* Load Button */}
-          <div>
+          <div className="sm:col-span-2 md:col-span-1">
             <button
               onClick={fetchAttendance}
               disabled={loading || !selectedClass || !selectedSection}
-              className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-sm transition-all"
             >
               {loading ? "Loading..." : "Load Students"}
             </button>
@@ -318,124 +312,136 @@ const AttendancePage = () => {
       {students.length > 0 && (
         <>
           {/* Stats Bar */}
-          <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex gap-4">
-                <span className="text-sm">
-                  Total: <strong>{students.length}</strong>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:flex sm:gap-6 text-sm">
+                <span className="text-gray-600 font-medium">
+                  Total: <strong className="text-gray-900">{students.length}</strong>
                 </span>
-                <span className="text-sm text-green-600">
+                <span className="text-green-600 font-medium">
                   Present: <strong>{presentCount}</strong>
                 </span>
-                <span className="text-sm text-red-600">
+                <span className="text-red-600 font-medium">
                   Absent: <strong>{absentCount}</strong>
                 </span>
                 {unmarkedCount > 0 && (
-                  <span className="text-sm text-yellow-600">
+                  <span className="text-amber-600 font-medium col-span-2 sm:col-span-1">
                     Unmarked: <strong>{unmarkedCount}</strong>
                   </span>
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={markAllPresent}
-                  className="px-3 py-1.5 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+                  className="flex-1 sm:flex-none text-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-semibold hover:bg-green-100 transition-colors"
                 >
-                  All Present
+                  ✓ All Present
                 </button>
                 <button
                   onClick={markAllAbsent}
-                  className="px-3 py-1.5 bg-red-100 text-red-700 rounded text-xs font-medium hover:bg-red-200"
+                  className="flex-1 sm:flex-none text-center px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors"
                 >
-                  All Absent
+                  ✕ All Absent
                 </button>
               </div>
             </div>
 
             {isMarked && (
-              <div className="mt-2 px-3 py-1.5 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
-                ⚠️ Attendance already marked for this date. Changes will update existing records.
+              <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-1.5">
+                <span>⚠️</span> 
+                <span>Attendance already marked for this date. Changes will dynamically update records.</span>
               </div>
             )}
           </div>
 
-          {/* Register Table */}
-          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-12">
-                    #
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-20">
-                    Roll No
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">
-                    Student Name
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-28">
-                    Adm. No
-                  </th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase w-32">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student, index) => (
-                  <tr
-                    key={student.studentId}
-                    className={`border-b last:border-b-0 hover:bg-gray-50 transition-colors ${
-                      student.status === "PRESENT"
-                        ? "bg-green-50/50"
-                        : student.status === "ABSENT"
-                        ? "bg-red-50/50"
-                        : ""
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {index + 1}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-700">
-                      {student.rollNumber || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                      {student.name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {student.admissionNo || "—"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => toggleStatus(student.studentId)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                          student.status === "PRESENT"
-                            ? "bg-green-500 text-white shadow-sm"
-                            : student.status === "ABSENT"
-                            ? "bg-red-500 text-white shadow-sm"
-                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                        }`}
-                      >
-                        {student.status === "PRESENT"
-                          ? "P"
-                          : student.status === "ABSENT"
-                          ? "A"
-                          : "—"}
-                      </button>
-                    </td>
+          {/* Responsive Register Table Container */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="w-full overflow-x-auto scrollbar-thin">
+              <table className="w-full min-w-[600px] table-fixed">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[8%]">
+                      #
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[15%]">
+                      Roll No
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[45%]">
+                      Student Name
+                    </th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[20%]">
+                      Adm. No
+                    </th>
+                    <th className="text-center px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-[22%]">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {students.map((student, index) => (
+                    <tr
+                      key={student.studentId}
+                      className={`hover:bg-gray-50/80 transition-colors ${
+                        student.status === "PRESENT"
+                          ? "bg-green-50/30"
+                          : student.status === "ABSENT"
+                          ? "bg-red-50/30"
+                          : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3.5 text-sm text-gray-500 font-medium">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm font-semibold text-gray-700">
+                        {student.rollNumber || "—"}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-gray-900 font-semibold truncate">
+                        {student.name}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm font-medium text-gray-500">
+                        {student.admissionNo || "—"}
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        {/* Two-State Pill Design (Perfect for mobile touch-targets) */}
+                        <div className="inline-flex p-0.5 bg-gray-100 rounded-full border border-gray-200/60 shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => setStudentStatus(student.studentId, "PRESENT")}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
+                              student.status === "PRESENT"
+                                ? "bg-green-600 text-white shadow"
+                                : "text-gray-400 hover:text-gray-600"
+                            }`}
+                          >
+                            P
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStudentStatus(student.studentId, "ABSENT")}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-150 ${
+                              student.status === "ABSENT"
+                                ? "bg-red-600 text-white shadow"
+                                : "text-gray-400 hover:text-gray-600"
+                            }`}
+                          >
+                            A
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Save Button */}
-          <div className="mt-4 flex justify-end">
+          <div className="mt-5 flex justify-end">
             <button
               onClick={saveAttendance}
               disabled={saving || unmarkedCount > 0}
-              className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-sm"
+              className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm shadow-sm transition-all"
             >
               {saving
                 ? "Saving..."
@@ -449,9 +455,9 @@ const AttendancePage = () => {
 
       {/* Empty State */}
       {students.length === 0 && !loading && (
-        <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12 text-center">
           <div className="text-4xl mb-3">📝</div>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm max-w-sm mx-auto">
             Select class, section & date, then click "Load Students" to start marking attendance
           </p>
         </div>
@@ -461,4 +467,3 @@ const AttendancePage = () => {
 };
 
 export default AttendancePage;
-

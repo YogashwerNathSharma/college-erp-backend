@@ -27,7 +27,7 @@ export const getClassesService = async (tenantId: string, academicYearId?: strin
     where,
     include: {
       sections: {
-        where: { isDeleted: false },
+        where: { isActive: true },
         select: { id: true, name: true },
       },
     },

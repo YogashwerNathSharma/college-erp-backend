@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter,
   Routes,
@@ -392,6 +391,16 @@ function ProtectedRoute() {
     return <Navigate to="/subscription-expired" replace />;
   }
 
+  // 🔥 FIXED: Direct allow print paths on mobile browser redirects to bypass strict structural array blockers
+  if (location.pathname.startsWith("/print/")) {
+    return (
+      <>
+        <Outlet />
+        <YnAiAssistant />
+      </>
+    );
+  }
+
   // Role-based route guards
   const userData = localStorage.getItem("user");
   const userRole = userData ? JSON.parse(userData)?.role : null;
@@ -493,14 +502,11 @@ function Layout() {
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-[1000] w-[280px] transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-label="Sidebar navigation"
-      >
-        <Sidebar tenant={tenant} />
-      </aside>
+      <Sidebar 
+        tenant={tenant} 
+        sidebarOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[260px] transition-all duration-300 bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -516,7 +522,7 @@ function Layout() {
         </button>
 
         <TopNavbar tenant={tenant} />
-        
+
         <main className="flex-1 p-2 md:p-3 overflow-auto" role="main">
           <Suspense fallback={<PageLoader />}>
             <div className="page-container">
@@ -573,13 +579,9 @@ export default function App() {
             <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
             <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
-            {/* ━━━ STUDENT PORTAL — Separate Layout ━━━ */}
+            {/* ━━━ PORTALS ━━━ */}
             <Route path="/student-portal" element={<StudentDashboard />} />
-
-            {/* ━━━ TEACHER PORTAL — Separate Layout ━━━ */}
             <Route path="/teacher-portal" element={<TeacherPortal />} />
-
-            {/* ━━━ PRINCIPAL PORTAL — Separate Layout ━━━ */}
             <Route path="/principal-portal" element={<PrincipalPortal />} />
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -654,10 +656,7 @@ export default function App() {
               <Route path="/teacher-settings" element={<TeacherSettings />} />
               <Route path="/teacher-id-card" element={<TeacherIdCard />} />
 
-              {/* TIMETABLE */}
               <Route path="/timeTable" element={<TimetablePage />} />
-
-              {/* TRANSPORT */}
               <Route path="/transport" element={<TransportDashboard />} />
               <Route path="/transport/tracking" element={<TransportTracking />} />
 

@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
-import { getFullUrl } from "../../utils/url";
 import toast from "react-hot-toast";
 import { FeeReceiptPrint } from "./FeeReceiptPrint";
 
@@ -35,7 +33,6 @@ interface FeeStructureItem {
   feeHead: { id: string; name: string; code: string };
 }
 
-// NEW: Per-student fee item (from StudentFeeItem model)
 interface StudentFeeItemRecord {
   id: string;
   feeHeadId: string;
@@ -62,7 +59,7 @@ interface FeeRecord {
     feeHead?: string;
     items?: FeeStructureItem[];
   };
-  items?: StudentFeeItemRecord[]; // ← NEW: per-student assigned items
+  items?: StudentFeeItemRecord[];
 }
 
 interface FeeSummary {
@@ -84,7 +81,6 @@ interface PaymentModalData {
   totalAmount: number;
 }
 
-// Discount from database
 interface FeeDiscountOption {
   id: string;
   name: string;
@@ -94,10 +90,10 @@ interface FeeDiscountOption {
 }
 
 const statusColors: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  PARTIAL: "bg-orange-100 text-orange-800",
-  PAID: "bg-green-100 text-green-800",
-  OVERDUE: "bg-red-100 text-red-800",
+  PENDING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  PARTIAL: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  PAID: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  OVERDUE: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
 
 const FeeCollectionPage: React.FC = () => {
@@ -125,15 +121,11 @@ const FeeCollectionPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   const [assigning, setAssigning] = useState(false);
-
-  // Discounts from database
   const [discounts, setDiscounts] = useState<FeeDiscountOption[]>([]);
 
-  // Fetch discounts on mount
   useEffect(() => {
     fetchDiscounts();
     fetchClasses();
-    // Auto-search if student param in URL
     const params = new URLSearchParams(window.location.search);
     const studentParam = params.get("student");
     if (studentParam) {
@@ -163,7 +155,6 @@ const FeeCollectionPage: React.FC = () => {
     } catch (e) { console.error(e); }
   };
 
-  // Search by class/section selection
   const handleFilterSearch = async () => {
     if (!selectedClass) {
       toast.error("Please select a class");
@@ -213,7 +204,6 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // Auto-search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim().length >= 3) {
@@ -297,19 +287,15 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // ═══ Open payment modal — USE StudentFeeItems (per-student) first, fallback to FeeStructure.items ═══
   const openPaymentModal = (fee: FeeRecord) => {
-    // KEY CHANGE: Use fee.items (StudentFeeItems) if available, else fallback to feeStructure.items
     let feeItems: { name: string; amount: number }[] = [];
 
     if (fee.items && fee.items.length > 0) {
-      // Per-student assigned items — this is what was ACTUALLY assigned to this student
       feeItems = fee.items.map((item) => ({
         name: item.name || "Fee",
         amount: item.amount || 0,
       }));
     } else if (fee.feeStructure?.items && fee.feeStructure.items.length > 0) {
-      // Fallback: old records without StudentFeeItems — use template items
       feeItems = fee.feeStructure.items.map((item) => ({
         name: item.feeHead?.name || "Fee",
         amount: item.amount || 0,
@@ -337,7 +323,6 @@ const FeeCollectionPage: React.FC = () => {
     });
   };
 
-  // Handle discount selection from dropdown
   const handleDiscountSelect = (discountId: string) => {
     if (!discountId || !paymentModal) {
       setPaymentForm((prev) => ({ ...prev, discountId: "", discountAmount: "", amount: paymentModal?.balance.toString() || "" }));
@@ -366,7 +351,6 @@ const FeeCollectionPage: React.FC = () => {
     }));
   };
 
-  // Collect payment
   const handleCollectPayment = async () => {
     if (!paymentModal) return;
     const amount = parseFloat(paymentForm.amount) || 0;
@@ -398,7 +382,6 @@ const FeeCollectionPage: React.FC = () => {
       });
 
       toast.success(`Payment collected! Receipt: ${res.data.receiptNo}`);
-      // Store selected fee items (only what was checked) for receipt printing
       const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
       const selectedFeeItems = selectedIdxs.map((i: number) => paymentModal.feeItems[i]).filter(Boolean);
       setLastReceipt({
@@ -418,14 +401,11 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // Print receipt
   const handlePrintReceipt = async () => {
     if (!lastReceipt || !student) return;
-    // Use selected items (user-checked) or fallback to backend items
     let receiptFeeItems = lastReceipt._selectedFeeItems?.length > 0
       ? lastReceipt._selectedFeeItems
       : (lastReceipt.feeInfo?.feeItems || []);
-    // Ensure each item has name & amount
     receiptFeeItems = receiptFeeItems.map((item: any) => ({
       name: item.name || item.feeHead?.name || "Fee",
       amount: item.amount || 0,
@@ -461,63 +441,65 @@ const FeeCollectionPage: React.FC = () => {
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(amount);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto box-border overflow-x-hidden">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Fee Collection</h1>
-        <p className="text-gray-600 mt-1">Search by student name, admission number, or class</p>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Fee Collection</h1>
+        <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-1">Search by student name, admission number, or class</p>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      {/* Search Bar / Filters */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
         {/* Row 1: Text Search */}
-        <div className="flex gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search by Name, Admission No, or Class..."
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+            placeholder="Search by Name, Admission No..."
+            className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 outline-none"
           />
           <button
             id="fee-search-btn"
             onClick={handleSearch}
             disabled={loading}
-            className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
+            className="w-full sm:w-auto px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 font-semibold text-sm transition-all shadow-sm"
           >
             {loading ? "Searching..." : "Search"}
           </button>
         </div>
 
-        {/* Row 2: Manual Dropdown Filter */}
-        <div className="flex gap-3 items-center pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Or filter by:</span>
-          <select
-            value={selectedClass}
-            onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-          >
-            <option value="">Select Class</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <select
-            value={selectedSection}
-            onChange={(e) => setSelectedSection(e.target.value)}
-            disabled={!selectedClass}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none disabled:opacity-50"
-          >
-            <option value="">All Sections</option>
-            {sections.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+        {/* Row 2: Dropdown Filters */}
+        <div className="flex flex-col md:flex-row gap-3 items-start md:items-center pt-4 border-t border-gray-100 dark:border-slate-700">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider whitespace-nowrap">Or filter by:</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:flex-1">
+            <select
+              value={selectedClass}
+              onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="">Select Class</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <select
+              value={selectedSection}
+              onChange={(e) => setSelectedSection(e.target.value)}
+              disabled={!selectedClass}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-sm text-gray-800 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-50"
+            >
+              <option value="">All Sections</option>
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={handleFilterSearch}
             disabled={loading || !selectedClass}
-            className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium whitespace-nowrap"
+            className="w-full md:w-auto px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 text-sm font-semibold transition-all shadow-sm"
           >
             {loading ? "..." : "Go"}
           </button>
@@ -525,43 +507,43 @@ const FeeCollectionPage: React.FC = () => {
       </div>
 
       {!loading && searchQuery.trim().length >= 3 && !student && searchResults.length === 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center mb-6">
-          <p className="text-red-600 text-sm font-medium">❌ Student not found</p>
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl p-3 text-center mb-6">
+          <p className="text-red-600 dark:text-red-400 text-sm font-medium">❌ Student not found</p>
         </div>
       )}
 
-      {/* Search Results - Multiple Students */}
+      {/* Multiple Results Found */}
       {searchResults.length > 0 && !student && (
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
             Found {searchResults.length} students — select one:
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="w-full overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-gray-50 text-left">
-                  <th className="px-3 py-2 font-medium text-gray-600">Adm No</th>
-                  <th className="px-3 py-2 font-medium text-gray-600">Student Name</th>
-                  <th className="px-3 py-2 font-medium text-gray-600">Father Name</th>
-                  <th className="px-3 py-2 font-medium text-gray-600">Class</th>
-                  <th className="px-3 py-2 font-medium text-gray-600">Section</th>
-                  <th className="px-3 py-2 font-medium text-gray-600">Action</th>
+                <tr className="bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-semibold text-left">
+                  <th className="px-3 py-2">Adm No</th>
+                  <th className="px-3 py-2">Student Name</th>
+                  <th className="px-3 py-2">Father Name</th>
+                  <th className="px-3 py-2">Class</th>
+                  <th className="px-3 py-2">Section</th>
+                  <th className="px-3 py-2 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {searchResults.map((s: any) => (
-                  <tr key={s.enrollmentId} className="border-t hover:bg-primary-50">
-                    <td className="px-3 py-2 font-mono text-xs">{s.admissionNo}</td>
-                    <td className="px-3 py-2 font-medium">{s.name}</td>
-                    <td className="px-3 py-2 text-gray-600">{s.fatherName}</td>
-                    <td className="px-3 py-2">{s.className}</td>
-                    <td className="px-3 py-2">{s.sectionName}</td>
-                    <td className="px-3 py-2">
+                  <tr key={s.enrollmentId} className="hover:bg-primary-50 dark:hover:bg-slate-700/50">
+                    <td className="px-3 py-2 font-mono text-xs dark:text-white">{s.admissionNo}</td>
+                    <td className="px-3 py-2 font-semibold dark:text-white">{s.name}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{s.fatherName}</td>
+                    <td className="px-3 py-2 dark:text-gray-400">{s.className}</td>
+                    <td className="px-3 py-2 dark:text-gray-400">{s.sectionName}</td>
+                    <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => { setSearchResults([]); handleSearchByEnrollment(s.enrollmentId); }}
-                        className="px-3 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700"
+                        className="px-3 py-1 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-700"
                       >
-                        View Fees
+                        View
                       </button>
                     </td>
                   </tr>
@@ -574,166 +556,158 @@ const FeeCollectionPage: React.FC = () => {
 
       {/* Student Info Card */}
       {student && (
-        <div className="bg-white rounded-lg shadow-sm border p-5 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 md:p-5 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Student Name</p>
-              <p className="font-semibold text-gray-900 mt-0.5">{student.name}</p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Student Name</p>
+              <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm md:text-base">{student.name}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Admission No</p>
-              <p className="font-semibold text-gray-900 mt-0.5">{student.admissionNo}</p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Admission No</p>
+              <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm md:text-base font-mono">{student.admissionNo}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Class & Section</p>
-              <p className="font-semibold text-gray-900 mt-0.5">{student.class} - {student.section}</p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Class & Section</p>
+              <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm md:text-base">{student.class} - {student.section}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Father's Name</p>
-              <p className="font-semibold text-gray-900 mt-0.5">{student.fatherName}</p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">Father's Name</p>
+              <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm md:text-base">{student.fatherName}</p>
             </div>
           </div>
 
           {summary && (
-            <div className="mt-4 pt-4 border-t grid grid-cols-3 md:grid-cols-6 gap-3">
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="font-bold text-sm">{formatCurrency(summary.totalAmount)}</p>
+            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              <div className="text-center p-2.5 bg-gray-50 dark:bg-slate-700/40 rounded-xl">
+                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Total</p>
+                <p className="font-bold text-sm md:text-base text-gray-900 dark:text-white mt-0.5">{formatCurrency(summary.totalAmount)}</p>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Discount</p>
-                <p className="font-bold text-sm text-purple-600">{formatCurrency(summary.totalDiscount)}</p>
+              <div className="text-center p-2.5 bg-gray-50 dark:bg-slate-700/40 rounded-xl">
+                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Discount</p>
+                <p className="font-bold text-sm md:text-base text-purple-600 dark:text-purple-400 mt-0.5">{formatCurrency(summary.totalDiscount)}</p>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Fine</p>
-                <p className="font-bold text-sm text-red-600">{formatCurrency(summary.totalFine)}</p>
+              <div className="text-center p-2.5 bg-gray-50 dark:bg-slate-700/40 rounded-xl">
+                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Fine</p>
+                <p className="font-bold text-sm md:text-base text-red-600 dark:text-red-400 mt-0.5">{formatCurrency(summary.totalFine)}</p>
               </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <p className="text-xs text-gray-500">Net</p>
-                <p className="font-bold text-sm">{formatCurrency(summary.totalNet)}</p>
+              <div className="text-center p-2.5 bg-gray-50 dark:bg-slate-700/40 rounded-xl">
+                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Net</p>
+                <p className="font-bold text-sm md:text-base text-gray-900 dark:text-white mt-0.5">{formatCurrency(summary.totalNet)}</p>
               </div>
-              <div className="text-center p-2 bg-green-50 rounded">
-                <p className="text-xs text-gray-500">Paid</p>
-                <p className="font-bold text-sm text-green-600">{formatCurrency(summary.totalPaid)}</p>
+              <div className="text-center p-2.5 bg-green-50 dark:bg-green-950/20 rounded-xl border border-green-100 dark:border-green-900/40">
+                <p className="text-[11px] font-semibold text-green-600 dark:text-green-400">Paid</p>
+                <p className="font-bold text-sm md:text-base text-green-700 dark:text-green-400 mt-0.5">{formatCurrency(summary.totalPaid)}</p>
               </div>
-              <div className="text-center p-2 bg-red-50 rounded">
-                <p className="text-xs text-gray-500">Balance</p>
-                <p className="font-bold text-sm text-red-600">{formatCurrency(summary.totalBalance)}</p>
+              <div className="text-center p-2.5 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-100 dark:border-red-900/40">
+                <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">Balance</p>
+                <p className="font-bold text-sm md:text-base text-red-700 dark:text-red-400 mt-0.5">{formatCurrency(summary.totalBalance)}</p>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Assign Fees */}
+      {/* Assign Fees Empty Block */}
       {student && fees.length === 0 && !loading && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center mb-6">
-          <p className="text-yellow-800 mb-3">No fees assigned for this student yet.</p>
-          <button onClick={handleAssignFees} disabled={assigning} className="px-6 py-2.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 font-medium">
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/60 rounded-xl p-6 text-center mb-6">
+          <p className="text-yellow-800 dark:text-yellow-400 mb-3 font-medium">No fees assigned for this student yet.</p>
+          <button onClick={handleAssignFees} disabled={assigning} className="px-6 py-2.5 bg-yellow-600 text-white rounded-xl hover:bg-yellow-700 disabled:opacity-50 font-bold text-sm">
             {assigning ? "Assigning..." : "Assign Fees"}
           </button>
         </div>
       )}
 
-      {/* Fee Table */}
+      {/* Fee Layout Table */}
       {fees.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden mb-6">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fee Head</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Discount</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Fine</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Net</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Paid</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mb-6">
+          <div className="w-full overflow-x-auto scrollbar-thin">
+            <table className="min-w-[1000px] w-full divide-y divide-gray-200 dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-700">
+                <tr className="text-gray-500 dark:text-gray-300 text-xs font-semibold uppercase tracking-wider text-left">
+                  <th className="px-4 py-3 w-[5%]">#</th>
+                  <th className="px-4 py-3 w-[25%]">Fee Head</th>
+                  <th className="px-4 py-3 w-[12%]">Due Date</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Total</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Discount</th>
+                  <th className="px-4 py-3 text-right w-[8%]">Fine</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Net</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Paid</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Balance</th>
+                  <th className="px-4 py-3 text-center w-[10%]">Status</th>
+                  <th className="px-4 py-3 text-center w-[10%]">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {fees.map((fee) => {
-                  // Display fee heads from StudentFeeItems or FeeStructure
-                  const displayItems = fee.items && fee.items.length > 0
-                    ? fee.items.map((i) => i.name).join(", ")
-                    : fee.feeStructure?.name || `Installment #${fee.installmentNo}`;
-
-                  return (
-                    <tr key={fee.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">{fee.installmentNo}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        <div>
-                          <span className="font-medium">{fee.feeStructure?.name || `Installment #${fee.installmentNo}`}</span>
-                          {fee.items && fee.items.length > 0 && (
-                            <p className="text-[10px] text-gray-500 mt-0.5">
-                              {fee.items.map((i) => i.name).join(" • ")}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{formatDate(fee.dueDate)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(fee.totalAmount)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-purple-600">
-                        {fee.discountAmount > 0 ? formatCurrency(fee.discountAmount) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-red-600">
-                        {fee.fineAmount > 0 ? formatCurrency(fee.fineAmount) : "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{formatCurrency(fee.netAmount)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(fee.paidAmount)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{formatCurrency(fee.balanceAmount)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[fee.status]}`}>
-                          {fee.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
-                          <button onClick={() => openPaymentModal(fee)} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700">
-                            Pay
-                          </button>
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                {fees.map((fee) => (
+                  <tr key={fee.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-700/40 text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-3.5 font-medium">{fee.installmentNo}</td>
+                    <td className="px-4 py-3.5">
+                      <div>
+                        <span className="font-bold">{fee.feeStructure?.name || `Installment #${fee.installmentNo}`}</span>
+                        {fee.items && fee.items.length > 0 && (
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                            {fee.items.map((i) => i.name).join(" • ")}
+                          </p>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 font-medium">{formatDate(fee.dueDate)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold">{formatCurrency(fee.totalAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-purple-600 dark:text-purple-400">
+                      {fee.discountAmount > 0 ? formatCurrency(fee.discountAmount) : "-"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-red-600 dark:text-red-400">
+                      {fee.fineAmount > 0 ? formatCurrency(fee.fineAmount) : "-"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold">{formatCurrency(fee.netAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-green-600 dark:text-green-400">{formatCurrency(fee.paidAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-red-600 dark:text-red-400">{formatCurrency(fee.balanceAmount)}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded-full ${statusColors[fee.status]}`}>
+                        {fee.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
+                        <button onClick={() => openPaymentModal(fee)} className="px-4 py-1 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-700 shadow-sm">
+                          Pay
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* ═══ Payment History — All previous receipts ═══ */}
+      {/* Payment History Log */}
       {student && fees.some(f => f.payments?.length > 0) && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
           <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3">📋 Payment History</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="w-full overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[500px] text-xs">
               <thead>
-                <tr className="bg-gray-50 dark:bg-slate-700">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Receipt No</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Method</th>
-                  <th className="px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-300">Print</th>
+                <tr className="bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-semibold text-left">
+                  <th className="px-3 py-2">#</th>
+                  <th className="px-3 py-2">Receipt No</th>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                  <th className="px-3 py-2">Method</th>
+                  <th className="px-3 py-2 text-center">Print</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {fees.flatMap(f => f.payments || []).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((p, idx) => (
-                  <tr key={p.id} className="border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{idx + 1}</td>
-                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{p.receiptNo}</td>
+                  <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30">
+                    <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
+                    <td className="px-3 py-2 font-bold dark:text-white">{p.receiptNo}</td>
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">{formatCurrency(p.amount)}</td>
-                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{p.method}</td>
+                    <td className="px-3 py-2 text-right font-bold text-green-600 dark:text-green-400">{formatCurrency(p.amount)}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-medium">{p.method}</td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={() => {
-                        // For reprint: use StudentFeeItems from the first fee that has items
                         const feeWithItems = fees.find(f => f.items && f.items.length > 0);
                         const receiptItems = feeWithItems?.items?.map(i => ({ name: i.name, amount: i.amount }))
                           || fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 }))
@@ -754,25 +728,24 @@ const FeeCollectionPage: React.FC = () => {
                           nextDueMonth: null,
                         });
                         setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100);
-                      }} className="text-primary-600 hover:text-primary-800 dark:text-primary-400 font-medium">🖨️</button>
+                      }} className="text-primary-600 hover:text-primary-800 font-bold text-sm">🖨️</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">Total Payments: {fees.flatMap(f => f.payments || []).length} | Total Paid: {formatCurrency(fees.reduce((s, f) => s + f.paidAmount, 0))}</p>
         </div>
       )}
 
-      {/* Last Receipt Print Button */}
+      {/* Success Banner */}
       {lastReceipt && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div>
-            <p className="text-green-800 font-medium">Payment Successful! Receipt No: {lastReceipt.receiptNo}</p>
-            <p className="text-green-600 text-sm">Amount: {formatCurrency(lastReceipt.payment.amount)} via {lastReceipt.payment.method}</p>
+            <p className="text-green-800 font-bold text-sm">Payment Successful! Receipt No: {lastReceipt.receiptNo}</p>
+            <p className="text-green-600 text-xs mt-0.5">Amount: {formatCurrency(lastReceipt.payment.amount)} via {lastReceipt.payment.method}</p>
           </div>
-          <button id="print-receipt-btn" onClick={handlePrintReceipt} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm">
+          <button id="print-receipt-btn" onClick={handlePrintReceipt} className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs uppercase tracking-wider transition-all">
             🖨️ Print Receipt
           </button>
         </div>
@@ -780,20 +753,18 @@ const FeeCollectionPage: React.FC = () => {
 
       {/* ===== PAYMENT MODAL ===== */}
       {paymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 mx-4 my-auto max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Collect Payment</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Installment #{paymentModal.installmentNo}
-            </p>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto box-border">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Collect Payment</h3>
+            <p className="text-xs sm:text-sm text-gray-500 mb-4">Installment #{paymentModal.installmentNo}</p>
 
-            {/* Fee Particulars — from StudentFeeItems (per-student) */}
+            {/* Fee Particulars */}
             {paymentModal.feeItems.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Fee Particulars (Assigned to this Student):</p>
-                <div className="space-y-2">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 mb-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Fee Particulars:</p>
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
                   {paymentModal.feeItems.map((item, idx) => (
-                    <label key={idx} className="flex items-center justify-between text-sm cursor-pointer hover:bg-white p-1.5 rounded-lg transition-all">
+                    <label key={idx} className="flex items-center justify-between text-xs sm:text-sm cursor-pointer hover:bg-white p-2 rounded-lg transition-all border border-transparent hover:border-gray-100">
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -808,61 +779,59 @@ const FeeCollectionPage: React.FC = () => {
                           }}
                           className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
-                        <span className="text-gray-700 font-medium">{item.name}</span>
+                        <span className="text-gray-700 font-semibold">{item.name}</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{formatCurrency(item.amount)}</span>
+                      <span className="font-bold text-gray-900">{formatCurrency(item.amount)}</span>
                     </label>
                   ))}
                 </div>
                 {/* Fine Input */}
-                <div className="border-t border-gray-200 mt-3 pt-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Add Fine (optional):</span>
-                      <input
-                        type="number"
-                        value={paymentForm.fineAmount || ""}
-                        onChange={(e) => {
-                          const fine = parseFloat(e.target.value) || 0;
-                          const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
-                          const selectedTotal = selectedIdxs.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + fine;
-                          setPaymentForm((prev) => ({ ...prev, fineAmount: e.target.value, amount: selectedTotal.toString() }));
-                        }}
-                        min={0}
-                        placeholder="₹0"
-                        className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-gray-900">
-                      Selected Total: {formatCurrency(
-                        (paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i)).reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0)
-                      )}
-                    </span>
+                <div className="border-t border-gray-200 mt-3 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-600">Add Fine (optional):</span>
+                    <input
+                      type="number"
+                      value={paymentForm.fineAmount || ""}
+                      onChange={(e) => {
+                        const fine = parseFloat(e.target.value) || 0;
+                        const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+                        const selectedTotal = selectedIdxs.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + fine;
+                        setPaymentForm((prev) => ({ ...prev, fineAmount: e.target.value, amount: selectedTotal.toString() }));
+                      }}
+                      min={0}
+                      placeholder="₹0"
+                      className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold outline-none"
+                    />
                   </div>
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">
+                    Selected Total: {formatCurrency(
+                      (paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i)).reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0)
+                    )}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* Payment Summary */}
+            {/* Quick Metrics */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-center">
-                <p className="text-[10px] text-green-600 font-medium">Paid Till Date</p>
-                <p className="text-lg font-bold text-green-800">{formatCurrency(paymentModal.paidAmount)}</p>
+              <div className="bg-green-50 border border-green-100 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-green-600 font-bold uppercase tracking-wide">Paid Till Date</p>
+                <p className="text-base font-black text-green-800 mt-0.5">{formatCurrency(paymentModal.paidAmount)}</p>
               </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center">
-                <p className="text-[10px] text-red-600 font-medium">Balance Due</p>
-                <p className="text-lg font-bold text-red-800">{formatCurrency(paymentModal.balance)}</p>
+              <div className="bg-red-50 border border-red-100 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-red-600 font-bold uppercase tracking-wide">Balance Due</p>
+                <p className="text-base font-black text-red-800 mt-0.5">{formatCurrency(paymentModal.balance)}</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Discount Selection (from DB) */}
+            {/* Form Fields Stack */}
+            <div className="space-y-3.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Apply Discount</label>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Apply Discount</label>
                 <select
                   value={paymentForm.discountId}
                   onChange={(e) => handleDiscountSelect(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
                 >
                   <option value="">-- No Discount --</option>
                   {discounts.map((d) => (
@@ -873,86 +842,71 @@ const FeeCollectionPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Discount Info */}
               {paymentForm.discountId && parseFloat(paymentForm.discountAmount) > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-purple-800">Discount Applied</span>
-                    <span className="text-lg font-bold text-purple-900">- {formatCurrency(parseFloat(paymentForm.discountAmount))}</span>
+                    <span className="text-xs font-bold text-purple-800">Discount Applied</span>
+                    <span className="text-base font-black text-purple-900">- {formatCurrency(parseFloat(paymentForm.discountAmount))}</span>
                   </div>
-                  <div>
-                    <label className="text-xs text-purple-700 font-medium">Adjust if needed:</label>
-                    <input
-                      type="number"
-                      value={paymentForm.discountAmount}
-                      onChange={(e) => {
-                        const newDiscount = parseFloat(e.target.value) || 0;
-                        const newPay = Math.max(0, paymentModal.balance - newDiscount);
-                        setPaymentForm((prev) => ({ ...prev, discountAmount: e.target.value, amount: newPay.toString() }));
-                      }}
-                      min={0}
-                      max={paymentModal.balance}
-                      className="mt-1 w-full px-3 py-1.5 border border-purple-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    value={paymentForm.discountAmount}
+                    onChange={(e) => {
+                      const newDiscount = parseFloat(e.target.value) || 0;
+                      const newPay = Math.max(0, paymentModal.balance - newDiscount);
+                      setPaymentForm((prev) => ({ ...prev, discountAmount: e.target.value, amount: newPay.toString() }));
+                    }}
+                    min={0}
+                    max={paymentModal.balance}
+                    className="w-full px-3 py-1.5 border border-purple-300 rounded-lg text-xs outline-none"
+                  />
                 </div>
               )}
 
-              {/* Paying Amount */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paying Amount <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Paying Amount <span className="text-red-500">*</span></label>
                 <input
                   type="number"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-lg font-semibold"
-                  placeholder="₹ 0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-primary-500"
                   min={0}
                 />
-                {paymentForm.discountId && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Balance {formatCurrency(paymentModal.balance)} - Discount {formatCurrency(parseFloat(paymentForm.discountAmount) || 0)} = {formatCurrency(parseFloat(paymentForm.amount) || 0)} payable
-                  </p>
-                )}
               </div>
 
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method <span className="text-red-500">*</span></label>
-                <select
-                  value={paymentForm.method}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="ONLINE">Online</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Payment Method <span className="text-red-500">*</span></label>
+                  <select
+                    value={paymentForm.method}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="ONLINE">Online</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Reference / Transaction ID</label>
+                  <input
+                    type="text"
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
+                    placeholder="Txn ID, Cheque No..."
+                  />
+                </div>
               </div>
 
-              {/* Reference */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reference / Transaction ID</label>
-                <input
-                  type="text"
-                  value={paymentForm.reference}
-                  onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                  placeholder="Transaction ID, Cheque No, etc."
-                />
-              </div>
-
-              {/* Remarks */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Remarks</label>
                 <textarea
                   value={paymentForm.remarks}
                   onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-xl text-sm outline-none"
                   rows={2}
                   placeholder="Optional remarks..."
                 />
@@ -981,15 +935,15 @@ const FeeCollectionPage: React.FC = () => {
 
             {/* Buttons */}
             <div className="flex gap-3 mt-5">
-              <button onClick={() => setPaymentModal(null)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+              <button onClick={() => setPaymentModal(null)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 text-sm font-semibold">
                 Cancel
               </button>
               <button
                 onClick={handleCollectPayment}
                 disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 font-medium"
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 text-sm font-semibold shadow-sm"
               >
-                {submitting ? "Processing..." : "Collect Payment"}
+                {submitting ? "Processing..." : "Collect"}
               </button>
             </div>
           </div>

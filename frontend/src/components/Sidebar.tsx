@@ -578,7 +578,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* MOBILE SIDEBAR (Same design as desktop - slides in/out) */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <div className={`md:hidden fixed inset-0 z-[1000] transition-opacity duration-300 ${sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      {sidebarOpen && (
+      <div className="md:hidden fixed inset-0 z-[1000] animate-fade-in">
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -586,7 +587,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         />
         {/* Sidebar panel */}
         <aside
-          className={`absolute left-0 top-0 h-full w-[280px] flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className="absolute left-0 top-0 h-full w-[280px] flex flex-col animate-slide-right"
           style={{
             background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
           }}
@@ -668,6 +669,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
           </div>
         </aside>
       </div>
+      )}
     </>
   );
 }

@@ -112,19 +112,19 @@ export default function MainLayout() {
       {/* ═══════════ Sidebar (single render) ═══════════ */}
       <Sidebar tenant={tenant} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
+      {/* ═══════════ Mobile hamburger button (outside wrapper to avoid stacking context) ═══════════ */}
+      <button
+        className={`hamburger-btn fixed top-3 left-3 z-[9999] p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-all duration-300 ${sidebarOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'}`}
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Open menu"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
       {/* ═══════════ Main Content Area ═══════════ */}
       <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[260px]">
-        {/* Mobile hamburger button */}
-        <button
-          className={`hamburger-btn fixed top-3 left-3 z-[990] p-2.5 bg-primary-500 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-all duration-300 ${sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open menu"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-
         {/* Top Navbar */}
         {!isPrinting && <TopNavbar tenant={tenant} />}
 

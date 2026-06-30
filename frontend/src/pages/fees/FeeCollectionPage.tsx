@@ -450,7 +450,7 @@ const FeeCollectionPage: React.FC = () => {
 
       {/* Search Bar / Filters */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 mb-6">
-        {/* Row 1: Text Search (Fully Responsive Stack) */}
+        {/* Row 1: Text Search */}
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
             type="text"
@@ -470,7 +470,7 @@ const FeeCollectionPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Row 2: Dropdown Filters (Fully Responsive Stack) */}
+        {/* Row 2: Dropdown Filters */}
         <div className="flex flex-col md:flex-row gap-3 items-start md:items-center pt-4 border-t border-gray-100 dark:border-slate-700">
           <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider whitespace-nowrap">Or filter by:</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:flex-1">
@@ -521,7 +521,7 @@ const FeeCollectionPage: React.FC = () => {
           <div className="w-full overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-slate-700 text-left text-gray-600 dark:text-gray-300 font-semibold">
+                <tr className="bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-semibold text-left">
                   <th className="px-3 py-2">Adm No</th>
                   <th className="px-3 py-2">Student Name</th>
                   <th className="px-3 py-2">Father Name</th>
@@ -554,7 +554,7 @@ const FeeCollectionPage: React.FC = () => {
         </div>
       )}
 
-      {/* Student Info Card (Fully Responsive Grid block) */}
+      {/* Student Info Card */}
       {student && (
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 md:p-5 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -600,4 +600,357 @@ const FeeCollectionPage: React.FC = () => {
               </div>
               <div className="text-center p-2.5 bg-red-50 dark:bg-red-950/20 rounded-xl border border-red-100 dark:border-red-900/40">
                 <p className="text-[11px] font-semibold text-red-600 dark:text-red-400">Balance</p>
-                <p className="font-bold text-sm md:text-base text-red-700 dark:text-red-400 mt
+                <p className="font-bold text-sm md:text-base text-red-700 dark:text-red-400 mt-0.5">{formatCurrency(summary.totalBalance)}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Assign Fees Empty Block */}
+      {student && fees.length === 0 && !loading && (
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900/60 rounded-xl p-6 text-center mb-6">
+          <p className="text-yellow-800 dark:text-yellow-400 mb-3 font-medium">No fees assigned for this student yet.</p>
+          <button onClick={handleAssignFees} disabled={assigning} className="px-6 py-2.5 bg-yellow-600 text-white rounded-xl hover:bg-yellow-700 disabled:opacity-50 font-bold text-sm">
+            {assigning ? "Assigning..." : "Assign Fees"}
+          </button>
+        </div>
+      )}
+
+      {/* Fee Layout Table */}
+      {fees.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mb-6">
+          <div className="w-full overflow-x-auto scrollbar-thin">
+            <table className="min-w-[1000px] w-full divide-y divide-gray-200 dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-700">
+                <tr className="text-gray-500 dark:text-gray-300 text-xs font-semibold uppercase tracking-wider text-left">
+                  <th className="px-4 py-3 w-[5%]">#</th>
+                  <th className="px-4 py-3 w-[25%]">Fee Head</th>
+                  <th className="px-4 py-3 w-[12%]">Due Date</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Total</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Discount</th>
+                  <th className="px-4 py-3 text-right w-[8%]">Fine</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Net</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Paid</th>
+                  <th className="px-4 py-3 text-right w-[10%]">Balance</th>
+                  <th className="px-4 py-3 text-center w-[10%]">Status</th>
+                  <th className="px-4 py-3 text-center w-[10%]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                {fees.map((fee) => (
+                  <tr key={fee.id} className="hover:bg-gray-50/80 dark:hover:bg-slate-700/40 text-sm text-gray-900 dark:text-white">
+                    <td className="px-4 py-3.5 font-medium">{fee.installmentNo}</td>
+                    <td className="px-4 py-3.5">
+                      <div>
+                        <span className="font-bold">{fee.feeStructure?.name || `Installment #${fee.installmentNo}`}</span>
+                        {fee.items && fee.items.length > 0 && (
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                            {fee.items.map((i) => i.name).join(" • ")}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-gray-600 dark:text-gray-400 font-medium">{formatDate(fee.dueDate)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold">{formatCurrency(fee.totalAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-purple-600 dark:text-purple-400">
+                      {fee.discountAmount > 0 ? formatCurrency(fee.discountAmount) : "-"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-red-600 dark:text-red-400">
+                      {fee.fineAmount > 0 ? formatCurrency(fee.fineAmount) : "-"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold">{formatCurrency(fee.netAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-semibold text-green-600 dark:text-green-400">{formatCurrency(fee.paidAmount)}</td>
+                    <td className="px-4 py-3.5 text-right font-bold text-red-600 dark:text-red-400">{formatCurrency(fee.balanceAmount)}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded-full ${statusColors[fee.status]}`}>
+                        {fee.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
+                        <button onClick={() => openPaymentModal(fee)} className="px-4 py-1 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-700 shadow-sm">
+                          Pay
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History Log */}
+      {student && fees.some(f => f.payments?.length > 0) && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
+          <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3">📋 Payment History</h3>
+          <div className="w-full overflow-x-auto scrollbar-thin">
+            <table className="w-full min-w-[500px] text-xs">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 font-semibold text-left">
+                  <th className="px-3 py-2">#</th>
+                  <th className="px-3 py-2">Receipt No</th>
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                  <th className="px-3 py-2">Method</th>
+                  <th className="px-3 py-2 text-center">Print</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                {fees.flatMap(f => f.payments || []).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((p, idx) => (
+                  <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/30">
+                    <td className="px-3 py-2 text-gray-500">{idx + 1}</td>
+                    <td className="px-3 py-2 font-bold dark:text-white">{p.receiptNo}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                    <td className="px-3 py-2 text-right font-bold text-green-600 dark:text-green-400">{formatCurrency(p.amount)}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-medium">{p.method}</td>
+                    <td className="px-3 py-2 text-center">
+                      <button onClick={() => {
+                        const feeWithItems = fees.find(f => f.items && f.items.length > 0);
+                        const receiptItems = feeWithItems?.items?.map(i => ({ name: i.name, amount: i.amount }))
+                          || fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 }))
+                          || [];
+                        setLastReceipt({
+                          receiptNo: p.receiptNo,
+                          payment: p,
+                          feeInfo: {
+                            feeHead: fees[0]?.feeStructure?.name || "Fee",
+                            feeItems: receiptItems,
+                            installmentNo: 1,
+                            paidAmount: fees.reduce((s, f) => s + f.paidAmount, 0),
+                            balanceAmount: fees.reduce((s, f) => s + f.balanceAmount, 0),
+                          },
+                          _selectedFeeItems: receiptItems,
+                          monthsCovered: null,
+                          remainingBalance: fees.reduce((s, f) => s + f.balanceAmount, 0),
+                          nextDueMonth: null,
+                        });
+                        setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100);
+                      }} className="text-primary-600 hover:text-primary-800 font-bold text-sm">🖨️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Success Banner */}
+      {lastReceipt && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div>
+            <p className="text-green-800 font-bold text-sm">Payment Successful! Receipt No: {lastReceipt.receiptNo}</p>
+            <p className="text-green-600 text-xs mt-0.5">Amount: {formatCurrency(lastReceipt.payment.amount)} via {lastReceipt.payment.method}</p>
+          </div>
+          <button id="print-receipt-btn" onClick={handlePrintReceipt} className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs uppercase tracking-wider transition-all">
+            🖨️ Print Receipt
+          </button>
+        </div>
+      )}
+
+      {/* ===== PAYMENT MODAL ===== */}
+      {paymentModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto box-border">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Collect Payment</h3>
+            <p className="text-xs sm:text-sm text-gray-500 mb-4">Installment #{paymentModal.installmentNo}</p>
+
+            {/* Fee Particulars */}
+            {paymentModal.feeItems.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 mb-4">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Fee Particulars:</p>
+                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                  {paymentModal.feeItems.map((item, idx) => (
+                    <label key={idx} className="flex items-center justify-between text-xs sm:text-sm cursor-pointer hover:bg-white p-2 rounded-lg transition-all border border-transparent hover:border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={paymentForm.selectedItems?.includes(idx) ?? true}
+                          onChange={(e) => {
+                            const current = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+                            const updated = e.target.checked
+                              ? [...current, idx]
+                              : current.filter((i: number) => i !== idx);
+                            const selectedTotal = updated.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0);
+                            setPaymentForm((prev) => ({ ...prev, selectedItems: updated, amount: selectedTotal.toString() }));
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-gray-700 font-semibold">{item.name}</span>
+                      </div>
+                      <span className="font-bold text-gray-900">{formatCurrency(item.amount)}</span>
+                    </label>
+                  ))}
+                </div>
+                {/* Fine Input */}
+                <div className="border-t border-gray-200 mt-3 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-600">Add Fine (optional):</span>
+                    <input
+                      type="number"
+                      value={paymentForm.fineAmount || ""}
+                      onChange={(e) => {
+                        const fine = parseFloat(e.target.value) || 0;
+                        const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+                        const selectedTotal = selectedIdxs.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + fine;
+                        setPaymentForm((prev) => ({ ...prev, fineAmount: e.target.value, amount: selectedTotal.toString() }));
+                      }}
+                      min={0}
+                      placeholder="₹0"
+                      className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold outline-none"
+                    />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">
+                    Selected Total: {formatCurrency(
+                      (paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i)).reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-green-50 border border-green-100 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-green-600 font-bold uppercase tracking-wide">Paid Till Date</p>
+                <p className="text-base font-black text-green-800 mt-0.5">{formatCurrency(paymentModal.paidAmount)}</p>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-red-600 font-bold uppercase tracking-wide">Balance Due</p>
+                <p className="text-base font-black text-red-800 mt-0.5">{formatCurrency(paymentModal.balance)}</p>
+              </div>
+            </div>
+
+            {/* Form Fields Stack */}
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Apply Discount</label>
+                <select
+                  value={paymentForm.discountId}
+                  onChange={(e) => handleDiscountSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
+                >
+                  <option value="">-- No Discount --</option>
+                  {discounts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.type === "PERCENTAGE" ? `${d.value}%` : `₹${d.value}`})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {paymentForm.discountId && parseFloat(paymentForm.discountAmount) > 0 && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-purple-800">Discount Applied</span>
+                    <span className="text-base font-black text-purple-900">- {formatCurrency(parseFloat(paymentForm.discountAmount))}</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={paymentForm.discountAmount}
+                    onChange={(e) => {
+                      const newDiscount = parseFloat(e.target.value) || 0;
+                      const newPay = Math.max(0, paymentModal.balance - newDiscount);
+                      setPaymentForm((prev) => ({ ...prev, discountAmount: e.target.value, amount: newPay.toString() }));
+                    }}
+                    min={0}
+                    max={paymentModal.balance}
+                    className="w-full px-3 py-1.5 border border-purple-300 rounded-lg text-xs outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Paying Amount <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-primary-500"
+                  min={0}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Payment Method <span className="text-red-500">*</span></label>
+                  <select
+                    value={paymentForm.method}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="ONLINE">Online</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Reference / Transaction ID</label>
+                  <input
+                    type="text"
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm outline-none"
+                    placeholder="Txn ID, Cheque No..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Remarks</label>
+                <textarea
+                  value={paymentForm.remarks}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-xl text-sm outline-none"
+                  rows={2}
+                  placeholder="Optional remarks..."
+                />
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Paying</span>
+                <span className="font-bold text-gray-900">{formatCurrency(parseFloat(paymentForm.amount) || 0)}</span>
+              </div>
+              {parseFloat(paymentForm.discountAmount) > 0 && (
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-purple-600">Discount</span>
+                  <span className="font-bold text-purple-700">{formatCurrency(parseFloat(paymentForm.discountAmount))}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm mt-1 pt-1 border-t border-gray-200">
+                <span className="text-gray-700 font-medium">Total Settled</span>
+                <span className="font-bold text-green-700">
+                  {formatCurrency((parseFloat(paymentForm.amount) || 0) + (parseFloat(paymentForm.discountAmount) || 0))}
+                </span>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setPaymentModal(null)} className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 text-sm font-semibold">
+                Cancel
+              </button>
+              <button
+                onClick={handleCollectPayment}
+                disabled={submitting}
+                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 text-sm font-semibold shadow-sm"
+              >
+                {submitting ? "Processing..." : "Collect"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FeeCollectionPage;

@@ -591,9 +591,10 @@ export default function StudentReportsPage() {
       ${schoolAddress ? `<div style="font-size:11px;color:#555;">${schoolAddress}</div>` : ""}
       ${schoolPhone || schoolEmail ? `<div style="font-size:10px;color:#777;">${schoolPhone ? "Ph: " + schoolPhone : ""}${schoolPhone && schoolEmail ? " | " : ""}${schoolEmail ? "Email: " + schoolEmail : ""}</div>` : ""}
     </div>
-    <div style="width:120px;text-align:right;font-size:9px;color:#888;">
-      <div>Date: ${printDate}</div>
-      <div>Time: ${printTime}</div>
+    <div style="width:140px;text-align:right;font-size:9px;color:#555;">
+      <div><strong>Printed by:</strong> ${userName}</div>
+      <div style="margin-top:2px;"><strong>Date:</strong> ${printDate}</div>
+      <div style="margin-top:2px;"><strong>Time:</strong> ${printTime}</div>
     </div>
   </div>
   <hr style="border:none;border-top:2px solid #333;margin:5px 0 10px;" />

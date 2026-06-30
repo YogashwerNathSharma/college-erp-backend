@@ -232,7 +232,6 @@ html.dark table, html.dark th, html.dark td {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
-    overflow-x: hidden;
   }
 
   body {

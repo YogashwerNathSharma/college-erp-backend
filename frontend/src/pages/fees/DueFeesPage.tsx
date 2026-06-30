@@ -264,14 +264,23 @@ export default function DueFeesPage() {
                 onClick={() => {
                   const printWindow = window.open("", "_blank");
                   if (!printWindow) return;
+                  const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
+                  const user = JSON.parse(localStorage.getItem("user") || "{}");
+                  const logoUrl = tenant.logoUrl ? (tenant.logoUrl.startsWith("http") ? tenant.logoUrl : tenant.logoUrl) : "";
+                  const schoolName = tenant.name || tenant.schoolName || "School";
+                  const address = tenant.address || "";
+                  const adminName = user.name || user.firstName || "Admin";
+                  const now = new Date();
+                  const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+                  const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
                   printWindow.document.write(`<html><head><title>Fee Record - ${selectedStudent.studentName}</title>
-                    <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;margin-top:15px}
-                    th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:13px}th{background:#f5f5f5}
-                    .header{text-align:center;margin-bottom:20px}.total{font-weight:bold;color:red}</style></head><body>
-                    <div class="header"><h2>Fee Record</h2><p><b>${selectedStudent.studentName}</b> | ${selectedStudent.admissionNo} | Class ${selectedStudent.className} ${selectedStudent.sectionName || ""}</p></div>
+                    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;padding:15mm;font-size:12px;color:#222}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #333;padding:6px 8px;text-align:left;font-size:11px}th{background:#f0f0f0;font-weight:600}@media print{body{padding:10mm}@page{size:A4;margin:10mm}-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}</style></head><body>
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:15px;"><div style="flex-shrink:0;width:60px;">${logoUrl ? `<img src="${logoUrl}" style="width:55px;height:55px;object-fit:contain;border-radius:4px;" />` : `<div style="width:55px;height:55px;background:#4f46e5;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:20px;">${schoolName.charAt(0)}</div>`}</div><div style="flex:1;text-align:center;padding:0 15px;"><h1 style="margin:0;font-size:18px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;">${schoolName}</h1>${address ? `<p style="margin:3px 0 0;font-size:11px;color:#444;">${address}</p>` : ""}</div><div style="flex-shrink:0;text-align:right;font-size:10px;color:#555;min-width:130px;"><p style="margin:0;"><strong>Printed by:</strong> ${adminName}</p><p style="margin:3px 0 0;"><strong>Date:</strong> ${dateStr}</p><p style="margin:3px 0 0;"><strong>Time:</strong> ${timeStr}</p></div></div>
+                    <h2 style="font-size:14px;font-weight:bold;margin-bottom:5px;">Fee Record</h2>
+                    <p style="font-size:11px;margin-bottom:10px;"><b>${selectedStudent.studentName}</b> | ${selectedStudent.admissionNo} | Class ${selectedStudent.className} ${selectedStudent.sectionName || ""}</p>
                     <table><tr><th>#</th><th>Installment</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Due Date</th></tr>
                     ${studentFees.map((f: any, i: number) => `<tr><td>${i+1}</td><td>${f.installmentNo || i+1}</td><td>₹${(f.netAmount || f.totalAmount || 0).toLocaleString("en-IN")}</td><td>₹${(f.paidAmount || 0).toLocaleString("en-IN")}</td><td class="total">₹${(f.balanceAmount || 0).toLocaleString("en-IN")}</td><td>${f.status || "—"}</td><td>${f.dueDate ? new Date(f.dueDate).toLocaleDateString("en-IN") : "—"}</td></tr>`).join("")}
-                    </table><br><p><b>Total Due: ₹${selectedStudent.balance?.toLocaleString("en-IN") || "0"}</b></p></body></html>`);
+                    </table><br><p style="font-weight:bold;margin-top:10px;">Total Due: ₹${selectedStudent.balance?.toLocaleString("en-IN") || "0"}</p></body></html>`);
                   printWindow.document.close();
                   printWindow.print();
                 }}

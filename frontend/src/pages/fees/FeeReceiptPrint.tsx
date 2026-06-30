@@ -2,15 +2,15 @@ import { getPrintSignatureHTML } from "../../components/PrintSignature";
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- * FEE RECEIPT PRINT — Unified Receipt (No Individual Fee Heads)
+ * FEE RECEIPT PRINT — Global Receipt (Used everywhere in ERP)
  * ═══════════════════════════════════════════════════════════════════
  * 
- * RULES:
- * 1. NO individual fee head breakdown (no Tuition, Transport, Lab rows)
- * 2. Just ONE row showing total amount collected
- * 3. Transport & Hostel are already included in the total if student has them
- * 4. Dual copy (Student + School) side by side
- * 5. Same receipt format used everywhere in the ERP
+ * FEATURES:
+ * 1. Individual fee head rows (Tuition, Transport, Lab, Library etc.)
+ * 2. Month coverage (MANDATORY on every receipt): "Paid: Apr to Jun"
+ * 3. Total Paid Till Date + Balance Due + Pending From
+ * 4. Dual copy (Student + School)
+ * 5. Amount in words, signatures
  */
 
 interface FeeHeadEntry {
@@ -39,7 +39,9 @@ interface ReceiptData {
   balance?: number;
   collectedBy?: string;
   discountAmount?: number;
-  feePeriod?: string;
+  feePeriod?: string;        // "April 2026 to June 2026"
+  totalPaidTillDate?: number; // total paid across all payments
+  pendingFrom?: string;      // "July 2026"
   dueDate?: string;
 }
 
@@ -60,19 +62,10 @@ const numberToWords = (num: number): string => {
   return convert(Math.round(num)) + " only.";
 };
 
-// Get fee period text from installment number or dates
 const getFeePeriodText = (data: ReceiptData): string => {
   if (data.feePeriod) return data.feePeriod;
-
   const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   const installment = data.installmentNo || 1;
-
-  if (data.dueDate) {
-    const d = new Date(data.dueDate);
-    const monthName = d.toLocaleString("en-IN", { month: "short", year: "numeric" });
-    return `${monthName} (Installment #${installment})`;
-  }
-
   const monthIdx = ((installment - 1) % 12);
   const monthName = months[monthIdx];
   const year = new Date().getFullYear();
@@ -88,24 +81,30 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
   const phone = tenant.phone || "";
   const email = tenant.email || "";
   const logoUrl = tenant.logoUrl
-    ? tenant.logoUrl.startsWith("http")
-      ? tenant.logoUrl
-      : `${tenant.logoUrl}`
+    ? tenant.logoUrl.startsWith("http") ? tenant.logoUrl : tenant.logoUrl
     : "";
 
   const date = new Date(data.paymentDate).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+    day: "2-digit", month: "short", year: "numeric",
   });
 
   const session = data.session || new Date().getFullYear() + "-" + (new Date().getFullYear() + 1).toString().slice(-2);
   const balance = data.balance || 0;
   const discount = data.discountAmount || 0;
   const paidWords = numberToWords(data.amount);
+  const totalPaid = data.totalPaidTillDate || data.amount;
+  const pendingFrom = data.pendingFrom || "";
 
-  // UNIFIED: No individual fee head rows — just total
-  const totalAmount = data.amount + discount; // gross before discount
+  // Build fee rows from feeItems (individual heads)
+  let feeRows: { name: string; amount: number }[] = [];
+  if (data.feeItems && data.feeItems.length > 0) {
+    feeRows = data.feeItems.map((item) => ({ name: item.name, amount: item.amount }));
+  } else {
+    // Fallback: single row
+    feeRows = [{ name: data.feeHead || "Monthly Fee", amount: data.amount + discount }];
+  }
+
+  const subTotal = feeRows.reduce((sum, r) => sum + r.amount, 0);
 
   const generateCopy = (copyType: string) => `
     <div class="receipt-copy">
@@ -129,7 +128,7 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
         <strong>Session : ${session}</strong>
       </div>
 
-      <!-- Receipt Info Row -->
+      <!-- Receipt Info -->
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 9px;">
         <div><strong>Receipt No.</strong> ${data.receiptNo}</div>
         <div><strong>Date.</strong> ${date}</div>
@@ -163,47 +162,60 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
         </tr>
       </table>
 
-      <!-- Fee Table — UNIFIED: Single row, no individual fee heads -->
+      <!-- Fee Table with INDIVIDUAL fee heads -->
       <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 5px;">
         <thead>
           <tr style="background: #f0f0f0;">
+            <th style="border: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 8px; width: 25px;">S.No</th>
             <th style="border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px;">Particulars</th>
-            <th style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 8px; width: 80px;">Amount (₹)</th>
+            <th style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 8px; width: 70px;">Amount (₹)</th>
           </tr>
         </thead>
         <tbody>
+          ${feeRows.map((row, index) => `
           <tr>
-            <td style="border: 1px solid #000; padding: 3px 4px; font-size: 9px;">Monthly Fee (Installment #${data.installmentNo})</td>
-            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-size: 9px; font-weight: bold;">${totalAmount.toLocaleString("en-IN")}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; text-align: center;">${index + 1}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px;">${row.name}</td>
+            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px;">${row.amount.toLocaleString("en-IN")}</td>
+          </tr>
+          `).join("")}
+          <tr style="background: #f9f9f9;">
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">Sub Total</td>
+            <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 9px;">${subTotal.toLocaleString("en-IN")}</td>
           </tr>
           ${discount > 0 ? `
           <tr>
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
             <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #6b21a8;"><strong>Discount</strong></td>
             <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #6b21a8;">- ${discount.toLocaleString("en-IN")}</td>
           </tr>
           ` : ""}
-          <tr style="background: #f9f9f9;">
-            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 9px;">Amount Paid</td>
+          <tr style="background: #e8f5e9;">
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td style="border: 1px solid #000; padding: 3px 4px; font-weight: bold; font-size: 10px;">Amount Paid</td>
             <td style="border: 1px solid #000; padding: 3px 4px; text-align: right; font-weight: bold; font-size: 10px;">${data.amount.toLocaleString("en-IN")}</td>
           </tr>
-          ${balance > 0 ? `
-          <tr>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #dc2626;"><strong>Balance Due</strong></td>
-            <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #dc2626; font-weight: bold;">${balance.toLocaleString("en-IN")}</td>
-          </tr>
-          ` : ""}
         </tbody>
       </table>
 
       <!-- Amount in words -->
-      <div style="font-size: 8px; margin-bottom: 5px; padding: 2px 4px; border: 1px solid #ccc; background: #fafafa;">
-        <strong>Amount in words:</strong> ₹ ${paidWords}
+      <div style="font-size: 8px; margin-bottom: 4px; padding: 2px 4px; border: 1px solid #ccc; background: #fafafa;">
+        <strong>In words:</strong> ₹ ${paidWords}
+      </div>
+
+      <!-- ═══ MONTH COVERAGE (MANDATORY) ═══ -->
+      <div style="font-size: 8px; border: 1px solid #2e7d32; background: #e8f5e9; padding: 4px 6px; border-radius: 3px; margin-bottom: 5px;">
+        <div style="margin-bottom: 2px;"><strong>Fee Paid:</strong> ${getFeePeriodText(data)}</div>
+        <div style="margin-bottom: 2px;"><strong>Total Paid Till Date:</strong> ₹${totalPaid.toLocaleString("en-IN")}</div>
+        <div style="margin-bottom: 2px;"><strong>Balance Due:</strong> ₹${balance.toLocaleString("en-IN")}</div>
+        ${pendingFrom ? `<div><strong>Pending From:</strong> ${pendingFrom}</div>` : ""}
       </div>
 
       ${data.reference ? `<div style="font-size: 8px; margin-bottom: 4px;"><strong>Ref:</strong> ${data.reference}</div>` : ""}
 
       <!-- Signature -->
-      <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 8px;">
+      <div style="display: flex; justify-content: space-between; margin-top: 12px; font-size: 8px;">
         <div style="text-align: center;">
           <div style="border-top: 1px solid #000; padding-top: 2px; min-width: 80px;">Parent/Guardian</div>
         </div>

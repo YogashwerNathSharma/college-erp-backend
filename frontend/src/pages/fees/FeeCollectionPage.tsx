@@ -69,6 +69,11 @@ interface PaymentModalData {
   balance: number;
   feeHead: string;
   installmentNo: number;
+  feeItems: { name: string; amount: number }[];
+  paidAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  totalAmount: number;
 }
 
 // Discount from database
@@ -105,6 +110,8 @@ const FeeCollectionPage: React.FC = () => {
     remarks: "",
     discountId: "",
     discountAmount: "",
+    selectedItems: null as number[] | null,
+    fineAmount: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -283,13 +290,21 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // Open payment modal
+  // Open payment modal — extract fee items for display
   const openPaymentModal = (fee: FeeRecord) => {
+    const feeItems = fee.feeStructure?.items?.map((item) => ({
+      name: item.feeHead?.name || "Fee",
+      amount: item.amount || 0,
+    })) || [];
+
     setPaymentModal({
       studentFeeId: fee.id,
       balance: fee.balanceAmount,
       feeHead: fee.feeStructure?.name || "Fee",
       installmentNo: fee.installmentNo,
+      feeItems,
+      paidAmount: fee.paidAmount,
+      totalAmount: fee.netAmount,
     });
     setPaymentForm({
       amount: fee.balanceAmount.toString(),
@@ -298,6 +313,8 @@ const FeeCollectionPage: React.FC = () => {
       remarks: "",
       discountId: "",
       discountAmount: "",
+      selectedItems: null,
+      fineAmount: "",
     });
   };
 
@@ -363,7 +380,14 @@ const FeeCollectionPage: React.FC = () => {
       });
 
       toast.success(`Payment collected! Receipt: ${res.data.receiptNo}`);
-      setLastReceipt(res.data);
+      // Store selected fee items (only what was checked) for receipt printing
+      const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+      const selectedFeeItems = selectedIdxs.map((i: number) => paymentModal.feeItems[i]).filter(Boolean);
+      setLastReceipt({
+        ...res.data,
+        _selectedFeeItems: selectedFeeItems, // custom: only selected items for receipt
+        _fineAmount: parseFloat(paymentForm.fineAmount) || 0,
+      });
       setPaymentModal(null);
 
       if (student?.enrollmentId) {
@@ -379,6 +403,16 @@ const FeeCollectionPage: React.FC = () => {
   // Print receipt
   const handlePrintReceipt = async () => {
     if (!lastReceipt || !student) return;
+    // Use selected items (user-checked) or fallback to all items from backend
+    let receiptFeeItems = lastReceipt._selectedFeeItems?.length > 0
+      ? lastReceipt._selectedFeeItems
+      : (lastReceipt.feeInfo?.feeItems || []);
+    // Ensure each item has name & amount
+    receiptFeeItems = receiptFeeItems.map((item: any) => ({
+      name: item.name || item.feeHead?.name || "Fee",
+      amount: item.amount || 0,
+      code: item.code || item.feeHead?.code || "",
+    })).filter((item: any) => item.name && item.amount > 0);
     await FeeReceiptPrint({
       receiptNo: lastReceipt.receiptNo,
       paymentDate: lastReceipt.payment.paymentDate,
@@ -388,14 +422,17 @@ const FeeCollectionPage: React.FC = () => {
       className: student.class,
       section: student.section,
       feeHead: lastReceipt.feeInfo.feeHead,
+      feeItems: receiptFeeItems,
       installmentNo: lastReceipt.feeInfo.installmentNo,
       amount: lastReceipt.payment.amount,
       method: lastReceipt.payment.method,
       reference: lastReceipt.payment.reference,
       rollNumber: student.rollNumber,
-      balance: lastReceipt.feeInfo.balanceAmount,
-      totalDue: summary?.totalBalance,
+      balance: lastReceipt.remainingBalance ?? lastReceipt.feeInfo.balanceAmount,
+      totalPaidTillDate: lastReceipt.feeInfo.paidAmount || 0,
       discountAmount: lastReceipt.payment.discountAmount || lastReceipt.feeInfo.discountAmount || 0,
+      feePeriod: lastReceipt.monthsCovered ? `${lastReceipt.monthsCovered.from || ''} to ${lastReceipt.monthsCovered.to || ''}` : undefined,
+      pendingFrom: lastReceipt.nextDueMonth || undefined,
     });
   };
 
@@ -638,6 +675,42 @@ const FeeCollectionPage: React.FC = () => {
         </div>
       )}
 
+      {/* ═══ Payment History — All previous receipts ═══ */}
+      {student && fees.some(f => f.payments?.length > 0) && (
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mb-6">
+          <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3">📋 Payment History</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-slate-700">
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">#</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Receipt No</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
+                  <th className="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Method</th>
+                  <th className="px-3 py-2 text-center font-medium text-gray-600 dark:text-gray-300">Print</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fees.flatMap(f => f.payments || []).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((p, idx) => (
+                  <tr key={p.id} className="border-t border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{idx + 1}</td>
+                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{p.receiptNo}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">{formatCurrency(p.amount)}</td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{p.method}</td>
+                    <td className="px-3 py-2 text-center">
+                      <button onClick={() => { setLastReceipt({ receiptNo: p.receiptNo, payment: p, feeInfo: { feeHead: fees[0]?.feeStructure?.name || "Fee", feeItems: fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 })) || [], installmentNo: 1, paidAmount: fees.reduce((s, f) => s + f.paidAmount, 0), balanceAmount: fees.reduce((s, f) => s + f.balanceAmount, 0) }, _selectedFeeItems: fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 })) || [], monthsCovered: null, remainingBalance: fees.reduce((s, f) => s + f.balanceAmount, 0), nextDueMonth: null }); setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100); }} className="text-primary-600 hover:text-primary-800 dark:text-primary-400 font-medium">🖨️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">Total Payments: {fees.flatMap(f => f.payments || []).length} | Total Paid: {formatCurrency(fees.reduce((s, f) => s + f.paidAmount, 0))}</p>
+        </div>
+      )}
+
       {/* Last Receipt Print Button */}
       {lastReceipt && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center justify-between">
@@ -645,7 +718,7 @@ const FeeCollectionPage: React.FC = () => {
             <p className="text-green-800 font-medium">Payment Successful! Receipt No: {lastReceipt.receiptNo}</p>
             <p className="text-green-600 text-sm">Amount: {formatCurrency(lastReceipt.payment.amount)} via {lastReceipt.payment.method}</p>
           </div>
-          <button onClick={handlePrintReceipt} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm">
+          <button id="print-receipt-btn" onClick={handlePrintReceipt} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm">
             🖨️ Print Receipt
           </button>
         </div>
@@ -654,17 +727,81 @@ const FeeCollectionPage: React.FC = () => {
       {/* ===== PAYMENT MODAL ===== */}
       {paymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 mx-4 my-auto max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl p-6 mx-4 my-auto max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Collect Payment</h3>
             <p className="text-sm text-gray-600 mb-4">
               Installment #{paymentModal.installmentNo}
             </p>
 
-            {/* Balance Info */}
-            <div className="bg-primary-50 border border-primary-200 rounded-lg px-4 py-2.5 mb-4 flex items-center justify-between">
-              <span className="text-sm text-primary-700 font-medium">Outstanding Balance</span>
-              <span className="text-lg font-bold text-blue-900">{formatCurrency(paymentModal.balance)}</span>
+            {/* Fee Particulars (read-only breakdown) */}
+            {paymentModal.feeItems.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Select Fee Particulars:</p>
+                <div className="space-y-2">
+                  {paymentModal.feeItems.map((item, idx) => (
+                    <label key={idx} className="flex items-center justify-between text-sm cursor-pointer hover:bg-white p-1.5 rounded-lg transition-all">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={paymentForm.selectedItems?.includes(idx) ?? true}
+                          onChange={(e) => {
+                            const current = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+                            const updated = e.target.checked
+                              ? [...current, idx]
+                              : current.filter((i: number) => i !== idx);
+                            const selectedTotal = updated.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0);
+                            setPaymentForm((prev) => ({ ...prev, selectedItems: updated, amount: selectedTotal.toString() }));
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-gray-700 font-medium">{item.name}</span>
+                      </div>
+                      <span className="font-semibold text-gray-900">{formatCurrency(item.amount)}</span>
+                    </label>
+                  ))}
+                </div>
+                {/* Fine Input */}
+                <div className="border-t border-gray-200 mt-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Add Fine (optional):</span>
+                      <input
+                        type="number"
+                        value={paymentForm.fineAmount || ""}
+                        onChange={(e) => {
+                          const fine = parseFloat(e.target.value) || 0;
+                          const selectedIdxs = paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i);
+                          const selectedTotal = selectedIdxs.reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + fine;
+                          setPaymentForm((prev) => ({ ...prev, fineAmount: e.target.value, amount: selectedTotal.toString() }));
+                        }}
+                        min={0}
+                        placeholder="₹0"
+                        className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-gray-900">
+                      Selected Total: {formatCurrency(
+                        (paymentForm.selectedItems || paymentModal.feeItems.map((_, i) => i)).reduce((sum: number, i: number) => sum + (paymentModal.feeItems[i]?.amount || 0), 0) + (parseFloat(paymentForm.fineAmount) || 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Summary */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-center">
+                <p className="text-[10px] text-green-600 font-medium">Paid Till Date</p>
+                <p className="text-lg font-bold text-green-800">{formatCurrency(paymentModal.paidAmount)}</p>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center">
+                <p className="text-[10px] text-red-600 font-medium">Balance Due</p>
+                <p className="text-lg font-bold text-red-800">{formatCurrency(paymentModal.balance)}</p>
+              </div>
             </div>
+
+            {/* Balance Info */}
 
             <div className="space-y-4">
               {/* Discount Selection (from DB) */}

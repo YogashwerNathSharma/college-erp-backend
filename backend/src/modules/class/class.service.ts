@@ -25,6 +25,12 @@ export const getClassesService = async (tenantId: string, academicYearId?: strin
 
   return prisma.class.findMany({
     where,
+    include: {
+      sections: {
+        where: { isDeleted: false },
+        select: { id: true, name: true },
+      },
+    },
     orderBy: { name: "asc" },
   });
 };

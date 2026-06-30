@@ -254,10 +254,10 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 print:hidden transition-colors duration-200">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+    <header className="top-navbar sticky top-0 z-30 w-full bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 print:hidden transition-colors duration-200">
+      <div className="flex items-center justify-between h-14 md:h-16 px-4 md:px-6">
         {/* ─── LEFT: Breadcrumbs ─── */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1 ml-10 md:ml-0">
           {/* Back button on inner pages (mobile only) */}
           {location.pathname !== "/dashboard" && (
             <button

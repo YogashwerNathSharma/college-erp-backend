@@ -78,9 +78,8 @@ html, body, #root {
   .main-content-wrapper {
     width: 100% !important;
     margin-left: 0 !important;
-    padding: 16px 12px !important;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
-    padding-top: 64px !important;
+    padding: 16px 12px 16px 12px !important;
+    padding-top: 60px !important;
   }
 
   /* Top navbar mobile adjustments */
@@ -89,7 +88,7 @@ html, body, #root {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 900;
+    z-index: 50;
     padding: 8px 12px !important;
     border-radius: 0 !important;
     margin: 0 !important;
@@ -209,67 +208,10 @@ html, body, #root {
 }
 
 /* ================================================================
-   MORE MENU OVERLAY (Mobile)
-   ================================================================ */
-@media (max-width: 767px) {
-  .more-menu-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: flex-end;
-    animation: fadeIn 0.2s ease;
-  }
-
-  .more-menu-sheet {
-    width: 100%;
-    max-height: 80vh;
-    background: var(--surface-raised);
-    border-radius: 20px 20px 0 0;
-    padding: 12px 16px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
-    overflow-y: auto;
-    animation: slideUp 0.3s ease-out;
-  }
-
-  .more-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    padding: 12px 0;
-  }
-
-  .more-menu-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 4px;
-    border-radius: 12px;
-    font-size: 11px;
-    color: var(--text);
-    text-align: center;
-    text-decoration: none;
-    transition: background 0.2s;
-    min-height: 44px;
-  }
-
-  .more-menu-item:hover,
-  .more-menu-item:active {
-    background: var(--bg-secondary);
-  }
-}
-
-/* ================================================================
    DESKTOP LAYOUT (≥768px) — Sidebar + Content
    ================================================================ */
 @media (min-width: 768px) {
   .bottom-nav {
-    display: none !important;
-  }
-
-  .more-menu-overlay {
     display: none !important;
   }
 
@@ -437,7 +379,6 @@ html, body, #root {
   .bottom-nav,
   .top-navbar,
   .hamburger-btn,
-  .more-menu-overlay,
   nav,
   .no-print {
     display: none !important;

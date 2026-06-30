@@ -277,30 +277,30 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-6xl h-[100vh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-none" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 w-full max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden sm:rounded-2xl rounded-t-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         
         {/* ═══ HEADER ═══ */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 flex-shrink-0">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white">{getTitle()}</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded">{filteredData.length} records</span>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800 dark:to-slate-800 flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate">{getTitle()}</h2>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-2 py-0.5 rounded">{filteredData.length} records</span>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">
               <X size={20} />
             </button>
           </div>
         </div>
 
         {/* ═══ FILTERS ═══ */}
-        <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex-shrink-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[150px]">
+        <div className="px-3 sm:px-6 py-2 sm:py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex-shrink-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="relative flex-1 min-w-[120px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder={type === "students" ? "Search name, admission no, phone..." : "Search name..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500"
+                className="w-full pl-8 pr-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-500"
               />
             </div>
 
@@ -308,7 +308,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
               <select
                 value={classFilter}
                 onChange={(e) => setClassFilter(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-white min-w-[120px]"
+                className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-xs sm:text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-white min-w-[100px]"
               >
                 <option value="">All Classes</option>
                 {classes.map((c: any) => (
@@ -320,31 +320,31 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
             {type === "students" && (
               <>
                 <input type="text" placeholder="Father name..." value={fatherFilter} onChange={(e) => setFatherFilter(e.target.value)} 
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
+                  className="hidden sm:block px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
                 <input type="text" placeholder="Address..." value={addressFilter} onChange={(e) => setAddressFilter(e.target.value)} 
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
+                  className="hidden sm:block px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white text-sm w-[130px]" />
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto">
             <button onClick={handlePrintSelected} disabled={selectedItems.size === 0}
-              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition">
+              className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-indigo-600 text-white text-[10px] sm:text-xs rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition whitespace-nowrap">
               <Printer size={13} /> Print Selected ({selectedItems.size})
             </button>
             <button onClick={handlePrintClassWise}
-              className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition">
+              className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-purple-600 text-white text-[10px] sm:text-xs rounded-lg hover:bg-purple-700 transition whitespace-nowrap">
               <Filter size={13} /> Class-wise
             </button>
             <button onClick={handlePrintAll}
-              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 transition">
+              className="flex items-center gap-1 px-2 sm:px-3 py-1.5 bg-emerald-600 text-white text-[10px] sm:text-xs rounded-lg hover:bg-emerald-700 transition whitespace-nowrap">
               <Download size={13} /> Bulk All
             </button>
           </div>
         </div>
 
         {/* ═══ TABLE ═══ */}
-        <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-slate-900">
+        <div className="flex-1 overflow-auto min-h-0 bg-white dark:bg-slate-900">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
@@ -355,9 +355,10 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
               <p className="text-sm mt-1">Search type karein ya class select karein</p>
             </div>
           ) : (
-            <table className="w-full text-sm text-slate-800 dark:text-slate-200">
+            <div className="overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm text-slate-800 dark:text-slate-200 min-w-[600px]">
               <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10">
-                <tr className="text-left text-slate-600 dark:text-slate-300 text-xs uppercase">
+                <tr className="text-left text-slate-600 dark:text-slate-300 text-[10px] sm:text-xs uppercase">
                   <th className="p-2.5 w-8"><input type="checkbox" checked={selectAll} onChange={handleSelectAll} /></th>
                   <th className="p-2.5 w-8">#</th>
                   {type === "students" && (
@@ -430,6 +431,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 

@@ -576,244 +576,83 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Same design as desktop - slides in/out) */}
+      {/* MOBILE SIDEBAR (Synchronized with layout state controls) */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      {sidebarOpen && (
-      <>
-        {/* Backdrop */}
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-[998]"
-          onClick={() => onClose?.()}
-        />
-        {/* Sidebar panel */}
-        <aside
-          className="md:hidden fixed left-0 top-0 h-full w-[280px] flex flex-col z-[999]"
-          style={{
-            background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
-          }}
-        >
-          {/* ─── HEADER ─── */}
-          <div className="relative flex-shrink-0 border-b border-white/10">
-            {getFullUrl(safeTenant?.backgroundUrl) && (
-              <div
-                className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
+      <aside
+        className={`md:hidden fixed inset-y-0 left-0 w-[280px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        style={{
+          background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+        }}
+      >
+        {/* ─── HEADER ─── */}
+        <div className="relative flex-shrink-0 border-b border-white/10">
+          {getFullUrl(safeTenant?.backgroundUrl) && (
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          )}
+          <div className="relative z-10 flex items-center gap-3 p-4">
+            {sidebarLogo ? (
+              <img
+                src={sidebarLogo}
+                alt="Logo"
+                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
+                crossOrigin="anonymous"
+                onError={(e: any) => { e.target.style.display = "none"; }}
               />
+            ) : (
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
+                {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+              </div>
             )}
-            <div className="relative z-10 flex items-center gap-3 p-4">
-              {sidebarLogo ? (
-                <img
-                  src={sidebarLogo}
-                  alt="Logo"
-                  className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
-                  crossOrigin="anonymous"
-                  onError={(e: any) => { e.target.style.display = "none"; }}
-                />
-              ) : (
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
-                  {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <h1 className="text-sm font-bold text-white leading-tight truncate">
-                  {safeTenant?.name || sidebarTitle}
-                </h1>
-                <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
-                  {isSuperAdmin ? "System Control" : "Institution ERP"}
-                </p>
-              </div>
-              {/* Close button */}
-              <button
-                onClick={() => onClose?.()}
-                className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                aria-label="Close sidebar"
-              >
-                <X size={18} />
-              </button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm font-bold text-white leading-tight truncate">
+                {safeTenant?.name || sidebarTitle}
+              </h1>
+              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
+                {isSuperAdmin ? "System Control" : "Institution ERP"}
+              </p>
             </div>
-          </div>
-
-          {/* ─── MENU ITEMS ─── */}
-          <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
-            {menu.map((group, gi) => (
-              <div key={gi} className="mb-1">
-                {group.section && (
-                  <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
-                    {group.section}
-                  </p>
-                )}
-                {group.items.map((item, i) =>
-                  item.children ? (
-                    <ParentNavItem key={i} item={item} collapsed={false} onItemClick={handleMobileNavClick} />
-                  ) : (
-                    <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
-                  )
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* ─── LOGOUT ─── */}
-          <div className="border-t border-white/10 p-3 flex-shrink-0">
+            {/* Close button */}
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+              onClick={() => onClose?.()}
+              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              aria-label="Close sidebar"
             >
-              <LogOut size={18} />
-              <span className="text-[13px] font-medium">Logout</span>
+              <X size={18} />
             </button>
           </div>
-        </aside>
-      </>
-      )}
-    </>
-  );
-}
-
-//////////////////////////////////////////////////
-// PARENT NAV ITEM (Collapsible)
-//////////////////////////////////////////////////
-
-const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; collapsed: boolean; onItemClick?: () => void }) => {
-  const location = useLocation();
-
-  const isChildActive = item.children?.some(
-    (child) => location.pathname === child.path || location.pathname.startsWith(child.path + "/")
-  );
-
-  const [open, setOpen] = useState(!!isChildActive);
-
-  // Tooltip for collapsed mode
-  if (collapsed) {
-    return (
-      <div className="relative group mb-0.5">
-        <NavLink
-          to={item.children?.[0]?.path || "#"}
-          className={`flex items-center justify-center w-full h-10 rounded-lg transition-all duration-200 ${
-            isChildActive
-              ? "bg-indigo-600/20 text-indigo-400 border-l-[3px] border-indigo-400"
-              : "text-slate-400 hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          <span className="flex-shrink-0">{item.icon}</span>
-        </NavLink>
-        {/* Tooltip */}
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
-          {item.name}
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="mb-0.5">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
-          isChildActive
-            ? "bg-indigo-600/15 text-white border-l-[3px] border-indigo-400 pl-[9px]"
-            : open
-            ? "bg-white/5 text-white"
-            : "text-slate-300 hover:bg-white/5 hover:text-white"
-        }`}
-        aria-expanded={open}
-        aria-label={item.name}
-      >
-        <div className="flex items-center gap-3">
-          <span className={`flex-shrink-0 ${isChildActive ? "text-indigo-400" : ""}`}>{item.icon}</span>
-          <span className="text-[13px] font-medium">{item.name}</span>
-        </div>
-        <span className={`transition-transform duration-300 ${open ? "rotate-0" : "-rotate-90"}`}>
-          <ChevronDown size={14} className="text-slate-500" />
-        </span>
-      </button>
-
-      {/* Children with smooth animation */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          open ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
-          {item.children?.map((child, ci) => (
-            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} onItemClick={onItemClick} />
+        {/* ─── MENU ITEMS ─── */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+          {menu.map((group, gi) => (
+            <div key={gi} className="mb-1">
+              {group.section && (
+                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
+                  {group.section}
+                </p>
+              )}
+              {group.items.map((item, i) =>
+                item.children ? (
+                  <ParentNavItem key={i} item={item} collapsed={false} onItemClick={handleMobileNavClick} />
+                ) : (
+                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
+                )
+              )}
+            </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-};
 
-//////////////////////////////////////////////////
-// NAV ITEM
-//////////////////////////////////////////////////
-
-type NavItemProps = {
-  to: string;
-  icon: any;
-  label: string;
-  badge?: number;
-  compact?: boolean;
-  collapsed?: boolean;
-  onItemClick?: () => void;
-};
-
-const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: NavItemProps) => {
-  if (collapsed) {
-    return (
-      <div className="relative group mb-0.5">
-        <NavLink
-          to={to}
-          className={({ isActive }) =>
-            `flex items-center justify-center w-full h-10 rounded-lg transition-all duration-200 ${
-              isActive
-                ? "bg-indigo-600/20 text-indigo-400 border-l-[3px] border-indigo-400"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`
-          }
-          aria-label={label}
-        >
-          <span className="flex-shrink-0">{icon}</span>
-          {badge && badge > 0 && (
-            <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-              {badge > 9 ? "9+" : badge}
-            </span>
-          )}
-        </NavLink>
-        {/* Tooltip */}
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
-          {label}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <NavLink
-      to={to}
-      onClick={onItemClick}
-      className={({ isActive }) =>
-        `group flex items-center gap-3 rounded-lg transition-all duration-200 ${
-          compact ? "px-3 py-2" : "px-3 py-2.5"
-        } ${
-          isActive
-            ? "bg-indigo-600/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
-            : "text-slate-400 hover:text-white hover:bg-white/5"
-        }`
-      }
-      aria-label={label}
-    >
-      <span className="flex-shrink-0">{icon}</span>
-      <span className="truncate text-[13px]">{label}</span>
-      {badge && badge > 0 && (
-        <span className="ml-auto bg-red-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-    </NavLink>
-  );
-};
+        {/* ─── LOGOUT ─── */}
+        <div className="border-t border-white/10 p-3 flex-shrink-0">
+          <button
+            onClick={handleLogout}
+            className="w-full

@@ -250,26 +250,20 @@ const ConsolidatedReportCard: React.FC = () => {
       </div>
 
       {/* Report Card Container */}
-      <div style={{
-        maxWidth: '850px',
-        margin: isMobile ? '16px auto' : '30px auto',
-        padding: isMobile ? '0 8px' : '0',
-        overflowX: isMobile ? 'auto' : undefined,
-        WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
-      }}>
-        <div
-          ref={printRef}
-          id="print-area"
-          style={{
-            fontFamily: "'Times New Roman', Times, serif",
-            minWidth: isMobile ? "700px" : undefined,
-            backgroundColor: "#fff",
-            border: "3px solid #222",
-            padding: isMobile ? "20px 16px" : "30px 40px",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
+      <div
+        ref={printRef}
+        id="print-area"
+        style={{
+          fontFamily: "'Times New Roman', Times, serif",
+          maxWidth: "850px",
+          margin: "30px auto",
+          backgroundColor: "#fff",
+          border: "3px solid #222",
+          padding: "30px 40px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
         {/* Watermark */}
         {logoUrl && (
           <div
@@ -610,7 +604,6 @@ const ConsolidatedReportCard: React.FC = () => {
           </div>
 
         </div>
-      </div>
       </div>
 
       {/* Print Styles */}

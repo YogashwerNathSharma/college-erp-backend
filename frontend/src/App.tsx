@@ -391,6 +391,16 @@ function ProtectedRoute() {
     return <Navigate to="/subscription-expired" replace />;
   }
 
+  // 🔥 FIXED: Direct allow print paths on mobile browser redirects to bypass strict structural array blockers
+  if (location.pathname.startsWith("/print/")) {
+    return (
+      <>
+        <Outlet />
+        <YnAiAssistant />
+      </>
+    );
+  }
+
   // Role-based route guards
   const userData = localStorage.getItem("user");
   const userRole = userData ? JSON.parse(userData)?.role : null;
@@ -491,7 +501,7 @@ function Layout() {
         />
       )}
 
-      {/* Sidebar - Controlled correctly for both viewports */}
+      {/* Sidebar */}
       <Sidebar 
         tenant={tenant} 
         sidebarOpen={sidebarOpen} 
@@ -569,13 +579,9 @@ export default function App() {
             <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
             <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
-            {/* ━━━ STUDENT PORTAL — Separate Layout ━━━ */}
+            {/* ━━━ PORTALS ━━━ */}
             <Route path="/student-portal" element={<StudentDashboard />} />
-
-            {/* ━━━ TEACHER PORTAL — Separate Layout ━━━ */}
             <Route path="/teacher-portal" element={<TeacherPortal />} />
-
-            {/* ━━━ PRINCIPAL PORTAL — Separate Layout ━━━ */}
             <Route path="/principal-portal" element={<PrincipalPortal />} />
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
@@ -650,10 +656,7 @@ export default function App() {
               <Route path="/teacher-settings" element={<TeacherSettings />} />
               <Route path="/teacher-id-card" element={<TeacherIdCard />} />
 
-              {/* TIMETABLE */}
               <Route path="/timeTable" element={<TimetablePage />} />
-
-              {/* TRANSPORT */}
               <Route path="/transport" element={<TransportDashboard />} />
               <Route path="/transport/tracking" element={<TransportTracking />} />
 

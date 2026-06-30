@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter,
   Routes,
@@ -492,15 +491,12 @@ function Layout() {
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-[1000] w-[280px] transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-label="Sidebar navigation"
-      >
-        <Sidebar tenant={tenant} />
-      </aside>
+      {/* Sidebar - Controlled correctly for both viewports */}
+      <Sidebar 
+        tenant={tenant} 
+        sidebarOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 main-content-wrapper md:ml-[260px] transition-all duration-300 bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -516,7 +512,7 @@ function Layout() {
         </button>
 
         <TopNavbar tenant={tenant} />
-        
+
         <main className="flex-1 p-2 md:p-3 overflow-auto" role="main">
           <Suspense fallback={<PageLoader />}>
             <div className="page-container">

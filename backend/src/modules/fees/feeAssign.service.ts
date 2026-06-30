@@ -1,5 +1,13 @@
 
 import prisma from "../../utils/prisma";
+import { assignFeesToStudent } from "./feeCollection.service";
+
+interface SelectedFeeItem {
+  feeHeadId: string;
+  amount: number;
+  feeHeadName?: string;
+  frequency?: string;
+}
 
 /**
  * Get students in a class with their fee assignment status
@@ -95,11 +103,15 @@ export const getStudentsWithAssignmentStatus = async (
 };
 
 /**
- * Assign fees to specific students (by enrollment IDs)
+ * Assign fees to specific students (by enrollment IDs) with optional per-student fee head selection.
+ *
+ * If selectedItems is provided, only those fee heads are assigned.
+ * If not provided, ALL items from the FeeStructure are assigned (backward compatible).
  */
 export const assignFeesToSelectedStudents = async (
   enrollmentIds: string[],
-  tenantId: string
+  tenantId: string,
+  selectedItems?: SelectedFeeItem[]
 ) => {
   let successCount = 0;
   let skipCount = 0;
@@ -107,77 +119,16 @@ export const assignFeesToSelectedStudents = async (
 
   for (const enrollmentId of enrollmentIds) {
     try {
-      // Check if fees already assigned
-      const existing = await prisma.studentFee.findFirst({
-        where: { enrollmentId, tenantId, isDeleted: false },
-      });
-
-      if (existing) {
-        skipCount++;
-        continue;
-      }
-
-      // Get enrollment details
-      const enrollment = await prisma.enrollment.findFirst({
-        where: { id: enrollmentId, tenantId, isDeleted: false },
-        include: { academicYear: true },
-      });
-
-      if (!enrollment) {
-        errors.push(`Enrollment ${enrollmentId}: Not found`);
-        continue;
-      }
-
-      // Get fee structures for the class
-      const feeStructures = await prisma.feeStructure.findMany({
-        where: {
-          tenantId,
-          classId: enrollment.classId,
-          academicYearId: enrollment.academicYearId,
-          isDeleted: false,
-          isActive: true,
-        },
-      });
-
-      if (feeStructures.length === 0) {
-        errors.push(`Enrollment ${enrollmentId}: No fee structure found`);
-        continue;
-      }
-
-      const academicYearStart = new Date(enrollment.academicYear.startDate);
-      const studentFees: any[] = [];
-
-      for (const structure of feeStructures) {
-        const totalInstallments = structure.totalInstallments || 1;
-        const amountPerInstallment = structure.totalAmount / totalInstallments;
-        const dueDay = structure.dueDay || 10;
-
-        for (let i = 1; i <= totalInstallments; i++) {
-          const dueDate = new Date(academicYearStart);
-          dueDate.setMonth(dueDate.getMonth() + (i - 1));
-          dueDate.setDate(dueDay);
-
-          studentFees.push({
-            tenantId,
-            enrollmentId,
-            feeStructureId: structure.id,
-            totalAmount: amountPerInstallment,
-            discountAmount: 0,
-            fineAmount: 0,
-            netAmount: amountPerInstallment,
-            paidAmount: 0,
-            balanceAmount: amountPerInstallment,
-            installmentNo: i,
-            dueDate,
-            status: "PENDING",
-          });
-        }
-      }
-
-      await prisma.studentFee.createMany({ data: studentFees });
+      // Use the enhanced assignFeesToStudent from feeCollection.service
+      // which now accepts selectedItems and creates StudentFeeItem records
+      await assignFeesToStudent(enrollmentId, tenantId, selectedItems);
       successCount++;
     } catch (error: any) {
-      errors.push(`Enrollment ${enrollmentId}: ${error.message}`);
+      if (error.message === "Fees already assigned for this enrollment") {
+        skipCount++;
+      } else {
+        errors.push(`Enrollment ${enrollmentId}: ${error.message}`);
+      }
     }
   }
 
@@ -188,4 +139,3 @@ export const assignFeesToSelectedStudents = async (
     errors,
   };
 };
-

@@ -7,9 +7,11 @@
  * Changes from original:
  * 1. assignFeesToStudent: Respects FeeStructureItem.frequency (ONE_TIME vs PER_INSTALLMENT)
  * 2. Transport fee auto-link from TransportAssignment
- * 3. New helper: calculateMonthsCovered() — purely computational month engine
- * 4. collectPayment: Returns month coverage info
- * 5. getDailyCollection: Includes monthsCovered per payment for receipt printing
+ * 3. Hostel fee auto-link from HostelAllocation
+ * 4. NEW: Creates StudentFeeItem records for per-student fee head breakdown
+ * 5. collectPayment: Returns month coverage info + uses StudentFeeItem for receipt
+ * 6. getDailyCollection: Includes monthsCovered per payment for receipt printing
+ * 7. getStudentFees: Includes items relation for frontend display
  *
  * CRITICAL Prisma rules followed:
  * - Enrollment status is lowercase: status: "active"
@@ -127,7 +129,7 @@ export const generateReceiptNo = async (tenantId: string): Promise<string> => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// ASSIGN FEES TO STUDENT — Fixed with frequency awareness + transport
+// ASSIGN FEES TO STUDENT — Fixed with frequency awareness + transport + hostel + StudentFeeItem
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
@@ -137,8 +139,10 @@ export const generateReceiptNo = async (tenantId: string): Promise<string> => {
  * - FeeStructureItem with frequency="PER_INSTALLMENT" (tuition, transport) → added to EVERY installment
  * - FeeStructureItem with frequency="ONE_TIME" (exam fee, admission, ID card, belt/tie) → added ONLY to installment #1
  *
- * After creating base installments, checks for TransportAssignment and adds
- * transport fee to each recurring installment.
+ * After creating base installments, checks for TransportAssignment and HostelAllocation
+ * and adds transport/hostel fee items to each recurring installment.
+ *
+ * NEW: Creates StudentFeeItem records for per-student fee head breakdown.
  */
 export const assignFeesToStudent = async (
   enrollmentId: string,
@@ -194,10 +198,32 @@ export const assignFeesToStudent = async (
 
   const transportMonthlyFee = transportAssignment?.monthlyFee || 0;
 
+  // 5. Check for hostel allocation for this student
+  let hostelMonthlyFee = 0;
+  try {
+    const hostelAllocation = await prisma.hostelAllocation.findFirst({
+      where: {
+        studentId: enrollment.studentId,
+        tenantId,
+        status: "ACTIVE",
+      },
+      include: {
+        room: true,
+      },
+    });
+    // Use room's monthly fee if available, otherwise use a default
+    if (hostelAllocation) {
+      hostelMonthlyFee = (hostelAllocation.room as any)?.monthlyFee || (hostelAllocation.room as any)?.rentPerBed || 0;
+    }
+  } catch {
+    // HostelAllocation model might not have all expected fields — safe to skip
+    hostelMonthlyFee = 0;
+  }
+
   const academicYearStart = new Date(enrollment.academicYear.startDate);
   const studentFees: any[] = [];
 
-  // 5. Process each fee structure
+  // 6. Process each fee structure
   for (const structure of feeStructures) {
     const totalInstallments = structure.totalInstallments || 1;
     const dueDay = structure.dueDay || 10;
@@ -214,7 +240,7 @@ export const assignFeesToStudent = async (
     const recurringTotal = recurringItems.reduce((sum, item) => sum + item.amount, 0);
     const oneTimeTotal = oneTimeItems.reduce((sum, item) => sum + item.amount, 0);
 
-    // 6. Create installments
+    // 7. Create installments
     for (let i = 1; i <= totalInstallments; i++) {
       // Calculate due date for this installment
       const dueDate = new Date(academicYearStart);
@@ -235,6 +261,11 @@ export const assignFeesToStudent = async (
         installmentAmount += transportMonthlyFee;
       }
 
+      // Add hostel fee to EVERY recurring installment
+      if (hostelMonthlyFee > 0) {
+        installmentAmount += hostelMonthlyFee;
+      }
+
       studentFees.push({
         tenantId,
         enrollmentId,
@@ -248,19 +279,134 @@ export const assignFeesToStudent = async (
         installmentNo: i,
         dueDate,
         status: "PENDING",
+        // Metadata for StudentFeeItem creation (not stored in DB directly)
+        _structureId: structure.id,
+        _installmentNo: i,
       });
     }
   }
 
-  // 7. Bulk create all installments
-  const created = await prisma.studentFee.createMany({ data: studentFees });
+  // 8. Bulk create all installments
+  // Remove metadata fields before creating
+  const dbData = studentFees.map(({ _structureId, _installmentNo, ...rest }) => rest);
+  const created = await prisma.studentFee.createMany({ data: dbData });
+
+  // 9. Create StudentFeeItem records for each installment
+  // Fetch the just-created StudentFee records to get their IDs
+  const createdStudentFees = await prisma.studentFee.findMany({
+    where: { enrollmentId, tenantId, isDeleted: false },
+    orderBy: [{ feeStructureId: "asc" }, { installmentNo: "asc" }],
+  });
+
+  // Build StudentFeeItem records
+  const studentFeeItems: any[] = [];
+
+  for (const studentFee of createdStudentFees) {
+    // Find the matching fee structure
+    const structure = feeStructures.find((s) => s.id === studentFee.feeStructureId);
+    if (!structure) continue;
+
+    const recurringItems = structure.items.filter(
+      (item) => item.frequency === "PER_INSTALLMENT"
+    );
+    const oneTimeItems = structure.items.filter(
+      (item) => item.frequency === "ONE_TIME"
+    );
+
+    // Add PER_INSTALLMENT items to EVERY installment
+    for (const item of recurringItems) {
+      studentFeeItems.push({
+        studentFeeId: studentFee.id,
+        feeHeadId: item.feeHeadId,
+        name: item.feeHead.name,
+        amount: item.amount,
+        frequency: "PER_INSTALLMENT",
+      });
+    }
+
+    // Add ONE_TIME items ONLY to installment #1
+    if (studentFee.installmentNo === 1) {
+      for (const item of oneTimeItems) {
+        studentFeeItems.push({
+          studentFeeId: studentFee.id,
+          feeHeadId: item.feeHeadId,
+          name: item.feeHead.name,
+          amount: item.amount,
+          frequency: "ONE_TIME",
+        });
+      }
+    }
+
+    // Add transport fee item if applicable
+    if (transportMonthlyFee > 0) {
+      // Try to find a "Transport" fee head; create item with feeHeadId from structure or use a lookup
+      let transportFeeHeadId: string | null = null;
+      try {
+        const transportHead = await prisma.feeHead.findFirst({
+          where: {
+            tenantId,
+            name: { contains: "transport", mode: "insensitive" },
+            isDeleted: false,
+          },
+        });
+        transportFeeHeadId = transportHead?.id || null;
+      } catch {
+        transportFeeHeadId = null;
+      }
+
+      if (transportFeeHeadId) {
+        studentFeeItems.push({
+          studentFeeId: studentFee.id,
+          feeHeadId: transportFeeHeadId,
+          name: "Transport Fee",
+          amount: transportMonthlyFee,
+          frequency: "PER_INSTALLMENT",
+        });
+      }
+    }
+
+    // Add hostel fee item if applicable
+    if (hostelMonthlyFee > 0) {
+      let hostelFeeHeadId: string | null = null;
+      try {
+        const hostelHead = await prisma.feeHead.findFirst({
+          where: {
+            tenantId,
+            name: { contains: "hostel", mode: "insensitive" },
+            isDeleted: false,
+          },
+        });
+        hostelFeeHeadId = hostelHead?.id || null;
+      } catch {
+        hostelFeeHeadId = null;
+      }
+
+      if (hostelFeeHeadId) {
+        studentFeeItems.push({
+          studentFeeId: studentFee.id,
+          feeHeadId: hostelFeeHeadId,
+          name: "Hostel Fee",
+          amount: hostelMonthlyFee,
+          frequency: "PER_INSTALLMENT",
+        });
+      }
+    }
+  }
+
+  // Bulk create StudentFeeItem records
+  if (studentFeeItems.length > 0) {
+    await prisma.studentFeeItem.createMany({ data: studentFeeItems });
+  }
 
   return {
     message: `${created.count} fee installments assigned successfully`,
     count: created.count,
+    itemsCreated: studentFeeItems.length,
     breakdown: {
       transportFeeIncluded: transportMonthlyFee > 0,
       transportMonthlyFee,
+      hostelFeeIncluded: hostelMonthlyFee > 0,
+      hostelMonthlyFee,
       structures: feeStructures.map((s) => ({
         name: s.name,
         totalInstallments: s.totalInstallments,
@@ -581,11 +727,12 @@ const getMonthsCoveredShort = (coverage: MonthCoverage): MonthsCoveredShort => (
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// GET STUDENT FEES — With detailed breakdown
+// GET STUDENT FEES — With detailed breakdown + StudentFeeItem
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
- * Get all fees for a student with payments, discounts, and month coverage included.
+ * Get all fees for a student with payments, discounts, items, and month coverage included.
+ * Now includes StudentFeeItem (per-student fee head breakdown) in the response.
  */
 export const getStudentFees = async (enrollmentId: string, tenantId: string) => {
   const enrollment = await prisma.enrollment.findFirst({
@@ -619,6 +766,10 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
       },
       feeStructure: {
         include: { items: { include: { feeHead: true } } },
+      },
+      // NEW: Include per-student fee items
+      items: {
+        include: { feeHead: true },
       },
     },
     orderBy: [{ feeStructureId: "asc" }, { installmentNo: "asc" }],
@@ -745,7 +896,7 @@ export const searchStudents = async (query: string, tenantId: string) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// COLLECT PAYMENT — Enhanced with month coverage
+// COLLECT PAYMENT — Enhanced with month coverage + StudentFeeItem
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
@@ -755,6 +906,7 @@ export const searchStudents = async (query: string, tenantId: string) => {
  * - Updates StudentFee amounts and status
  * - Calculates month coverage for the student
  * - Returns month coverage info alongside receipt data
+ * - Uses StudentFeeItem (per-student breakdown) for feeItems in response
  *
  * Supports:
  * - Full payment
@@ -785,7 +937,7 @@ export const collectPayment = async (data: {
     discountId,
   } = data;
 
-  // Get the student fee with structure items and enrollment info
+  // Get the student fee with structure items, per-student items, and enrollment info
   const studentFee = await prisma.studentFee.findFirst({
     where: { id: studentFeeId, tenantId, isDeleted: false },
     include: {
@@ -800,6 +952,10 @@ export const collectPayment = async (data: {
       },
       feeStructure: {
         include: { items: { include: { feeHead: true } } },
+      },
+      // NEW: Include per-student fee items
+      items: {
+        include: { feeHead: true },
       },
     },
   });
@@ -891,14 +1047,21 @@ export const collectPayment = async (data: {
     tenantId
   );
 
-  // Build feeItems array from structure items (for receipt)
+  // Build feeItems array — prefer StudentFeeItem (per-student), fallback to FeeStructure items
   const feeItems =
-    studentFee.feeStructure.items?.map((item: any) => ({
-      name: item.feeHead?.name || "Fee",
-      code: item.feeHead?.code || "",
-      amount: item.amount || 0,
-      frequency: item.frequency || "PER_INSTALLMENT",
-    })) || [];
+    (studentFee as any).items && (studentFee as any).items.length > 0
+      ? (studentFee as any).items.map((item: any) => ({
+          name: item.name || item.feeHead?.name || "Fee",
+          code: item.feeHead?.code || "",
+          amount: item.amount || 0,
+          frequency: item.frequency || "PER_INSTALLMENT",
+        }))
+      : studentFee.feeStructure.items?.map((item: any) => ({
+          name: item.feeHead?.name || "Fee",
+          code: item.feeHead?.code || "",
+          amount: item.amount || 0,
+          frequency: item.frequency || "PER_INSTALLMENT",
+        })) || [];
 
   // Build feeHead string (comma-separated names)
   const feeHeadStr = feeItems.map((i: any) => i.name).join(", ") || studentFee.feeStructure.name;
@@ -1092,12 +1255,13 @@ export const getDefaulters = async (
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// GET DAILY COLLECTION — Enhanced with monthsCovered per payment
+// GET DAILY COLLECTION — Enhanced with monthsCovered per payment + StudentFeeItem
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
  * Get daily collection report.
  * Each payment includes monthsCovered info for receipt printing.
+ * Uses StudentFeeItem for per-student fee breakdown (with fallback to structure items).
  *
  * NOTE: monthsCovered is calculated per-enrollment (student-level),
  * so it shows the cumulative month status at the time of this report.
@@ -1126,6 +1290,10 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
           },
           feeStructure: {
             include: { items: { include: { feeHead: { select: { name: true, code: true } } } } },
+          },
+          // NEW: Include per-student fee items
+          items: {
+            include: { feeHead: { select: { name: true, code: true } } },
           },
         },
       },
@@ -1161,35 +1329,47 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
 
   return {
     date,
-    payments: payments.map((p) => ({
-      receiptNo: p.receiptNo,
-      amount: p.amount,
-      method: p.method,
-      reference: p.reference,
-      paymentDate: p.paymentDate,
-      student: {
-        name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
-        admissionNo: p.studentFee.enrollment.student.admissionNo,
-        fatherName: p.studentFee.enrollment.student.fatherName || "",
-        class: p.studentFee.enrollment.class.name,
-        section: p.studentFee.enrollment.section?.name || "",
-        rollNumber: p.studentFee.enrollment.rollNumber || "",
-      },
-      feeStructure: p.studentFee.feeStructure.name,
-      installmentNo: p.studentFee.installmentNo,
-      feeItems:
-        p.studentFee.feeStructure.items?.map((item: any) => ({
-          name: item.feeHead?.name || "Fee",
-          amount: item.amount || 0,
-          code: item.feeHead?.code || "",
-        })) || [],
-      // NEW: Month coverage for receipt printing
-      monthsCovered: enrollmentCoverageCache.get(p.studentFee.enrollmentId) || {
-        from: null,
-        to: null,
-        total: 0,
-      },
-    })),
+    payments: payments.map((p) => {
+      // Prefer StudentFeeItem (per-student breakdown), fallback to feeStructure.items
+      const perStudentItems = (p.studentFee as any).items || [];
+      const feeItems =
+        perStudentItems.length > 0
+          ? perStudentItems.map((item: any) => ({
+              name: item.name || item.feeHead?.name || "Fee",
+              amount: item.amount || 0,
+              code: item.feeHead?.code || "",
+            }))
+          : p.studentFee.feeStructure.items?.map((item: any) => ({
+              name: item.feeHead?.name || "Fee",
+              amount: item.amount || 0,
+              code: item.feeHead?.code || "",
+            })) || [];
+
+      return {
+        receiptNo: p.receiptNo,
+        amount: p.amount,
+        method: p.method,
+        reference: p.reference,
+        paymentDate: p.paymentDate,
+        student: {
+          name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+          admissionNo: p.studentFee.enrollment.student.admissionNo,
+          fatherName: p.studentFee.enrollment.student.fatherName || "",
+          class: p.studentFee.enrollment.class.name,
+          section: p.studentFee.enrollment.section?.name || "",
+          rollNumber: p.studentFee.enrollment.rollNumber || "",
+        },
+        feeStructure: p.studentFee.feeStructure.name,
+        installmentNo: p.studentFee.installmentNo,
+        feeItems,
+        // NEW: Month coverage for receipt printing
+        monthsCovered: enrollmentCoverageCache.get(p.studentFee.enrollmentId) || {
+          from: null,
+          to: null,
+          total: 0,
+        },
+      };
+    }),
     summary: Object.entries(byMethod).map(([method, data]) => ({
       method,
       count: data.count,

@@ -249,7 +249,6 @@ html.dark table, html.dark th, html.dark td {
   #root {
     min-height: 100vh;
     min-height: 100dvh;
-    isolation: isolate;
   }
 
   /* Headings */

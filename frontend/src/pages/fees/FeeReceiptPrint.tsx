@@ -98,7 +98,10 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
   // Build fee rows from feeItems (individual heads)
   let feeRows: { name: string; amount: number }[] = [];
   if (data.feeItems && data.feeItems.length > 0) {
-    feeRows = data.feeItems.map((item) => ({ name: item.name, amount: item.amount }));
+    // Only show items with amount > 0 (selected items)
+    feeRows = data.feeItems
+      .filter((item) => item.amount > 0)
+      .map((item) => ({ name: item.name, amount: item.amount }));
   } else {
     // Fallback: single row
     feeRows = [{ name: data.feeHead || "Monthly Fee", amount: data.amount + discount }];

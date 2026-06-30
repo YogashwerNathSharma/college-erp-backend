@@ -1327,6 +1327,7 @@ model FeeHead {
 
   structureItems FeeStructureItem[]
   studentFees    StudentFee[]
+  studentFeeItems StudentFeeItem[]
 
   isActive  Boolean   @default(true)
   isDeleted Boolean   @default(false)
@@ -1482,6 +1483,7 @@ model StudentFee {
 
   payments  Payment[]
   discounts StudentFeeDiscount[]
+  items     StudentFeeItem[]
 
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
@@ -1492,6 +1494,28 @@ model StudentFee {
   @@index([tenantId, status])
   @@index([enrollmentId])
   @@index([tenantId, dueDate])
+}
+
+//////////////////////
+// STUDENT FEE ITEM (Per-student fee head breakdown)
+//////////////////////
+model StudentFeeItem {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  studentFeeId  String @db.ObjectId
+  feeHeadId     String @db.ObjectId
+
+  name          String   // Fee head name (cached for quick access)
+  amount        Float    // Amount for this fee head
+  frequency     String   @default("PER_INSTALLMENT") // PER_INSTALLMENT or ONE_TIME
+
+  studentFee    StudentFee @relation(fields: [studentFeeId], references: [id])
+  feeHead       FeeHead    @relation(fields: [feeHeadId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentFeeId])
+  @@index([feeHeadId])
 }
 
 enum FeeStatus {

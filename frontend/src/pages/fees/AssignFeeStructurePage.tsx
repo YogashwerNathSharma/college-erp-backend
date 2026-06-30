@@ -28,6 +28,13 @@ const AssignFeeStructurePage: React.FC = () => {
 
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
+  // ═══ NEW: Per-student fee head selection ═══
+  const [selectedFeeHeads, setSelectedFeeHeads] = useState<Record<string, boolean>>({});
+
+  // ═══ Student detail view (shows what's assigned to a student) ═══
+  const [viewingStudent, setViewingStudent] = useState<{ id: string; name: string; items: any[] } | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
   useEffect(() => {
     fetchClasses();
     fetchAcademicYears();
@@ -39,6 +46,20 @@ const AssignFeeStructurePage: React.FC = () => {
       fetchStudents();
     }
   }, [selectedClass, selectedYear]);
+
+  // When fee structures load, default all items to selected
+  useEffect(() => {
+    if (feeStructures.length > 0) {
+      const defaultSelection: Record<string, boolean> = {};
+      feeStructures.forEach((s) => {
+        s.items?.forEach((item) => {
+          // Auto-select all items by default
+          defaultSelection[item.feeHeadId] = true;
+        });
+      });
+      setSelectedFeeHeads(defaultSelection);
+    }
+  }, [feeStructures]);
 
   const fetchClasses = async () => {
     try {
@@ -87,8 +108,79 @@ const AssignFeeStructurePage: React.FC = () => {
   };
 
   const selectAllUnassigned = () => {
-    const unassigned = students.filter((s) => s.assignmentStatus === "NOT_ASSIGNED").map((s) => s.id);
-    setSelectedStudents(unassigned);
+    // Select ALL students (for re-assignment too)
+    if (selectedStudents.length === students.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(students.map((s) => s.id));
+    }
+  };
+
+  // Fetch what's assigned to a specific student
+  const viewStudentAssignment = async (student: StudentRow) => {
+    if (student.assignmentStatus !== "ASSIGNED") {
+      setViewingStudent({ id: student.id, name: student.studentName, items: [] });
+      return;
+    }
+    setLoadingDetail(true);
+    try {
+      const res = await axios.get(`${API}/fees/collection/student/${student.id}`);
+      const fees = res.data?.fees || [];
+      // Collect ALL fee items across all installments
+      let items: { name: string; amount: number }[] = [];
+      const firstFee = fees[0] || {};
+      // Try StudentFeeItems first, then FeeStructure items
+      if (firstFee.items && firstFee.items.length > 0) {
+        items = firstFee.items.map((i: any) => ({ name: i.feeHeadName || i.name || i.feeHead?.name || "Fee", amount: i.amount || 0 }));
+      } else if (firstFee.feeStructure?.items && firstFee.feeStructure.items.length > 0) {
+        items = firstFee.feeStructure.items.map((i: any) => ({ name: i.feeHead?.name || i.name || "Fee", amount: i.amount || 0 }));
+      } else {
+        // Last fallback: show from the fee structure on this page
+        items = allItems.map((item) => ({ name: item.feeHead?.name || "Fee", amount: item.amount || 0 }));
+      }
+      setViewingStudent({ id: student.id, name: student.studentName, items, totalFee: firstFee.totalAmount || firstFee.netAmount || items.reduce((s: number, i: any) => s + i.amount, 0) });
+    } catch (e) {
+      // API fail — show items from fee structure on page as fallback
+      const items = allItems.map((item) => ({ name: item.feeHead?.name || "Fee", amount: item.amount || 0 }));
+      setViewingStudent({ id: student.id, name: student.studentName, items });
+    } finally { setLoadingDetail(false); }
+  };
+
+  // Toggle fee head selection
+  const toggleFeeHead = (feeHeadId: string) => {
+    setSelectedFeeHeads((prev) => ({
+      ...prev,
+      [feeHeadId]: !prev[feeHeadId],
+    }));
+  };
+
+  // Build selectedItems array from checkboxes
+  const getSelectedItems = () => {
+    const items: Array<{ feeHeadId: string; amount: number; feeHeadName: string; frequency: string }> = [];
+    feeStructures.forEach((s) => {
+      s.items?.forEach((item) => {
+        if (selectedFeeHeads[item.feeHeadId]) {
+          items.push({
+            feeHeadId: item.feeHeadId,
+            amount: item.amount,
+            feeHeadName: item.feeHead?.name || "Fee",
+            frequency: item.frequency || "PER_INSTALLMENT",
+          });
+        }
+      });
+    });
+    return items;
+  };
+
+  // Check if all fee heads are selected (to determine if we should send selectedItems or not)
+  const allFeeHeadsSelected = () => {
+    const allItems = feeStructures.flatMap((s) => s.items || []);
+    return allItems.every((item) => selectedFeeHeads[item.feeHeadId]);
+  };
+
+  // Calculate total of selected items
+  const getSelectedTotal = () => {
+    return getSelectedItems().reduce((sum, item) => sum + item.amount, 0);
   };
 
   const handleAssign = async () => {
@@ -96,9 +188,24 @@ const AssignFeeStructurePage: React.FC = () => {
       toast.error("Please select students to assign fees");
       return;
     }
+
+    const selectedItems = getSelectedItems();
+    if (selectedItems.length === 0) {
+      toast.error("Please select at least one fee head to assign");
+      return;
+    }
+
     setAssigning(true);
     try {
-      const res = await axios.post(`${API}/fees/assign/students`, { enrollmentIds: selectedStudents });
+      const payload: any = { enrollmentIds: selectedStudents };
+
+      // Only send selectedItems if not all items are selected
+      // This maintains backward compatibility
+      if (!allFeeHeadsSelected()) {
+        payload.selectedItems = selectedItems;
+      }
+
+      const res = await axios.post(`${API}/fees/assign/students`, payload);
       if (res.data.success) {
         toast.success(res.data.data.message || "Fees assigned successfully");
         setSelectedStudents([]);
@@ -111,12 +218,23 @@ const AssignFeeStructurePage: React.FC = () => {
 
   const handleAssignAll = async () => {
     if (!selectedClass || !selectedYear) return;
+
+    const selectedItems = getSelectedItems();
+    if (selectedItems.length === 0) {
+      toast.error("Please select at least one fee head to assign");
+      return;
+    }
+
     setAssigning(true);
     try {
-      const res = await axios.post(`${API}/fees/collection/assign/class`, {
+      const payload: any = {
         classId: selectedClass,
         academicYearId: selectedYear,
-      });
+      };
+      if (!allFeeHeadsSelected()) {
+        payload.selectedItems = selectedItems;
+      }
+      const res = await axios.post(`${API}/fees/collection/assign/class`, payload);
       toast.success(res.data.message || "Fees assigned to class");
       fetchStudents();
     } catch (error: any) {
@@ -127,13 +245,15 @@ const AssignFeeStructurePage: React.FC = () => {
   // All fee items across structures
   const allItems = feeStructures.flatMap((s) => s.items || []);
   const totalStructureAmount = feeStructures.reduce((sum, s) => sum + s.totalAmount, 0);
+  const selectedTotal = getSelectedTotal();
+  const selectedCount = getSelectedItems().length;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Assign Fee Structure</h1>
-        <p className="text-sm text-gray-500 mt-1">Assign fee structures to students class-wise</p>
+        <p className="text-sm text-gray-500 mt-1">Assign fee structures to students — select which fee heads apply per student</p>
       </div>
 
       {/* Filters */}
@@ -158,10 +278,10 @@ const AssignFeeStructurePage: React.FC = () => {
 
       {selectedClass && selectedYear && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT — Fee Structure */}
+          {/* LEFT — Fee Structure with Checkboxes */}
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
             <div className="bg-primary-50 border-b border-primary-200 px-4 py-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-blue-900">Fee Structure</h3>
+              <h3 className="text-sm font-semibold text-blue-900">Fee Structure — Select Applicable Heads</h3>
               <a href="/fees/structures" className="text-xs text-primary-600 hover:underline font-medium">+ Create Fee Structure</a>
             </div>
 
@@ -174,10 +294,30 @@ const AssignFeeStructurePage: React.FC = () => {
               </div>
             ) : (
               <div>
+                {/* Info banner */}
+                <div className="bg-blue-50 border-b border-blue-100 px-4 py-2">
+                  <p className="text-xs text-blue-700">
+                    ✓ Check the fee heads that apply to selected students. Unchecked items won't be assigned.
+                  </p>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-10">
+                          <input
+                            type="checkbox"
+                            checked={allItems.length > 0 && allItems.every((item) => selectedFeeHeads[item.feeHeadId])}
+                            onChange={(e) => {
+                              const newState: Record<string, boolean> = {};
+                              allItems.forEach((item) => { newState[item.feeHeadId] = e.target.checked; });
+                              setSelectedFeeHeads(newState);
+                            }}
+                            className="w-4 h-4 text-primary-600 rounded"
+                            title="Select/Deselect All"
+                          />
+                        </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fee Head</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Frequency</th>
@@ -185,20 +325,87 @@ const AssignFeeStructurePage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {allItems.map((item, i) => (
-                        <tr key={item.id || i} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-600">{i + 1}</td>
-                          <td className="px-4 py-2 text-sm font-medium text-gray-900">{item.feeHead?.name || "-"}</td>
-                          <td className="px-4 py-2 text-sm text-gray-600">{item.frequency?.replace("_", " ") || "-"}</td>
-                          <td className="px-4 py-2 text-sm text-right font-semibold text-gray-900">₹{item.amount?.toLocaleString("en-IN")}</td>
-                        </tr>
-                      ))}
+                      {allItems.map((item, i) => {
+                        const isSelected = !!selectedFeeHeads[item.feeHeadId];
+                        const isTransport = item.feeHead?.name?.toLowerCase().includes("transport");
+                        const isHostel = item.feeHead?.name?.toLowerCase().includes("hostel");
+
+                        return (
+                          <tr
+                            key={item.id || i}
+                            className={`hover:bg-gray-50 cursor-pointer transition-all ${isSelected ? "bg-green-50/50" : "bg-gray-50/30 opacity-60"}`}
+                            onClick={() => toggleFeeHead(item.feeHeadId)}
+                          >
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleFeeHead(item.feeHeadId)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 text-primary-600 rounded border-gray-300"
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{i + 1}</td>
+                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                              {item.feeHead?.name || "-"}
+                              {isTransport && (
+                                <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">
+                                  🚌 Transport
+                                </span>
+                              )}
+                              {isHostel && (
+                                <span className="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                                  🏠 Hostel
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                                item.frequency === "ONE_TIME" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"
+                              }`}>
+                                {item.frequency?.replace("_", " ") || "PER INSTALLMENT"}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-2 text-sm text-right font-semibold ${isSelected ? "text-gray-900" : "text-gray-400 line-through"}`}>
+                              ₹{item.amount?.toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                <div className="bg-primary-50 border-t px-4 py-3 flex justify-between items-center">
-                  <span className="text-sm font-medium text-primary-700">Total Amount</span>
-                  <span className="text-lg font-bold text-blue-900">₹{totalStructureAmount.toLocaleString("en-IN")}</span>
+
+                {/* Selected Total */}
+                <div className="bg-primary-50 border-t px-4 py-3">
+                  {/* Installment Type from Fee Structure */}
+                  {feeStructures.length > 0 && (
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="text-xs font-medium text-gray-600">Payment Frequency:</span>
+                      <span className="text-xs font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
+                        {feeStructures[0].installmentType?.replace("_", " ") || "MONTHLY"} — {feeStructures[0].totalInstallments} installments
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-500">
+                      {selectedCount} of {allItems.length} fee heads selected
+                    </span>
+                    {selectedCount < allItems.length && (
+                      <span className="text-[10px] text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full">
+                        ⚠️ Partial Assignment
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-primary-700">Selected Total (per installment)</span>
+                    <span className="text-lg font-bold text-blue-900">₹{selectedTotal.toLocaleString("en-IN")}</span>
+                  </div>
+                  {selectedTotal !== totalStructureAmount && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Full structure total: ₹{totalStructureAmount.toLocaleString("en-IN")} — Excluded: ₹{(totalStructureAmount - selectedTotal).toLocaleString("en-IN")}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -215,7 +422,7 @@ const AssignFeeStructurePage: React.FC = () => {
               </h3>
               <div className="flex gap-2">
                 <button onClick={selectAllUnassigned} className="text-xs px-2 py-1 bg-white border border-green-300 rounded text-green-700 hover:bg-green-50">
-                  Select Unassigned
+                  Select All / None
                 </button>
               </div>
             </div>
@@ -231,7 +438,7 @@ const AssignFeeStructurePage: React.FC = () => {
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-8">
-                          <input type="checkbox" checked={selectedStudents.length === students.filter(s => s.assignmentStatus === "NOT_ASSIGNED").length && selectedStudents.length > 0} onChange={(e) => e.target.checked ? selectAllUnassigned() : setSelectedStudents([])} className="w-3.5 h-3.5 text-primary-600 rounded" />
+                          <input type="checkbox" checked={selectedStudents.length === students.length && students.length > 0} onChange={() => selectAllUnassigned()} className="w-3.5 h-3.5 text-primary-600 rounded" />
                         </th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Roll No.</th>
@@ -243,18 +450,23 @@ const AssignFeeStructurePage: React.FC = () => {
                       {students.map((student, i) => (
                         <tr key={student.id} className={`hover:bg-gray-50 ${selectedStudents.includes(student.id) ? "bg-primary-50/50" : ""}`}>
                           <td className="px-3 py-2 text-center">
-                            {student.assignmentStatus === "NOT_ASSIGNED" ? (
-                              <input type="checkbox" checked={selectedStudents.includes(student.id)} onChange={() => toggleStudentSelection(student.id)} className="w-3.5 h-3.5 text-primary-600 rounded" />
-                            ) : (
-                              <span className="text-green-500 text-sm">✓</span>
-                            )}
+                            <input
+                              type="checkbox"
+                              checked={selectedStudents.includes(student.id)}
+                              onChange={() => toggleStudentSelection(student.id)}
+                              className="w-3.5 h-3.5 text-primary-600 rounded"
+                            />
                           </td>
                           <td className="px-3 py-2 text-sm text-gray-600">{i + 1}</td>
                           <td className="px-3 py-2 text-sm text-gray-700">{student.rollNumber}</td>
-                          <td className="px-3 py-2 text-sm font-medium text-gray-900">{student.studentName}</td>
+                          <td className="px-3 py-2 text-sm font-medium text-gray-900">
+                            <button onClick={() => viewStudentAssignment(student)} className="text-left hover:text-primary-600 hover:underline transition-colors" title="Click to view assigned fee heads">
+                              {student.studentName}
+                            </button>
+                          </td>
                           <td className="px-3 py-2 text-center">
                             <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${student.assignmentStatus === "ASSIGNED" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                              {student.assignmentStatus === "ASSIGNED" ? "Assigned" : "Pending"}
+                              {student.assignmentStatus === "ASSIGNED" ? "Assigned ✏️" : "Pending"}
                             </span>
                           </td>
                         </tr>
@@ -263,16 +475,55 @@ const AssignFeeStructurePage: React.FC = () => {
                   </table>
                 </div>
 
+                {/* ═══ Student Assignment Detail Panel ═══ */}
+                {viewingStudent && (
+                  <div className="border-t bg-blue-50 px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-blue-900">
+                        📋 {viewingStudent.name} — Assigned Fee Heads
+                      </h4>
+                      <button onClick={() => setViewingStudent(null)} className="text-xs text-gray-500 hover:text-red-500">✕ Close</button>
+                    </div>
+                    {loadingDetail ? (
+                      <p className="text-xs text-gray-500">Loading...</p>
+                    ) : viewingStudent.items.length === 0 ? (
+                      <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded">⚠️ No fee heads assigned yet — select items and assign.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {viewingStudent.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-xs bg-white rounded px-3 py-1.5 border border-blue-100">
+                            <span className="text-gray-800 font-medium">{item.name}</span>
+                            <span className="font-bold text-gray-900">₹{item.amount?.toLocaleString("en-IN")}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between text-xs font-bold text-blue-900 pt-1 border-t border-blue-200 mt-1">
+                          <span>Total per Installment</span>
+                          <span>₹{viewingStudent.items.reduce((s, i) => s + (i.amount || 0), 0).toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="border-t bg-gray-50 px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-gray-600">
-                    {selectedStudents.length > 0 && `${selectedStudents.length} selected`}
+                    {selectedStudents.length > 0 && (
+                      <>
+                        {selectedStudents.length} selected
+                        {!allFeeHeadsSelected() && (
+                          <span className="ml-2 text-xs text-amber-600">
+                            ({selectedCount} fee heads)
+                          </span>
+                        )}
+                      </>
+                    )}
                   </span>
                   <div className="flex gap-2">
                     <button onClick={handleAssignAll} disabled={assigning || summary.unassignedCount === 0} className="px-3 py-1.5 text-xs font-medium bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">
                       {assigning ? "Assigning..." : `Assign All (${summary.unassignedCount})`}
                     </button>
-                    <button onClick={handleAssign} disabled={assigning || selectedStudents.length === 0} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
+                    <button onClick={handleAssign} disabled={assigning || selectedStudents.length === 0 || selectedCount === 0} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
                       {assigning ? "Assigning..." : `Assign Selected (${selectedStudents.length})`}
                     </button>
                   </div>
@@ -287,4 +538,3 @@ const AssignFeeStructurePage: React.FC = () => {
 };
 
 export default AssignFeeStructurePage;
-

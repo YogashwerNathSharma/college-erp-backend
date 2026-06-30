@@ -579,15 +579,15 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       {/* MOBILE SIDEBAR (Same design as desktop - slides in/out) */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {sidebarOpen && (
-      <div className="md:hidden fixed inset-0 z-[1000]">
+      <>
         {/* Backdrop */}
         <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm z-[1]"
+          className="md:hidden fixed inset-0 bg-black/50 z-[998]"
           onClick={() => onClose?.()}
         />
         {/* Sidebar panel */}
         <aside
-          className="absolute left-0 top-0 h-full w-[280px] flex flex-col z-[2]"
+          className="md:hidden fixed left-0 top-0 h-full w-[280px] flex flex-col z-[999]"
           style={{
             background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
           }}
@@ -668,7 +668,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             </button>
           </div>
         </aside>
-      </div>
+      </>
       )}
     </>
   );

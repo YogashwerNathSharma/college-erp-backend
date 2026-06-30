@@ -35,6 +35,15 @@ interface FeeStructureItem {
   feeHead: { id: string; name: string; code: string };
 }
 
+// NEW: Per-student fee item (from StudentFeeItem model)
+interface StudentFeeItemRecord {
+  id: string;
+  feeHeadId: string;
+  name: string;
+  amount: number;
+  frequency: string;
+}
+
 interface FeeRecord {
   id: string;
   feeStructureId: string;
@@ -53,6 +62,7 @@ interface FeeRecord {
     feeHead?: string;
     items?: FeeStructureItem[];
   };
+  items?: StudentFeeItemRecord[]; // ← NEW: per-student assigned items
 }
 
 interface FeeSummary {
@@ -70,8 +80,6 @@ interface PaymentModalData {
   feeHead: string;
   installmentNo: number;
   feeItems: { name: string; amount: number }[];
-  paidAmount: number;
-  totalAmount: number;
   paidAmount: number;
   totalAmount: number;
 }
@@ -131,7 +139,6 @@ const FeeCollectionPage: React.FC = () => {
     if (studentParam) {
       setSearchQuery(studentParam);
       setTimeout(() => {
-        // Trigger search after state is set
         document.getElementById("fee-search-btn")?.click();
       }, 500);
     }
@@ -290,12 +297,24 @@ const FeeCollectionPage: React.FC = () => {
     }
   };
 
-  // Open payment modal — extract fee items for display
+  // ═══ Open payment modal — USE StudentFeeItems (per-student) first, fallback to FeeStructure.items ═══
   const openPaymentModal = (fee: FeeRecord) => {
-    const feeItems = fee.feeStructure?.items?.map((item) => ({
-      name: item.feeHead?.name || "Fee",
-      amount: item.amount || 0,
-    })) || [];
+    // KEY CHANGE: Use fee.items (StudentFeeItems) if available, else fallback to feeStructure.items
+    let feeItems: { name: string; amount: number }[] = [];
+
+    if (fee.items && fee.items.length > 0) {
+      // Per-student assigned items — this is what was ACTUALLY assigned to this student
+      feeItems = fee.items.map((item) => ({
+        name: item.name || "Fee",
+        amount: item.amount || 0,
+      }));
+    } else if (fee.feeStructure?.items && fee.feeStructure.items.length > 0) {
+      // Fallback: old records without StudentFeeItems — use template items
+      feeItems = fee.feeStructure.items.map((item) => ({
+        name: item.feeHead?.name || "Fee",
+        amount: item.amount || 0,
+      }));
+    }
 
     setPaymentModal({
       studentFeeId: fee.id,
@@ -313,7 +332,7 @@ const FeeCollectionPage: React.FC = () => {
       remarks: "",
       discountId: "",
       discountAmount: "",
-      selectedItems: null,
+      selectedItems: feeItems.map((_, i) => i),
       fineAmount: "",
     });
   };
@@ -335,7 +354,6 @@ const FeeCollectionPage: React.FC = () => {
       discountAmt = Math.round((paymentModal.balance * selectedDiscount.value) / 100);
     }
 
-    // Cap at balance
     if (discountAmt > paymentModal.balance) discountAmt = paymentModal.balance;
 
     const newPayAmount = paymentModal.balance - discountAmt;
@@ -385,7 +403,7 @@ const FeeCollectionPage: React.FC = () => {
       const selectedFeeItems = selectedIdxs.map((i: number) => paymentModal.feeItems[i]).filter(Boolean);
       setLastReceipt({
         ...res.data,
-        _selectedFeeItems: selectedFeeItems, // custom: only selected items for receipt
+        _selectedFeeItems: selectedFeeItems,
         _fineAmount: parseFloat(paymentForm.fineAmount) || 0,
       });
       setPaymentModal(null);
@@ -403,7 +421,7 @@ const FeeCollectionPage: React.FC = () => {
   // Print receipt
   const handlePrintReceipt = async () => {
     if (!lastReceipt || !student) return;
-    // Use selected items (user-checked) or fallback to all items from backend
+    // Use selected items (user-checked) or fallback to backend items
     let receiptFeeItems = lastReceipt._selectedFeeItems?.length > 0
       ? lastReceipt._selectedFeeItems
       : (lastReceipt.feeInfo?.feeItems || []);
@@ -638,37 +656,51 @@ const FeeCollectionPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {fees.map((fee) => (
-                  <tr key={fee.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{fee.installmentNo}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {fee.feeStructure?.name || `Installment #${fee.installmentNo}`}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(fee.dueDate)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(fee.totalAmount)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-purple-600">
-                      {fee.discountAmount > 0 ? formatCurrency(fee.discountAmount) : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-red-600">
-                      {fee.fineAmount > 0 ? formatCurrency(fee.fineAmount) : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{formatCurrency(fee.netAmount)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(fee.paidAmount)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{formatCurrency(fee.balanceAmount)}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[fee.status]}`}>
-                        {fee.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
-                        <button onClick={() => openPaymentModal(fee)} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700">
-                          Pay
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {fees.map((fee) => {
+                  // Display fee heads from StudentFeeItems or FeeStructure
+                  const displayItems = fee.items && fee.items.length > 0
+                    ? fee.items.map((i) => i.name).join(", ")
+                    : fee.feeStructure?.name || `Installment #${fee.installmentNo}`;
+
+                  return (
+                    <tr key={fee.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">{fee.installmentNo}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        <div>
+                          <span className="font-medium">{fee.feeStructure?.name || `Installment #${fee.installmentNo}`}</span>
+                          {fee.items && fee.items.length > 0 && (
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                              {fee.items.map((i) => i.name).join(" • ")}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{formatDate(fee.dueDate)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(fee.totalAmount)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-600">
+                        {fee.discountAmount > 0 ? formatCurrency(fee.discountAmount) : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-red-600">
+                        {fee.fineAmount > 0 ? formatCurrency(fee.fineAmount) : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">{formatCurrency(fee.netAmount)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-green-600">{formatCurrency(fee.paidAmount)}</td>
+                      <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{formatCurrency(fee.balanceAmount)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[fee.status]}`}>
+                          {fee.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {(fee.status === "PENDING" || fee.status === "PARTIAL" || fee.status === "OVERDUE") && (
+                          <button onClick={() => openPaymentModal(fee)} className="px-3 py-1.5 text-xs font-medium bg-primary-600 text-white rounded hover:bg-primary-700">
+                            Pay
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -700,7 +732,29 @@ const FeeCollectionPage: React.FC = () => {
                     <td className="px-3 py-2 text-right font-semibold text-green-700 dark:text-green-400">{formatCurrency(p.amount)}</td>
                     <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{p.method}</td>
                     <td className="px-3 py-2 text-center">
-                      <button onClick={() => { setLastReceipt({ receiptNo: p.receiptNo, payment: p, feeInfo: { feeHead: fees[0]?.feeStructure?.name || "Fee", feeItems: fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 })) || [], installmentNo: 1, paidAmount: fees.reduce((s, f) => s + f.paidAmount, 0), balanceAmount: fees.reduce((s, f) => s + f.balanceAmount, 0) }, _selectedFeeItems: fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 })) || [], monthsCovered: null, remainingBalance: fees.reduce((s, f) => s + f.balanceAmount, 0), nextDueMonth: null }); setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100); }} className="text-primary-600 hover:text-primary-800 dark:text-primary-400 font-medium">🖨️</button>
+                      <button onClick={() => {
+                        // For reprint: use StudentFeeItems from the first fee that has items
+                        const feeWithItems = fees.find(f => f.items && f.items.length > 0);
+                        const receiptItems = feeWithItems?.items?.map(i => ({ name: i.name, amount: i.amount }))
+                          || fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 }))
+                          || [];
+                        setLastReceipt({
+                          receiptNo: p.receiptNo,
+                          payment: p,
+                          feeInfo: {
+                            feeHead: fees[0]?.feeStructure?.name || "Fee",
+                            feeItems: receiptItems,
+                            installmentNo: 1,
+                            paidAmount: fees.reduce((s, f) => s + f.paidAmount, 0),
+                            balanceAmount: fees.reduce((s, f) => s + f.balanceAmount, 0),
+                          },
+                          _selectedFeeItems: receiptItems,
+                          monthsCovered: null,
+                          remainingBalance: fees.reduce((s, f) => s + f.balanceAmount, 0),
+                          nextDueMonth: null,
+                        });
+                        setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100);
+                      }} className="text-primary-600 hover:text-primary-800 dark:text-primary-400 font-medium">🖨️</button>
                     </td>
                   </tr>
                 ))}
@@ -733,10 +787,10 @@ const FeeCollectionPage: React.FC = () => {
               Installment #{paymentModal.installmentNo}
             </p>
 
-            {/* Fee Particulars (read-only breakdown) */}
+            {/* Fee Particulars — from StudentFeeItems (per-student) */}
             {paymentModal.feeItems.length > 0 && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Select Fee Particulars:</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Fee Particulars (Assigned to this Student):</p>
                 <div className="space-y-2">
                   {paymentModal.feeItems.map((item, idx) => (
                     <label key={idx} className="flex items-center justify-between text-sm cursor-pointer hover:bg-white p-1.5 rounded-lg transition-all">
@@ -800,8 +854,6 @@ const FeeCollectionPage: React.FC = () => {
                 <p className="text-lg font-bold text-red-800">{formatCurrency(paymentModal.balance)}</p>
               </div>
             </div>
-
-            {/* Balance Info */}
 
             <div className="space-y-4">
               {/* Discount Selection (from DB) */}
@@ -948,4 +1000,3 @@ const FeeCollectionPage: React.FC = () => {
 };
 
 export default FeeCollectionPage;
-

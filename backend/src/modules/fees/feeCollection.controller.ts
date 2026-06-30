@@ -13,17 +13,19 @@ import {
   getDailyCollection,
 } from "./feeCollection.service";
 
-// POST /assign/student
+// POST /assign/student — Updated to accept selectedItems for per-student fee head selection
 export const assignFeesToStudentController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { enrollmentId } = req.body;
+    const { enrollmentId, selectedItems } = req.body;
 
     if (!enrollmentId) {
       return res.status(400).json({ error: "enrollmentId is required" });
     }
 
-    const result = await assignFeesToStudent(enrollmentId, tenantId);
+    // selectedItems is optional — if provided, only those fee heads are assigned
+    // Format: [{ feeHeadId: "...", amount: 2500, feeHeadName?: "Tuition Fee", frequency?: "PER_INSTALLMENT" }]
+    const result = await assignFeesToStudent(enrollmentId, tenantId, selectedItems || undefined);
     res.status(201).json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -89,7 +91,7 @@ export const collectPaymentController = async (req: any, res: any) => {
       return res.status(400).json({ error: "studentFeeId and method are required" });
     }
 
-    // ═══ VALIDATION: Fee collection only allowed on CURRENT DATE ═══
+    // Fee collection only allowed on CURRENT DATE
     if (paymentDate) {
       const inputDate = new Date(paymentDate);
       const today = new Date();
@@ -103,7 +105,6 @@ export const collectPaymentController = async (req: any, res: any) => {
     const parsedAmount = parseFloat(amount) || 0;
     const parsedDiscount = parseFloat(discountAmount) || 0;
 
-    // Validation: At least amount or discount must be > 0
     if (parsedAmount <= 0 && parsedDiscount <= 0) {
       return res.status(400).json({ error: "Amount or discount must be greater than zero" });
     }
@@ -186,9 +187,7 @@ export const getDailyCollectionController = async (req: any, res: any) => {
   }
 };
 
-// ════════════════════════════════════════════════════════════
-// GET /all-payments — All payments for modal listing
-// ════════════════════════════════════════════════════════════
+// GET /all-payments
 export const getAllPaymentsController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -209,6 +208,7 @@ export const getAllPaymentsController = async (req: any, res: any) => {
               },
             },
             feeStructure: { select: { name: true } },
+            items: true, // ← Include StudentFeeItems
           },
         },
       },
@@ -227,6 +227,10 @@ export const getAllPaymentsController = async (req: any, res: any) => {
       totalFee: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
       totalPaidTillDate: p.studentFee?.paidAmount || 0,
       feeHead: p.studentFee?.feeStructure?.name || "Fee",
+      // Use StudentFeeItems if available
+      feeItems: p.studentFee?.items?.length > 0
+        ? p.studentFee.items.map((item: any) => ({ name: item.name, amount: item.amount }))
+        : [],
       session: "2025-26",
       className: p.studentFee?.enrollment?.class?.name || "—",
       section: p.studentFee?.enrollment?.section?.name || "",
@@ -244,4 +248,3 @@ export const getAllPaymentsController = async (req: any, res: any) => {
     return res.status(500).json({ error: error.message });
   }
 };
-

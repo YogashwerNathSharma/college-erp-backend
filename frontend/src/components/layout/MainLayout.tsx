@@ -107,7 +107,7 @@ export default function MainLayout() {
   }, []);
 
   return (
-    <div className={`flex min-h-screen min-h-[100dvh] relative bg-gray-50 dark:bg-slate-900 transition-colors duration-200 ${isPrinting ? "printing" : ""}`}>
+    <div className={`flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-slate-900 ${isPrinting ? "printing" : ""}`}>
 
       {/* ═══════════ Sidebar (single render) ═══════════ */}
       <Sidebar tenant={tenant} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

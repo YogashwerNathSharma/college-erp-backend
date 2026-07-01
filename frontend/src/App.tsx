@@ -293,6 +293,11 @@ axios.interceptors.response.use(
       error?.response?.status === 403 &&
       error?.response?.data?.subscriptionExpired === true
     ) {
+      // Skip redirect for print/report pages
+      const path = window.location.pathname;
+      if (path.startsWith("/print/") || path.includes("/report-card") || path.includes("/consolidated")) {
+        return Promise.reject(error);
+      }
       // Skip on localhost (dev mode)
       if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
         return Promise.reject(error);
@@ -374,7 +379,8 @@ function ProtectedRoute() {
     }
     const checkSubscription = async () => {
       // Skip check for subscription-related pages
-      if (location.pathname === "/subscription-expired" || location.pathname === "/subscriptions") {
+      const skipPaths = ["/subscription-expired", "/subscriptions", "/print/", "/report-card", "/consolidated"];
+      if (skipPaths.some(p => location.pathname === p || location.pathname.startsWith(p))) {
         setChecking(false);
         return;
       }

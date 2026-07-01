@@ -88,6 +88,12 @@ export const subscriptionCheckMiddleware = async (
       return next();
     }
 
+    // ═══ Skip subscription check for print/report routes ═══
+    const reqPath = req.originalUrl || req.path || "";
+    if (reqPath.includes("/report-card") || reqPath.includes("/consolidated") || reqPath.includes("/print")) {
+      return next();
+    }
+
     const activeSubscription = await prisma.tenantSubscription.findFirst({
       where: {
         tenantId: user.tenantId,

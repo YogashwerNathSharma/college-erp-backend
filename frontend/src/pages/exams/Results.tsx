@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -240,7 +239,8 @@ const fetchResults = async () => {
                               const url = selectedCustomTemplate
                                 ? `/print/report-card/${id}/${r.studentId}?customTemplate=${selectedCustomTemplate.id}`
                                 : `/print/report-card/${id}/${r.studentId}`;
-                              window.open(url, '_blank');
+                              const mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                              if (mob) { window.location.href = url; } else { window.open(url, '_blank'); }
                             }, i * 500);
                           });
                         }}
@@ -259,7 +259,8 @@ const fetchResults = async () => {
                           const url = selectedCustomTemplate
                             ? `/print/report-card/${id}/bulk?students=${studentIds}&customTemplate=${selectedCustomTemplate.id}`
                             : `/print/report-card/${id}/bulk?students=${studentIds}`;
-                          window.open(url, '_blank');
+                          const mob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                          if (mob) { window.location.href = url; } else { window.open(url, '_blank'); }
                         }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2"
                       >
@@ -519,12 +520,15 @@ const fetchResults = async () => {
                       <td className="px-4 py-3 text-center">
 {/* Report Card — print route (no sidebar) */}
                       <button
-                        onClick={() =>
-                          window.open(
-                            `/print/report-card/${id}/${result.studentId}`,
-                            '_blank'
-                          )
-                        }
+                        onClick={() => {
+                          const url = `/print/report-card/${id}/${result.studentId}`;
+                          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                          if (isMobile) {
+                            window.location.href = url;
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                        }}
                         className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-lg hover:bg-primary-100 transition-colors"
                         title="View Report Card"
                       >
@@ -534,12 +538,15 @@ const fetchResults = async () => {
 
                       {/* Consolidated — print route (no sidebar) */}
                       <button
-                        onClick={() =>
-                          window.open(
-                            `/print/consolidated/${result.studentId}?academicYearId=${(exam as any)?.academicYearId || ""}&classId=${(exam as any)?.classId || ""}`,
-                            '_blank'
-                          )
-                        }
+                        onClick={() => {
+                          const url = `/print/consolidated/${result.studentId}?academicYearId=${(exam as any)?.academicYearId || ""}&classId=${(exam as any)?.classId || ""}`;
+                          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                          if (isMobile) {
+                            window.location.href = url;
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                        }}
                         className="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg hover:bg-purple-100 transition-colors ml-2"
                         title="Consolidated Report"
                       >
@@ -560,4 +567,3 @@ const fetchResults = async () => {
 };
 
 export default Results;
-

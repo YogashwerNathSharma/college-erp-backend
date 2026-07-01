@@ -295,7 +295,7 @@ axios.interceptors.response.use(
     ) {
       // Skip redirect for print/report pages
       const path = window.location.pathname;
-      if (path.startsWith("/print/") || path.includes("/report-card") || path.includes("/consolidated")) {
+      if (path.includes("/print") || path.includes("/report-card") || path.includes("/consolidated") || path.includes("/exams/")) {
         return Promise.reject(error);
       }
       // Skip on localhost (dev mode)
@@ -379,8 +379,8 @@ function ProtectedRoute() {
     }
     const checkSubscription = async () => {
       // Skip check for subscription-related pages
-      const skipPaths = ["/subscription-expired", "/subscriptions", "/print/", "/report-card", "/consolidated"];
-      if (skipPaths.some(p => location.pathname === p || location.pathname.startsWith(p))) {
+      const skipPaths = ["/subscription-expired", "/subscriptions", "/print/", "/report-card", "/consolidated", "/exams/"];
+      if (skipPaths.some(p => location.pathname === p || location.pathname.includes(p))) {
         setChecking(false);
         return;
       }
@@ -455,7 +455,10 @@ function ProtectedRoute() {
 
   // Subscription expired — redirect
   const isExpired = expired || localStorage.getItem("subscriptionExpired") === "true";
-  if (isExpired && location.pathname !== "/subscription-expired" && location.pathname !== "/subscriptions") {
+  // Skip subscription redirect for print/report/exam pages
+  const skipRedirectPaths = ["/subscription-expired", "/subscriptions", "/print", "/report-card", "/consolidated", "/exams/"];
+  const shouldSkipRedirect = skipRedirectPaths.some(p => location.pathname.includes(p));
+  if (isExpired && !shouldSkipRedirect) {
     return <Navigate to="/subscription-expired" replace />;
   }
 

@@ -172,10 +172,20 @@ export default function ReportCardSelect() {
 
     if (selectedStudent && selectedStudent !== "all") {
       // Single student
-      navigate(`/exams/${selectedExam}/report-card/${selectedStudent}?template=${template}`);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+      if (isMobile) {
+        window.location.href = `/print/report-card/${selectedExam}/${selectedStudent}?template=${template}`;
+      } else {
+        navigate(`/exams/${selectedExam}/report-card/${selectedStudent}?template=${template}`);
+      }
     } else {
-      // All students - navigate with all param
-      navigate(`/exams/${selectedExam}/report-card/all?template=${template}&classId=${selectedClass}&sectionId=${selectedSection}`);
+      // All students - bulk print route on mobile
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+      if (isMobile) {
+        window.location.href = `/print/report-card/${selectedExam}/bulk?template=${template}&classId=${selectedClass}&sectionId=${selectedSection}`;
+      } else {
+        navigate(`/exams/${selectedExam}/report-card/all?template=${template}&classId=${selectedClass}&sectionId=${selectedSection}`);
+      }
     }
   };
 

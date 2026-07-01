@@ -133,24 +133,8 @@ const ConsolidatedReportCard: React.FC = () => {
 
   const handlePrint = () => {
     if (isMobile) {
-      const el = printRef.current;
-      if (!el) { window.print(); return; }
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        // Popup blocked — fall back to direct print
-        window.print();
-        return;
-      }
-      printWindow.document.write(`
-        <html><head><title>Consolidated Report</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>body{margin:0;padding:20px;font-family:'Times New Roman',Times,serif;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}table{border-collapse:collapse;width:100%;}img{max-width:100%;}</style>
-        </head><body>${el.innerHTML}</body></html>
-      `);
-      printWindow.document.close();
-      setTimeout(() => {
-        try { printWindow.focus(); printWindow.print(); } catch(e) { console.error(e); }
-      }, 1000);
+      // Mobile: direct print (no popup — popups are blocked on mobile)
+      window.print();
     } else {
       window.print();
     }

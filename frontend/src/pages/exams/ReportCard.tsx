@@ -174,46 +174,8 @@ const ReportCard: React.FC = () => {
 
   const handlePrint = () => {
     if (isMobile) {
-      // Mobile: Open report card in a new clean window and print
-      const printContent = document.getElementById("report-card-print");
-      if (!printContent) return;
-
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        // Popup blocked, fall back to download
-        toast.error("Please allow popups for printing, or use Download PDF.");
-        return;
-      }
-
-      printWindow.document.write(`
-        <html>
-        <head><title>Report Card - ${data?.student?.name || "Student"}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="format-detection" content="telephone=no">
-        <style>
-          body { margin: 0; padding: 20px; font-family: 'Times New Roman', Times, serif; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          table { border-collapse: collapse; width: 100%; }
-          @media print {
-            body { margin: 0; padding: 15px; }
-          }
-        </style>
-        </head>
-        <body>${printContent.innerHTML}</body>
-        </html>
-      `);
-      printWindow.document.close();
-
-      // Give mobile browsers more time to render content + images
-      setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch (e) {
-          console.error("Print failed:", e);
-        }
-        // Don't auto-close on mobile — let user close after printing
-      }, 1000);
+      // Mobile: Direct print on current page (no popup — popups are blocked on mobile)
+      window.print();
     } else {
       // Desktop: normal print
       window.print();

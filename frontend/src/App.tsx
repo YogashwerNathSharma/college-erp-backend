@@ -156,9 +156,10 @@ const CreateEditExam = lazyWithRetry(() => import("./pages/exams/CreateEditExam"
 const ExamSubjects = lazyWithRetry(() => import("./pages/exams/ExamSubjects"));
 const MarksEntry = lazyWithRetry(() => import("./pages/exams/MarksEntry"));
 const Results = lazyWithRetry(() => import("./pages/exams/Results"));
-const ReportCard = lazyWithRetry(() => import("./pages/exams/ReportCard"));
-const BulkReportCard = lazyWithRetry(() => import("./pages/exams/BulkReportCard"));
-const ConsolidatedReportCard = lazyWithRetry(() => import("./pages/exams/ConsolidatedReportCard"));
+// ═══ NOT lazy-loaded — these are print pages that must load immediately on mobile ═══
+import ReportCard from "./pages/exams/ReportCard";
+import BulkReportCard from "./pages/exams/BulkReportCard";
+import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 const ExamSchedule = lazyWithRetry(() => import("./pages/exams/ExamSchedule"));
 const SeatingArrangement = lazyWithRetry(() => import("./pages/exams/SeatingArrangement"));
 const AdmitCard = lazyWithRetry(() => import("./pages/exams/AdmitCard"));

@@ -8,6 +8,7 @@ import { ArrowLeft, Printer, Loader2, Download } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import PrintSignature from "../../components/PrintSignature";
+import ScaleToFit from "../../components/ScaleToFit";
 
 interface SubjectResult {
   subjectName: string;
@@ -396,15 +397,10 @@ const ReportCard: React.FC = () => {
         </div>
 
         {/* Canvas Render */}
-        <div className="mx-auto py-4 md:py-8 print:py-0 print:max-w-none" style={{
-          maxWidth: '850px',
-          overflowX: isMobile ? 'auto' : undefined,
-          WebkitOverflowScrolling: isMobile ? 'touch' : undefined,
-        }}>
-          <div id="report-card-print" className="bg-white shadow-lg print:shadow-none mx-auto" style={{ 
+        <div className="mx-auto py-4 md:py-8 print:py-0 print:max-w-none" style={{ maxWidth: pageW }}>
+         <ScaleToFit contentWidth={pageW} maxWidth={pageW}>
+          <div id="report-card-print" className="bg-white shadow-lg print:shadow-none mx-auto" style={{
             width: pageW, minHeight: pageH, position: "relative", background: pageBg,
-            transform: isMobile ? `scale(${Math.min(1, (window.innerWidth - 32) / pageW)})` : undefined,
-            transformOrigin: isMobile ? 'top left' : undefined,
           }}>
             {finalElements.map((el: any, idx: number) => {
               const style: React.CSSProperties = {
@@ -494,6 +490,7 @@ const ReportCard: React.FC = () => {
               return null;
             })}
           </div>
+         </ScaleToFit>
         </div>
       </div>
     );
@@ -558,13 +555,14 @@ const ReportCard: React.FC = () => {
 
       {/* Report Card Content */}
       <div className="mx-auto p-2 md:p-6 print:p-0 print:max-w-none print:mx-0" style={{ maxWidth: '850px' }}>
+       <ScaleToFit contentWidth={850}>
         <div
           id="report-card-print"
           style={{
             fontFamily: "'Times New Roman', Times, serif",
             backgroundColor: "#fff",
             border: "3px solid #222",
-            padding: isMobile ? "15px 12px" : "30px 40px",
+            padding: "30px 40px",
             position: "relative",
             overflow: "hidden",
           }}
@@ -832,30 +830,17 @@ const ReportCard: React.FC = () => {
 
           </div>
         </div>
+       </ScaleToFit>
       </div>
 
       {/* Print Styles */}
       <style>{`
-        /* Mobile responsive scaling for report card */
-        @media screen and (max-width: 767px) {
-          #report-card-print {
-            transform: scale(${Math.min(1, (window.innerWidth - 24) / 850)});
-            transform-origin: top left;
-            width: 850px !important;
-          }
-          #report-card-print h1 {
-            font-size: 20px !important;
-          }
-          #report-card-print table {
-            font-size: 10px !important;
-          }
-          #report-card-print td, #report-card-print th {
-            padding: 3px 4px !important;
-          }
-        }
         @media print {
           body * { visibility: hidden !important; }
           #report-card-print, #report-card-print * { visibility: visible !important; }
+          /* Neutralize the on-screen scale-to-fit transform when printing */
+          .scale-to-fit-box { width: auto !important; height: auto !important; }
+          .scale-to-fit-content { width: 100% !important; transform: none !important; }
           #report-card-print {
             position: absolute !important;
             left: 0 !important; top: 0 !important;

@@ -4,6 +4,7 @@ import morgan from "morgan";
 import path from "path";
 import dotenv from "dotenv";
 import templateRoutes from "./routes/template.routes";
+import aiRoutes from "./routes/ai.routes";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(morgan("dev"));
 
 // API Routes
 app.use("/api/templates", templateRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {

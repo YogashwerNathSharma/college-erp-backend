@@ -439,6 +439,7 @@ export default function CanvasEditor() {
   // AI Generate state
   const [aiType, setAiType] = useState("certificate");
   const [aiStyle, setAiStyle] = useState("Professional");
+  const [aiDescription, setAiDescription] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
 
   const selectedEl = elements.find(e => e.id === selected) || null;
@@ -684,18 +685,39 @@ export default function CanvasEditor() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => addElement({ type: "image", width: 200, height: 150, imageSrc: ev.target?.result as string }); r.readAsDataURL(f); };
 
   // ═══ AI GENERATE ═══
-  const handleAIGenerate = () => {
+  const handleAIGenerate = async () => {
     setAiGenerating(true);
-    setTimeout(() => {
-      const size = TEMPLATE_SIZE_MAP[aiType] || { w: 794, h: 1123 };
-      setPageWidth(size.w);
-      setPageHeight(size.h);
+    const size = TEMPLATE_SIZE_MAP[aiType] || { w: 794, h: 1123 };
+    setPageWidth(size.w);
+    setPageHeight(size.h);
+
+    try {
+      // Call Gemini AI via backend
+      const res = await axios.post(`${API}/api/ai/generate`, {
+        type: aiType,
+        style: aiStyle,
+        description: aiDescription,
+        pageWidth: size.w,
+        pageHeight: size.h,
+      });
+
+      if (res.data.success && res.data.data) {
+        setElements(res.data.data);
+        pushHistory(res.data.data);
+        toast.success("✨ AI Design generated! Customize as needed.");
+      } else {
+        throw new Error(res.data.message || "AI generation failed");
+      }
+    } catch (err: any) {
+      console.error("AI Generate failed, using local fallback:", err.message);
+      // Fallback to local template generator
       const generated = generateAITemplate(aiType, aiStyle, size.w, size.h);
       setElements(generated);
       pushHistory(generated);
+      toast.error("AI unavailable — used local template. Check API key.");
+    } finally {
       setAiGenerating(false);
-      toast.success("✨ Design generated! Customize as needed.");
-    }, 1200);
+    }
   };
 
   // ═══ AI TYPE CHANGE → AUTO PAGE SIZE ═══
@@ -900,7 +922,7 @@ export default function CanvasEditor() {
         </div>
       );
       case "ai": return (
-        <div className="flex items-center gap-3 h-full px-3">
+        <div className="flex items-center gap-3 h-full px-3 py-1">
           <div className="flex flex-col items-center gap-0.5">
             <div className="flex gap-1">
               {["certificate","id-card","report-card","admit-card","notification","custom"].map(t => (
@@ -914,6 +936,14 @@ export default function CanvasEditor() {
               {["Professional","Modern","Classic","Minimalist","Colorful"].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <span className="text-[9px] text-gray-400">Style</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5">
+            <input
+              value={aiDescription} onChange={e => setAiDescription(e.target.value)}
+              placeholder="Describe your design... (e.g. blue theme, school name on top, photo on left)"
+              className="text-xs border border-purple-200 rounded-lg px-3 py-1.5 w-72 focus:ring-2 focus:ring-purple-400 focus:border-transparent placeholder-gray-400"
+            />
+            <span className="text-[9px] text-gray-400">Description (optional)</span>
           </div>
           <button onClick={handleAIGenerate} disabled={aiGenerating} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 shadow-md">
             {aiGenerating ? <Loader2 size={14} className="animate-spin"/> : <Sparkles size={14}/>}

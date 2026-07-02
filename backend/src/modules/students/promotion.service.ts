@@ -113,8 +113,8 @@ export const promoteStudent = async (
     // 4. Log to StudentHistory
     await tx.studentHistory.create({
       data: {
-        student: { connect: { id: studentId } },
-        tenant: { connect: { id: tenantId } },
+        studentId,
+        tenantId,
         action: promotionType === "detention" ? "DETENTION" : "PROMOTION",
         details: JSON.stringify({
           promotionType,
@@ -269,8 +269,8 @@ export const undoPromotion = async (
     // 4. Log undo to history
     await tx.studentHistory.create({
       data: {
-        student: { connect: { id: promotion.studentId } },
-        tenant: { connect: { id: tenantId } },
+        studentId: promotion.studentId,
+        tenantId,
         action: "PROMOTION_UNDONE",
         details: JSON.stringify({
           promotionId,
@@ -320,8 +320,8 @@ export const changeSectionService = async (
 
     await tx.studentHistory.create({
       data: {
-        student: { connect: { id: studentId } },
-        tenant: { connect: { id: tenantId } },
+        studentId,
+        tenantId,
         action: "SECTION_CHANGE",
         details: JSON.stringify({
           fromSectionId,

@@ -325,8 +325,6 @@ router.post("/age-config/seed", allowRoles("ADMIN"), seedAgeConfigHandler);
 router.put("/age-config/:configId", allowRoles("ADMIN"), updateAgeConfigHandler);
 router.patch("/age-config/:configId/toggle", allowRoles("ADMIN"), toggleAgeConfigHandler);
 
-router.post("/", authMiddleware, checkLimit("students"), createStudentHandler);
-
 // --- Promotion ---
 router.get("/promotion/eligible", getEligibleStudentsHandler);
 router.post("/promote", allowRoles("ADMIN"), promoteStudentHandler);
@@ -345,7 +343,7 @@ router.post("/print", printStudentsHandler);
 // CRUD ROUTES
 // ============================================
 router.get("/", getAllStudentsHandler);
-router.post("/", allowRoles("ADMIN"), createStudentHandler);
+router.post("/", allowRoles("ADMIN"), checkLimit("students"), createStudentHandler);
 
 // ============================================
 // DYNAMIC /:id ROUTES LAST

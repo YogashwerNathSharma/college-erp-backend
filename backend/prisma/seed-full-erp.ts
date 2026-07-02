@@ -54,31 +54,42 @@ async function main() {
 
   // Delete in dependency order (children first)
   const deleteModels = [
-    "payment","studentFee","feeStructureItem","feeStructure","feeHead","feeDiscount","fineRule",
-    "attendance","marksEntry","examResult","examSubject","examSchedule",
+    // Exam children + exam itself
+    "exam",
+    "payment","studentFeeDiscount","studentFeeItem","studentFee",
+    "feeStructureItem","feeStructure","feeDiscount","fineRule","feeHead",
+    "admitCard","questionPaper","invigilatorAssignment","seatingArrangement",
+    "resultSummary","marksEntry","examResult","examSubject","examSchedule",
+    "exam",
+    "attendance",
     "bookIssue","libraryMember","book","bookCategory","librarySetting",
-    "transportAssignment","routeStop","route","vehicle","transportSetting",
+    "transportAttendance","transportAssignment","routeStop","route","vehicle","transportSetting",
     "hostelAllocation","hostelRoom","messMenu","hostel",
     "notice","communication","staffAttendance",
     "teacherLeave","teacherSalary","teacherPerformance","teacherDocument","teacherSettings",
     "timetable","teacherSubject","teacherClass",
     "enrollment","studentDocument","studentHistory","promotion",
     "student","teacher","subject","section","room",
-    "admissionCounter","classAgeConfig","gradeSetting",
+    "admissionCounter","classAgeConfig","gradeSetting","signature",
+    "designerSettings","backupSettings","backup","rolePermission",
   ];
   for (const m of deleteModels) {
     try { await (prisma as any)[m].deleteMany({ where: { tenantId } }); } catch(e) {}
   }
-  // Class needs special handling (may have FK refs)
+  // Retry teacher/student/class (may fail first time due to ordering)
+  try { await prisma.teacher.deleteMany({ where: { tenantId } }); } catch(e) {}
+  try { await prisma.student.deleteMany({ where: { tenantId } }); } catch(e) {}
   try { await prisma.class.deleteMany({ where: { tenantId } }); } catch(e) {}
   try { await prisma.academicYear.deleteMany({ where: { tenantId } }); } catch(e) {}
+  // Also delete teachers with matching email pattern (global unique fallback)
+  try { await prisma.teacher.deleteMany({ where: { email: { contains: "@rmsacademy.edu" } } }); } catch(e) {}
   // Delete non-admin users
   try { await prisma.user.deleteMany({ where: { tenantId, id: { notIn: preserveIds } } }); } catch(e) {}
 
   // Delete all masters
   const masterModels = [
     "permissionMaster","menuMaster","moduleMaster","casteMaster","shelfMaster","itemGroupMaster","campusMaster",
-    "schoolMaster","branchMaster","academicSessionMaster","shiftMaster","workingDayMaster","holidayMaster",
+    "schoolMaster","branchMaster","shiftMaster","workingDayMaster","holidayMaster",
     "houseMaster","schoolTimingMaster","streamMaster","subjectGroupMaster","mediumMaster","boardMaster",
     "courseMaster","periodMaster","admissionTypeMaster","categoryMaster","religionMaster","nationalityMaster",
     "bloodGroupMaster","motherTongueMaster","studentStatusMaster","siblingRelationMaster","departmentMaster",
@@ -121,9 +132,6 @@ async function main() {
       { tenantId, branchId: mainBranch.id, name: "Main Campus", address: "Divna Road, Bareilly", capacity: 2000, facilities: ["Library","Lab","Playground","Auditorium","Canteen"] },
     ]});
   }
-  await prisma.academicSessionMaster.createMany({ data: [
-    { tenantId, name: "2025-26", startDate: new Date("2025-04-01"), endDate: new Date("2026-03-31"), isCurrent: true },
-  ]});
   await prisma.shiftMaster.createMany({ data: [
     { tenantId, name: "Morning Shift", startTime: "07:30", endTime: "13:30" },
   ]});
@@ -717,12 +725,79 @@ async function main() {
         tenantId, title: NOTICE_TITLES[i],
         content: `This is to inform all concerned that ${NOTICE_TITLES[i].toLowerCase()} details are as follows. Please check the school portal for more information.`,
         type: i < 3 ? "GENERAL" : i < 6 ? "ACADEMIC" : "EXAM",
-        audience: "ALL", publishedBy: adminUser?.name || "Admin",
+        audience: "ALL", publishedBy: adminUser?.id || tenantId,
         publishDate: randomDate(new Date("2025-04-01"), new Date("2025-06-28")),
       },
     });
   }
   console.log("  ✅ 10 Notices created\n");
+
+  // ═══════════════════════════════════════════════════════════════
+  // PART L: TIMETABLE
+  // ═══════════════════════════════════════════════════════════════
+  console.log("═══ PART L: TIMETABLE ═══");
+  const periods = await prisma.periodMaster.findMany({ where: { tenantId, type: "REGULAR" } });
+  let ttCount = 0;
+  for (const cls of classRecords) {
+    const classSubs = subjectRecords.filter(s => s.classId === cls.id);
+    const classSections = sectionRecords.filter(s => s.classId === cls.id);
+    const classTeachers = teacherRecords.slice(0, Math.min(teacherRecords.length, classSubs.length));
+    for (const sec of classSections) {
+      for (let day = 1; day <= 6; day++) { // Mon-Sat
+        for (let p = 0; p < Math.min(periods.length, classSubs.length); p++) {
+          const sub = classSubs[p % classSubs.length];
+          const teacher = classTeachers[p % classTeachers.length];
+          await prisma.timetable.create({
+            data: {
+              tenantId, classId: cls.id, sectionId: sec.id, subjectId: sub.id,
+              teacherId: teacher.id, dayOfWeek: day, periodNumber: p + 1,
+              startTime: periods[p]?.startTime || "08:00", endTime: periods[p]?.endTime || "08:40",
+            },
+          });
+          ttCount++;
+        }
+      }
+    }
+  }
+  console.log(`  ✅ ${ttCount} Timetable entries created\n`);
+
+  // ═══════════════════════════════════════════════════════════════
+  // PART M: SIGNATURES + DESIGNER + BACKUP SETTINGS
+  // ═══════════════════════════════════════════════════════════════
+  console.log("═══ PART M: SETTINGS & CONFIG ═══");
+
+  // Signatures
+  await prisma.signature.createMany({ data: [
+    { tenantId, title: "Principal", personName: "Dr. R.K. Sharma", designation: "Principal", imageUrl: "/signatures/principal.png", isActive: true },
+    { tenantId, title: "Director", personName: "Mr. Anil Verma", designation: "Director", imageUrl: "/signatures/director.png", isActive: true },
+    { tenantId, title: "Registrar", personName: "Mrs. Sunita Gupta", designation: "Registrar", imageUrl: "/signatures/registrar.png", isActive: true },
+  ]});
+  console.log("  ✅ 3 Signatures created");
+
+  // Designer Settings
+  await prisma.designerSettings.createMany({ data: [
+    { tenantId, type: "certificate", settings: { paperSize: "A4", orientation: "landscape", headerHeight: 100, footerHeight: 80, margins: { top: 20, bottom: 20, left: 30, right: 30 }, font: "Times New Roman" } },
+    { tenantId, type: "report-card", settings: { paperSize: "A4", orientation: "portrait", showPhoto: true, showGrade: true, showRemarks: true, font: "Arial" } },
+    { tenantId, type: "id-card", settings: { cardSize: "CR80", orientation: "portrait", showBarcode: true, showQR: true, bgColor: "#4f46e5" } },
+    { tenantId, type: "report", settings: { paperSize: "A4", orientation: "portrait", showHeader: true, showFooter: true, font: "Calibri" } },
+  ]});
+  console.log("  ✅ 4 Designer Settings created");
+
+  // Backup Settings
+  await prisma.backupSettings.create({
+    data: { tenantId, dailyEnabled: true, weeklyEnabled: true, monthlyEnabled: true, yearlyEnabled: false, dailyTime: "02:00", weeklyDay: 0, monthlyDate: 1, retentionDays: 30 },
+  });
+  console.log("  ✅ Backup Settings created");
+
+  // Teacher Settings (per academic year)
+  await prisma.teacherSettings.create({
+    data: {
+      tenantId, academicYearId: ayId,
+      attendanceRequired: true, minWorkingDays: 240, lateFineEnabled: true,
+      lateFineAmount: 50, halfDayAfterMinutes: 120,
+    },
+  });
+  console.log("  ✅ Teacher Settings created\n");
 
   // ═══════════════════════════════════════════════════════════════
   // DONE!
@@ -742,6 +817,9 @@ async function main() {
   console.log("  • Transport: 20 vehicles + 10 routes + 100 assignments");
   console.log("  • Hostel: 5 hostels + 20 rooms + 50 allocations");
   console.log("  • Notices: 10");
+  console.log(`  • Timetable: ${ttCount} entries`);
+  console.log("  • Signatures: 3 (Principal, Director, Registrar)");
+  console.log("  • Settings: Designer + Backup + Teacher");
   console.log("\n✅ ERP is fully operational!\n");
 }
 

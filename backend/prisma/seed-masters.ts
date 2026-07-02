@@ -39,7 +39,7 @@ async function main() {
 
   // All other masters (no FK dependencies on each other)
   const masterModels = [
-    "schoolMaster", "branchMaster", "academicSessionMaster",
+    "schoolMaster", "branchMaster",
     "shiftMaster", "workingDayMaster", "holidayMaster", "houseMaster",
     "schoolTimingMaster", "streamMaster", "subjectGroupMaster",
     "mediumMaster", "boardMaster", "courseMaster",
@@ -102,12 +102,6 @@ async function main() {
       { tenantId, branchId: cityBranch.id, name: "Junior Campus", address: "Civil Lines, Bareilly", capacity: 800, facilities: ["Library", "Playground", "Smart Class"] },
     ]});
   }
-
-  await prisma.academicSessionMaster.createMany({ data: [
-    { tenantId, name: "2024-25", startDate: new Date("2024-04-01"), endDate: new Date("2025-03-31"), isCurrent: false },
-    { tenantId, name: "2025-26", startDate: new Date("2025-04-01"), endDate: new Date("2026-03-31"), isCurrent: true },
-    { tenantId, name: "2026-27", startDate: new Date("2026-04-01"), endDate: new Date("2027-03-31"), isCurrent: false },
-  ]});
 
   await prisma.shiftMaster.createMany({ data: [
     { tenantId, name: "Morning Shift", startTime: "07:30", endTime: "13:30" },

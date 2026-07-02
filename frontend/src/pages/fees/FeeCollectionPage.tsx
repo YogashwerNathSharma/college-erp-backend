@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FeeReceiptPrint } from "./FeeReceiptPrint";
+import { printDocument } from "../../utils/print";
 
 const API = `${API_BASE_URL}/api`;
 
@@ -403,15 +403,15 @@ const FeeCollectionPage: React.FC = () => {
 
   const handlePrintReceipt = async () => {
     if (!lastReceipt || !student) return;
-    let receiptFeeItems = lastReceipt._selectedFeeItems?.length > 0
+    const feeItems = (lastReceipt._selectedFeeItems?.length > 0
       ? lastReceipt._selectedFeeItems
-      : (lastReceipt.feeInfo?.feeItems || []);
-    receiptFeeItems = receiptFeeItems.map((item: any) => ({
+      : (lastReceipt.feeInfo?.feeItems || [])
+    ).map((item: any) => ({
       name: item.name || item.feeHead?.name || "Fee",
       amount: item.amount || 0,
-      code: item.code || item.feeHead?.code || "",
     })).filter((item: any) => item.name && item.amount > 0);
-    await FeeReceiptPrint({
+
+    printDocument("fee_receipt", {
       receiptNo: lastReceipt.receiptNo,
       paymentDate: lastReceipt.payment.paymentDate,
       studentName: student.name,
@@ -419,18 +419,14 @@ const FeeCollectionPage: React.FC = () => {
       fatherName: student.fatherName,
       className: student.class,
       section: student.section,
-      feeHead: lastReceipt.feeInfo.feeHead,
-      feeItems: receiptFeeItems,
-      installmentNo: lastReceipt.feeInfo.installmentNo,
+      feeHead: feeItems.map((f: any) => f.name).join(", ") || lastReceipt.feeInfo.feeHead || "Fee",
       amount: lastReceipt.payment.amount,
+      totalFee: lastReceipt.feeInfo?.totalAmount || lastReceipt.payment.amount,
       method: lastReceipt.payment.method,
-      reference: lastReceipt.payment.reference,
       rollNumber: student.rollNumber,
       balance: lastReceipt.remainingBalance ?? lastReceipt.feeInfo.balanceAmount,
-      totalPaidTillDate: lastReceipt.feeInfo.paidAmount || 0,
-      discountAmount: lastReceipt.payment.discountAmount || lastReceipt.feeInfo.discountAmount || 0,
-      feePeriod: lastReceipt.monthsCovered ? `${lastReceipt.monthsCovered.from || ''} to ${lastReceipt.monthsCovered.to || ''}` : undefined,
-      pendingFrom: lastReceipt.nextDueMonth || undefined,
+      totalPaidTillDate: lastReceipt.feeInfo.paidAmount || lastReceipt.payment.amount,
+      installmentNo: lastReceipt.feeInfo.installmentNo,
     });
   };
 

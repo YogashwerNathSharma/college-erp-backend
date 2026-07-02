@@ -106,21 +106,6 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         ],
       },
       {
-        key: 'academic-session-master',
-        label: 'Academic Session Master',
-        model: 'AcademicSessionMaster',
-        icon: 'Calendar',
-        description: 'Manage academic sessions',
-        requiredFields: ['name', 'startDate', 'endDate'],
-        searchFields: ['name'],
-        fields: [
-          { name: 'name', label: 'Session Name', type: 'text', required: true, placeholder: 'e.g., 2024-25' },
-          { name: 'startDate', label: 'Start Date', type: 'date', required: true },
-          { name: 'endDate', label: 'End Date', type: 'date', required: true },
-          { name: 'isCurrent', label: 'Is Current Session', type: 'boolean', defaultValue: false },
-        ],
-      },
-      {
         key: 'shift-master',
         label: 'Shift Master',
         model: 'ShiftMaster',

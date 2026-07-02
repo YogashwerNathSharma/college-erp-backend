@@ -22,7 +22,7 @@ import prisma from "../utils/prisma";
 export const checkLimit = (resource: "students" | "teachers" | "admins") => {
   return async (req: any, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.tenantId || req.user?.tenantId;
 
       // ═══ DEV MODE: Skip limit check in development ═══
       if (process.env.NODE_ENV !== "production") {

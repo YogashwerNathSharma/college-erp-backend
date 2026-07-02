@@ -138,7 +138,6 @@ rolePermissions         RolePermission[]
   schoolMasters  SchoolMaster[]
   branchMasters  BranchMaster[]
   campusMasters  CampusMaster[]
-  academicSessionMasters  AcademicSessionMaster[]
   shiftMasters  ShiftMaster[]
   workingDayMasters  WorkingDayMaster[]
   holidayMasters  HolidayMaster[]
@@ -307,6 +306,11 @@ rolePermissions         RolePermission[]
   // Reports (extended)
   examResults              ExamResult[]
 
+  // Exam Module (tenant scoped)
+  exams                    Exam[]
+  examSubjects             ExamSubject[]
+  marksEntries             MarksEntry[]
+
 
   // NEW Models
   staffMembers          Staff[]
@@ -325,6 +329,14 @@ rolePermissions         RolePermission[]
   characterCertificates  CharacterCertificate[]
   migrationCertificates  MigrationCertificate[]
   settings               Setting[]
+
+  // Orphan models — now properly related
+  signatures         Signature[]
+  gradeSettings      GradeSetting[]
+  resultSummaries    ResultSummary[]
+  backupSettings     BackupSettings?    // 1:1 per tenant (tenantId is @unique)
+  designerSettings   DesignerSettings[]
+  backups            Backup[]
 
 }
 
@@ -388,6 +400,13 @@ model AcademicYear {
 
   // Attendance
   attendances Attendance[]
+
+  // Exam Module
+  exams              Exam[]
+  examResults        ExamResult[]
+  examTermMasters    ExamTermMaster[]
+  hostelAllocations  HostelAllocation[]
+  studentHistories   StudentHistory[]
 
   // Soft Delete
   isDeleted Boolean   @default(false)
@@ -516,6 +535,7 @@ model Student {
   migrationCertificates  MigrationCertificate[]
   seatingArrangements    SeatingArrangement[]
   admitCards             AdmitCard[]
+  resultSummaries        ResultSummary[]
   @@unique([admissionNo, tenantId])
   @@index([srNo, tenantId])
   @@index([tenantId, status])
@@ -601,7 +621,8 @@ model StudentHistory {
   fromSectionId String?
   toSectionId   String?
 
-  academicYearId String?
+  academicYearId String?       @db.ObjectId
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
 
   performedBy String
 
@@ -1119,13 +1140,16 @@ model Exam {
   classId         String    @db.ObjectId
   sectionId       String?   @db.ObjectId
   academicYearId  String    @db.ObjectId
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
   tenantId        String    @db.ObjectId
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
   startDate       DateTime?
   endDate         DateTime?
   resultType      String    @default("BOTH")
   examSchedules          ExamSchedule[]
   admitCards             AdmitCard[]
   questionPapers         QuestionPaper[]
+  resultSummaries        ResultSummary[]
   isPublished     Boolean   @default(false)
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?
@@ -1139,6 +1163,7 @@ model ExamSubject {
   examId        String  @db.ObjectId
   subjectId     String  @db.ObjectId
   tenantId      String  @db.ObjectId
+  tenant        Tenant  @relation(fields: [tenantId], references: [id])
   maxMarks      Int
   passingMarks  Int
   isDeleted     Boolean   @default(false)
@@ -1153,6 +1178,7 @@ model MarksEntry {
   studentId       String   @db.ObjectId
   subjectId       String   @db.ObjectId
   tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
   examSubjectId   String?  @db.ObjectId
   examSubject     ExamSubject? @relation(fields: [examSubjectId], references: [id])
   marksObtained   Float
@@ -1167,6 +1193,8 @@ model MarksEntry {
 model GradeSetting {
   id          String  @id @default(auto()) @map("_id") @db.ObjectId
   tenantId    String  @db.ObjectId
+  tenant      Tenant  @relation(fields: [tenantId], references: [id])
+
   grade       String
   minPercent  Float
   maxPercent  Float
@@ -1174,14 +1202,20 @@ model GradeSetting {
   remarks     String?
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
+
+  @@index([tenantId])
 }
 
 // ─────────────── NEW — Result Summary ───────────────
 model ResultSummary {
   id              String  @id @default(auto()) @map("_id") @db.ObjectId
   examId          String  @db.ObjectId
+  exam            Exam    @relation(fields: [examId], references: [id])
   studentId       String  @db.ObjectId
+  student         Student @relation(fields: [studentId], references: [id])
   tenantId        String  @db.ObjectId
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+
   totalMarks      Float
   totalMaxMarks   Float
   percentage      Float
@@ -1195,6 +1229,10 @@ model ResultSummary {
   isDeleted       Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([examId])
+  @@index([studentId])
 }
 
 model ExamSchedule {
@@ -1202,6 +1240,7 @@ model ExamSchedule {
   examId    String   @db.ObjectId
   subjectId String   @db.ObjectId
   tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   examDate  DateTime
   startTime String
   endTime   String
@@ -1213,7 +1252,6 @@ model ExamSchedule {
 
   exam     Exam    @relation(fields: [examId], references: [id])
   subject  Subject @relation(fields: [subjectId], references: [id])
-  tenant   Tenant  @relation(fields: [tenantId], references: [id])
   room     Room    @relation(fields: [roomId], references: [id])
 
   seatingArrangements    SeatingArrangement[]
@@ -2223,6 +2261,7 @@ model TransportSetting {
 model Signature {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
   title       String   // e.g. "Principal", "Director", "Manager"
   personName  String   // e.g. "Dr. Rajesh Kumar"
   designation String   // e.g. "Principal"
@@ -2241,6 +2280,7 @@ model Signature {
 model Backup {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   filename  String
   size      Int
   type      String   // MANUAL, DAILY, WEEKLY, MONTHLY, YEARLY
@@ -2256,6 +2296,7 @@ model Backup {
 model BackupSettings {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   tenantId       String   @unique @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
   dailyEnabled   Boolean  @default(false)
   weeklyEnabled  Boolean  @default(false)
   monthlyEnabled Boolean  @default(false)
@@ -2274,6 +2315,7 @@ model BackupSettings {
 model DesignerSettings {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
   type      String   // certificate, report, report-card, id-card
   settings  Json     // Stores all design settings as JSON
   createdAt DateTime @default(now())
@@ -2408,6 +2450,7 @@ model HostelAllocation {
   hostelId       String                 @db.ObjectId
   roomId         String                 @db.ObjectId
   academicYearId String                 @db.ObjectId
+  academicYear   AcademicYear           @relation(fields: [academicYearId], references: [id])
   checkInDate    DateTime
   checkOutDate   DateTime?
   status         HostelAllocationStatus @default(ACTIVE)
@@ -3014,23 +3057,6 @@ model CampusMaster {
 
   @@index([tenantId])
   @@index([branchId])
-}
-
-model AcademicSessionMaster {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  tenantId  String   @db.ObjectId
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  isCurrent Boolean  @default(false)
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId])
 }
 
 model ShiftMaster {
@@ -3726,6 +3752,7 @@ model ExamTermMaster {
   startDate      DateTime
   endDate        DateTime
   academicYearId String   @db.ObjectId
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -6264,7 +6291,8 @@ model ExamResult {
   grade          String?
   remarks        String?
   academicYearId String?  @db.ObjectId
-  totalMarks     Float?
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

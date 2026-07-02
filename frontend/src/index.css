@@ -89,6 +89,15 @@ html.dark table, html.dark th, html.dark td {
   background-color: #ffffff !important;
   color: #000000;
 }
+/* Headings inside the card (e.g. the school name <h1>) otherwise pick up
+   the global `h1 { color: var(--text-h) }` rule, which is white in dark
+   mode and disappears on the white card. Force them dark. */
+#report-card-print h1, #report-card-print h2, #report-card-print h3,
+#report-card-print h4, #report-card-print h5, #report-card-print h6,
+#print-area h1, #print-area h2, #print-area h3,
+#print-area h4, #print-area h5, #print-area h6 {
+  color: #000000 !important;
+}
 /* Neutralize the global html.dark text/background overrides for any
    Tailwind utility classes used INSIDE the card, without touching the
    inline green/red status colors. */

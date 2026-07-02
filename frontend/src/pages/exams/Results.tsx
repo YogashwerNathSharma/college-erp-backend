@@ -545,7 +545,7 @@ const fetchResults = async () => {
                             const url = `/print/consolidated/${result.studentId}?academicYearId=${(exam as any)?.academicYearId || ""}&classId=${(exam as any)?.classId || ""}`;
                             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
                             if (isMobile) {
-                              window.location.href = url;
+                              navigate(url);
                             } else {
                               window.open(url, '_blank');
                             }

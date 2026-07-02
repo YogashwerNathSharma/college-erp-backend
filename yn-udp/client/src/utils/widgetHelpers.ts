@@ -608,16 +608,23 @@ export function replaceImagePlaceholder(
     fabric.Image.fromURL(
       imageUrl,
       (img: any) => {
-        // Scale image to fit placeholder dimensions
+        // Scale image to FILL placeholder dimensions (cover entire box)
         const scaleX = config.width / (img.width || config.width);
         const scaleY = config.height / (img.height || config.height);
-        const scale = Math.min(scaleX, scaleY);
+        const scale = Math.max(scaleX, scaleY);
 
         img.set({
           left,
           top,
           scaleX: scale,
           scaleY: scale,
+          // Clip to box dimensions so image doesn't overflow
+          clipPath: new fabric.Rect({
+            width: config.width / scale,
+            height: config.height / scale,
+            originX: "center",
+            originY: "center",
+          }),
           data: obj.data,
         });
 

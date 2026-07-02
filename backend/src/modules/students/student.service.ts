@@ -100,8 +100,8 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
     // 3. Log to StudentHistory
     await tx.studentHistory.create({
       data: {
-        student: { connect: { id: student.id } },
-        tenant: { connect: { id: tenantId } },
+        studentId: student.id,
+        tenantId,
         action: "ADMISSION",
         details: JSON.stringify({
           admissionNo: finalAdmissionNo,

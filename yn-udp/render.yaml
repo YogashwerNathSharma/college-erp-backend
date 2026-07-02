@@ -14,5 +14,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       - key: CORS_ORIGIN
         value: "*"

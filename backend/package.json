@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@google/generative-ai": "^0.21.0",
     "archiver": "^7.0.0",
     "axios": "^1.18.1",
     "bcrypt": "^6.0.0",

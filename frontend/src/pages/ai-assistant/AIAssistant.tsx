@@ -120,23 +120,23 @@ export default function AIAssistant() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-            <Bot size={22} className="text-white" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <Bot size={18} className="text-white sm:w-[22px] sm:h-[22px]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Assistant</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Intelligent insights & natural language queries</p>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">AI Assistant</h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">Intelligent insights & natural language queries</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
-        <div className="flex border-b border-gray-200 dark:border-slate-700 px-4">
+        <div className="flex border-b border-gray-200 dark:border-slate-700 px-2 sm:px-4 overflow-x-auto">
           {[
             { key: "chat", label: "Chat", icon: MessageSquare },
             { key: "insights", label: "Insights", icon: Lightbulb },
@@ -145,7 +145,7 @@ export default function AIAssistant() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key
                   ? "border-indigo-600 text-indigo-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
@@ -165,31 +165,31 @@ export default function AIAssistant() {
         <div className="p-0">
           {/* Chat Tab */}
           {activeTab === "chat" && (
-            <div className="flex flex-col h-[600px]">
+            <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[600px]">
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
                 {messages.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 flex items-center justify-center mb-4">
-                      <Sparkles size={32} className="text-indigo-500" />
+                  <div className="text-center py-6 sm:py-12">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 flex items-center justify-center mb-3 sm:mb-4">
+                      <Sparkles size={24} className="text-indigo-500 sm:w-8 sm:h-8" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-2">
                       Ask me anything about your school
                     </h3>
-                    <p className="text-sm text-gray-500 mb-6">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 px-2">
                       I can answer questions about students, fees, attendance, exams, and more
                     </p>
                     {/* Quick Actions */}
-                    <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3 max-w-md mx-auto px-2">
                       {quickActions.map((action) => (
                         <button
                           key={action.label}
                           onClick={() => {
                             setInput(action.label);
                           }}
-                          className="flex items-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:border-indigo-200 transition-colors"
+                          className="flex items-center gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-lg border border-gray-200 dark:border-slate-600 text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 hover:border-indigo-200 transition-colors"
                         >
-                          <action.icon size={16} className="text-indigo-500" />
+                          <action.icon size={14} className="text-indigo-500 flex-shrink-0" />
                           {action.label}
                         </button>
                       ))}
@@ -200,13 +200,13 @@ export default function AIAssistant() {
                 {messages.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 ${
                         msg.role === "user"
                           ? "bg-indigo-600 text-white rounded-br-sm"
                           : "bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white rounded-bl-sm"
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content.replace(/\*\*(.*?)\*\*/g, "$1")}</p>
+                      <p className="text-xs sm:text-sm whitespace-pre-wrap">{msg.content.replace(/\*\*(.*?)\*\*/g, "$1")}</p>
                     </div>
                   </div>
                 ))}
@@ -226,20 +226,20 @@ export default function AIAssistant() {
               </div>
 
               {/* Input */}
-              <div className="border-t border-gray-200 dark:border-slate-700 p-4">
-                <div className="flex gap-2">
+              <div className="border-t border-gray-200 dark:border-slate-700 p-2.5 sm:p-4">
+                <div className="flex gap-1.5 sm:gap-2">
                   <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
                     placeholder="Ask about students, fees, attendance..."
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                   <button
                     onClick={handleSend}
                     disabled={loading || !input.trim()}
-                    className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    className="px-3 sm:px-4 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                   >
                     <Send size={18} />
                   </button>

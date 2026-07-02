@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const prisma = new PrismaClient();
 
@@ -398,7 +399,24 @@ export const chat = async (req: Request, res: Response) => {
       }
       actionUrl = "/exams";
     } else {
-      response = "I can help you with:\n- Student/Teacher counts\n- Fee status and defaulters\n- Attendance reports\n- Upcoming exams\n- Performance analysis\n\nTry asking: *\"How many students are there?\"* or *\"What's the pending fee?\"*";
+      // Use Gemini for general questions
+      const GEMINI_KEY = process.env.GEMINI_API_KEY;
+      if (GEMINI_KEY) {
+        try {
+          const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result = await model.generateContent([
+            { text: "You are yn AI, a helpful school ERP assistant. Answer concisely in the same language the user asked (Hindi/English/Hinglish). Keep responses short and helpful. If the question is about school data, say you can help with students, fees, attendance, exams queries." },
+            { text: message },
+          ]);
+          response = result.response.text();
+        } catch (aiErr: any) {
+          console.error("Gemini error:", aiErr.message);
+          response = "I can help you with:\n- Student/Teacher counts\n- Fee status and defaulters\n- Attendance reports\n- Upcoming exams\n- Performance analysis\n\nTry asking: *\"How many students are there?\"* or *\"What's the pending fee?\"*";
+        }
+      } else {
+        response = "I can help you with:\n- Student/Teacher counts\n- Fee status and defaulters\n- Attendance reports\n- Upcoming exams\n- Performance analysis\n\nTry asking: *\"How many students are there?\"* or *\"What's the pending fee?\"*";
+      }
     }
 
     // Save conversation

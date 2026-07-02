@@ -524,7 +524,7 @@ const fetchResults = async () => {
                           const url = `/print/report-card/${id}/${result.studentId}`;
                           const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
                           if (isMobile) {
-                            window.location.href = url;
+                            navigate(url);
                           } else {
                             window.open(url, '_blank');
                           }

@@ -76,6 +76,45 @@ html.dark table, html.dark th, html.dark td {
 }
 
 /* ================================================================
+   REPORT CARDS ARE ALWAYS A LIGHT (PRINTABLE) DOCUMENT
+   Even in dark mode the card is white paper, so its text must stay
+   dark. Without this the inline-styled text inherits dark-mode's
+   light body color (#e2e8f0) and becomes invisible on the white card.
+   We only set the CONTAINER color so un-colored text inherits black,
+   while inline colors (e.g. green PASS / red FAIL) are preserved.
+   ================================================================ */
+#report-card-print,
+#print-area {
+  color-scheme: light;
+  background-color: #ffffff !important;
+  color: #000000;
+}
+/* Neutralize the global html.dark text/background overrides for any
+   Tailwind utility classes used INSIDE the card, without touching the
+   inline green/red status colors. */
+html.dark #report-card-print,
+html.dark #print-area {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+html.dark #report-card-print .text-gray-900,
+html.dark #print-area .text-gray-900,
+html.dark #report-card-print .text-gray-800,
+html.dark #print-area .text-gray-800,
+html.dark #report-card-print .text-gray-700,
+html.dark #print-area .text-gray-700,
+html.dark #report-card-print .text-gray-600,
+html.dark #print-area .text-gray-600,
+html.dark #report-card-print .text-gray-500,
+html.dark #print-area .text-gray-500 {
+  color: #1f2937 !important; /* gray-800 */
+}
+html.dark #report-card-print .bg-white,
+html.dark #print-area .bg-white {
+  background-color: #ffffff !important;
+}
+
+/* ================================================================
    ROOT VARIABLES & DESIGN TOKENS
    ================================================================ */
 :root {

@@ -518,41 +518,44 @@ const fetchResults = async () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-{/* Report Card — print route (no sidebar) */}
-                      <button
-                        onClick={() => {
-                          const url = `/print/report-card/${id}/${result.studentId}`;
-                          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
-                          if (isMobile) {
-                            navigate(url);
-                          } else {
-                            window.open(url, '_blank');
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-lg hover:bg-primary-100 transition-colors"
-                        title="View Report Card"
-                      >
-                        <FileText className="w-3.5 h-3.5 mr-1" />
-                        Report Card
-                      </button>
+                       <div className="flex flex-wrap items-center justify-center gap-2">
+                        {/* Report Card — print route (no sidebar) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = `/print/report-card/${id}/${result.studentId}`;
+                            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                            if (isMobile) {
+                              navigate(url);
+                            } else {
+                              window.open(url, '_blank');
+                            }
+                          }}
+                          className="inline-flex items-center whitespace-nowrap px-3 py-1.5 bg-primary-50 text-primary-700 text-xs font-medium rounded-lg hover:bg-primary-100 transition-colors"
+                          title="View Report Card"
+                        >
+                          <FileText className="w-3.5 h-3.5 mr-1" />
+                          Report Card
+                        </button>
 
-                      {/* Consolidated — print route (no sidebar) */}
-                      <button
-                        onClick={() => {
-                          const url = `/print/consolidated/${result.studentId}?academicYearId=${(exam as any)?.academicYearId || ""}&classId=${(exam as any)?.classId || ""}`;
-                          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
-                          if (isMobile) {
-                            window.location.href = url;
-                          } else {
-                            window.open(url, '_blank');
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg hover:bg-purple-100 transition-colors ml-2"
-                        title="Consolidated Report"
-                      >
-                        📊 Consolidated
-                      </button>
-                        
+                        {/* Consolidated — print route (no sidebar) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = `/print/consolidated/${result.studentId}?academicYearId=${(exam as any)?.academicYearId || ""}&classId=${(exam as any)?.classId || ""}`;
+                            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+                            if (isMobile) {
+                              window.location.href = url;
+                            } else {
+                              window.open(url, '_blank');
+                            }
+                          }}
+                          className="inline-flex items-center whitespace-nowrap px-3 py-1.5 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg hover:bg-purple-100 transition-colors"
+                          title="Consolidated Report"
+                        >
+                          📊 Consolidated
+                        </button>
+                       </div>
                       </td>
                     </tr>
                   ))}

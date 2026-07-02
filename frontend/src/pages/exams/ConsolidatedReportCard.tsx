@@ -6,7 +6,7 @@ import { jsPDF } from "jspdf";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL as CENTRAL_API_URL } from "../../config/api";
-import PrintSignature from "../../components/PrintSignature";
+import ScaleToFit from "../../components/ScaleToFit";
 
 // ============================================================
 // Types
@@ -233,21 +233,22 @@ const ConsolidatedReportCard: React.FC = () => {
         </button>
       </div>
 
-      {/* Report Card Container */}
-      <div
-        ref={printRef}
-        id="print-area"
-        style={{
-          fontFamily: "'Times New Roman', Times, serif",
-          maxWidth: "850px",
-          margin: "30px auto",
-          backgroundColor: "#fff",
-          border: "3px solid #222",
-          padding: "30px 40px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      {/* Report Card Container (top padding clears the fixed action buttons) */}
+      <div style={{ padding: "72px 0 30px" }}>
+       <ScaleToFit contentWidth={850}>
+        <div
+          ref={printRef}
+          id="print-area"
+          style={{
+            fontFamily: "'Times New Roman', Times, serif",
+            width: "850px",
+            backgroundColor: "#fff",
+            border: "3px solid #222",
+            padding: "30px 40px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
         {/* Watermark */}
         {logoUrl && (
           <div
@@ -576,33 +577,34 @@ const ConsolidatedReportCard: React.FC = () => {
           </div>
 
           {/* ====== SIGNATURES ====== */}
-          <div style={{ marginTop: "50px", display: "flex", justifyContent: "space-between", padding: "0 20px" }}>
+          <div style={{ marginTop: "50px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0 20px" }}>
+            {/* Left: Class Teacher */}
             <div style={{ textAlign: "center" }}>
               <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
                 <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Class Teacher</p>
               </div>
             </div>
+            {/* Right: Principal */}
             <div style={{ textAlign: "center" }}>
-              <PrintSignature inline printOnly={false} />
+              <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
+                <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Principal</p>
+              </div>
             </div>
           </div>
 
         </div>
+        </div>
+       </ScaleToFit>
       </div>
 
       {/* Print Styles */}
       <style>{`
-        @media screen and (max-width: 767px) {
-          #print-area h1 {
-            font-size: 18px !important;
-          }
-          #print-area table {
-            font-size: 9px !important;
-          }
-        }
         @media print {
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
+          /* Neutralize the on-screen scale-to-fit transform when printing */
+          .scale-to-fit-box { width: auto !important; height: auto !important; }
+          .scale-to-fit-content { width: 100% !important; transform: none !important; }
           #print-area {
             position: absolute !important;
             left: 0 !important; top: 0 !important;

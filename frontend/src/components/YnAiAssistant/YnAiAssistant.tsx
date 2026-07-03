@@ -216,7 +216,7 @@ Hindi, English, Hinglish — sab chalega! 🎤⌨️`,
     return (
       <button
         onClick={() => setPanelState("open")}
-        className="yn-ai-fab fixed bottom-6 right-6 z-[9999] bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all duration-300"
+        className="yn-ai-fab fixed bottom-4 right-4 z-[9999] bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-white w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all duration-300"
         title="yn AI Assistant"
       >
         <YnAiIcon size={36} />
@@ -228,7 +228,7 @@ Hindi, English, Hinglish — sab chalega! 🎤⌨️`,
   // MINIMIZED — Small bar at bottom right
   if (panelState === "minimized") {
     return (
-      <div className="fixed bottom-6 right-6 z-[9999] w-[300px] bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 rounded-xl shadow-2xl flex items-center px-3 py-2 gap-2 animate-in cursor-pointer"
+      <div className="fixed bottom-4 right-4 z-[9999] w-[calc(100vw-32px)] max-w-[300px] bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 rounded-xl shadow-2xl flex items-center px-3 py-2 gap-2 animate-in cursor-pointer"
         onClick={() => setPanelState("open")}
       >
         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -263,10 +263,10 @@ Hindi, English, Hinglish — sab chalega! 🎤⌨️`,
   // OPEN or EXPANDED — Full chat panel
   const panelClasses = panelState === "expanded"
     ? "fixed inset-4 z-[9999]"
-    : "fixed bottom-6 right-6 z-[9999] w-[420px] h-[600px]";
+    : "fixed bottom-0 right-0 z-[9999] w-full h-full sm:bottom-6 sm:right-6 sm:w-[420px] sm:h-[600px] sm:rounded-2xl";
 
   return (
-    <div className={`${panelClasses} bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-indigo-100 animate-in`}>
+    <div className={`${panelClasses} bg-white shadow-2xl flex flex-col overflow-hidden border border-indigo-100 animate-in sm:rounded-2xl`}>
       {/* ══ HEADER ══ */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">

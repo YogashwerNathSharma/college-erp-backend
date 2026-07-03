@@ -23,18 +23,25 @@ export const createAdmission = async (body: any, user: any) => {
     ////////////////////////////
     // 🔒 1. DUPLICATE CHECK
     ////////////////////////////
-    const existing = await tx.student.findFirst({
-      where: {
-        tenantId,
-        OR: [
-          { email: student.email },
-          { admissionNo: student.admissionNo },
-        ],
-      },
-    });
+    const orConditions: any[] = [];
+    if (student.email) {
+      orConditions.push({ email: student.email });
+    }
+    if (student.admissionNo) {
+      orConditions.push({ admissionNo: student.admissionNo });
+    }
 
-    if (existing) {
-      throw new Error("Student already exists");
+    if (orConditions.length > 0) {
+      const existing = await tx.student.findFirst({
+        where: {
+          tenantId,
+          OR: orConditions,
+        },
+      });
+
+      if (existing) {
+        throw new Error("Student already exists with same email or admission number");
+      }
     }
 
     ////////////////////////////

@@ -8,6 +8,8 @@ import {
   dismissInsight,
   getConversations,
 } from "./ai.controller";
+import { generateContent } from "./ai-generate.controller";
+import { processAiCommand, aiSearchStudents, aiSearchFees, aiSearchAttendance, aiSearchReportCard } from "./ai-command.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 
@@ -24,6 +26,16 @@ router.post("/predict/defaulters", predictDefaulters);
 // Chat
 router.post("/chat", chat);
 router.get("/conversations", getConversations);
+
+// AI Command processing (used by yn AI frontend assistant)
+router.post("/process-command", processAiCommand);
+router.post("/students/search", aiSearchStudents);
+router.post("/fees/receipts/search", aiSearchFees);
+router.post("/attendance/search", aiSearchAttendance);
+router.post("/exams/report-card/search", aiSearchReportCard);
+
+// Content Generation
+router.post("/generate", generateContent);
 
 // Insights
 router.get("/insights", getInsights);

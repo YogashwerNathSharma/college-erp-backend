@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +10,9 @@ export default function NewAdmission() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -17,6 +20,7 @@ export default function NewAdmission() {
     dateOfBirth: "",
     classId: "",
     sectionId: "",
+    academicYearId: "",
     fatherName: "",
     fatherPhone: "",
     motherName: "",
@@ -29,19 +33,80 @@ export default function NewAdmission() {
     previousClass: "",
   });
 
+  // Fetch classes, sections, and academic years
+  useEffect(() => {
+    axios.get("/api/classes").then((res) => {
+      setClasses(res.data?.data || res.data || []);
+    }).catch(() => {});
+
+    axios.get("/api/sections").then((res) => {
+      setSections(res.data?.data || res.data || []);
+    }).catch(() => {});
+
+    axios.get("/api/academic-years").then((res) => {
+      const years = res.data?.data || res.data || [];
+      setAcademicYears(years);
+      // Auto-select active academic year
+      const active = years.find((y: any) => y.isCurrent || y.isActive);
+      if (active) {
+        setForm((prev) => ({ ...prev, academicYearId: active.id }));
+      }
+    }).catch(() => {});
+  }, []);
+
   const updateForm = (field: string, value: string) => {
     setForm({ ...form, [field]: value });
   };
 
   const handleSubmit = async () => {
+    // Validation
+    if (!form.firstName || !form.lastName || !form.dateOfBirth || !form.fatherName || !form.fatherPhone) {
+      alert("Please fill all required fields (Name, DOB, Father's Name, Father's Phone)");
+      return;
+    }
+    if (!form.classId || !form.sectionId) {
+      alert("Please select Class and Section");
+      return;
+    }
+    if (!form.academicYearId) {
+      alert("Please select Academic Year");
+      return;
+    }
+
     setSaving(true);
     try {
-      await axios.post("/api/admissions", form);
+      // Format data as backend expects
+      const payload = {
+        student: {
+          firstName: form.firstName,
+          lastName: form.lastName,
+          gender: form.gender,
+          dob: form.dateOfBirth,
+          fatherName: form.fatherName,
+          fatherPhone: form.fatherPhone,
+          motherName: form.motherName || undefined,
+          email: form.email || undefined,
+          address: form.address || undefined,
+          city: form.city || undefined,
+          state: form.state || undefined,
+          pincode: form.pincode || undefined,
+          previousSchool: form.previousSchool || undefined,
+          previousClass: form.previousClass || undefined,
+        },
+        classId: form.classId,
+        sectionId: form.sectionId,
+        academicYearId: form.academicYearId,
+        feeAmount: 0,
+        feeStructureId: undefined,
+      };
+
+      await axios.post("/api/admission", payload);
       alert("Admission submitted successfully!");
       navigate("/admissions");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Admission error:", error);
-      alert("Failed to submit admission");
+      const msg = error?.response?.data?.message || "Failed to submit admission";
+      alert(msg);
     } finally {
       setSaving(false);
     }
@@ -76,7 +141,7 @@ export default function NewAdmission() {
       <div className="bg-white rounded-xl shadow-sm border p-6 max-w-3xl">
         {step === 1 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                 <input type="text" value={form.firstName} onChange={(e) => updateForm("firstName", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" required />
@@ -119,17 +184,34 @@ export default function NewAdmission() {
 
         {step === 2 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Class *</label>
-                <select value={form.classId} onChange={(e) => updateForm("classId", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                <select value={form.classId} onChange={(e) => updateForm("classId", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
                   <option value="">Select Class</option>
+                  {classes.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
-                <select value={form.sectionId} onChange={(e) => updateForm("sectionId", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                <select value={form.sectionId} onChange={(e) => updateForm("sectionId", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
                   <option value="">Select Section</option>
+                  {sections
+                    .filter((s: any) => !form.classId || s.classId === form.classId)
+                    .map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year *</label>
+                <select value={form.academicYearId} onChange={(e) => updateForm("academicYearId", e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                  <option value="">Select Year</option>
+                  {academicYears.map((y: any) => (
+                    <option key={y.id} value={y.id}>{y.name} {y.isCurrent ? "(Current)" : ""}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -138,8 +220,8 @@ export default function NewAdmission() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="col-span-1 sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <textarea value={form.address} onChange={(e) => updateForm("address", e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none" />
               </div>

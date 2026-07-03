@@ -112,17 +112,6 @@
   background: #818cf8;
 }
 
-/* Responsive — mobile */
-@media (max-width: 480px) {
-  .fixed.bottom-6.right-6.w-\[420px\].h-\[620px\] {
-    width: calc(100vw - 16px) !important;
-    height: calc(100vh - 80px) !important;
-    right: 8px !important;
-    bottom: 8px !important;
-    border-radius: 16px !important;
-  }
-}
-
 /* Quick command buttons hover */
 .flex-wrap button {
   transition: all 0.15s ease;

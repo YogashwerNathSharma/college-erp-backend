@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
@@ -388,7 +389,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const [devProfile, setDevProfile] = useState<any>(null);
   const location = useLocation();
 
-  // ⚡ State to handle sliding animation panel stack on mobile layouts
   const [activeSubMenu, setActiveSubMenu] = useState<MenuItem | null>(null);
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
@@ -413,15 +413,17 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, [isSuperAdmin]);
 
-  // Reset slider context state whenever mobile viewport layout closes fully
+  // Reset slider whenever sidebar is manually closed via backdrop/button
   useEffect(() => {
     if (!sidebarOpen) {
       setActiveSubMenu(null);
     }
   }, [sidebarOpen]);
 
+  // Aggressive force close for mobile links
   const handleMobileNavClick = useCallback(() => {
-    onClose?.();
+    setActiveSubMenu(null); // Force slider to reset
+    if (onClose) onClose(); // Force the entire sidebar to close
   }, [onClose]);
 
   const handleLogout = () => {
@@ -551,7 +553,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Fully Restructured Slider Module Wrapper) */}
+      {/* MOBILE SIDEBAR */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {sidebarOpen && (
         <div
@@ -649,7 +651,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 sidebar-scroll">
               {activeSubMenu?.children?.map((child, ci) => (
                 <NavItem 
                   key={ci} 
@@ -658,10 +660,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                   label={child.name} 
                   collapsed={false} 
                   isChild={true}
-                  onItemClick={() => {
-                    setActiveSubMenu(null);
-                    handleMobileNavClick();
-                  }} 
+                  onItemClick={handleMobileNavClick} // Immediately closes everything
                 />
               ))}
             </div>
@@ -818,10 +817,17 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, isChild = false, 
     );
   }
 
+  // Intercept click to ensure event fires properly
+  const handleClick = (e: React.MouseEvent) => {
+    if (onItemClick) {
+      onItemClick();
+    }
+  };
+
   return (
     <NavLink
       to={to}
-      onClick={onItemClick}
+      onClick={handleClick}
       className={({ isActive }) =>
         `group flex items-center gap-3 rounded-lg transition-all duration-200 ${
           compact ? "px-3 py-2" : "px-3 py-2.5"

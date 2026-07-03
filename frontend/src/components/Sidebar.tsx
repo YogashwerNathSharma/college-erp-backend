@@ -502,55 +502,68 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Fixed Width Sliding Panels with Back Button) */}
+      {/* MOBILE SIDEBAR — Premium Modern Glassmorphism */}
       {/* ════════════════════════════════════════════════════════════════ */}
+
+      {/* 🔲 Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/60 z-[998] transition-opacity duration-300"
+          onClick={() => onClose?.()}
+        />
+      )}
+
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 w-[260px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-y-0 left-0 w-[78vw] max-w-[300px] flex flex-col z-[999] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+          background: "linear-gradient(165deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%)",
         }}
       >
-        {/* Strict Absolute Wrapper to prevent width expansion */}
-        <div className="relative flex-1 w-full h-full overflow-hidden flex flex-col">
+        {/* ═══ Main Container ═══ */}
+        <div className="relative flex-1 w-full h-full overflow-hidden flex flex-col border-r border-white/[0.08]">
           
-          {/* Main Top Header - Shared across slides */}
-          <div className="relative flex-shrink-0 border-b border-white/10 z-20 bg-transparent">
-            <div className="relative z-10 flex items-center justify-between p-4">
-              <div className="flex items-center gap-3 min-w-0">
+          {/* ═══ Header — School Branding ═══ */}
+          <div className="relative flex-shrink-0 z-20">
+            {/* Gradient glow behind header */}
+            <div className="absolute inset-0 bg-gradient-to-b from-indigo-600/10 to-transparent pointer-events-none" />
+            <div className="relative flex items-center justify-between px-4 py-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 {sidebarLogo ? (
-                  <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
+                  <img src={sidebarLogo} alt="Logo" className="w-10 h-10 object-contain rounded-xl flex-shrink-0 ring-2 ring-indigo-400/30 shadow-lg shadow-indigo-500/20" crossOrigin="anonymous" onError={(e: any) => { e.target.style.display = "none"; }} />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0 ring-2 ring-indigo-400/30 shadow-lg shadow-indigo-500/20">
                     {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
-                  <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
+                  <h1 className="text-[13px] font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
+                  <p className="text-[10px] text-indigo-300/70 font-medium mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Smart ERP"}</p>
                 </div>
               </div>
-              <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white bg-white/5" aria-label="Close sidebar">
-                <X size={16} />
+              <button onClick={() => onClose?.()} className="p-2 rounded-xl text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all active:scale-90" aria-label="Close sidebar">
+                <X size={18} />
               </button>
             </div>
+            {/* Bottom border glow */}
+            <div className="h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
           </div>
 
-          {/* Slider Container */}
+          {/* ═══ Sliding Panels Container ═══ */}
           <div className="relative flex-1 w-full overflow-hidden">
             
-            {/* PANEL 1: Root Menu */}
+            {/* ─── Panel 1: Main Menu ─── */}
             <div 
               className={`absolute inset-0 w-full h-full flex flex-col transition-transform duration-300 ${
                 activeSubMenu ? "-translate-x-full" : "translate-x-0"
               }`}
             >
-              <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+              <div className="flex-1 overflow-y-auto px-3 py-3 sidebar-scroll">
                 {menu.map((group, gi) => (
                   <div key={gi} className="mb-1">
                     {group.section && (
-                      <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
+                      <p className="text-[9px] text-indigo-300/50 mt-5 mb-2 px-2 uppercase tracking-[1.5px] font-bold">
                         {group.section}
                       </p>
                     )}
@@ -571,34 +584,40 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                 ))}
               </div>
 
-              <div className="border-t border-white/10 p-3 flex-shrink-0">
-                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
+              {/* Logout Button */}
+              <div className="flex-shrink-0 p-3">
+                <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent mb-3" />
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all active:scale-[0.97]">
                   <LogOut size={18} />
-                  <span className="text-[14px] font-medium">Logout</span>
+                  <span className="text-[13px] font-medium">Logout</span>
                 </button>
               </div>
             </div>
 
-            {/* PANEL 2: Context Slider (Shows when an item like 'All Masters' is clicked) */}
+            {/* ─── Panel 2: Sub-Menu Slider ─── */}
             <div 
-              className={`absolute inset-0 w-full h-full flex flex-col bg-[#131d33] transition-transform duration-300 ${
+              className={`absolute inset-0 w-full h-full flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 activeSubMenu ? "translate-x-0" : "translate-x-full"
               }`}
+              style={{ background: "linear-gradient(165deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%)" }}
             >
-              {/* STICKY BACK BUTTON HEADER */}
-              <div className="flex items-center gap-3 p-3 border-b border-white/10 bg-[#152038] shadow-md flex-shrink-0">
+              {/* Sub-menu Header */}
+              <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
                 <button 
                   onClick={() => setActiveSubMenu(null)}
-                  className="flex items-center justify-center p-2 rounded-lg bg-white/5 text-amber-400 hover:bg-white/10 transition-colors border border-white/10"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.06] text-indigo-300 hover:bg-white/10 transition-all active:scale-90 border border-white/[0.08]"
                 >
-                  <ChevronLeft size={18} />
-                  <span className="text-xs font-bold pl-1 pr-1">Back</span>
+                  <ChevronLeft size={16} />
                 </button>
-                <h3 className="text-[14px] font-medium text-white truncate">{activeSubMenu?.name}</h3>
+                <div className="min-w-0">
+                  <h3 className="text-[13px] font-semibold text-white truncate">{activeSubMenu?.name}</h3>
+                  <p className="text-[9px] text-indigo-300/50 font-medium">{activeSubMenu?.children?.length || 0} items</p>
+                </div>
               </div>
+              <div className="h-[1px] mx-4 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
 
               {/* Sub-menu Items */}
-              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1 sidebar-scroll">
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 sidebar-scroll">
                 {activeSubMenu?.children?.map((child, ci) => (
                   <NavItem 
                     key={ci} 
@@ -649,15 +668,15 @@ const ParentNavItem = ({
     return (
       <button
         onClick={onMobileTriggerSub}
-        className={`w-full flex items-center justify-between px-3 py-2.5 mb-0.5 rounded-lg transition-all duration-200 ${
-          isChildActive ? "bg-indigo-600/20 text-white font-medium" : "text-slate-300 hover:bg-white/5"
+        className={`w-full flex items-center justify-between px-3 py-2.5 mb-0.5 rounded-xl transition-all duration-200 active:scale-[0.97] ${
+          isChildActive ? "bg-indigo-500/15 text-white font-medium ring-1 ring-indigo-500/20" : "text-slate-300 hover:bg-white/[0.04]"
         }`}
       >
         <div className="flex items-center gap-3">
-          <span className={isChildActive ? "text-indigo-400" : ""}>{item.icon}</span>
-          <span className="text-[14px] font-medium">{item.name}</span>
+          <span className={`${isChildActive ? "text-indigo-400" : "text-slate-400"}`}>{item.icon}</span>
+          <span className="text-[13px] font-medium">{item.name}</span>
         </div>
-        <ChevronRight size={14} className="text-slate-500" />
+        <ChevronRight size={14} className={`${isChildActive ? "text-indigo-400" : "text-slate-600"}`} />
       </button>
     );
   }
@@ -775,22 +794,22 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, isChild = false, 
       to={to}
       onClick={handleClick}
       className={({ isActive }) =>
-        `group flex items-center gap-3 rounded-lg transition-all duration-200 ${
+        `group flex items-center gap-3 rounded-xl transition-all duration-200 active:scale-[0.97] ${
           compact ? "px-3 py-2" : "px-3 py-2.5"
         } ${
           isActive
             ? isChild
-              ? "bg-indigo-600/15 text-white font-normal pl-[12px]"
-              : "bg-indigo-600/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
+              ? "bg-indigo-500/15 text-white font-normal pl-[12px] ring-1 ring-indigo-500/20"
+              : "bg-indigo-500/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
             : isChild
-            ? "text-slate-400 hover:text-white hover:bg-white/5 font-normal"
-            : "text-slate-300 hover:text-white hover:bg-white/5 font-medium"
+            ? "text-slate-400 hover:text-white hover:bg-white/[0.04] font-normal"
+            : "text-slate-300 hover:text-white hover:bg-white/[0.04] font-medium"
         }`
       }
       aria-label={label}
     >
-      <span className={`flex-shrink-0 ${isChild ? "scale-90 opacity-80" : ""}`}>{icon}</span>
-      <span className={`truncate ${isChild ? "text-[13px]" : "text-[14px]"}`}>{label}</span>
+      <span className={`flex-shrink-0 ${isChild ? "scale-90 opacity-70" : ""}`}>{icon}</span>
+      <span className={`truncate ${isChild ? "text-[12px]" : "text-[13px]"}`}>{label}</span>
       {badge && badge > 0 && (
         <span className="ml-auto bg-red-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
           {badge > 99 ? "99+" : badge}

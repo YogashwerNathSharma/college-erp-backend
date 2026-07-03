@@ -301,7 +301,6 @@ export const aiSearchReportCard = async (req: Request, res: Response) => {
     // Get marks
     const marks = await prisma.marksEntry.findMany({
       where: { tenantId, studentId: student.id },
-      include: { subject: true, exam: true },
       orderBy: { createdAt: "desc" },
       take: 20,
     });
@@ -312,12 +311,20 @@ export const aiSearchReportCard = async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch subject names for the marks
+    const subjectIds = [...new Set(marks.map((m) => m.subjectId))];
+    const subjects = await prisma.subject.findMany({
+      where: { id: { in: subjectIds } },
+      select: { id: true, name: true },
+    });
+    const subjectMap = Object.fromEntries(subjects.map((s) => [s.id, s.name]));
+
     let msg = `📝 **Report Card — ${student.firstName} ${student.lastName}:**\n\n`;
     let totalObtained = 0;
     let totalMax = 0;
 
     for (const m of marks) {
-      const subName = (m as any).subject?.name || "Subject";
+      const subName = subjectMap[m.subjectId] || "Subject";
       const maxMarks = 100;
       const obtained = m.marksObtained || 0;
       totalObtained += obtained;

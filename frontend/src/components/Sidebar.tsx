@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
@@ -387,9 +386,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
-  const location = useLocation();
-
-  const [activeSubMenu, setActiveSubMenu] = useState<MenuItem | null>(null);
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
@@ -413,17 +409,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, [isSuperAdmin]);
 
-  // Reset slider whenever sidebar is manually closed via backdrop/button
-  useEffect(() => {
-    if (!sidebarOpen) {
-      setActiveSubMenu(null);
-    }
-  }, [sidebarOpen]);
-
-  // Aggressive force close for mobile links
   const handleMobileNavClick = useCallback(() => {
-    setActiveSubMenu(null); // Force slider to reset
-    if (onClose) onClose(); // Force the entire sidebar to close
+    if (onClose) onClose();
   }, [onClose]);
 
   const handleLogout = () => {
@@ -497,7 +484,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               )}
               {group.items.map((item, i) =>
                 item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} isMobile={false} />
+                  <ParentNavItem key={i} item={item} collapsed={false} />
                 ) : (
                   <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
                 )
@@ -553,119 +540,80 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR */}
+      {/* MOBILE SIDEBAR - Unified Clean Accordion Layout */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {sidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-[999] backdrop-blur-sm"
+          className="md:hidden fixed inset-0 bg-black/50 z-[999] backdrop-blur-sm transition-opacity"
           onClick={() => onClose?.()}
         />
       )}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 w-[75vw] max-w-[280px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out overflow-hidden ${
+        className={`md:hidden fixed inset-y-0 left-0 w-[260px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
           background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
         }}
       >
-        <div className="w-full flex-1 flex relative items-stretch">
-          
-          {/* PANEL 1: Primary Root Tree View Layout */}
-          <div 
-            className={`w-full flex-shrink-0 flex flex-col transition-all duration-300 transform ${
-              activeSubMenu ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-0 opacity-100"
-            }`}
-          >
-            <div className="relative flex-shrink-0 border-b border-white/10">
-              <div className="relative z-10 flex items-center justify-between p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {sidebarLogo ? (
-                    <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
-                  ) : (
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
-                    <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
-                  </div>
+        <div className="relative flex-shrink-0 border-b border-white/10">
+          <div className="relative z-10 flex items-center justify-between p-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {sidebarLogo ? (
+                <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
+              ) : (
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                  {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
                 </div>
-                <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white" aria-label="Close sidebar">
-                  <X size={18} />
-                </button>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
+                <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
               </div>
             </div>
-
-            <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
-              {menu.map((group, gi) => (
-                <div key={gi} className="mb-1">
-                  {group.section && (
-                    <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
-                      {group.section}
-                    </p>
-                  )}
-                  {group.items.map((item, i) =>
-                    item.children ? (
-                      <ParentNavItem 
-                        key={i} 
-                        item={item} 
-                        collapsed={false} 
-                        isMobile={true} 
-                        onMobileTriggerSub={() => setActiveSubMenu(item)} 
-                      />
-                    ) : (
-                      <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
-                    )
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-white/10 p-3 flex-shrink-0">
-              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                <LogOut size={18} />
-                <span className="text-[14px] font-medium">Logout</span>
-              </button>
-            </div>
+            <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white" aria-label="Close sidebar">
+              <X size={18} />
+            </button>
           </div>
+        </div>
 
-          {/* PANEL 2: Context Slider for Child Options */}
-          <div 
-            className={`w-full h-full absolute inset-y-0 left-0 flex flex-col bg-[#131d33] transition-all duration-300 transform ${
-              activeSubMenu ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
-            }`}
-          >
-            <div className="flex items-center gap-2 p-4 border-b border-white/10 flex-shrink-0">
-              <button 
-                onClick={() => setActiveSubMenu(null)}
-                className="flex items-center justify-center p-2 rounded-lg bg-white/5 text-amber-400 hover:bg-white/10 transition-colors"
-                aria-label="Back to primary menu"
-              >
-                <ChevronLeft size={16} />
-                <span className="text-xs font-semibold px-1">Back</span>
-              </button>
-              <div className="min-w-0 flex-1 pl-2">
-                <h3 className="text-[14px] font-medium text-white truncate">{activeSubMenu?.name}</h3>
-              </div>
+        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+          {menu.map((group, gi) => (
+            <div key={gi} className="mb-1">
+              {group.section && (
+                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
+                  {group.section}
+                </p>
+              )}
+              {group.items.map((item, i) =>
+                item.children ? (
+                  <ParentNavItem 
+                    key={i} 
+                    item={item} 
+                    collapsed={false} 
+                    onItemClick={handleMobileNavClick} 
+                  />
+                ) : (
+                  <NavItem 
+                    key={i} 
+                    to={item.path!} 
+                    icon={item.icon} 
+                    label={item.name} 
+                    badge={item.badge} 
+                    collapsed={false} 
+                    onItemClick={handleMobileNavClick} 
+                  />
+                )
+              )}
             </div>
+          ))}
+        </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 sidebar-scroll">
-              {activeSubMenu?.children?.map((child, ci) => (
-                <NavItem 
-                  key={ci} 
-                  to={child.path} 
-                  icon={child.icon} 
-                  label={child.name} 
-                  collapsed={false} 
-                  isChild={true}
-                  onItemClick={handleMobileNavClick} // Immediately closes everything
-                />
-              ))}
-            </div>
-          </div>
-
+        <div className="border-t border-white/10 p-3 flex-shrink-0">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
+            <LogOut size={18} />
+            <span className="text-[14px] font-medium">Logout</span>
+          </button>
         </div>
       </aside>
     </>
@@ -673,21 +621,17 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 }
 
 //////////////////////////////////////////////////
-// PARENT NAV ITEM
+// PARENT NAV ITEM (Unified Logic)
 //////////////////////////////////////////////////
 
 const ParentNavItem = ({ 
   item, 
   collapsed, 
-  onItemClick, 
-  isMobile = false, 
-  onMobileTriggerSub 
+  onItemClick
 }: { 
   item: MenuItem; 
   collapsed: boolean; 
   onItemClick?: () => void;
-  isMobile?: boolean;
-  onMobileTriggerSub?: () => void;
 }) => {
   const location = useLocation();
 
@@ -696,24 +640,6 @@ const ParentNavItem = ({
   );
 
   const [open, setOpen] = useState(!!isChildActive);
-
-  // Mobile Trigger Config
-  if (isMobile) {
-    return (
-      <button
-        onClick={onMobileTriggerSub}
-        className={`w-full flex items-center justify-between px-3 py-2.5 mb-0.5 rounded-lg transition-all duration-200 ${
-          isChildActive ? "bg-indigo-600/20 text-white font-medium" : "text-slate-300 hover:bg-white/5"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className={isChildActive ? "text-indigo-400" : ""}>{item.icon}</span>
-          <span className="text-[14px] font-medium">{item.name}</span>
-        </div>
-        <ChevronRight size={14} className="text-slate-500" />
-      </button>
-    );
-  }
 
   if (collapsed) {
     return (
@@ -765,7 +691,16 @@ const ParentNavItem = ({
       >
         <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
           {item.children?.map((child, ci) => (
-            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} isChild={true} onItemClick={onItemClick} />
+            <NavItem 
+              key={ci} 
+              to={child.path} 
+              icon={child.icon} 
+              label={child.name} 
+              compact 
+              collapsed={false} 
+              isChild={true} 
+              onItemClick={onItemClick} 
+            />
           ))}
         </div>
       </div>
@@ -774,7 +709,7 @@ const ParentNavItem = ({
 };
 
 //////////////////////////////////////////////////
-// NAV ITEM
+// NAV ITEM (Unified Logic)
 //////////////////////////////////////////////////
 
 type NavItemProps = {
@@ -817,8 +752,7 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, isChild = false, 
     );
   }
 
-  // Intercept click to ensure event fires properly
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = () => {
     if (onItemClick) {
       onItemClick();
     }

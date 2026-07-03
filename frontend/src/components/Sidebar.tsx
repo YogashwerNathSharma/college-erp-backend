@@ -77,7 +77,7 @@ type SectionGroup = {
 };
 
 //////////////////////////////////////////////////
-// 🎯 TENANT MENU (Enhanced with new modules)
+// 🎯 TENANT MENU
 //////////////////////////////////////////////////
 
 const tenantMenu: SectionGroup[] = [
@@ -348,10 +348,6 @@ const tenantMenu: SectionGroup[] = [
   },
 ];
 
-//////////////////////////////////////////////////
-// SUPER ADMIN MENU
-//////////////////////////////////////////////////
-
 const superAdminMenu: SectionGroup[] = [
   {
     section: "",
@@ -380,19 +376,11 @@ const superAdminMenu: SectionGroup[] = [
   },
 ];
 
-//////////////////////////////////////////////////
-// TYPES
-//////////////////////////////////////////////////
-
 type SidebarProps = {
   tenant?: any;
   sidebarOpen?: boolean;
   onClose?: () => void;
 };
-
-//////////////////////////////////////////////////
-// SIDEBAR COMPONENT
-//////////////////////////////////////////////////
 
 export default function Sidebar({ tenant, sidebarOpen = false, onClose }: SidebarProps) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -400,20 +388,16 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const [devProfile, setDevProfile] = useState<any>(null);
   const location = useLocation();
 
+  // ⚡ State to handle sliding animation panel stack on mobile layouts
+  const [activeSubMenu, setActiveSubMenu] = useState<MenuItem | null>(null);
+
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
 
-  const sidebarTitle = isSuperAdmin
-    ? "Super Admin"
-    : safeTenant?.name || "School Name";
-
-  const sidebarLogo = isSuperAdmin
-    ? "/super-admin-logo.png"
-    : getFullUrl(safeTenant?.logoUrl);
-
+  const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
+  const sidebarLogo = isSuperAdmin ? "/super-admin-logo.png" : getFullUrl(safeTenant?.logoUrl);
   const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
 
-  // Fetch developer profile
   useEffect(() => {
     if (isSuperAdmin) return;
     const cached = localStorage.getItem("devProfile");
@@ -427,9 +411,15 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         localStorage.setItem("devProfile", JSON.stringify(data));
       }
     }).catch(() => {});
-  }, []);
+  }, [isSuperAdmin]);
 
-  // Defined the missing click handler to avoid build compilation breaks
+  // Reset slider context state whenever mobile viewport layout closes fully
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setActiveSubMenu(null);
+    }
+  }, [sidebarOpen]);
+
   const handleMobileNavClick = useCallback(() => {
     onClose?.();
   }, [onClose]);
@@ -452,9 +442,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
           background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
         }}
       >
-        {/* ─── HEADER / SCHOOL CREST ─── */}
         <div className="relative flex-shrink-0 border-b border-white/10">
-          {/* Background overlay for custom bg */}
           {getFullUrl(safeTenant?.backgroundUrl) && (
             <div
               className="absolute inset-0 opacity-20"
@@ -466,7 +454,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             />
           )}
           <div className="relative z-10 flex items-center gap-3 p-4">
-            {/* Logo */}
             {sidebarLogo ? (
               <img
                 src={sidebarLogo}
@@ -491,22 +478,12 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
           </div>
         </div>
 
-        {/* ─── MENU ITEMS ─── */}
         <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
           <style>{`
-            .sidebar-scroll::-webkit-scrollbar {
-              width: 4px;
-            }
-            .sidebar-scroll::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            .sidebar-scroll::-webkit-scrollbar-thumb {
-              background: rgba(255,255,255,0.1);
-              border-radius: 4px;
-            }
-            .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-              background: rgba(255,255,255,0.2);
-            }
+            .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+            .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+            .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+            .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
           `}</style>
 
           {menu.map((group, gi) => (
@@ -518,7 +495,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               )}
               {group.items.map((item, i) =>
                 item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} />
+                  <ParentNavItem key={i} item={item} collapsed={false} isMobile={false} />
                 ) : (
                   <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
                 )
@@ -527,7 +504,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
           ))}
         </div>
 
-        {/* ─── DEVELOPER SECTION ─── */}
         {!isSuperAdmin && devProfile && devProfile.isVisible && (
           <div className="border-t border-white/10 p-3 flex-shrink-0">
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 space-y-2">
@@ -572,13 +548,11 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             </div>
           </div>
         )}
-
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR (Fully Synchronized with React Context) */}
+      {/* MOBILE SIDEBAR (Fully Restructured Slider Module Wrapper) */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* Backdrop overlay */}
       {sidebarOpen && (
         <div
           className="md:hidden fixed inset-0 bg-black/50 z-[999] backdrop-blur-sm"
@@ -586,87 +560,113 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         />
       )}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 w-[75vw] max-w-[280px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed inset-y-0 left-0 w-[75vw] max-w-[280px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out overflow-hidden ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
           background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
         }}
       >
-        {/* ─── HEADER ─── */}
-        <div className="relative flex-shrink-0 border-b border-white/10">
-          {getFullUrl(safeTenant?.backgroundUrl) && (
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: `url(${getFullUrl(safeTenant?.backgroundUrl)})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          )}
-          <div className="relative z-10 flex items-center gap-3 p-4">
-            {sidebarLogo ? (
-              <img
-                src={sidebarLogo}
-                alt="Logo"
-                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
-                crossOrigin="anonymous"
-                onError={(e: any) => { e.target.style.display = "none"; }}
-              />
-            ) : (
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
-                {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h1 className="text-sm font-bold text-white leading-tight truncate">
-                {safeTenant?.name || sidebarTitle}
-              </h1>
-              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
-                {isSuperAdmin ? "System Control" : "Institution ERP"}
-              </p>
-            </div>
-            {/* Close button */}
-            <button
-              onClick={() => onClose?.()}
-              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-              aria-label="Close sidebar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* ─── MENU ITEMS ─── */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
-          {menu.map((group, gi) => (
-            <div key={gi} className="mb-1">
-              {group.section && (
-                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
-                  {group.section}
-                </p>
-              )}
-              {group.items.map((item, i) =>
-                item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} onItemClick={handleMobileNavClick} />
-                ) : (
-                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
-                )
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* ─── LOGOUT ─── */}
-        <div className="border-t border-white/10 p-3 flex-shrink-0">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+        <div className="w-full flex-1 flex relative items-stretch">
+          
+          {/* PANEL 1: Primary Root Tree View Layout */}
+          <div 
+            className={`w-full flex-shrink-0 flex flex-col transition-all duration-300 transform ${
+              activeSubMenu ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-0 opacity-100"
+            }`}
           >
-            <LogOut size={18} />
-            <span className="text-[13px] font-medium">Logout</span>
-          </button>
+            <div className="relative flex-shrink-0 border-b border-white/10">
+              <div className="relative z-10 flex items-center justify-between p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {sidebarLogo ? (
+                    <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
+                    <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
+                  </div>
+                </div>
+                <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white" aria-label="Close sidebar">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+              {menu.map((group, gi) => (
+                <div key={gi} className="mb-1">
+                  {group.section && (
+                    <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
+                      {group.section}
+                    </p>
+                  )}
+                  {group.items.map((item, i) =>
+                    item.children ? (
+                      <ParentNavItem 
+                        key={i} 
+                        item={item} 
+                        collapsed={false} 
+                        isMobile={true} 
+                        onMobileTriggerSub={() => setActiveSubMenu(item)} 
+                      />
+                    ) : (
+                      <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-white/10 p-3 flex-shrink-0">
+              <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                <LogOut size={18} />
+                <span className="text-[14px] font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+
+          {/* PANEL 2: Context Slider for Child Options */}
+          <div 
+            className={`w-full h-full absolute inset-y-0 left-0 flex flex-col bg-[#131d33] transition-all duration-300 transform ${
+              activeSubMenu ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
+            }`}
+          >
+            <div className="flex items-center gap-2 p-4 border-b border-white/10 flex-shrink-0">
+              <button 
+                onClick={() => setActiveSubMenu(null)}
+                className="flex items-center justify-center p-2 rounded-lg bg-white/5 text-amber-400 hover:bg-white/10 transition-colors"
+                aria-label="Back to primary menu"
+              >
+                <ChevronLeft size={16} />
+                <span className="text-xs font-semibold px-1">Back</span>
+              </button>
+              <div className="min-w-0 flex-1 pl-2">
+                <h3 className="text-[14px] font-medium text-white truncate">{activeSubMenu?.name}</h3>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+              {activeSubMenu?.children?.map((child, ci) => (
+                <NavItem 
+                  key={ci} 
+                  to={child.path} 
+                  icon={child.icon} 
+                  label={child.name} 
+                  collapsed={false} 
+                  isChild={true}
+                  onItemClick={() => {
+                    setActiveSubMenu(null);
+                    handleMobileNavClick();
+                  }} 
+                />
+              ))}
+            </div>
+          </div>
+
         </div>
       </aside>
     </>
@@ -674,10 +674,22 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 }
 
 //////////////////////////////////////////////////
-// PARENT NAV ITEM (Collapsible)
+// PARENT NAV ITEM
 //////////////////////////////////////////////////
 
-const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; collapsed: boolean; onItemClick?: () => void }) => {
+const ParentNavItem = ({ 
+  item, 
+  collapsed, 
+  onItemClick, 
+  isMobile = false, 
+  onMobileTriggerSub 
+}: { 
+  item: MenuItem; 
+  collapsed: boolean; 
+  onItemClick?: () => void;
+  isMobile?: boolean;
+  onMobileTriggerSub?: () => void;
+}) => {
   const location = useLocation();
 
   const isChildActive = item.children?.some(
@@ -685,6 +697,24 @@ const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; colla
   );
 
   const [open, setOpen] = useState(!!isChildActive);
+
+  // Mobile Trigger Config
+  if (isMobile) {
+    return (
+      <button
+        onClick={onMobileTriggerSub}
+        className={`w-full flex items-center justify-between px-3 py-2.5 mb-0.5 rounded-lg transition-all duration-200 ${
+          isChildActive ? "bg-indigo-600/20 text-white font-medium" : "text-slate-300 hover:bg-white/5"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className={isChildActive ? "text-indigo-400" : ""}>{item.icon}</span>
+          <span className="text-[14px] font-medium">{item.name}</span>
+        </div>
+        <ChevronRight size={14} className="text-slate-500" />
+      </button>
+    );
+  }
 
   if (collapsed) {
     return (
@@ -699,7 +729,7 @@ const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; colla
         >
           <span className="flex-shrink-0">{item.icon}</span>
         </NavLink>
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-[14px] font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
           {item.name}
         </div>
       </div>
@@ -712,17 +742,17 @@ const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; colla
         onClick={() => setOpen(!open)}
         className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
           isChildActive
-            ? "bg-indigo-600/15 text-white border-l-[3px] border-indigo-400 pl-[9px]"
+            ? "bg-indigo-600/15 text-white border-l-[3px] border-indigo-400 pl-[9px] font-medium"
             : open
-            ? "bg-white/5 text-white"
-            : "text-slate-300 hover:bg-white/5 hover:text-white"
+            ? "bg-white/5 text-white font-medium"
+            : "text-slate-300 hover:bg-white/5 hover:text-white font-medium"
         }`}
         aria-expanded={open}
         aria-label={item.name}
       >
         <div className="flex items-center gap-3">
           <span className={`flex-shrink-0 ${isChildActive ? "text-indigo-400" : ""}`}>{item.icon}</span>
-          <span className="text-[13px] font-medium">{item.name}</span>
+          <span className="text-[14px]">{item.name}</span>
         </div>
         <span className={`transition-transform duration-300 ${open ? "rotate-0" : "-rotate-90"}`}>
           <ChevronDown size={14} className="text-slate-500" />
@@ -736,7 +766,7 @@ const ParentNavItem = ({ item, collapsed, onItemClick }: { item: MenuItem; colla
       >
         <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
           {item.children?.map((child, ci) => (
-            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} onItemClick={onItemClick} />
+            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} isChild={true} onItemClick={onItemClick} />
           ))}
         </div>
       </div>
@@ -755,10 +785,11 @@ type NavItemProps = {
   badge?: number;
   compact?: boolean;
   collapsed?: boolean;
+  isChild?: boolean;
   onItemClick?: () => void;
 };
 
-const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: NavItemProps) => {
+const NavItem = ({ to, icon, label, badge, compact, collapsed, isChild = false, onItemClick }: NavItemProps) => {
   if (collapsed) {
     return (
       <div className="relative group mb-0.5">
@@ -780,7 +811,7 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: Na
             </span>
           )}
         </NavLink>
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
+        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2.5 py-1.5 bg-slate-800 text-white text-[14px] font-medium rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 border border-slate-700">
           {label}
         </div>
       </div>
@@ -796,14 +827,18 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, onItemClick }: Na
           compact ? "px-3 py-2" : "px-3 py-2.5"
         } ${
           isActive
-            ? "bg-indigo-600/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
-            : "text-slate-400 hover:text-white hover:bg-white/5"
+            ? isChild
+              ? "bg-indigo-600/15 text-white font-normal pl-[12px]"
+              : "bg-indigo-600/15 text-white font-medium border-l-[3px] border-indigo-400 pl-[9px]"
+            : isChild
+            ? "text-slate-400 hover:text-white hover:bg-white/5 font-normal"
+            : "text-slate-300 hover:text-white hover:bg-white/5 font-medium"
         }`
       }
       aria-label={label}
     >
-      <span className="flex-shrink-0">{icon}</span>
-      <span className="truncate text-[13px]">{label}</span>
+      <span className={`flex-shrink-0 ${isChild ? "scale-90 opacity-80" : ""}`}>{icon}</span>
+      <span className={`truncate ${isChild ? "text-[13px]" : "text-[14px]"}`}>{label}</span>
       {badge && badge > 0 && (
         <span className="ml-auto bg-red-500 text-white text-[9px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
           {badge > 99 ? "99+" : badge}

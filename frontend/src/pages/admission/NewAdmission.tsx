@@ -35,15 +35,15 @@ export default function NewAdmission() {
 
   // Fetch classes, sections, and academic years
   useEffect(() => {
-    axios.get("/api/classes").then((res) => {
+    axios.get("/api/class").then((res) => {
       setClasses(res.data?.data || res.data || []);
     }).catch(() => {});
 
-    axios.get("/api/sections").then((res) => {
+    axios.get("/api/section").then((res) => {
       setSections(res.data?.data || res.data || []);
     }).catch(() => {});
 
-    axios.get("/api/academic-years").then((res) => {
+    axios.get("/api/academic").then((res) => {
       const years = res.data?.data || res.data || [];
       setAcademicYears(years);
       // Auto-select active academic year

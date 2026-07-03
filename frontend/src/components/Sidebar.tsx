@@ -62,7 +62,6 @@ import {
 //////////////////////////////////////////////////
 // 🎯 MENU TYPES
 //////////////////////////////////////////////////
-
 type MenuItem = {
   name: string;
   icon: any;
@@ -79,7 +78,6 @@ type SectionGroup = {
 //////////////////////////////////////////////////
 // 🎯 TENANT MENU
 //////////////////////////////////////////////////
-
 const tenantMenu: SectionGroup[] = [
   {
     section: "",
@@ -387,6 +385,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
 
+  const [activeSubMenu, setActiveSubMenu] = useState<MenuItem | null>(null);
+
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
 
@@ -409,7 +409,14 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, [isSuperAdmin]);
 
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setActiveSubMenu(null);
+    }
+  }, [sidebarOpen]);
+
   const handleMobileNavClick = useCallback(() => {
+    setActiveSubMenu(null); 
     if (onClose) onClose();
   }, [onClose]);
 
@@ -423,7 +430,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   return (
     <>
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* DESKTOP SIDEBAR */}
+      {/* DESKTOP SIDEBAR (Unchanged) */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <aside
         className="sidebar-desktop hidden md:flex fixed left-0 top-0 h-screen z-40 flex-col print:hidden w-[260px]"
@@ -484,7 +491,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               )}
               {group.items.map((item, i) =>
                 item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} />
+                  <ParentNavItem key={i} item={item} collapsed={false} isMobile={false} />
                 ) : (
                   <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
                 )
@@ -492,62 +499,11 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             </div>
           ))}
         </div>
-
-        {!isSuperAdmin && devProfile && devProfile.isVisible && (
-          <div className="border-t border-white/10 p-3 flex-shrink-0">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 space-y-2">
-              <div className="flex items-center gap-2.5">
-                {devProfile.photoUrl ? (
-                  <img
-                    src={devProfile.photoUrl}
-                    alt={devProfile.name}
-                    className="w-8 h-8 rounded-full object-cover border-2 border-indigo-400/50"
-                    onError={(e: any) => { e.target.style.display = "none"; }}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold border-2 border-indigo-400/50">
-                    {devProfile.name?.charAt(0) || "D"}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-white leading-tight truncate">{devProfile.name}</p>
-                  <p className="text-[10px] text-slate-400">Developer / Support</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {devProfile.whatsapp && (
-                  <a
-                    href={`https://wa.me/${devProfile.whatsapp}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600/80 hover:bg-green-500 text-white rounded-lg text-[10px] font-medium transition-colors"
-                  >
-                    💬 WhatsApp
-                  </a>
-                )}
-                {devProfile.email && (
-                  <a
-                    href={`mailto:${devProfile.email}`}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-medium transition-colors"
-                  >
-                    ✉️ Email
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </aside>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* MOBILE SIDEBAR - Unified Clean Accordion Layout */}
+      {/* MOBILE SIDEBAR (Fixed Width Sliding Panels with Back Button) */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      {sidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 bg-black/50 z-[999] backdrop-blur-sm transition-opacity"
-          onClick={() => onClose?.()}
-        />
-      )}
       <aside
         className={`md:hidden fixed inset-y-0 left-0 w-[260px] flex flex-col z-[1000] transform transition-transform duration-300 ease-in-out ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -556,64 +512,108 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
           background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
         }}
       >
-        <div className="relative flex-shrink-0 border-b border-white/10">
-          <div className="relative z-10 flex items-center justify-between p-4">
-            <div className="flex items-center gap-3 min-w-0">
-              {sidebarLogo ? (
-                <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
-              ) : (
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                  {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+        {/* Strict Absolute Wrapper to prevent width expansion */}
+        <div className="relative flex-1 w-full h-full overflow-hidden flex flex-col">
+          
+          {/* Main Top Header - Shared across slides */}
+          <div className="relative flex-shrink-0 border-b border-white/10 z-20 bg-transparent">
+            <div className="relative z-10 flex items-center justify-between p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {sidebarLogo ? (
+                  <img src={sidebarLogo} alt="Logo" className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40" />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
+                  <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
                 </div>
-              )}
-              <div className="min-w-0">
-                <h1 className="text-sm font-bold text-white leading-tight truncate">{safeTenant?.name || sidebarTitle}</h1>
-                <p className="text-[10px] text-amber-400/80 mt-0.5 truncate">{isSuperAdmin ? "System Control" : "Institution ERP"}</p>
+              </div>
+              <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white bg-white/5" aria-label="Close sidebar">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Slider Container */}
+          <div className="relative flex-1 w-full overflow-hidden">
+            
+            {/* PANEL 1: Root Menu */}
+            <div 
+              className={`absolute inset-0 w-full h-full flex flex-col transition-transform duration-300 ${
+                activeSubMenu ? "-translate-x-full" : "translate-x-0"
+              }`}
+            >
+              <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
+                {menu.map((group, gi) => (
+                  <div key={gi} className="mb-1">
+                    {group.section && (
+                      <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
+                        {group.section}
+                      </p>
+                    )}
+                    {group.items.map((item, i) =>
+                      item.children ? (
+                        <ParentNavItem 
+                          key={i} 
+                          item={item} 
+                          collapsed={false} 
+                          isMobile={true} 
+                          onMobileTriggerSub={() => setActiveSubMenu(item)} 
+                        />
+                      ) : (
+                        <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onItemClick={handleMobileNavClick} />
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-white/10 p-3 flex-shrink-0">
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                  <LogOut size={18} />
+                  <span className="text-[14px] font-medium">Logout</span>
+                </button>
               </div>
             </div>
-            <button onClick={() => onClose?.()} className="p-2 rounded-lg text-slate-400 hover:text-white" aria-label="Close sidebar">
-              <X size={18} />
-            </button>
-          </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll">
-          {menu.map((group, gi) => (
-            <div key={gi} className="mb-1">
-              {group.section && (
-                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold">
-                  {group.section}
-                </p>
-              )}
-              {group.items.map((item, i) =>
-                item.children ? (
-                  <ParentNavItem 
-                    key={i} 
-                    item={item} 
-                    collapsed={false} 
-                    onItemClick={handleMobileNavClick} 
-                  />
-                ) : (
+            {/* PANEL 2: Context Slider (Shows when an item like 'All Masters' is clicked) */}
+            <div 
+              className={`absolute inset-0 w-full h-full flex flex-col bg-[#131d33] transition-transform duration-300 ${
+                activeSubMenu ? "translate-x-0" : "translate-x-full"
+              }`}
+            >
+              {/* STICKY BACK BUTTON HEADER */}
+              <div className="flex items-center gap-3 p-3 border-b border-white/10 bg-[#152038] shadow-md flex-shrink-0">
+                <button 
+                  onClick={() => setActiveSubMenu(null)}
+                  className="flex items-center justify-center p-2 rounded-lg bg-white/5 text-amber-400 hover:bg-white/10 transition-colors border border-white/10"
+                >
+                  <ChevronLeft size={18} />
+                  <span className="text-xs font-bold pl-1 pr-1">Back</span>
+                </button>
+                <h3 className="text-[14px] font-medium text-white truncate">{activeSubMenu?.name}</h3>
+              </div>
+
+              {/* Sub-menu Items */}
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1 sidebar-scroll">
+                {activeSubMenu?.children?.map((child, ci) => (
                   <NavItem 
-                    key={i} 
-                    to={item.path!} 
-                    icon={item.icon} 
-                    label={item.name} 
-                    badge={item.badge} 
+                    key={ci} 
+                    to={child.path} 
+                    icon={child.icon} 
+                    label={child.name} 
                     collapsed={false} 
+                    isChild={true}
                     onItemClick={handleMobileNavClick} 
                   />
-                )
-              )}
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
 
-        <div className="border-t border-white/10 p-3 flex-shrink-0">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-            <LogOut size={18} />
-            <span className="text-[14px] font-medium">Logout</span>
-          </button>
+          </div>
         </div>
       </aside>
     </>
@@ -621,17 +621,21 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 }
 
 //////////////////////////////////////////////////
-// PARENT NAV ITEM (Unified Logic)
+// PARENT NAV ITEM
 //////////////////////////////////////////////////
 
 const ParentNavItem = ({ 
   item, 
   collapsed, 
-  onItemClick
+  onItemClick, 
+  isMobile = false, 
+  onMobileTriggerSub 
 }: { 
   item: MenuItem; 
   collapsed: boolean; 
   onItemClick?: () => void;
+  isMobile?: boolean;
+  onMobileTriggerSub?: () => void;
 }) => {
   const location = useLocation();
 
@@ -640,6 +644,23 @@ const ParentNavItem = ({
   );
 
   const [open, setOpen] = useState(!!isChildActive);
+
+  if (isMobile) {
+    return (
+      <button
+        onClick={onMobileTriggerSub}
+        className={`w-full flex items-center justify-between px-3 py-2.5 mb-0.5 rounded-lg transition-all duration-200 ${
+          isChildActive ? "bg-indigo-600/20 text-white font-medium" : "text-slate-300 hover:bg-white/5"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className={isChildActive ? "text-indigo-400" : ""}>{item.icon}</span>
+          <span className="text-[14px] font-medium">{item.name}</span>
+        </div>
+        <ChevronRight size={14} className="text-slate-500" />
+      </button>
+    );
+  }
 
   if (collapsed) {
     return (
@@ -691,16 +712,7 @@ const ParentNavItem = ({
       >
         <div className="pl-5 mt-0.5 space-y-0.5 ml-4 border-l border-white/10">
           {item.children?.map((child, ci) => (
-            <NavItem 
-              key={ci} 
-              to={child.path} 
-              icon={child.icon} 
-              label={child.name} 
-              compact 
-              collapsed={false} 
-              isChild={true} 
-              onItemClick={onItemClick} 
-            />
+            <NavItem key={ci} to={child.path} icon={child.icon} label={child.name} compact collapsed={false} isChild={true} onItemClick={onItemClick} />
           ))}
         </div>
       </div>
@@ -709,7 +721,7 @@ const ParentNavItem = ({
 };
 
 //////////////////////////////////////////////////
-// NAV ITEM (Unified Logic)
+// NAV ITEM
 //////////////////////////////////////////////////
 
 type NavItemProps = {
@@ -752,7 +764,7 @@ const NavItem = ({ to, icon, label, badge, compact, collapsed, isChild = false, 
     );
   }
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
     if (onItemClick) {
       onItemClick();
     }

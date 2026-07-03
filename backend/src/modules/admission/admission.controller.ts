@@ -10,13 +10,19 @@ export const admissionController = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: result,
+      message: `Admission created successfully. Admission No: ${result.admissionNo}`,
     });
   } catch (err: any) {
     console.error("🔥 ADMISSION ERROR:", err);
 
-    res.status(500).json({
+    // Validation errors → 400, others → 500
+    const isValidation = err.message?.includes("Required") || 
+                         err.message?.includes("not found") || 
+                         err.message?.includes("already exists");
+
+    res.status(isValidation ? 400 : 500).json({
       success: false,
-      message: err.message,
+      message: err.message || "Admission creation failed",
     });
   }
 };

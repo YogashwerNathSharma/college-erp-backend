@@ -108,13 +108,24 @@ export default function MainLayout() {
 
   return (
     <div className={`flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-slate-900 ${isPrinting ? "printing" : ""}`}>
+      
+      {/* ═══════════ Mobile Backdrop Overlay ═══════════ */}
+      {/* Moving this here strictly limits click interactions and doesn't conflict with Sidebar width */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[990]"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ═══════════ Sidebar (single render) ═══════════ */}
       <Sidebar tenant={tenant} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* ═══════════ Mobile hamburger button (outside wrapper to avoid stacking context) ═══════════ */}
+      {/* ═══════════ Mobile hamburger button ═══════════ */}
       <button
-        className={`hamburger-btn fixed top-3 left-3 z-[9999] p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-all duration-300 ${sidebarOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'}`}
+        className={`hamburger-btn fixed top-3 left-3 z-[999] p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg md:hidden tap-target active:scale-95 transition-all duration-300 ${
+          sidebarOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'
+        }`}
         onClick={() => setSidebarOpen(true)}
         aria-label="Open menu"
       >

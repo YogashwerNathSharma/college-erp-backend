@@ -420,6 +420,13 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     if (onClose) onClose();
   }, [onClose]);
 
+  // Reset sub-menu panel when sidebar closes
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setActiveSubMenu(null);
+    }
+  }, [sidebarOpen]);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -508,13 +515,13 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       {/* 🔲 Backdrop Overlay */}
       {sidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/60 z-[998] transition-opacity duration-300"
+          className="md:hidden fixed inset-0 bg-black/50 z-[998]"
           onClick={() => onClose?.()}
         />
       )}
 
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 w-[78vw] max-w-[300px] flex flex-col z-[999] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`md:hidden fixed inset-y-0 left-0 w-[72vw] max-w-[270px] flex flex-col z-[999] transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
@@ -617,7 +624,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               <div className="h-[1px] mx-4 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
 
               {/* Sub-menu Items */}
-              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 sidebar-scroll">
+              <div className="flex-1 overflow-y-auto px-2 py-2 space-y-[2px] sidebar-scroll">
                 {activeSubMenu?.children?.map((child, ci) => (
                   <NavItem 
                     key={ci} 
@@ -626,6 +633,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                     label={child.name} 
                     collapsed={false} 
                     isChild={true}
+                    compact={true}
                     onItemClick={handleMobileNavClick} 
                   />
                 ))}

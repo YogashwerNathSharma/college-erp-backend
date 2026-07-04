@@ -1,15 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════
-// MASTER MODULE - DYNAMIC PORTAL MATRIX GRID ENGINE
+// MASTER MODULE - STABLE HUB NAVIGATOR ENGINE
 // ═══════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getFullUrl } from "../../utils/url";
 import {
   Building2, GraduationCap, Users, UserCog, IndianRupee,
   ClipboardList, CalendarCheck, BookOpen, BedDouble, Bus,
   Package, Briefcase, MessageSquare, Award, Shield,
   FileCheck, CalendarHeart, UserRound, Brain, Settings,
-  Search, Plus, Download, Upload, RefreshCw, Filter, Database, ArrowLeft, Grid, LayoutGrid
+  Search, Plus, Download, Upload, RefreshCw, Filter, Database, ArrowLeft, LayoutGrid
 } from "lucide-react";
 import MasterTable from "./MasterTable";
 import MasterForm from "./MasterForm";
@@ -43,12 +44,15 @@ interface FieldConfig { name: string; label: string; type: string; required?: bo
 interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean; }
 
 export default function MasterModule() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
+
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [selectedModelLabel, setSelectedModelLabel] = useState<string>("");
 
-  // Control core layers: 'portal_home' | 'all_masters_flat' | 'category_child_grid' | 'table_view'
   const [currentView, setCurrentView] = useState<"portal_home" | "all_masters_flat" | "category_child_grid" | "table_view">("portal_home");
 
   const [entries, setEntries] = useState<any[]>([]);
@@ -66,7 +70,9 @@ export default function MasterModule() {
   const fetchCategories = async () => {
     try {
       const res = await axios.get(getFullUrl("/api/masters/categories"));
-      if (res.data.success) setCategories(res.data.data);
+      if (res.data.success) {
+        setCategories(res.data.data);
+      }
     } catch (err) {
       console.error("Failed to load master categories:", err);
     }
@@ -74,18 +80,29 @@ export default function MasterModule() {
 
   useEffect(() => { fetchCategories(); }, []);
 
+  // 🔥 FIXED: Sync state smoothly if URL route changes directly via Sidebar interactions
+  useEffect(() => {
+    if (categories.length === 0) return;
+
+    if (location.pathname === "/masters") {
+      setSelectedCategory(null);
+      setSelectedModel(null);
+      setCurrentView("portal_home");
+    }
+  }, [location.pathname, categories]);
+
   const fetchEntries = useCallback(async (modelKey: string, page = 1) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: page.toString(), limit: "25", search, showInactive: showInactive.toString() });
-      const res = await axios.get(getFullUrl(`/api/masters/${modelKey}?${params}`));
+      const p = new URLSearchParams({ page: page.toString(), limit: "25", search, showInactive: showInactive.toString() });
+      const res = await axios.get(getFullUrl(`/api/masters/${modelKey}?${p}`));
       if (res.data.success) {
         setEntries(res.data.data);
         setPagination(res.data.pagination);
         if (res.data.config?.fields) setFields(res.data.config.fields);
       }
     } catch (err) {
-      console.error("Failed to load entries:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -179,7 +196,6 @@ export default function MasterModule() {
     }
   };
 
-  // Extract all models flat for the 'All Masters' global view panel list
   const allFlatModels: { model: MasterModel; categoryLabel: string }[] = [];
   categories.forEach(c => {
     c.models.forEach(m => {
@@ -201,18 +217,17 @@ export default function MasterModule() {
             <p className="text-xs text-slate-400 mt-1">Institutional configuration master collection layout</p>
           </div>
 
-          {/* ⚡ THE BIG INTERACTIVE CARD: ALL MASTERS ACCESS ROOT BLOCK */}
           <div className="w-full">
             <button
               onClick={() => setCurrentView("all_masters_flat")}
-              className="w-full text-left p-6 rounded-2xl border-2 border-dashed border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-slate-900/80 to-slate-900 rounded-xl hover:border-indigo-500/60 transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl"
+              className="w-full text-left p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-slate-900 hover:border-indigo-500/40 transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl"
             >
               <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
-                <div className="w-14 h-14 bg-indigo-600/10 text-indigo-400 border border-indigo-500/30 rounded-xl flex items-center justify-center shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                  <Database size={28} />
+                <div className="w-14 h-14 bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                  <Database size={26} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">All Synchronized Masters Matrix</h3>
+                  <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">All Synchronized Masters Matrix</h3>
                   <p className="text-xs text-slate-400 mt-0.5">Explore the consolidated framework registry across all channels ({allFlatModels.length} configurations)</p>
                 </div>
               </div>
@@ -220,9 +235,8 @@ export default function MasterModule() {
             </button>
           </div>
 
-          {/* Individual Segmented Categories Flow Display */}
           <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Category Clusters</h4>
+            <h4 className="text-xs font-bold text-slate-500 tracking-wider uppercase">Category Clusters</h4>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {categories.map((category, index) => {
                 const colorClass = RECENT_COLORS[index % RECENT_COLORS.length];
@@ -249,7 +263,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 2 (A): ALL FLAT MASTERS SINGLE PANEL VIEW ═══════ */}
+      {/* ═══════ LAYER 2 (A): ALL FLAT MASTERS PANEL VIEW ═══════ */}
       {currentView === "all_masters_flat" && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
@@ -280,7 +294,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 2 (B): COMPACT SEGMENTED CATEGORY CHILD GRID ═══════ */}
+      {/* ═══════ LAYER 2 (B): CATEGORY CHILD GRID ═══════ */}
       {currentView === "category_child_grid" && selectedCategory && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
@@ -313,7 +327,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 3: DYNAMIC MATRIX DATA SHEET VIEW ═══════ */}
+      {/* ═══════ LAYER 3: TABLE DATASHEET VIEW ═══════ */}
       {currentView === "table_view" && selectedModel && (
         <div className="max-w-7xl mx-auto space-y-4 animate-fadeIn flex flex-col h-full">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
@@ -366,7 +380,6 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* Dynamic Popups Modals Injection Point */}
       {showForm && <MasterForm fields={fields} initialData={editingEntry} onSubmit={handleFormSubmit} onClose={() => { setShowForm(false); setEditingEntry(null); }} loading={formLoading} title={editingEntry ? `Edit ${selectedModelLabel}` : `Add ${selectedModelLabel}`} />}
       {showImport && <ImportModal modelKey={selectedModel!} modelLabel={selectedModelLabel} onClose={() => setShowImport(false)} onSuccess={() => { setShowImport(false); if (selectedModel) fetchEntries(selectedModel); }} />}
     </div>
@@ -413,7 +426,7 @@ function ImportModal({ modelKey, modelLabel, onClose, onSuccess }: { modelKey: s
       setResult(res.data.data);
       if (res.data.data.failed === 0) setTimeout(onSuccess, 1000);
     } catch (err: any) {
-      alert(err.response?.data?.message || "Sync execution error caught");
+      alert(err.response?.data?.message || "Sync error caught");
     } finally { setImporting(false); }
   };
 
@@ -427,16 +440,16 @@ function ImportModal({ modelKey, modelLabel, onClose, onSuccess }: { modelKey: s
         </div>
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Select local target file (JSON/CSV)</label>
+            <label className="block text-xs text-slate-400 mb-1.5">Select file (JSON/CSV)</label>
             <input type="file" accept=".json,.csv" onChange={handleFileUpload} className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-700 file:bg-slate-800 file:text-slate-200 cursor-pointer" />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Raw Data Input Matrix</label>
+            <label className="block text-xs text-slate-400 mb-1.5">Raw Data</label>
             <textarea value={jsonData} onChange={(e) => setJsonData(e.target.value)} rows={5} className="w-full p-2.5 border border-slate-800 rounded-lg text-xs font-mono bg-slate-950 text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none" placeholder={`[\n  { "code": "X1", "name": "Sync Row" }\n]`} />
           </div>
           {result && (
             <div className={`p-3 rounded-lg border text-xs ${result.failed > 0 ? "bg-amber-950/40 border-amber-500/30 text-amber-300" : "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"}`}>
-              <p className="font-semibold">Stats Analytics:</p>
+              <p className="font-semibold">Stats:</p>
               <p className="mt-0.5">Passed: {result.success} | Failed: {result.failed}</p>
             </div>
           )}

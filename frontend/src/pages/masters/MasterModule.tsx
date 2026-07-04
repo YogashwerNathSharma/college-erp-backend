@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// MASTER MODULE - STABLE HUB NAVIGATOR ENGINE (URL & STATE SYNCED)
+// MASTER MODULE - DYNAMIC PORTAL MATRIX GRID ENGINE (100% ROUTE SYNCED)
 // ═══════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
@@ -46,6 +46,7 @@ interface PaginationInfo { page: number; limit: number; total: number; totalPage
 export default function MasterModule() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { category: routeCategory, model: routeModel } = useParams();
 
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
@@ -66,7 +67,7 @@ export default function MasterModule() {
   const [formLoading, setFormLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
-  // Fetch Category Clusters
+  // Fetch all master setup configurations
   const fetchCategories = async () => {
     try {
       const res = await axios.get(getFullUrl("/api/masters/categories"));
@@ -78,18 +79,53 @@ export default function MasterModule() {
     }
   };
 
-  useEffect(() => { 
-    fetchCategories(); 
+  useEffect(() => {
+    fetchCategories();
   }, []);
 
-  // 🔥 CRITICAL FIX: Watch URL path shifts. If user clicks "Masters" in sidebar, force reset the view state instantly!
+  // 🔥 CORE INTEGRATION REPAIR: Sync Component Views directly based on Browser URL Parameters
   useEffect(() => {
-    if (location.pathname === "/masters") {
+    if (categories.length === 0) return;
+
+    // Route 1: Base Masters Page (/masters) -> Display Portal Dashboard Grid Dashboard
+    if (!routeCategory && !routeModel) {
       setSelectedCategory(null);
       setSelectedModel(null);
       setCurrentView("portal_home");
+      return;
     }
-  }, [location.pathname]);
+
+    // Route 2: Global Flat List View (/masters/all)
+    if (routeCategory === "all") {
+      setSelectedCategory(null);
+      setSelectedModel(null);
+      setCurrentView("all_masters_flat");
+      return;
+    }
+
+    // Find requested category from current list index
+    const matchedCategory = categories.find(
+      (c) => c.id === routeCategory || c.label.toLowerCase() === routeCategory.toLowerCase()
+    );
+
+    if (matchedCategory) {
+      setSelectedCategory(matchedCategory);
+      
+      // Route 3: Deep Model View inside Selected Category Container (/masters/:category/:model)
+      if (routeModel) {
+        const matchedModel = matchedCategory.models.find((m) => m.key === routeModel);
+        if (matchedModel) {
+          setSelectedModel(matchedModel.key);
+          setSelectedModelLabel(matchedModel.label);
+          setCurrentView("table_view");
+        }
+      } else {
+        // Route 4: Category Child Icons Panel Grid View (/masters/:category)
+        setSelectedModel(null);
+        setCurrentView("category_child_grid");
+      }
+    }
+  }, [routeCategory, routeModel, categories, location.pathname]);
 
   const fetchEntries = useCallback(async (modelKey: string, page = 1) => {
     setLoading(true);
@@ -112,28 +148,26 @@ export default function MasterModule() {
     if (selectedModel) fetchEntries(selectedModel); 
   }, [selectedModel, search, showInactive, fetchEntries]);
 
+  // Dynamic Navigation trigger functions matching the application routing structures
   const handleCategoryClick = (category: MasterCategory) => {
-    setSelectedCategory(category);
-    setCurrentView("category_child_grid");
+    navigate(`/masters/${category.id}`);
   };
 
   const handleModelClick = (model: MasterModel) => {
-    setSelectedModel(model.key);
-    setSelectedModelLabel(model.label);
-    setSearch("");
-    setPagination({ page: 1, limit: 25, total: 0, totalPages: 0, hasNext: false, hasPrev: false });
-    setCurrentView("table_view");
+    const targetCat = selectedCategory ? selectedCategory.id : "all";
+    navigate(`/masters/${targetCat}/${model.key}`);
   };
 
   const handleBackToHome = () => {
-    setSelectedCategory(null);
-    setSelectedModel(null);
-    setCurrentView("portal_home");
+    navigate("/masters");
   };
 
   const handleBackToChildGrid = () => {
-    setSelectedModel(null);
-    setCurrentView(selectedCategory ? "category_child_grid" : "all_masters_flat");
+    if (selectedCategory) {
+      navigate(`/masters/${selectedCategory.id}`);
+    } else {
+      navigate("/masters/all");
+    }
   };
 
   const handleCreate = () => { setEditingEntry(null); setShowForm(true); };
@@ -208,7 +242,7 @@ export default function MasterModule() {
   return (
     <div className="h-[calc(100vh-64px)] w-full bg-slate-950 text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
       
-      {/* ═══════ LAYER 1: MAIN PORTAL HOME ═══════ */}
+      {/* ═══════ LAYER 1: MAIN PORTAL HUB HOME ═══════ */}
       {currentView === "portal_home" && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           <div className="border-b border-slate-800 pb-4">
@@ -221,7 +255,7 @@ export default function MasterModule() {
 
           <div className="w-full">
             <button
-              onClick={() => setCurrentView("all_masters_flat")}
+              onClick={() => navigate("/masters/all")}
               className="w-full text-left p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-slate-900 hover:border-indigo-500/40 transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl text-slate-100"
             >
               <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
@@ -265,7 +299,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 2 (A): ALL FLAT MASTERS PANEL VIEW ═══════ */}
+      {/* ═══════ LAYER 2 (A): ALL FLAT MASTERS GENERAL VIEW ═══════ */}
       {currentView === "all_masters_flat" && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
@@ -296,7 +330,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 2 (B): CATEGORY CHILD GRID ═══════ */}
+      {/* ═══════ LAYER 2 (B): CHOSEN CATEGORY CHILD GRID ICONS ═══════ */}
       {currentView === "category_child_grid" && selectedCategory && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
@@ -329,7 +363,7 @@ export default function MasterModule() {
         </div>
       )}
 
-      {/* ═══════ LAYER 3: TABLE DATASHEET VIEW ═══════ */}
+      {/* ═══════ LAYER 3: MAIN DATA TABLE SHEET CONTAINER ═══════ */}
       {currentView === "table_view" && selectedModel && (
         <div className="max-w-7xl mx-auto space-y-4 animate-fadeIn flex flex-col h-full">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">

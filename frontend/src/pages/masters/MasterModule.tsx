@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// MASTER MODULE - STABLE HUB NAVIGATOR ENGINE
+// MASTER MODULE - STABLE HUB NAVIGATOR ENGINE (URL & STATE SYNCED)
 // ═══════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
@@ -46,7 +46,6 @@ interface PaginationInfo { page: number; limit: number; total: number; totalPage
 export default function MasterModule() {
   const location = useLocation();
   const navigate = useNavigate();
-  const params = useParams();
 
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
@@ -67,6 +66,7 @@ export default function MasterModule() {
   const [formLoading, setFormLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  // Fetch Category Clusters
   const fetchCategories = async () => {
     try {
       const res = await axios.get(getFullUrl("/api/masters/categories"));
@@ -78,18 +78,18 @@ export default function MasterModule() {
     }
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  useEffect(() => { 
+    fetchCategories(); 
+  }, []);
 
-  // 🔥 FIXED: Sync state smoothly if URL route changes directly via Sidebar interactions
+  // 🔥 CRITICAL FIX: Watch URL path shifts. If user clicks "Masters" in sidebar, force reset the view state instantly!
   useEffect(() => {
-    if (categories.length === 0) return;
-
     if (location.pathname === "/masters") {
       setSelectedCategory(null);
       setSelectedModel(null);
       setCurrentView("portal_home");
     }
-  }, [location.pathname, categories]);
+  }, [location.pathname]);
 
   const fetchEntries = useCallback(async (modelKey: string, page = 1) => {
     setLoading(true);
@@ -108,7 +108,9 @@ export default function MasterModule() {
     }
   }, [search, showInactive]);
 
-  useEffect(() => { if (selectedModel) fetchEntries(selectedModel); }, [selectedModel, search, showInactive, fetchEntries]);
+  useEffect(() => { 
+    if (selectedModel) fetchEntries(selectedModel); 
+  }, [selectedModel, search, showInactive, fetchEntries]);
 
   const handleCategoryClick = (category: MasterCategory) => {
     setSelectedCategory(category);
@@ -220,7 +222,7 @@ export default function MasterModule() {
           <div className="w-full">
             <button
               onClick={() => setCurrentView("all_masters_flat")}
-              className="w-full text-left p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-slate-900 hover:border-indigo-500/40 transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl"
+              className="w-full text-left p-6 rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/30 via-slate-900/60 to-slate-900 hover:border-indigo-500/40 transition-all cursor-pointer group flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl text-slate-100"
             >
               <div className="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
                 <div className="w-14 h-14 bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 rounded-xl flex items-center justify-center shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -244,7 +246,7 @@ export default function MasterModule() {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryClick(category)}
-                    className="flex flex-col items-center justify-center text-center p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer"
+                    className="flex flex-col items-center justify-center text-center p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer text-slate-100"
                   >
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center border mb-3 shadow-inner ${colorClass}`}>
                       {getCategoryIcon(category.icon, 20)}
@@ -281,7 +283,7 @@ export default function MasterModule() {
               <button
                 key={model.key}
                 onClick={() => handleModelClick(model)}
-                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all cursor-pointer group"
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all cursor-pointer group text-slate-100"
               >
                 <div className="w-9 h-9 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   <Database size={16} />
@@ -315,7 +317,7 @@ export default function MasterModule() {
               <button
                 key={model.key}
                 onClick={() => handleModelClick(model)}
-                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all cursor-pointer group"
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all cursor-pointer group text-slate-100"
               >
                 <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   <Database size={18} />

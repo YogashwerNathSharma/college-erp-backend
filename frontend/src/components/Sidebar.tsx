@@ -49,25 +49,29 @@ import {
   Send,
   MapPin,
   LogOut,
-  ChevronLeft,
   DoorOpen,
   CalendarDays,
   HelpCircle,
   FileArchive,
   ShieldCheck,
   Activity,
-  Ticket,
 } from "lucide-react";
 
 //////////////////////////////////////////////////
-// 🎯 MENU TYPES
+// 🎯 MENU TYPES (Fixed Type Definitions)
 //////////////////////////////////////////////////
+type ChildMenuItem = {
+  name: string;
+  icon: React.ReactNode;
+  path: string;
+};
+
 type MenuItem = {
   name: string;
-  icon: any;
+  icon: React.ReactNode;
   path?: string;
   badge?: number;
-  children?: { name: string; icon: any; path: string }[];
+  children?: ChildMenuItem[];
 };
 
 type SectionGroup = {
@@ -88,32 +92,7 @@ const tenantMenu: SectionGroup[] = [
   {
     section: "MASTER DATA",
     items: [
-      {
-        name: "Masters",
-        icon: <Database size={20} />,
-        children: [
-          { name: "All Masters", icon: <Database size={16} />, path: "/masters" },
-          { name: "Organization", icon: <Building2 size={16} />, path: "/masters/organization" },
-          { name: "Academic", icon: <GraduationCap size={16} />, path: "/masters/academic" },
-          { name: "Student", icon: <Users size={16} />, path: "/masters/student" },
-          { name: "Staff", icon: <UserCog size={16} />, path: "/masters/staff" },
-          { name: "Fee", icon: <IndianRupee size={16} />, path: "/masters/fee" },
-          { name: "Examination", icon: <FileText size={16} />, path: "/masters/examination" },
-          { name: "Attendance", icon: <ClipboardCheck size={16} />, path: "/masters/attendance" },
-          { name: "Library", icon: <Library size={16} />, path: "/masters/library" },
-          { name: "Hostel", icon: <BedDouble size={16} />, path: "/masters/hostel" },
-          { name: "Transport", icon: <Bus size={16} />, path: "/masters/transport" },
-          { name: "Inventory", icon: <Package size={16} />, path: "/masters/inventory" },
-          { name: "HR & Payroll", icon: <Wallet size={16} />, path: "/masters/hr" },
-          { name: "Communication", icon: <MessageSquare size={16} />, path: "/masters/communication" },
-          { name: "Certificate", icon: <Award size={16} />, path: "/masters/certificate" },
-          { name: "Security", icon: <ShieldCheck size={16} />, path: "/masters/security" },
-          { name: "Document", icon: <FileArchive size={16} />, path: "/masters/document" },
-          { name: "Event", icon: <CalendarDays size={16} />, path: "/masters/event" },
-          { name: "Visitor", icon: <DoorOpen size={16} />, path: "/masters/visitor" },
-          { name: "System", icon: <Settings size={16} />, path: "/masters/system" },
-        ],
-      },
+      { name: "Masters", icon: <Database size={20} />, path: "/masters" },
       {
         name: "Academic Setup",
         icon: <School size={20} />,
@@ -385,8 +364,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
 
-  const [activeSubMenu, setActiveSubMenu] = useState<MenuItem | null>(null);
-
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
 
@@ -409,22 +386,47 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }).catch(() => {});
   }, [isSuperAdmin]);
 
-  useEffect(() => {
-    if (!sidebarOpen) {
-      setActiveSubMenu(null);
-    }
-  }, [sidebarOpen]);
-
   const handleMobileNavClick = useCallback(() => {
-    setActiveSubMenu(null);
     if (onClose) onClose();
   }, [onClose]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("tenant");
+    localStorage.clear(); // Clear all instances at once safely
     window.location.href = "/";
+  };
+
+  // Shared Nav Menu Rendering block to avoid duplicate code blocks
+  const renderMenuItems = (isMobileLayout: boolean) => {
+    return menu.map((group, gi) => (
+      <div key={gi} className="mb-2 space-y-1">
+        {group.section && (
+          <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
+            {group.section}
+          </p>
+        )}
+        {group.items.map((item, i) =>
+          item.children ? (
+            <ParentNavItem 
+              key={i} 
+              item={item} 
+              collapsed={false} 
+              isMobile={isMobileLayout} 
+              toggleSubMenu={isMobileLayout ? handleMobileNavClick : undefined} 
+            />
+          ) : (
+            <NavItem 
+              key={i} 
+              to={item.path!} 
+              icon={item.icon} 
+              label={item.name} 
+              badge={item.badge} 
+              collapsed={false} 
+              onClick={isMobileLayout ? handleMobileNavClick : undefined}
+            />
+          )
+        )}
+      </div>
+    ));
   };
 
   return (
@@ -481,23 +483,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
             .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
           `}</style>
-
-          {menu.map((group, gi) => (
-            <div key={gi} className="mb-1">
-              {group.section && (
-                <p className="text-[10px] text-slate-500 mt-4 mb-1.5 px-3 uppercase tracking-[1.2px] font-bold select-none">
-                  {group.section}
-                </p>
-              )}
-              {group.items.map((item, i) =>
-                item.children ? (
-                  <ParentNavItem key={i} item={item} collapsed={false} isMobile={false} />
-                ) : (
-                  <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} />
-                )
-              )}
-            </div>
-          ))}
+          {renderMenuItems(false)}
         </div>
 
         {/* Desktop Logout Button */}
@@ -543,22 +529,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 
             {/* Menu Links */}
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              {menu.map((group, gi) => (
-                <div key={gi} className="space-y-1">
-                  {group.section && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">
-                      {group.section}
-                    </p>
-                  )}
-                  {group.items.map((item, i) =>
-                    item.children ? (
-                      <ParentNavItem key={i} item={item} collapsed={false} isMobile={true} toggleSubMenu={handleMobileNavClick} />
-                    ) : (
-                      <NavItem key={i} to={item.path!} icon={item.icon} label={item.name} badge={item.badge} collapsed={false} onClick={handleMobileNavClick} />
-                    )
-                  )}
-                </div>
-              ))}
+              {renderMenuItems(true)}
             </div>
 
             {/* Footer / Logout */}
@@ -583,7 +554,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 //////////////////////////////////////////////////
 type NavItemProps = {
   to: string;
-  icon: any;
+  icon: React.ReactNode;
   label: string;
   badge?: number;
   collapsed: boolean;
@@ -626,7 +597,7 @@ function ParentNavItem({ item, collapsed, isMobile, toggleSubMenu }: ParentNavIt
   const location = useLocation();
 
   // Check if any child route is currently active
-  const isChildActive = item.children?.some((child) => location.pathname === child.path);
+  const isChildActive = item.children?.some((child) => location.pathname === child.path) || false;
 
   useEffect(() => {
     if (isChildActive) {

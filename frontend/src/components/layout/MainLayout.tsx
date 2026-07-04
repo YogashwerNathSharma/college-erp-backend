@@ -110,10 +110,9 @@ export default function MainLayout() {
     <div className={`flex min-h-screen min-h-[100dvh] bg-gray-50 dark:bg-slate-900 ${isPrinting ? "printing" : ""}`}>
       
       {/* ═══════════ Mobile Backdrop Overlay ═══════════ */}
-      {/* Moving this here strictly limits click interactions and doesn't conflict with Sidebar width */}
       {sidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[990]"
+          className="md:hidden fixed inset-0 bg-black/50 z-[998]"
           onClick={() => setSidebarOpen(false)}
         />
       )}

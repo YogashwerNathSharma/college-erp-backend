@@ -289,7 +289,6 @@ html.dark #print-area .bg-white {
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
     min-height: 100vh;
     min-height: 100dvh;
   }

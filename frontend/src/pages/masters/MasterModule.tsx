@@ -259,19 +259,19 @@ export default function MasterModule() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
             {categories.map((category, index) => {
               const colorClass = RECENT_COLORS[index % RECENT_COLORS.length];
               return (
                 <button
                   key={category.id}
                   onClick={() => handleCategoryClick(category)}
-                  className="flex flex-col items-center justify-center text-center p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer"
+                  className="flex flex-col items-center justify-center text-center p-2.5 sm:p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer"
                 >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border mb-3 transition-transform group-hover:scale-105 shadow-inner ${colorClass}`}>
-                    {getCategoryIcon(category.icon, 24)}
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center border mb-2 sm:mb-3 transition-transform group-hover:scale-105 shadow-inner ${colorClass}`}>
+                    {getCategoryIcon(category.icon, 20)}
                   </div>
-                  <span className="text-xs md:text-sm font-medium tracking-wide block line-clamp-2 px-1 text-slate-200 group-hover:text-white">
+                  <span className="text-[10px] sm:text-xs md:text-sm font-medium tracking-wide block line-clamp-2 px-0.5 text-slate-200 group-hover:text-white">
                     {category.label}
                   </span>
                   <span className="absolute top-2 right-2 bg-slate-800 text-[10px] text-slate-400 font-semibold px-1.5 py-0.5 rounded-md border border-slate-700/50">
@@ -306,17 +306,17 @@ export default function MasterModule() {
           </div>
 
           {/* Child Icons layout rendering logic */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-2 md:gap-3">
             {selectedCategory.models.map((model) => (
               <button
                 key={model.key}
                 onClick={() => handleModelClick(model)}
-                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all outline-none active:scale-95 cursor-pointer group"
+                className="flex flex-col items-center justify-center p-2 sm:p-3 md:p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all outline-none active:scale-95 cursor-pointer group"
               >
-                <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-2.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <Database size={18} />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-1.5 sm:mb-2.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <Database size={16} />
                 </div>
-                <span className="text-xs md:text-sm font-medium text-slate-300 group-hover:text-white">
+                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-300 group-hover:text-white line-clamp-2">
                   {model.label}
                 </span>
               </button>

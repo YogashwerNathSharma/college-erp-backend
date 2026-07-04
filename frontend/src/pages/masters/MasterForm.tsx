@@ -33,7 +33,7 @@ export default function MasterForm({
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Initialize form data
+  // Initialize form data safely
   useEffect(() => {
     const initial: Record<string, any> = {};
     fields.forEach((field) => {
@@ -46,12 +46,12 @@ export default function MasterForm({
       }
     });
     setFormData(initial);
+    setErrors({});
   }, [fields, initialData]);
 
-  // Handle field change
+  // Handle field change cleanly
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error on change
     if (errors[name]) {
       setErrors((prev) => { const e = { ...prev }; delete e[name]; return e; });
     }
@@ -61,14 +61,14 @@ export default function MasterForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required fields
     const newErrors: Record<string, string> = {};
     fields.forEach((field) => {
-      if (field.required && (!formData[field.name] || formData[field.name] === "")) {
+      const val = formData[field.name];
+      if (field.required && (val === undefined || val === null || val === "")) {
         newErrors[field.name] = `${field.label} is required`;
       }
-      if (field.type === "number" && formData[field.name]) {
-        const num = Number(formData[field.name]);
+      if (field.type === "number" && val !== "" && val !== null) {
+        const num = Number(val);
         if (field.min !== undefined && num < field.min) {
           newErrors[field.name] = `Minimum value is ${field.min}`;
         }
@@ -76,9 +76,9 @@ export default function MasterForm({
           newErrors[field.name] = `Maximum value is ${field.max}`;
         }
       }
-      if (field.type === "email" && formData[field.name]) {
+      if (field.type === "email" && val) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData[field.name])) {
+        if (!emailRegex.test(val)) {
           newErrors[field.name] = "Invalid email address";
         }
       }
@@ -89,7 +89,7 @@ export default function MasterForm({
       return;
     }
 
-    // Clean empty values
+    // Clean empty strings/nulls out of final payload
     const cleanData: Record<string, any> = {};
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== "" && value !== null && value !== undefined) {
@@ -100,15 +100,13 @@ export default function MasterForm({
     onSubmit(cleanData);
   };
 
-  // ─────────────────────────────────────────────
-  // Render field by type
-  // ─────────────────────────────────────────────
+  // Render field by type wrapper
   const renderField = (field: FieldConfig) => {
     const value = formData[field.name] ?? "";
     const error = errors[field.name];
-    const baseClasses = `w-full px-3 py-2.5 border rounded-lg text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+    const baseClasses = `w-full px-3 py-2.5 border rounded-lg text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none ${
       error
-        ? "border-red-400 bg-red-50 dark:bg-red-950 dark:border-red-700"
+        ? "border-red-400 bg-red-50 dark:bg-red-950/30 dark:border-red-700 text-gray-900 dark:text-gray-100"
         : "border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200"
     }`;
 
@@ -120,7 +118,7 @@ export default function MasterForm({
             onChange={(e) => handleChange(field.name, e.target.value)}
             placeholder={field.placeholder}
             rows={3}
-            className={baseClasses + " resize-none"}
+            className={`${baseClasses} resize-none`}
           />
         );
 
@@ -142,7 +140,7 @@ export default function MasterForm({
 
       case "boolean":
         return (
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer py-1">
             <div className="relative">
               <input
                 type="checkbox"
@@ -153,7 +151,7 @@ export default function MasterForm({
               <div className="w-11 h-6 bg-gray-300 dark:bg-slate-600 rounded-full peer-checked:bg-indigo-600 transition-colors" />
               <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform peer-checked:translate-x-5" />
             </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
               {value ? "Yes" : "No"}
             </span>
           </label>
@@ -166,14 +164,14 @@ export default function MasterForm({
               type="color"
               value={value || "#4f46e5"}
               onChange={(e) => handleChange(field.name, e.target.value)}
-              className="w-10 h-10 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer"
+              className="w-10 h-10 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer p-0 bg-transparent"
             />
             <input
               type="text"
               value={value}
               onChange={(e) => handleChange(field.name, e.target.value)}
               placeholder="#4f46e5"
-              className={baseClasses + " flex-1"}
+              className={`${baseClasses} flex-1`}
             />
           </div>
         );
@@ -249,19 +247,20 @@ export default function MasterForm({
           <textarea
             value={typeof value === "object" ? JSON.stringify(value, null, 2) : value}
             onChange={(e) => {
+              const textVal = e.target.value;
               try {
-                handleChange(field.name, JSON.parse(e.target.value));
+                handleChange(field.name, JSON.parse(textVal));
               } catch {
-                handleChange(field.name, e.target.value);
+                handleChange(field.name, textVal);
               }
             }}
             placeholder={field.placeholder || "{}"}
             rows={4}
-            className={baseClasses + " font-mono text-xs resize-none"}
+            className={`${baseClasses} font-mono text-xs resize-none`}
           />
         );
 
-      default: // text
+      default:
         return (
           <input
             type="text"
@@ -274,18 +273,16 @@ export default function MasterForm({
     }
   };
 
-  // ─────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-fadeIn">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
             {title}
           </h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
@@ -293,18 +290,13 @@ export default function MasterForm({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        {/* Form Body - Scroll Container Fixed */}
+        <form onSubmit={handleSubmit} id="masterDynamicForm" className="flex-1 overflow-y-auto p-6 [scrollbar-gutter:stable]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => {
-              // Full-width for textarea, json, color types
               const isFullWidth = ["textarea", "json"].includes(field.type);
-
               return (
-                <div
-                  key={field.name}
-                  className={isFullWidth ? "md:col-span-2" : ""}
-                >
+                <div key={field.name} className={isFullWidth ? "md:col-span-2" : ""}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     {field.label}
                     {field.required && <span className="text-red-500 ml-1">*</span>}
@@ -320,7 +312,7 @@ export default function MasterForm({
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-end gap-3 flex-shrink-0">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-end gap-3 flex-shrink-0 bg-gray-50 dark:bg-slate-800/50">
           <button
             type="button"
             onClick={onClose}
@@ -330,7 +322,8 @@ export default function MasterForm({
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
+            form="masterDynamicForm"
             disabled={loading}
             className="px-5 py-2.5 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >

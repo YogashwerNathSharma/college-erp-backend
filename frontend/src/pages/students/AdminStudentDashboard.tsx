@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, UserPlus, UserCheck, UserX, GraduationCap,
   TrendingUp, TrendingDown, Calendar, Filter,
-  Download, RefreshCw, Eye, ArrowRight, Search,
+  Download, RefreshCw, Eye, ArrowRight, Search, 
+  LayoutDashboard, IdCard, FolderOpen, BarChart3, ClipboardList,
   ChevronDown, MoreVertical, Activity, X, Printer,
   CheckSquare, Square, FileText,
 } from 'lucide-react';
@@ -1008,6 +1009,33 @@ const AdminStudentDashboard: React.FC = () => {
               <RefreshCw size={16} className="text-gray-500" />
             </button>
           </div>
+        </div>
+
+        {/* ━━━━ Quick Actions (like main dashboard) ━━━━ */}
+        <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-10 gap-1.5 sm:gap-2">
+          {[
+            { label: "All Students", icon: Users, route: "/students", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+            { label: "New Admission", icon: UserPlus, route: "/students/new-admission", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+            { label: "Old Entry", icon: FileText, route: "/students/old-entry", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+            { label: "Promotion", icon: GraduationCap, route: "/students/promotion", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+            { label: "Age Settings", icon: Calendar, route: "/students/age-settings", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
+            { label: "Print List", icon: Printer, route: "/students/print", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
+            { label: "Reports", icon: BarChart3, route: "/students/reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+            { label: "ID Card", icon: IdCard, route: "/students/id-card", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+            { label: "Recycle Bin", icon: FolderOpen, route: "/students/recycle-bin", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
+            { label: "Dashboard", icon: LayoutDashboard, route: "/student-dashboard", color: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
+          ].map((action) => (
+            <button
+              key={action.label}
+              onClick={() => navigate(action.route)}
+              className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 group active:scale-95`}
+            >
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+                <action.icon size={14} className="text-white" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* ━━━━ Stat Cards (6 cards) ━━━━ */}

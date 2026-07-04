@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════
-// MASTER MODULE - Main Page Component (FULLY MOBILE RESPONSIVE)
-// Enterprise Master Data Management with Mobile Layout Logic
+// MASTER MODULE - Dashboard Style Grid Navigation (FULLY RESPONSIVE)
+// Flat Categories -> Child Grid Layout -> Data Matrix
 // ═══════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from "react";
@@ -11,11 +11,22 @@ import {
   ClipboardList, CalendarCheck, BookOpen, BedDouble, Bus,
   Package, Briefcase, MessageSquare, Award, Shield,
   FileCheck, CalendarHeart, UserRound, Brain, Settings,
-  ChevronRight, ChevronDown, Search, Plus, Download,
-  Upload, RefreshCw, Filter, Database, ArrowLeft,
+  Search, Plus, Download, Upload, RefreshCw, Filter, Database, ArrowLeft, Grid
 } from "lucide-react";
 import MasterTable from "./MasterTable";
 import MasterForm from "./MasterForm";
+
+// Dashboard-style dynamic background color generator map matrix
+const RECENT_COLORS = [
+  "bg-blue-600/10 text-blue-500 dark:bg-blue-500/20 border-blue-500/30",
+  "bg-emerald-600/10 text-emerald-500 dark:bg-emerald-500/20 border-emerald-500/30",
+  "bg-teal-600/10 text-teal-500 dark:bg-teal-500/20 border-teal-500/30",
+  "bg-rose-600/10 text-rose-500 dark:bg-rose-500/20 border-rose-500/30",
+  "bg-indigo-600/10 text-indigo-500 dark:bg-indigo-500/20 border-indigo-500/30",
+  "bg-purple-600/10 text-purple-500 dark:bg-purple-500/20 border-purple-500/30",
+  "bg-amber-600/10 text-amber-500 dark:bg-amber-500/20 border-amber-500/30",
+  "bg-cyan-600/10 text-cyan-500 dark:bg-cyan-500/20 border-cyan-500/30",
+];
 
 const CATEGORY_ICONS: Record<string, any> = {
   Building2, GraduationCap, Users, UserCog, IndianRupee,
@@ -24,9 +35,9 @@ const CATEGORY_ICONS: Record<string, any> = {
   FileCheck, CalendarHeart, UserRound, Brain, Settings,
 };
 
-function getCategoryIcon(iconName: string) {
+function getCategoryIcon(iconName: string, size = 22) {
   const Icon = CATEGORY_ICONS[iconName];
-  return Icon ? <Icon size={18} /> : <Database size={18} />;
+  return Icon ? <Icon size={size} /> : <Database size={size} />;
 }
 
 interface MasterModel {
@@ -51,10 +62,6 @@ interface FieldConfig {
   type: string;
   required?: boolean;
   options?: { label: string; value: string }[];
-  placeholder?: string;
-  min?: number;
-  max?: number;
-  defaultValue?: any;
 }
 
 interface PaginationInfo {
@@ -68,12 +75,12 @@ interface PaginationInfo {
 
 export default function MasterModule() {
   const [categories, setCategories] = useState<MasterCategory[]>([]);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [selectedModelLabel, setSelectedModelLabel] = useState<string>("");
 
-  // MOBILE STATE: Manage visibility between Sidebar and Content on small screens
-  const [viewMode, setViewMode] = useState<"sidebar" | "content">("sidebar");
+  // Workflow State Control: 'categories' | 'child_grid' | 'table_view'
+  const [currentView, setCurrentView] = useState<"categories" | "child_grid" | "table_view">("categories");
 
   const [entries, setEntries] = useState<any[]>([]);
   const [fields, setFields] = useState<FieldConfig[]>([]);
@@ -95,9 +102,6 @@ export default function MasterModule() {
       const res = await axios.get(getFullUrl("/api/masters/categories"));
       if (res.data.success) {
         setCategories(res.data.data);
-        if (res.data.data.length > 0 && !expandedCategory) {
-          setExpandedCategory(res.data.data[0].id);
-        }
       }
     } catch (err) {
       console.error("Failed to load master categories:", err);
@@ -138,12 +142,28 @@ export default function MasterModule() {
     }
   }, [selectedModel, search, showInactive, fetchEntries]);
 
-  const handleSelectModel = (model: MasterModel) => {
+  const handleCategoryClick = (category: MasterCategory) => {
+    setSelectedCategory(category);
+    setCurrentView("child_grid");
+  };
+
+  const handleModelClick = (model: MasterModel) => {
     setSelectedModel(model.key);
     setSelectedModelLabel(model.label);
     setSearch("");
     setPagination({ page: 1, limit: 25, total: 0, totalPages: 0, hasNext: false, hasPrev: false });
-    setViewMode("content"); // Switch view to content view panel on mobile
+    setCurrentView("table_view");
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategory(null);
+    setSelectedModel(null);
+    setCurrentView("categories");
+  };
+
+  const handleBackToChildGrid = () => {
+    setSelectedModel(null);
+    setCurrentView("child_grid");
   };
 
   const handleCreate = () => {
@@ -225,200 +245,178 @@ export default function MasterModule() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-gray-50 dark:bg-slate-900 overflow-hidden relative">
+    <div className="h-[calc(100vh-64px)] w-full bg-slate-950 text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
       
-      {/* ═══════ LEFT SIDEBAR ═══════ */}
-      {/* Added mobile responsiveness classes: md:w-72, md:flex, and viewMode logic toggle */}
-      <div className={`w-full md:w-72 h-full bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col flex-shrink-0 overflow-hidden ${
-        viewMode === "sidebar" ? "flex" : "hidden md:flex"
-      }`}>
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <Database size={20} className="text-indigo-500" />
-            Master Data
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {categories.reduce((sum, c) => sum + c.modelCount, 0)} masters across {categories.length} categories
-          </p>
-        </div>
+      {/* ═══════ VIEW 1: CATEGORIES GRID (Dashboard Layout Like Image 1000412908.jpg) ═══════ */}
+      {currentView === "categories" && (
+        <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+          <div className="border-b border-slate-800 pb-4">
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              <Grid className="text-indigo-500" size={24} />
+              Master Control Setup
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Select any architecture base matrix block to handle child structural models
+            </p>
+          </div>
 
-        <div className="flex-1 overflow-y-auto p-2 [scrollbar-gutter:stable]">
-          {categories.map((category) => (
-            <div key={category.id} className="mb-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            {categories.map((category, index) => {
+              const colorClass = RECENT_COLORS[index % RECENT_COLORS.length];
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category)}
+                  className="flex flex-col items-center justify-center text-center p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer"
+                >
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border mb-3 transition-transform group-hover:scale-105 shadow-inner ${colorClass}`}>
+                    {getCategoryIcon(category.icon, 24)}
+                  </div>
+                  <span className="text-xs md:text-sm font-medium tracking-wide block line-clamp-2 px-1 text-slate-200 group-hover:text-white">
+                    {category.label}
+                  </span>
+                  <span className="absolute top-2 right-2 bg-slate-800 text-[10px] text-slate-400 font-semibold px-1.5 py-0.5 rounded-md border border-slate-700/50">
+                    {category.modelCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ VIEW 2: CHILD MASTERS HORIZONTAL ICON GRID (With Back Button) ═══════ */}
+      {currentView === "child_grid" && selectedCategory && (
+        <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+          {/* Header Action Row with Navigation Context */}
+          <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+            <button
+              onClick={handleBackToCategories}
+              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+              title="Back to Main Menu"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-indigo-400">{getCategoryIcon(selectedCategory.icon, 20)}</span>
+                <h1 className="text-lg md:text-xl font-bold text-white">{selectedCategory.label}</h1>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">Select a master target collection mapping below</p>
+            </div>
+          </div>
+
+          {/* Child Icons layout rendering logic */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            {selectedCategory.models.map((model) => (
               <button
-                onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 outline-none ${
-                  expandedCategory === category.id
-                    ? "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
-                }`}
+                key={model.key}
+                onClick={() => handleModelClick(model)}
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all outline-none active:scale-95 cursor-pointer group"
               >
-                <span className={`flex-shrink-0 ${expandedCategory === category.id ? "text-indigo-500" : "text-gray-400"}`}>
-                  {getCategoryIcon(category.icon)}
+                <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-2.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                  <Database size={18} />
+                </div>
+                <span className="text-xs md:text-sm font-medium text-slate-300 group-hover:text-white">
+                  {model.label}
                 </span>
-                <span className="flex-1 text-sm font-medium truncate">{category.label}</span>
-                <span className="text-xs text-gray-400 mr-1">{category.modelCount}</span>
-                {expandedCategory === category.id ? (
-                  <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
-                ) : (
-                  <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
-                )}
               </button>
-
-              {expandedCategory === category.id && (
-                <div className="ml-4 mt-1 space-y-0.5 transition-all">
-                  {category.models.map((model) => (
-                    <button
-                      key={model.key}
-                      onClick={() => handleSelectModel(model)}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all duration-150 outline-none ${
-                        selectedModel === model.key
-                          ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 font-medium border-l-2 border-indigo-500"
-                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-gray-200"
-                      }`}
-                    >
-                      {model.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ═══════ RIGHT CONTENT AREA ═══════ */}
-      {/* Added viewMode dynamic toggles so it shows correctly on layout break rules */}
-      <div className={`flex-1 flex flex-col overflow-hidden h-full w-full ${
-        viewMode === "content" ? "flex" : "hidden md:flex"
-      }`}>
-        {selectedModel ? (
-          <>
-            {/* Toolbar Action Header */}
-            <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {/* Mobile Back Button: Only visible on small devices to return back to masters list */}
-                  <button
-                    onClick={() => setViewMode("sidebar")}
-                    className="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 md:hidden flex-shrink-0"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <div>
-                    <h1 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate max-w-[200px] sm:max-w-xs">
-                      {selectedModelLabel}
-                    </h1>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
-                      {pagination.total} entries total
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions Grid Flow Wrappers optimized for smaller screens */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative flex-1 min-w-[140px] sm:flex-initial">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9 pr-4 py-2 w-full sm:w-48 lg:w-56 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-
-                  <button
-                    onClick={() => setShowInactive(!showInactive)}
-                    className={`px-2.5 py-2 rounded-lg text-xs md:text-sm border flex items-center gap-1 transition-colors ${
-                      showInactive
-                        ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950 dark:border-amber-700 dark:text-amber-300"
-                        : "border-gray-300 text-gray-600 dark:border-slate-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <Filter size={14} />
-                    {showInactive ? "All" : "Active"}
-                  </button>
-
-                  <button
-                    onClick={handleExport}
-                    className="px-2.5 py-2 rounded-lg text-xs md:text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
-                  >
-                    <Download size={14} /> <span className="hidden sm:inline">Export</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowImport(true)}
-                    className="px-2.5 py-2 rounded-lg text-xs md:text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
-                  >
-                    <Upload size={14} /> <span className="hidden sm:inline">Import</span>
-                  </button>
-
-                  <button
-                    onClick={handleCreate}
-                    className="px-3 py-2 rounded-lg text-xs md:text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-1.5 ml-auto sm:ml-0"
-                  >
-                    <Plus size={16} /> Add New
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Responsive Table Layout Bounds */}
-            <div className="flex-1 overflow-auto p-3 md:p-6 [scrollbar-gutter:stable]">
-              <MasterTable
-                entries={entries}
-                fields={fields}
-                loading={loading}
-                pagination={pagination}
-                onPageChange={(p) => fetchEntries(selectedModel, p)}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onToggle={handleToggle}
-                onClone={handleClone}
-              />
-            </div>
-          </>
-        ) : (
-          /* Empty Initial State View Container Layout fixes for responsive metrics */
-          <div className="flex-1 flex items-center justify-center p-6 bg-gray-50 dark:bg-slate-900">
-            <div className="text-center max-w-sm sm:max-w-md w-full">
-              {/* Back to layout logic if screen is empty on mobile initialization */}
-              <button 
-                onClick={() => setViewMode("sidebar")}
-                className="mb-4 text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mx-auto md:hidden"
-              >
-                <ArrowLeft size={16} /> View Master Categories
-              </button>
-              
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Database size={30} className="text-indigo-500" />
-              </div>
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white mb-2">
-                Select a Master Model
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm px-4">
-                Choose a collection framework from the category panel matrix layout configuration index options.
-              </p>
-              
-              <div className="mt-6 grid grid-cols-2 gap-3 text-left px-2">
-                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-xs">
-                  <p className="text-xl sm:text-2xl font-bold text-indigo-600">{categories.length}</p>
-                  <p className="text-[10px] sm:text-xs text-gray-500">Categories</p>
-                </div>
-                <div className="p-3 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shadow-xs">
-                  <p className="text-xl sm:text-2xl font-bold text-emerald-600">
-                    {categories.reduce((sum, c) => sum + c.modelCount, 0)}
+      {/* ═══════ VIEW 3: FULL MASTER DATA TABLE CONTAINER ═══════ */}
+      {currentView === "table_view" && selectedModel && (
+        <div className="max-w-7xl mx-auto space-y-4 animate-fadeIn flex flex-col h-full">
+          {/* Header Controls Menu Panel */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBackToChildGrid}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition-colors cursor-pointer"
+                  title="Back to Models"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                  <h1 className="text-base md:text-lg font-bold text-white truncate max-w-[240px]">
+                    {selectedModelLabel}
+                  </h1>
+                  <p className="text-xs text-slate-400">
+                    {pagination.total} entries found inside dataset matrix
                   </p>
-                  <p className="text-[10px] sm:text-xs text-gray-500">Total Datasets</p>
                 </div>
+              </div>
+
+              {/* Dynamic Operations Toolbar Wrap */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[130px] sm:flex-initial">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Filter records..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-4 py-1.5 w-full sm:w-44 border border-slate-800 rounded-lg text-xs bg-slate-950 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setShowInactive(!showInactive)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs border flex items-center gap-1 transition-colors cursor-pointer ${
+                    showInactive
+                      ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                      : "border-slate-800 text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <Filter size={12} />
+                  {showInactive ? "All" : "Active"}
+                </button>
+
+                <button
+                  onClick={handleExport}
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Download size={12} /> Export
+                </button>
+
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Upload size={12} /> Import
+                </button>
+
+                <button
+                  onClick={handleCreate}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm cursor-pointer ml-auto sm:ml-0 font-medium"
+                >
+                  <Plus size={14} /> Add New
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Forms and Bulk Upload Action Framework maps */}
+          {/* Table Implementation Engine Panel Wrap */}
+          <div className="flex-1 overflow-x-auto">
+            <MasterTable
+              entries={entries}
+              fields={fields}
+              loading={loading}
+              pagination={pagination}
+              onPageChange={(p) => fetchEntries(selectedModel, p)}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggle={handleToggle}
+              onClone={handleClone}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic Structural Operational Modals */}
       {showForm && (
         <MasterForm
           fields={fields}
@@ -446,7 +444,7 @@ export default function MasterModule() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// IMPORT MODAL COMPONENT (Mobile Height Constraint Updates)
+// IMPORT MODAL COMPONENT (Tailored UI styling alignment maps)
 // ═══════════════════════════════════════════════════════════════════
 function ImportModal({
   modelKey, modelLabel, onClose, onSuccess,
@@ -498,73 +496,73 @@ function ImportModal({
       const res = await axios.post(getFullUrl(`/api/masters/${modelKey}/bulk`), { entries });
       setResult(res.data.data);
       if (res.data.data.failed === 0) {
-        setTimeout(onSuccess, 1200);
+        setTimeout(onSuccess, 1000);
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || "Import execution failed");
+      alert(err.response?.data?.message || "Sync execution error caught");
     } finally {
       setImporting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="p-4 md:p-6 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
-          <h3 className="text-base md:text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-            <Upload size={18} className="text-indigo-500" />
-            Import {modelLabel}
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-800 flex-shrink-0 flex items-center justify-between">
+          <h3 className="text-sm md:text-base font-semibold flex items-center gap-2">
+            <Upload size={16} className="text-indigo-400" />
+            Bulk Import: {modelLabel}
           </h3>
         </div>
 
-        <div className="p-4 md:p-6 overflow-y-auto flex-1 space-y-4 [scrollbar-gutter:stable]">
+        <div className="p-4 overflow-y-auto flex-1 space-y-4 [scrollbar-gutter:stable]">
           <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Upload Configuration Matrix (JSON / CSV)
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Select local file target sheet (JSON, CSV)
             </label>
             <input
               type="file"
               accept=".json,.csv"
               onChange={handleFileUpload}
-              className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+              className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-700 file:text-xs file:font-medium file:bg-slate-800 file:text-slate-200 file:hover:bg-slate-700 cursor-pointer"
             />
           </div>
 
           <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Direct Raw JSON Matrix Array Paste
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Raw Data Array String Area
             </label>
             <textarea
               value={jsonData}
               onChange={(e) => setJsonData(e.target.value)}
               rows={5}
-              className="w-full p-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-xs font-mono bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
-              placeholder={`[\n  { "code": "M1", "name": "Dynamic Row" }\n]`}
+              className="w-full p-2.5 border border-slate-800 rounded-lg text-xs font-mono bg-slate-950 text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+              placeholder={`[\n  { "code": "X1", "name": "Direct Row Sync" }\n]`}
             />
           </div>
 
           {result && (
-            <div className={`p-3 rounded-lg border text-xs ${result.failed > 0 ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-green-50 border-green-200 text-green-900"}`}>
-              <p className="font-semibold">Sync Engine Stats Summary:</p>
-              <p className="mt-0.5">Passed: {result.success} rows | Failed: {result.failed} rows</p>
+            <div className={`p-3 rounded-lg border text-xs ${result.failed > 0 ? "bg-amber-950/40 border-amber-500/30 text-amber-300" : "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"}`}>
+              <p className="font-semibold">Execution Statistics:</p>
+              <p className="mt-0.5">Success counts: {result.success} | Structural failures: {result.failed}</p>
             </div>
           )}
         </div>
 
-        <div className="p-3 md:p-4 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-2 flex-shrink-0 bg-gray-50 dark:bg-slate-800/40">
+        <div className="p-3 border-t border-slate-800 flex justify-end gap-2 bg-slate-950 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-3.5 py-2 rounded-lg text-xs md:text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+            className="px-3.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800"
           >
             Cancel
           </button>
           <button
             onClick={handleImport}
             disabled={!jsonData.trim() || importing}
-            className="px-3.5 py-2 rounded-lg text-xs md:text-sm bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="px-3.5 py-1.5 rounded-lg text-xs bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
           >
             {importing ? <RefreshCw size={12} className="animate-spin" /> : <Upload size={12} />}
-            Import Data
+            Push Integration
           </button>
         </div>
       </div>

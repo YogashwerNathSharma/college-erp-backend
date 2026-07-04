@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { getFullUrl } from "../../utils/url";
 import {
   Building2, GraduationCap, Users, UserCog, IndianRupee,
@@ -15,16 +16,24 @@ import {
 import MasterTable from "./MasterTable";
 import MasterForm from "./MasterForm";
 
-// Dashboard-style dynamic background color generator map matrix
+// Dashboard-style SOLID colors (matches TenantDashboard quick actions)
 const RECENT_COLORS = [
-  "bg-blue-600/10 text-blue-500 dark:bg-blue-500/20 border-blue-500/30",
-  "bg-emerald-600/10 text-emerald-500 dark:bg-emerald-500/20 border-emerald-500/30",
-  "bg-teal-600/10 text-teal-500 dark:bg-teal-500/20 border-teal-500/30",
-  "bg-rose-600/10 text-rose-500 dark:bg-rose-500/20 border-rose-500/30",
-  "bg-indigo-600/10 text-indigo-500 dark:bg-indigo-500/20 border-indigo-500/30",
-  "bg-purple-600/10 text-purple-500 dark:bg-purple-500/20 border-purple-500/30",
-  "bg-amber-600/10 text-amber-500 dark:bg-amber-500/20 border-amber-600/30",
-  "bg-cyan-600/10 text-cyan-500 dark:bg-cyan-500/20 border-cyan-500/30",
+  { iconBg: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+  { iconBg: "bg-emerald-500", lightBg: "bg-emerald-50 dark:bg-emerald-950/50" },
+  { iconBg: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
+  { iconBg: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
+  { iconBg: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+  { iconBg: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+  { iconBg: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+  { iconBg: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
+  { iconBg: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+  { iconBg: "bg-sky-500", lightBg: "bg-sky-50 dark:bg-sky-950/50" },
+  { iconBg: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
+  { iconBg: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+  { iconBg: "bg-violet-500", lightBg: "bg-violet-50 dark:bg-violet-950/50" },
+  { iconBg: "bg-fuchsia-500", lightBg: "bg-fuchsia-50 dark:bg-fuchsia-950/50" },
+  { iconBg: "bg-lime-500", lightBg: "bg-lime-50 dark:bg-lime-950/50" },
+  { iconBg: "bg-pink-500", lightBg: "bg-pink-50 dark:bg-pink-950/50" },
 ];
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -34,9 +43,9 @@ const CATEGORY_ICONS: Record<string, any> = {
   FileCheck, CalendarHeart, UserRound, Brain, Settings,
 };
 
-function getCategoryIcon(iconName: string, size = 22) {
+function getCategoryIcon(iconName: string, size = 22, colorClass = "text-white") {
   const Icon = CATEGORY_ICONS[iconName];
-  return Icon ? <Icon size={size} /> : <Database size={size} />;
+  return Icon ? <Icon size={size} className={colorClass} /> : <Database size={size} className={colorClass} />;
 }
 
 interface MasterModel {
@@ -73,6 +82,7 @@ interface PaginationInfo {
 }
 
 export default function MasterModule() {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
@@ -244,38 +254,45 @@ export default function MasterModule() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] w-full bg-slate-950 text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
+    <div className="h-[calc(100vh-64px)] w-full bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
 
       {/* ═══════ VIEW 1: CATEGORIES GRID (Dashboard Layout Like Image 1000412908.jpg) ═══════ */}
       {currentView === "categories" && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-          <div className="border-b border-slate-800 pb-4">
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex items-center gap-3">
+            {/* Mobile Back Button — navigates to sidebar/dashboard */}
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="md:hidden p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0 tap-target"
+              aria-label="Back"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+            <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
               <Grid className="text-indigo-500" size={24} />
               Master Control Setup
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               Select any architecture base matrix block to handle child structural models
             </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">
             {categories.map((category, index) => {
-              const colorClass = RECENT_COLORS[index % RECENT_COLORS.length];
+              const color = RECENT_COLORS[index % RECENT_COLORS.length];
               return (
                 <button
                   key={category.id}
                   onClick={() => handleCategoryClick(category)}
-                  className="flex flex-col items-center justify-center text-center p-2.5 sm:p-4 rounded-xl border border-slate-800/80 bg-slate-900/60 hover:bg-slate-900 hover:border-slate-700 transition-all group shadow-md relative outline-none active:scale-95 cursor-pointer"
+                  className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${color.lightBg} hover:scale-105 transition-all duration-200 group relative outline-none active:scale-95 cursor-pointer`}
                 >
-                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center border mb-2 sm:mb-3 transition-transform group-hover:scale-105 shadow-inner ${colorClass}`}>
-                    {getCategoryIcon(category.icon, 20)}
+                  <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md sm:rounded-lg ${color.iconBg} flex items-center justify-center`}>
+                    {getCategoryIcon(category.icon, 16)}
                   </div>
-                  <span className="text-[10px] sm:text-xs md:text-sm font-medium tracking-wide block line-clamp-2 px-0.5 text-slate-200 group-hover:text-white">
+                  <span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">
                     {category.label}
-                  </span>
-                  <span className="absolute top-2 right-2 bg-slate-800 text-[10px] text-slate-400 font-semibold px-1.5 py-0.5 rounded-md border border-slate-700/50">
-                    {category.modelCount}
                   </span>
                 </button>
               );
@@ -288,35 +305,35 @@ export default function MasterModule() {
       {currentView === "child_grid" && selectedCategory && (
         <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
           {/* Header Action Row with Navigation Context */}
-          <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
             <button
               onClick={handleBackToCategories}
-              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
               title="Back to Main Menu"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-indigo-400">{getCategoryIcon(selectedCategory.icon, 20)}</span>
-                <h1 className="text-lg md:text-xl font-bold text-white">{selectedCategory.label}</h1>
+                <span>{getCategoryIcon(selectedCategory.icon, 20, "text-indigo-400")}</span>
+                <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{selectedCategory.label}</h1>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">Select a master target collection mapping below</p>
             </div>
           </div>
 
           {/* Child Icons layout rendering logic */}
-          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-2 md:gap-3">
-            {selectedCategory.models.map((model) => (
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">
+            {selectedCategory.models.map((model, idx) => (
               <button
                 key={model.key}
                 onClick={() => handleModelClick(model)}
-                className="flex flex-col items-center justify-center p-2 sm:p-3 md:p-4 rounded-xl border border-indigo-500/10 bg-indigo-950/10 hover:bg-indigo-950/20 hover:border-indigo-500/30 text-center transition-all outline-none active:scale-95 cursor-pointer group"
+                className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].lightBg} hover:scale-105 transition-all duration-200 group outline-none active:scale-95 cursor-pointer`}
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mb-1.5 sm:mb-2.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <Database size={16} />
+                <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md sm:rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].iconBg} flex items-center justify-center`}>
+                  <Database size={14} className="text-white" />
                 </div>
-                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-300 group-hover:text-white line-clamp-2">
+                <span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">
                   {model.label}
                 </span>
               </button>
@@ -329,12 +346,12 @@ export default function MasterModule() {
       {currentView === "table_view" && selectedModel && (
         <div className="max-w-7xl mx-auto space-y-4 animate-fadeIn flex flex-col h-full">
           {/* Header Controls Menu Panel */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-4 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleBackToChildGrid}
-                  className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition-colors cursor-pointer"
+                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                   title="Back to Models"
                 >
                   <ArrowLeft size={18} />
@@ -358,7 +375,7 @@ export default function MasterModule() {
                     placeholder="Filter records..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 pr-4 py-1.5 w-full sm:w-44 border border-slate-800 rounded-lg text-xs bg-slate-950 text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="pl-9 pr-4 py-1.5 w-full sm:w-44 border border-slate-200 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
 
@@ -367,7 +384,7 @@ export default function MasterModule() {
                   className={`px-2.5 py-1.5 rounded-lg text-xs border flex items-center gap-1 transition-colors cursor-pointer ${
                     showInactive
                       ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-                      : "border-slate-800 text-slate-400 hover:bg-slate-800"
+                      : "border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
                   <Filter size={12} />
@@ -376,14 +393,14 @@ export default function MasterModule() {
 
                 <button
                   onClick={handleExport}
-                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Download size={12} /> Export
                 </button>
 
                 <button
                   onClick={() => setShowImport(true)}
-                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Upload size={12} /> Import
                 </button>
@@ -506,8 +523,8 @@ function ImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex-shrink-0 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 flex items-center justify-between">
           <h3 className="text-sm md:text-base font-semibold flex items-center gap-2">
             <Upload size={16} className="text-indigo-400" />
             Bulk Import: {modelLabel}
@@ -535,7 +552,7 @@ function ImportModal({
               value={jsonData}
               onChange={(e) => setJsonData(e.target.value)}
               rows={5}
-              className="w-full p-2.5 border border-slate-800 rounded-lg text-xs font-mono bg-slate-950 text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+              className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono bg-gray-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
               placeholder={`[\n { "code": "X1", "name": "Direct Row Sync" }\n]`}
             />
           </div>
@@ -548,10 +565,10 @@ function ImportModal({
           )}
         </div>
 
-        <div className="p-3 border-t border-slate-800 flex justify-end gap-2 bg-slate-950 flex-shrink-0">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-gray-50 dark:bg-slate-950 flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-3.5 py-1.5 rounded-lg text-xs border border-slate-800 text-slate-400 hover:bg-slate-800"
+            className="px-3.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Cancel
           </button>

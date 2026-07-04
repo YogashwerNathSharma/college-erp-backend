@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
-// SIDEBAR COMPONENT - FIXED ROUTING MATRIX
+// SIDEBAR COMPONENT - STANDARD CLEAN INTEGRATION WITH BACK NAVIGATION
 // ═══════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
 
@@ -44,7 +43,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Masters",
         icon: <Database size={20} />,
-        path: "/masters" // 🔥 Direct base router targeting
+        path: "/masters" 
       },
       {
         name: "Academic Setup",
@@ -70,13 +69,6 @@ const tenantMenu: SectionGroup[] = [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/student-dashboard" },
           { name: "All Students", icon: <Users size={16} />, path: "/students" },
           { name: "New Admission", icon: <UserCheck size={16} />, path: "/students/new-admission" },
-          { name: "Old Student Entry", icon: <FileText size={16} />, path: "/students/old-entry" },
-          { name: "Promotion", icon: <GraduationCap size={16} />, path: "/students/promotion" },
-          { name: "Age Settings", icon: <Calendar size={16} />, path: "/students/age-settings" },
-          { name: "Print List", icon: <FileText size={16} />, path: "/students/print" },
-          { name: "Reports", icon: <BarChart3 size={16} />, path: "/students/reports" },
-          { name: "ID Card", icon: <IdCard size={16} />, path: "/students/id-card" },
-          { name: "Recycle Bin", icon: <FolderOpen size={16} />, path: "/students/recycle-bin" },
         ],
       },
       {
@@ -85,74 +77,6 @@ const tenantMenu: SectionGroup[] = [
         children: [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/teacher-dashboard" },
           { name: "All Teachers", icon: <UserCog size={16} />, path: "/teachers" },
-          { name: "Assign Subject", icon: <BookOpen size={16} />, path: "/assign-subject" },
-          { name: "Timetable", icon: <CalendarClock size={16} />, path: "/teacher-timetable" },
-          { name: "Attendance", icon: <ClipboardCheck size={16} />, path: "/teacher-attendance" },
-          { name: "Leave", icon: <Clock size={16} />, path: "/teacher-leave" },
-          { name: "Salary", icon: <Wallet size={16} />, path: "/teacher-salary" },
-          { name: "Performance", icon: <Star size={16} />, path: "/teacher-performance" },
-          { name: "Documents", icon: <FolderOpen size={16} />, path: "/teacher-documents" },
-          { name: "Reports", icon: <BarChart3 size={16} />, path: "/teacher-reports" },
-          { name: "ID Card", icon: <IdCard size={16} />, path: "/teacher-id-card" },
-        ],
-      },
-      {
-        name: "Attendance",
-        icon: <ClipboardCheck size={20} />,
-        children: [
-          { name: "Dashboard", path: "/attendance-dashboard", icon: <ClipboardEdit size={16} /> },
-          { name: "Mark Attendance", path: "/attendance", icon: <ClipboardCheck size={16} /> },
-          { name: "Reports", path: "/attendance-report", icon: <BarChart3 size={16} /> },
-        ],
-      },
-      {
-        name: "Exams",
-        icon: <FileText size={20} />,
-        children: [
-          { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/exam-dashboard" },
-          { name: "All Exams", icon: <FileText size={16} />, path: "/exams" },
-          { name: "Grade Settings", icon: <ClipboardCheck size={16} />, path: "/grade-settings" },
-          { name: "Reports", icon: <BarChart3 size={16} />, path: "/exam-reports" },
-          { name: "Seating Plan", icon: <Grid3X3 size={16} />, path: "/exam-seating-plan" },
-          { name: "Admit Card", icon: <CreditCard size={16} />, path: "/exam-admit-card" },
-        ],
-      },
-      { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
-    ],
-  },
-  {
-    section: "FINANCE",
-    items: [
-      {
-        name: "Fees",
-        icon: <IndianRupee size={20} />,
-        children: [
-          { name: "Dashboard", icon: <PieChart size={16} />, path: "/fees/dashboard" },
-          { name: "Collection", icon: <IndianRupee size={16} />, path: "/fees/collection" },
-          { name: "Fee Heads", icon: <BookOpen size={16} />, path: "/fees/heads" },
-          { name: "Fee Structure", icon: <Layers size={16} />, path: "/fees/structures" },
-          { name: "Assign Structure", icon: <UserCheck size={16} />, path: "/fees/assign" },
-          { name: "Discounts", icon: <CreditCard size={16} />, path: "/fees/discounts" },
-          { name: "Fine Rules", icon: <FileText size={16} />, path: "/fees/fine-rules" },
-          { name: "Reports", icon: <BarChart3 size={16} />, path: "/fees/reports" },
-          { name: "Receipts", icon: <FileText size={16} />, path: "/fees/receipts" },
-          { name: "Student Ledger", icon: <BookOpenCheck size={16} />, path: "/fees/ledger" },
-          { name: "Reminders", icon: <Bell size={16} />, path: "/fees/reminders" },
-          { name: "Settings", icon: <Settings size={16} />, path: "/fees/settings" },
-        ],
-      },
-    ],
-  },
-  {
-    section: "SYSTEM",
-    items: [
-      {
-        name: "Settings",
-        icon: <Settings size={20} />,
-        children: [
-          { name: "General", path: "/settings", icon: <Settings size={16} /> },
-          { name: "User Management", path: "/settings/users", icon: <UserPlus size={16} /> },
-          { name: "Theme", path: "/settings/theme", icon: <Palette size={16} /> },
         ],
       },
     ],
@@ -171,19 +95,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
   const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
-  const menu = isSuperAdmin ? [
-    {
-      section: "SaaS Control",
-      items: [
-        { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
-        { name: "Tenants", icon: <Building2 size={20} />, path: "/tenants" },
-        { name: "Subscriptions", icon: <CreditCard size={20} />, path: "/subscriptions" },
-        { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
-      ]
-    }
-  ] : tenantMenu;
+  const menu = isSuperAdmin ? [] : tenantMenu;
 
-  // Sync open structural state accordion logic based on route mapping matrices
   useEffect(() => {
     menu.forEach(group => {
       group.items.forEach(item => {
@@ -206,7 +119,15 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       style={{ background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)" }}
     >
       <div className="relative flex-shrink-0 border-b border-white/10 px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {location.pathname.startsWith("/masters") && (
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="p-1 rounded-md bg-white/5 text-amber-400 border border-amber-400/20 mr-1 hover:bg-white/10 cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-base border border-amber-400/30 flex-shrink-0">
             {sidebarTitle.charAt(0)}
           </div>
@@ -221,7 +142,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1 sidebar-scroll">
-        <style>{`.sidebar-scroll::-webkit-scrollbar { width: 0px; }`}</style>
         {menu.map((group, gi) => (
           <div key={gi} className="space-y-1">
             {group.section && (
@@ -233,7 +153,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             {group.items.map((item, i) => {
               const hasChildren = !!item.children;
               const isOpen = !!openMenus[item.name];
-              const isActive = location.pathname === item.path || (item.path !== "/dashboard" && location.pathname.startsWith(item.path || ""));
+              const isMastersActive = item.name === "Masters" && location.pathname.startsWith("/masters");
+              const isActive = isMastersActive || location.pathname === item.path;
 
               if (!hasChildren) {
                 return (

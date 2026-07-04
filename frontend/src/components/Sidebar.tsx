@@ -505,51 +505,52 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
 {/* MOBILE SIDEBAR — Premium Modern Glassmorphism */}
 {/* ════════════════════════════════════════════════════════════════ */}
 {sidebarOpen && (
-  <div className="md:hidden fixed inset-0 z-50 flex print:hidden">
-    {/* Backdrop Overlay */}
-    <div
-      className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
-      onClick={handleMobileNavClick}
-    />
+        <div className="md:hidden fixed inset-0 z-50 flex print:hidden">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm transition-opacity"
+            onClick={handleMobileNavClick}
+          />
 
-    {/* Sidebar Drawer — Changed h-full to h-[100dvh] to handle mobile address bars dynamically */}
-    <div className="relative flex flex-col w-[280px] max-w-xs h-[100dvh] bg-slate-900/95 backdrop-blur-md text-white border-r border-white/10 shadow-2xl transition-transform duration-300">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-sm">
-            {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+          {/* Sidebar Drawer */}
+          <div className="relative flex flex-col w-[280px] max-w-xs h-[100dvh] bg-slate-900/95 backdrop-blur-md text-white border-r border-white/10 shadow-2xl transition-transform duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-sm">
+                  {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
+                </div>
+                <span className="font-bold text-sm truncate">{safeTenant?.name || sidebarTitle}</span>
+              </div>
+              <button
+                onClick={handleMobileNavClick}
+                className="p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Menu Links */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-4 pb-16 sidebar-scroll">
+              {renderMenuItems(true)}
+            </div>
+
+            {/* Footer / Logout */}
+            <div className="p-4 border-t border-white/10 flex-shrink-0 bg-slate-900/95">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
+              >
+                <LogOut size={18} />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
-          <span className="font-bold text-sm truncate">{safeTenant?.name || sidebarTitle}</span>
         </div>
-        <button
-          onClick={handleMobileNavClick}
-          className="p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      {/* Menu Links — Added pb-16 (Padding Bottom) so list doesn't cut when dropdowns open */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4 pb-16 sidebar-scroll">
-        {renderMenuItems(true)}
-      </div>
-
-      {/* Footer / Logout — Added flex-shrink-0 so it stays fixed at bottom without getting pushed or squished */}
-      <div className="p-4 border-t border-white/10 flex-shrink-0 bg-slate-900/95">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all"
-        >
-          <LogOut size={18} />
-          <span>Logout</span>
-        </button>
-      </div>
-
-    </div>
-  </div>
-)}
+      )}
+    </>
+  );
+}
 
 //////////////////////////////////////////////////
 // 🎯 SUB-COMPONENTS (NavItem & ParentNavItem)

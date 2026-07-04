@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// SIDEBAR COMPONENT - CLEAN MODERN LOOK WITH ICON DRAWER
+// SIDEBAR COMPONENT - FIXED ROUTING MATRIX
 // ═══════════════════════════════════════════════════════════════════
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
@@ -31,7 +31,6 @@ type SectionGroup = {
   items: MenuItem[];
 };
 
-// 🎯 TENANT MENU WITH SIMPLIFIED INTEGRATED SUBMENU MAPS
 const tenantMenu: SectionGroup[] = [
   {
     section: "",
@@ -45,8 +44,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Masters",
         icon: <Database size={20} />,
-        // 🔥 FIXED: Custom route redirection handler setup to load clean dynamic panel instantly
-        path: "/masters"
+        path: "/masters" // 🔥 Direct base router targeting
       },
       {
         name: "Academic Setup",
@@ -143,55 +141,6 @@ const tenantMenu: SectionGroup[] = [
           { name: "Settings", icon: <Settings size={16} />, path: "/fees/settings" },
         ],
       },
-      { name: "Payment Gateway", icon: <CreditCard size={20} />, path: "/payment-gateway" },
-    ],
-  },
-  {
-    section: "OPERATIONS",
-    items: [
-      { name: "Transport", icon: <Bus size={20} />, path: "/transport" },
-      { name: "Library", icon: <Library size={20} />, path: "/library" },
-      {
-        name: "Hostel",
-        icon: <BedDouble size={20} />,
-        children: [
-          { name: "Room Allocation", icon: <BedDouble size={16} />, path: "/hostel/rooms" },
-          { name: "Hostel Fees", icon: <IndianRupee size={16} />, path: "/hostel/fees" },
-          { name: "Mess Management", icon: <Package size={16} />, path: "/hostel/mess" },
-        ],
-      },
-      {
-        name: "Inventory",
-        icon: <Package size={20} />,
-        children: [
-          { name: "Asset List", icon: <Package size={16} />, path: "/inventory/assets" },
-          { name: "Issue Assets", icon: <Send size={16} />, path: "/inventory/issue" },
-          { name: "Stock Management", icon: <Database size={16} />, path: "/inventory/stock" },
-        ],
-      },
-      {
-        name: "Gate Pass",
-        icon: <DoorOpen size={20} />,
-        children: [
-          { name: "Visitor Log", icon: <Users size={16} />, path: "/gate-pass" },
-          { name: "Pending Approvals", icon: <Clock size={16} />, path: "/gate-pass/pending" },
-        ],
-      },
-    ],
-  },
-  {
-    section: "HR & STAFF",
-    items: [
-      {
-        name: "HR",
-        icon: <UserCog size={20} />,
-        children: [
-          { name: "Staff List", icon: <Users size={16} />, path: "/hr/staff" },
-          { name: "Payroll", icon: <Wallet size={16} />, path: "/hr/payroll" },
-          { name: "Leave Management", icon: <Clock size={16} />, path: "/hr/leave" },
-          { name: "Staff Attendance", icon: <ClipboardCheck size={16} />, path: "/hr/attendance" },
-        ],
-      },
     ],
   },
   {
@@ -203,7 +152,6 @@ const tenantMenu: SectionGroup[] = [
         children: [
           { name: "General", path: "/settings", icon: <Settings size={16} /> },
           { name: "User Management", path: "/settings/users", icon: <UserPlus size={16} /> },
-          { name: "Roles & Permissions", path: "/settings/roles", icon: <ShieldCheck size={16} /> },
           { name: "Theme", path: "/settings/theme", icon: <Palette size={16} /> },
         ],
       },
@@ -211,11 +159,7 @@ const tenantMenu: SectionGroup[] = [
   },
 ];
 
-type SidebarProps = {
-  tenant?: any;
-  sidebarOpen?: boolean;
-  onClose?: () => void;
-};
+type SidebarProps = { tenant?: any; sidebarOpen?: boolean; onClose?: () => void; };
 
 export default function Sidebar({ tenant, sidebarOpen = false, onClose }: SidebarProps) {
   const navigate = useNavigate();
@@ -227,7 +171,6 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
   const safeTenant = tenant || localTenant || {};
   const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
-  const sidebarLogo = isSuperAdmin ? "/super-admin-logo.png" : getFullUrl(safeTenant?.logoUrl);
   const menu = isSuperAdmin ? [
     {
       section: "SaaS Control",
@@ -240,6 +183,17 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     }
   ] : tenantMenu;
 
+  // Sync open structural state accordion logic based on route mapping matrices
+  useEffect(() => {
+    menu.forEach(group => {
+      group.items.forEach(item => {
+        if (item.children?.some(c => location.pathname.startsWith(c.path))) {
+          setOpenMenus(prev => ({ ...prev, [item.name]: true }));
+        }
+      });
+    });
+  }, [location.pathname]);
+
   const toggleSubMenu = (name: string) => {
     setOpenMenus(prev => ({ ...prev, [name]: !prev[name] }));
   };
@@ -251,44 +205,23 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       }`}
       style={{ background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)" }}
     >
-      {/* Sidebar Main Institution Branding Header Wrapper */}
       <div className="relative flex-shrink-0 border-b border-white/10 px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Back to main landing control if inside specialized system matrices */}
-          {location.pathname.startsWith("/masters") && (
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="p-1 rounded-md bg-white/5 text-amber-400 border border-amber-400/20 mr-1 hover:bg-white/10 cursor-pointer"
-              title="Return back to App Main Dashboard"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          )}
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-base border border-amber-400/30 flex-shrink-0">
-            {sidebarLogo ? (
-              <img src={sidebarLogo} alt="Logo" className="w-full h-full object-contain rounded-xl" />
-            ) : sidebarTitle.charAt(0)}
+            {sidebarTitle.charAt(0)}
           </div>
           <div className="min-w-0">
             <h1 className="text-xs font-bold text-white leading-tight truncate">{sidebarTitle}</h1>
             <p className="text-[10px] text-amber-400/70 truncate">Institution Control</p>
           </div>
         </div>
-        
-        {/* Mobile View close trigger button rendering mapping links */}
         <button onClick={onClose} className="p-1 rounded-md hover:bg-white/5 text-slate-400 md:hidden cursor-pointer">
           <X size={18} />
         </button>
       </div>
 
-      {/* Main Collection Body Elements Loop Mapping Matrix Container */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3 sidebar-scroll">
-        <style>{`
-          .sidebar-scroll::-webkit-scrollbar { width: 3px; }
-          .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
-          .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
-        `}</style>
-
+      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-1 sidebar-scroll">
+        <style>{`.sidebar-scroll::-webkit-scrollbar { width: 0px; }`}</style>
         {menu.map((group, gi) => (
           <div key={gi} className="space-y-1">
             {group.section && (
@@ -308,7 +241,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                     key={i}
                     to={item.path!}
                     onClick={onClose}
-                    className={({ isActive }) =>
+                    className={() =>
                       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                         isActive 
                           ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/30" 
@@ -338,24 +271,25 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                   </button>
 
                   {isOpen && (
-                    <div className="pl-8 pr-2 py-1 space-y-1 bg-black/10 rounded-lg">
-                      {item.children?.map((child, ci) => (
-                        <NavLink
-                          key={ci}
-                          to={child.path}
-                          onClick={onClose}
-                          className={({ isActive }) =>
-                            `flex items-center gap-2 px-2 py-2 rounded-lg text-[11px] transition-all ${
-                              isActive
-                                ? "text-indigo-400 font-medium"
-                                : "text-slate-500 hover:text-slate-300"
-                            }`
-                          }
-                        >
-                          {child.icon}
-                          <span>{child.name}</span>
-                        </NavLink>
-                      ))}
+                    <div className="pl-6 pr-2 py-1 space-y-1 bg-black/10 rounded-xl">
+                      {item.children?.map((child, ci) => {
+                        const isChildActive = location.pathname.startsWith(child.path);
+                        return (
+                          <NavLink
+                            key={ci}
+                            to={child.path}
+                            onClick={onClose}
+                            className={() =>
+                              `flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] transition-all ${
+                                isChildActive ? "text-indigo-400 font-medium bg-white/5" : "text-slate-400 hover:text-slate-200"
+                              }`
+                            }
+                          >
+                            {child.icon}
+                            <span>{child.name}</span>
+                          </NavLink>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

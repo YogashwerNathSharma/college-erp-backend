@@ -966,7 +966,7 @@ export const getAdvanceBalanceReport = async (tenantId: string) => {
       student: { select: { firstName: true, lastName: true, admissionNo: true } },
       class: { select: { name: true } },
       section: { select: { name: true } },
-      StudentFee: {
+      studentFees: {
         where: { isDeleted: false },
         select: { netAmount: true, paidAmount: true },
       },
@@ -975,8 +975,8 @@ export const getAdvanceBalanceReport = async (tenantId: string) => {
 
   const records: any[] = [];
   for (const enr of enrollments) {
-    const totalNet = (enr as any).StudentFee.reduce((s: number, f: any) => s + f.netAmount, 0);
-    const totalPaid = (enr as any).StudentFee.reduce((s: number, f: any) => s + f.paidAmount, 0);
+    const totalNet = (enr as any).studentFees.reduce((s: number, f: any) => s + f.netAmount, 0);
+    const totalPaid = (enr as any).studentFees.reduce((s: number, f: any) => s + f.paidAmount, 0);
     const advance = totalPaid - totalNet;
     if (advance > 0) {
       records.push({

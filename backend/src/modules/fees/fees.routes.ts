@@ -165,7 +165,7 @@ router.post("/integration/transport/add", async (req: any, res: any) => {
     const { studentId, monthlyFee, routeName } = req.body;
     if (!studentId || !monthlyFee) return res.status(400).json({ error: "studentId and monthlyFee required" });
     const result = await addTransportFeeToStudent(studentId, tenantId, parseFloat(monthlyFee), routeName);
-    res.json({ success: true, ...result });
+    res.json({ ...result, success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -176,7 +176,7 @@ router.post("/integration/transport/remove", async (req: any, res: any) => {
     const { studentId } = req.body;
     if (!studentId) return res.status(400).json({ error: "studentId required" });
     const result = await removeTransportFeeFromStudent(studentId, tenantId);
-    res.json({ success: true, ...result });
+    res.json({ ...result, success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -187,7 +187,7 @@ router.post("/integration/hostel/add", async (req: any, res: any) => {
     const { studentId, monthlyFee, hostelName } = req.body;
     if (!studentId || !monthlyFee) return res.status(400).json({ error: "studentId and monthlyFee required" });
     const result = await addHostelFeeToStudent(studentId, tenantId, parseFloat(monthlyFee), hostelName);
-    res.json({ success: true, ...result });
+    res.json({ ...result, success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -198,7 +198,7 @@ router.post("/integration/hostel/remove", async (req: any, res: any) => {
     const { studentId } = req.body;
     if (!studentId) return res.status(400).json({ error: "studentId required" });
     const result = await removeHostelFeeFromStudent(studentId, tenantId);
-    res.json({ success: true, ...result });
+    res.json({ ...result, success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

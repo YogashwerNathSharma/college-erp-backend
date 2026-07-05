@@ -414,6 +414,7 @@ class TransportService {
   // ─────────────────────────────────────────────
 
   async createAssignment(tenantId: string, data: any) {
+  // @ts-ignore - dynamic import for circular dependency avoidance
   const { addTransportFeeToStudent } = await import("../fees/feeIntegration.service");
 
   const createData: any = {
@@ -549,6 +550,7 @@ class TransportService {
     // ═══ AUTO FEE INTEGRATION ═══
     // Remove transport fee from pending installments when unassigned
     try {
+      // @ts-ignore - dynamic import for circular dependency avoidance
       const { removeTransportFeeFromStudent } = await import("../fees/feeIntegration.service");
       await removeTransportFeeFromStudent(assignment.studentId, tenantId);
     } catch (err) {

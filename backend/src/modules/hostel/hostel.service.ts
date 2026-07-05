@@ -119,6 +119,7 @@ export const allocateRoom = async (data: any, tenantId: string) => {
   // ═══ AUTO FEE INTEGRATION ═══
   // When hostel is allocated, auto-add hostel fee to student's pending installments
   try {
+    // @ts-ignore - dynamic import for circular dependency avoidance
     const { addHostelFeeToStudent } = await import("../fees/feeIntegration.service");
     const monthlyFee = (allocation.room as any)?.monthlyFee || (allocation.room as any)?.rentPerBed || data.monthlyFee || 0;
     if (monthlyFee > 0) {
@@ -145,6 +146,7 @@ export const deallocateRoom = async (allocationId: string, tenantId: string, rea
   // Remove hostel fee from pending installments when room is vacated
   if (allocation?.studentId) {
     try {
+      // @ts-ignore - dynamic import for circular dependency avoidance
       const { removeHostelFeeFromStudent } = await import("../fees/feeIntegration.service");
       await removeHostelFeeFromStudent(allocation.studentId, tenantId);
     } catch (err) {

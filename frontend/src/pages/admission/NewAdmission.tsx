@@ -101,7 +101,7 @@ export default function NewAdmission() {
       };
 
       await axios.post("/api/admission", payload);
-      alert("Admission submitted successfully!");
+      alert("✅ Student Created Successfully!");
       navigate("/admissions");
     } catch (error: any) {
       console.error("Admission error:", error);

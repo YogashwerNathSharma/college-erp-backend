@@ -125,7 +125,8 @@ export default function StockManage() {
       if (filterStatus) params.status = filterStatus;
 
       const res = await axios.get("/api/inventory/stock", { headers, params });
-      const data: StockItem[] = res.data.data || [];
+      const raw = res.data?.data;
+      const data: StockItem[] = Array.isArray(raw) ? raw : [];
       setStock(data);
 
       // Compute stats

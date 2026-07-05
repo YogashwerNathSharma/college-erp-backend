@@ -28,19 +28,19 @@ router.get("/stats", getCertificateStatsHandler);
 // ============================================
 router.get("/tc", getAllTCsHandler);
 router.get("/tc/:id", getTCByIdHandler);
-router.post("/tc/generate", allowRoles("ADMIN"), generateTCHandler);
-router.post("/tc/:id/approve", allowRoles("ADMIN"), approveTCHandler);
+router.post("/tc/generate", allowRoles("ADMIN", "SUPER_ADMIN"), generateTCHandler);
+router.post("/tc/:id/approve", allowRoles("ADMIN", "SUPER_ADMIN"), approveTCHandler);
 
 // ============================================
 // CHARACTER CERTIFICATE
 // ============================================
 router.get("/character", getCharacterCertsHandler);
-router.post("/character/generate", allowRoles("ADMIN"), generateCharacterCertHandler);
+router.post("/character/generate", allowRoles("ADMIN", "SUPER_ADMIN"), generateCharacterCertHandler);
 
 // ============================================
 // MIGRATION CERTIFICATE
 // ============================================
 router.get("/migration", getMigrationCertsHandler);
-router.post("/migration/generate", allowRoles("ADMIN"), generateMigrationCertHandler);
+router.post("/migration/generate", allowRoles("ADMIN", "SUPER_ADMIN"), generateMigrationCertHandler);
 
 export default router;

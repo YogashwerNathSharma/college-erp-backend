@@ -414,6 +414,8 @@ class TransportService {
   // ─────────────────────────────────────────────
 
   async createAssignment(tenantId: string, data: any) {
+  const { addTransportFeeToStudent } = await import("../fees/feeIntegration.service");
+
   const createData: any = {
     studentId: data.studentId,
     studentName: data.studentName,
@@ -432,7 +434,7 @@ class TransportService {
     createData.stop = { connect: { id: data.stopId } };
   }
 
-  return prisma.transportAssignment.create({
+  const assignment = await prisma.transportAssignment.create({
     data: createData,
     include: {
       route: true,
@@ -440,6 +442,19 @@ class TransportService {
       vehicle: true,
     },
   });
+
+  // ═══ AUTO FEE INTEGRATION ═══
+  // When transport is assigned, auto-add transport fee to student's pending installments
+  if (assignment.monthlyFee > 0) {
+    try {
+      const routeName = assignment.route?.name || "";
+      await addTransportFeeToStudent(data.studentId, tenantId, assignment.monthlyFee, routeName);
+    } catch (err) {
+      console.error("Auto transport fee add failed (non-blocking):", err);
+    }
+  }
+
+  return assignment;
 }
   async getAllAssignments(
     tenantId: string,
@@ -526,10 +541,21 @@ class TransportService {
 
     if (!assignment) return null;
 
-    return prisma.transportAssignment.update({
+    const result = await prisma.transportAssignment.update({
       where: { id },
       data: { status: "INACTIVE", endDate: new Date(), isDeleted: true },
     });
+
+    // ═══ AUTO FEE INTEGRATION ═══
+    // Remove transport fee from pending installments when unassigned
+    try {
+      const { removeTransportFeeFromStudent } = await import("../fees/feeIntegration.service");
+      await removeTransportFeeFromStudent(assignment.studentId, tenantId);
+    } catch (err) {
+      console.error("Auto transport fee remove failed (non-blocking):", err);
+    }
+
+    return result;
   }
 
   // ─────────────────────────────────────────────

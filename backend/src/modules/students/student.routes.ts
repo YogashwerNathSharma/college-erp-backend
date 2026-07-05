@@ -343,14 +343,14 @@ router.post("/print", printStudentsHandler);
 // CRUD ROUTES
 // ============================================
 router.get("/", getAllStudentsHandler);
-router.post("/", allowRoles("ADMIN"), checkLimit("students"), createStudentHandler);
+router.post("/", allowRoles("ADMIN", "SUPER_ADMIN"), checkLimit("students"), createStudentHandler);
 
 // ============================================
 // DYNAMIC /:id ROUTES LAST
 // ============================================
 router.get("/:id", getStudentByIdHandler);
-router.put("/:id", allowRoles("ADMIN"), updateStudentHandler);
-router.delete("/:id", allowRoles("ADMIN"), softDeleteStudentHandler);
+router.put("/:id", allowRoles("ADMIN", "SUPER_ADMIN"), updateStudentHandler);
+router.delete("/:id", allowRoles("ADMIN", "SUPER_ADMIN"), softDeleteStudentHandler);
 router.patch("/:id/restore", allowRoles("ADMIN"), restoreStudentHandler);
 
 export default router;

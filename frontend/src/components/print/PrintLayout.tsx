@@ -78,9 +78,17 @@ export default function PrintLayout({
   const tenant = JSON.parse(localStorage.getItem('tenant') || '{}');
   const primaryColor = tenant.primaryColor || '#1a365d';
   const name = schoolName || tenant.name || 'School Name';
-  const logo = schoolLogo || tenant.logo || '';
+  const rawLogo = schoolLogo || tenant.logoUrl || tenant.logo || '';
   const address = schoolAddress || tenant.address || '';
   const affiliation = affiliationNo || tenant.affiliationNo || '';
+  
+  // Resolve logo URL for both localhost and production
+  const API_BASE = (import.meta as any).env?.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? 'https://college-erp-backend-91zi.onrender.com' : '');
+  const logo = rawLogo
+    ? rawLogo.startsWith('http') ? rawLogo
+      : rawLogo.startsWith('/') ? `${API_BASE}${rawLogo}`
+      : `${API_BASE}/uploads/${rawLogo}`
+    : '';
 
   // Initialize print hook
   const printOptions: UsePrintOptions = {
@@ -314,15 +322,15 @@ export default function PrintLayout({
             position: 'relative',
             zIndex: 1,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12pt' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '12pt' }}>
               {logo && (
                 <img
                   src={logo}
                   alt="Logo"
-                  style={{ width: '18mm', height: '18mm', objectFit: 'contain' }}
+                  style={{ width: '20mm', height: '20mm', objectFit: 'contain' }}
                 />
               )}
-              <div>
+              <div style={{ flex: 1, textAlign: 'center' }}>
                 <div style={{
                   fontSize: '18pt',
                   fontWeight: 700,
@@ -343,14 +351,6 @@ export default function PrintLayout({
                   </div>
                 )}
               </div>
-              {/* Invisible logo for symmetric alignment */}
-              {logo && (
-                <img
-                  src={logo}
-                  alt=""
-                  style={{ width: '18mm', height: '18mm', visibility: 'hidden' }}
-                />
-              )}
             </div>
             {title && (
               <div style={{

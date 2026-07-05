@@ -1,7 +1,11 @@
 
 import { feeHeadService } from "./feeHead.service";
 
-// Get all fee heads
+// ═══════════════════════════════════════════════════════════════════════════
+// FEE HEAD CONTROLLER — Enhanced with Category, Frequency, Source filters
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Get all fee heads (with optional filters: ?category=Transport&sourceModule=Manual&type=RECURRING)
 const getAll = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -9,7 +13,8 @@ const getAll = async (req: any, res: any) => {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    const feeHeads = await feeHeadService.getAll(tenantId);
+    const { category, sourceModule, type } = req.query;
+    const feeHeads = await feeHeadService.getAll(tenantId, { category, sourceModule, type });
     return res.status(200).json(feeHeads);
   } catch (error: any) {
     console.error("Error fetching fee heads:", error);
@@ -47,7 +52,7 @@ const create = async (req: any, res: any) => {
       return res.status(400).json({ message: "Tenant ID is required" });
     }
 
-    const { name, code, description, type } = req.body;
+    const { name, code, description, type, category, frequency, isTaxable, isRefundable, sourceModule } = req.body;
 
     if (!name || name.trim() === "") {
       return res.status(400).json({ message: "Fee head name is required" });
@@ -58,6 +63,11 @@ const create = async (req: any, res: any) => {
       code: code?.trim(),
       description: description?.trim(),
       type,
+      category: category?.trim(),
+      frequency: frequency?.trim(),
+      isTaxable,
+      isRefundable,
+      sourceModule: sourceModule?.trim(),
       tenantId,
     });
 
@@ -65,7 +75,6 @@ const create = async (req: any, res: any) => {
   } catch (error: any) {
     console.error("Error creating fee head:", error);
 
-    // Handle unique constraint violation
     if (error.code === "P2002") {
       return res.status(400).json({ message: "A fee head with this name already exists" });
     }
@@ -83,7 +92,7 @@ const update = async (req: any, res: any) => {
     }
 
     const { id } = req.params;
-    const { name, code, description, type, isActive } = req.body;
+    const { name, code, description, type, isActive, category, frequency, isTaxable, isRefundable, sourceModule } = req.body;
 
     if (name !== undefined && name.trim() === "") {
       return res.status(400).json({ message: "Fee head name cannot be empty" });
@@ -97,6 +106,11 @@ const update = async (req: any, res: any) => {
         description: description?.trim(),
         type,
         isActive,
+        category: category?.trim(),
+        frequency: frequency?.trim(),
+        isTaxable,
+        isRefundable,
+        sourceModule: sourceModule?.trim(),
       },
       tenantId
     );
@@ -139,11 +153,49 @@ const softDelete = async (req: any, res: any) => {
   }
 };
 
+// Get fee heads grouped by category
+const getByCategory = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    const grouped = await feeHeadService.getByCategory(tenantId);
+    return res.status(200).json({ success: true, data: grouped });
+  } catch (error: any) {
+    console.error("Error fetching fee heads by category:", error);
+    return res.status(500).json({ message: "Failed to fetch fee heads" });
+  }
+};
+
+// Get fee heads by source module
+const getBySource = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    const { source } = req.params;
+    if (!source) {
+      return res.status(400).json({ message: "Source module is required" });
+    }
+
+    const heads = await feeHeadService.getBySource(tenantId, source);
+    return res.status(200).json({ success: true, data: heads });
+  } catch (error: any) {
+    console.error("Error fetching fee heads by source:", error);
+    return res.status(500).json({ message: "Failed to fetch fee heads" });
+  }
+};
+
 export const feeHeadController = {
   getAll,
   getById,
   create,
   update,
   softDelete,
+  getByCategory,
+  getBySource,
 };
-

@@ -4,6 +4,7 @@ import {
   Database, Palette, Plug, CreditCard, ArrowRight,
   Settings, Globe, Lock, Mail, Smartphone, Key,
   HardDrive, RefreshCw, Webhook, Receipt,
+  UserPlus, ShieldCheck, MapPin, Activity,
 } from "lucide-react";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -147,6 +148,32 @@ export default function SettingsDashboard() {
             </button>
           ))}
         </div>
+      </div>
+
+
+      {/* ━━━━ Quick Actions ━━━━ */}
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
+        {[
+          { label: "General", icon: Settings, route: "/settings", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+          { label: "Subscription", icon: CreditCard, route: "/settings/subscription", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+          { label: "Users", icon: UserPlus, route: "/settings/users", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+          { label: "Roles", icon: ShieldCheck, route: "/settings/roles", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+          { label: "Theme", icon: Palette, route: "/settings/theme", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
+          { label: "Languages", icon: MapPin, route: "/languages", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
+          { label: "Backup", icon: Database, route: "/backup", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+          { label: "Audit Log", icon: Activity, route: "/audit", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={() => navigate(action.route)}
+            className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 active:scale-95`}
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+              <action.icon size={14} className="text-white" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* ── Settings Categories Grid ── */}

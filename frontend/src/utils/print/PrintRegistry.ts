@@ -148,8 +148,13 @@ const feeReceiptTemplate = (data: any): string => {
       <table style="width:100%;border-collapse:collapse;border:1px solid #000;margin-bottom:5px;">
         <thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">S.No</th><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">Particulars</th><th style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">Amount (Rs)</th></tr></thead>
         <tbody>
-          <tr><td style="border:1px solid #000;padding:2px;">1</td><td style="border:1px solid #000;padding:2px;">${data.feeHead || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>
-          <tr><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;"><strong>Net Amount</strong></td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>
+          ${data.feeItems && data.feeItems.length > 0
+            ? data.feeItems.map((item: any, idx: number) =>
+                `<tr><td style="border:1px solid #000;padding:2px;font-size:10px;">${idx + 1}</td><td style="border:1px solid #000;padding:2px;font-size:10px;">${item.name || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">${(item.amount || 0).toLocaleString("en-IN")}</td></tr>`
+              ).join("")
+            : `<tr><td style="border:1px solid #000;padding:2px;">1</td><td style="border:1px solid #000;padding:2px;">${data.feeHead || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>`
+          }
+          <tr style="background:#f9f9f9;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;font-size:10px;">Net Amount</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;font-size:10px;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>
           <tr style="background:#d4edda;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:green;">Paid</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:green;">${(data.amount || 0).toLocaleString("en-IN")}</td></tr>
           <tr style="background:#fff3cd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:red;">Balance</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:red;">${(data.balance || 0).toLocaleString("en-IN")}</td></tr>
         </tbody>

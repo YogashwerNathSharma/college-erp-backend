@@ -85,7 +85,7 @@ export const collectPaymentController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.userId;
-    const { studentFeeId, amount, method, reference, remarks, discountAmount, discountId, paymentDate } = req.body;
+    const { studentFeeId, amount, method, reference, remarks, discountAmount, discountId, paymentDate, fineAmount, selectedItems } = req.body;
 
     if (!studentFeeId || !method) {
       return res.status(400).json({ error: "studentFeeId and method are required" });
@@ -104,6 +104,7 @@ export const collectPaymentController = async (req: any, res: any) => {
 
     const parsedAmount = parseFloat(amount) || 0;
     const parsedDiscount = parseFloat(discountAmount) || 0;
+    const parsedFine = parseFloat(fineAmount) || 0;
 
     if (parsedAmount <= 0 && parsedDiscount <= 0) {
       return res.status(400).json({ error: "Amount or discount must be greater than zero" });
@@ -127,6 +128,8 @@ export const collectPaymentController = async (req: any, res: any) => {
       tenantId,
       discountAmount: parsedDiscount,
       discountId: discountId || undefined,
+      fineAmount: parsedFine,
+      selectedItems: selectedItems || undefined,
     });
 
     res.status(201).json(result);

@@ -10,8 +10,15 @@ import { sendEmail } from "./helpers/email.helper";
 export const createNotice = async (data: any, tenantId: string, createdBy: string) => {
   return prisma.notice.create({
     data: {
-      ...data,
+      title: data.title,
+      content: data.content,
+      type: data.type || "GENERAL",
+      audience: data.audience || "ALL",
+      targetAudience: data.targetAudience || data.audience || null,
+      attachmentUrl: data.attachmentUrl || null,
+      isPinned: data.isPinned === "true" || data.isPinned === true,
       tenantId,
+      publishedBy: createdBy,
       createdBy,
       publishDate: data.publishDate ? new Date(data.publishDate) : new Date(),
       expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,

@@ -21,6 +21,7 @@ import {
   ChevronRight,
   AlertCircle,
   Phone,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   AreaChart,
@@ -266,6 +267,27 @@ export default function AttendanceDashboard() {
             <RefreshCw size={18} className="text-gray-500 dark:text-gray-400" />
           </button>
         </div>
+      </div>
+
+
+      {/* ━━━━ Quick Actions ━━━━ */}
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-4 gap-1.5 sm:gap-2">
+        {[
+          { label: "Dashboard", icon: LayoutDashboard, route: "/attendance-dashboard", color: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
+          { label: "Mark Attendance", icon: ClipboardCheck, route: "/attendance", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+          { label: "Reports", icon: BarChart3, route: "/attendance-report", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={() => navigate(action.route)}
+            className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 active:scale-95`}
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+              <action.icon size={14} className="text-white" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* ─── STAT CARDS ─── */}

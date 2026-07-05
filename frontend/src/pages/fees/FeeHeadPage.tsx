@@ -10,7 +10,47 @@ import {
   FiX,
   FiToggleLeft,
   FiToggleRight,
+  FiFilter,
 } from "react-icons/fi";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const FEE_CATEGORIES = [
+  "Academic",
+  "Transport",
+  "Hostel",
+  "Examination",
+  "Library",
+  "Miscellaneous",
+  "Security",
+  "Registration",
+  "Admission",
+];
+
+const FEE_FREQUENCIES = [
+  "Monthly",
+  "Quarterly",
+  "Half Yearly",
+  "Yearly",
+  "One Time",
+  "Custom",
+];
+
+const SOURCE_MODULES = [
+  "Admission",
+  "Transport",
+  "Hostel",
+  "Library",
+  "Examination",
+  "Manual",
+  "Accounts",
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface FeeHead {
   id: string;
@@ -18,6 +58,11 @@ interface FeeHead {
   code: string | null;
   description: string | null;
   type: "RECURRING" | "ONE_TIME";
+  category: string | null;
+  frequency: string | null;
+  isTaxable: boolean;
+  isRefundable: boolean;
+  sourceModule: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -28,6 +73,11 @@ interface FeeHeadFormData {
   code: string;
   description: string;
   type: "RECURRING" | "ONE_TIME";
+  category: string;
+  frequency: string;
+  isTaxable: boolean;
+  isRefundable: boolean;
+  sourceModule: string;
 }
 
 const initialFormData: FeeHeadFormData = {
@@ -35,12 +85,22 @@ const initialFormData: FeeHeadFormData = {
   code: "",
   description: "",
   type: "RECURRING",
+  category: "",
+  frequency: "Monthly",
+  isTaxable: false,
+  isRefundable: false,
+  sourceModule: "Manual",
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 const FeeHeadPage: React.FC = () => {
   const [feeHeads, setFeeHeads] = useState<FeeHead[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,18 +125,29 @@ const FeeHeadPage: React.FC = () => {
     fetchFeeHeads();
   }, []);
 
-  // Filtered fee heads based on search
+  // Filtered fee heads based on search + category filter
   const filteredFeeHeads = useMemo(() => {
-    if (!searchQuery.trim()) return feeHeads;
-    const query = searchQuery.toLowerCase();
-    return feeHeads.filter(
-      (fh) =>
-        fh.name.toLowerCase().includes(query) ||
-        fh.code?.toLowerCase().includes(query) ||
-        fh.description?.toLowerCase().includes(query) ||
-        fh.type.toLowerCase().includes(query)
-    );
-  }, [feeHeads, searchQuery]);
+    let result = feeHeads;
+
+    if (filterCategory) {
+      result = result.filter((fh) => fh.category === filterCategory);
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (fh) =>
+          fh.name.toLowerCase().includes(query) ||
+          fh.code?.toLowerCase().includes(query) ||
+          fh.description?.toLowerCase().includes(query) ||
+          fh.type.toLowerCase().includes(query) ||
+          fh.category?.toLowerCase().includes(query) ||
+          fh.sourceModule?.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [feeHeads, searchQuery, filterCategory]);
 
   // Open modal for creating
   const handleAdd = () => {
@@ -93,6 +164,11 @@ const FeeHeadPage: React.FC = () => {
       code: feeHead.code || "",
       description: feeHead.description || "",
       type: feeHead.type,
+      category: feeHead.category || "",
+      frequency: feeHead.frequency || "Monthly",
+      isTaxable: feeHead.isTaxable || false,
+      isRefundable: feeHead.isRefundable || false,
+      sourceModule: feeHead.sourceModule || "Manual",
     });
     setIsModalOpen(true);
   };
@@ -171,7 +247,7 @@ const FeeHeadPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Fee Heads</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage fee head categories for fee structure setup
+            Manage fee head categories — Category, Frequency, Source Module, Taxable & Refundable
           </p>
         </div>
         <button
@@ -183,13 +259,13 @@ const FeeHeadPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-4">
-        <div className="relative max-w-md">
+      {/* Search + Filter Row */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1 max-w-md">
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search by name, code, or type..."
+            placeholder="Search by name, code, category, source..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
@@ -203,6 +279,19 @@ const FeeHeadPage: React.FC = () => {
             </button>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <FiFilter className="w-4 h-4 text-gray-400" />
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="">All Categories</option>
+            {FEE_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -211,30 +300,22 @@ const FeeHeadPage: React.FC = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">
-                  Name
-                </th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">
-                  Code
-                </th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600 hidden md:table-cell">
-                  Description
-                </th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">
-                  Type
-                </th>
-                <th className="text-center px-6 py-3 font-semibold text-gray-600">
-                  Status
-                </th>
-                <th className="text-center px-6 py-3 font-semibold text-gray-600">
-                  Actions
-                </th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Code</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Category</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Frequency</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Source</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Type</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Tax</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Refund</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Status</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-500">
+                  <td colSpan={10} className="text-center py-12 text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                       Loading...
@@ -243,22 +324,17 @@ const FeeHeadPage: React.FC = () => {
                 </tr>
               ) : filteredFeeHeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-500">
-                    {searchQuery
-                      ? "No fee heads match your search"
+                  <td colSpan={10} className="text-center py-12 text-gray-500">
+                    {searchQuery || filterCategory
+                      ? "No fee heads match your filters"
                       : "No fee heads found. Click 'Add Fee Head' to create one."}
                   </td>
                 </tr>
               ) : (
                 filteredFeeHeads.map((feeHead) => (
-                  <tr
-                    key={feeHead.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 font-medium text-gray-800">
-                      {feeHead.name}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
+                  <tr key={feeHead.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-800">{feeHead.name}</td>
+                    <td className="px-4 py-3 text-gray-600">
                       {feeHead.code ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
                           {feeHead.code}
@@ -267,23 +343,53 @@ const FeeHeadPage: React.FC = () => {
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 hidden md:table-cell max-w-xs truncate">
-                      {feeHead.description || (
+                    <td className="px-4 py-3">
+                      {feeHead.category ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                          {feeHead.category}
+                        </span>
+                      ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3 text-gray-600 text-xs">
+                      {feeHead.frequency || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {feeHead.sourceModule ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700">
+                          {feeHead.sourceModule}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           feeHead.type === "RECURRING"
                             ? "bg-primary-100 text-primary-700"
-                            : "bg-purple-100 text-purple-700"
+                            : "bg-amber-100 text-amber-700"
                         }`}
                       >
                         {feeHead.type === "RECURRING" ? "Recurring" : "One-Time"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 py-3 text-center">
+                      {feeHead.isTaxable ? (
+                        <span className="text-green-600 font-medium text-xs">Yes</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {feeHead.isRefundable ? (
+                        <span className="text-green-600 font-medium text-xs">Yes</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">No</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => handleToggleActive(feeHead)}
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
@@ -291,27 +397,17 @@ const FeeHeadPage: React.FC = () => {
                             ? "text-green-700 hover:bg-green-50"
                             : "text-red-600 hover:bg-red-50"
                         }`}
-                        title={
-                          feeHead.isActive
-                            ? "Click to deactivate"
-                            : "Click to activate"
-                        }
+                        title={feeHead.isActive ? "Click to deactivate" : "Click to activate"}
                       >
                         {feeHead.isActive ? (
-                          <>
-                            <FiToggleRight className="w-5 h-5" />
-                            Active
-                          </>
+                          <><FiToggleRight className="w-4 h-4" /> Active</>
                         ) : (
-                          <>
-                            <FiToggleLeft className="w-5 h-5" />
-                            Inactive
-                          </>
+                          <><FiToggleLeft className="w-4 h-4" /> Off</>
                         )}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleEdit(feeHead)}
                           className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
@@ -335,109 +431,153 @@ const FeeHeadPage: React.FC = () => {
           </table>
         </div>
 
-        {/* Table footer with count */}
+        {/* Table footer */}
         {!loading && filteredFeeHeads.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
-            Showing {filteredFeeHeads.length} of {feeHeads.length} fee head
-            {feeHeads.length !== 1 ? "s" : ""}
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+            Showing {filteredFeeHeads.length} of {feeHeads.length} fee head{feeHeads.length !== 1 ? "s" : ""}
           </div>
         )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ADD/EDIT MODAL — Enhanced with all new fields */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setIsModalOpen(false)}
-          />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setIsModalOpen(false)} />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-lg font-semibold text-gray-800">
                 {editingId ? "Edit Fee Head" : "Add Fee Head"}
               </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 text-gray-400 hover:text-gray-600 rounded"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
                 <FiX className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="e.g., Tuition Fee"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
-                  required
-                />
+              {/* Row 1: Name + Code */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Head Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g., Tuition Fee"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+                  <input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    placeholder="TF001"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                  />
+                </div>
               </div>
 
-              {/* Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                  placeholder="e.g., TF"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Short code for reference (optional)
-                </p>
+              {/* Row 2: Category + Frequency */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                  >
+                    <option value="">Select Category</option>
+                    {FEE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                  <select
+                    value={formData.frequency}
+                    onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                  >
+                    {FEE_FREQUENCIES.map((freq) => (
+                      <option key={freq} value={freq}>{freq}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 3: Type + Source Module */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as "RECURRING" | "ONE_TIME" })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                  >
+                    <option value="RECURRING">Recurring</option>
+                    <option value="ONE_TIME">One-Time</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Source Module</label>
+                  <select
+                    value={formData.sourceModule}
+                    onChange={(e) => setFormData({ ...formData, sourceModule: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
+                  >
+                    {SOURCE_MODULES.map((src) => (
+                      <option key={src} value={src}>{src}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">कहाँ से charge generate हुआ</p>
+                </div>
+              </div>
+
+              {/* Row 4: Taxable + Refundable toggles */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="isTaxable"
+                    checked={formData.isTaxable}
+                    onChange={(e) => setFormData({ ...formData, isTaxable: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <label htmlFor="isTaxable" className="text-sm font-medium text-gray-700">
+                    Taxable (GST)
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="isRefundable"
+                    checked={formData.isRefundable}
+                    onChange={(e) => setFormData({ ...formData, isRefundable: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <label htmlFor="isRefundable" className="text-sm font-medium text-gray-700">
+                    Refundable
+                  </label>
+                </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Brief description of this fee head..."
-                  rows={3}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description..."
+                  rows={2}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm resize-none"
                 />
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type
-                </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      type: e.target.value as "RECURRING" | "ONE_TIME",
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
-                >
-                  <option value="RECURRING">Recurring</option>
-                  <option value="ONE_TIME">One-Time</option>
-                </select>
-                <p className="text-xs text-gray-400 mt-1">
-                  Recurring fees repeat each term; one-time fees are charged once
-                </p>
               </div>
 
               {/* Actions */}
@@ -454,11 +594,7 @@ const FeeHeadPage: React.FC = () => {
                   disabled={submitting}
                   className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting
-                    ? "Saving..."
-                    : editingId
-                    ? "Update"
-                    : "Create"}
+                  {submitting ? "Saving..." : editingId ? "Update" : "Create"}
                 </button>
               </div>
             </form>
@@ -469,10 +605,7 @@ const FeeHeadPage: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setIsDeleteModalOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/50" onClick={() => setIsDeleteModalOpen(false)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm">
             <div className="p-6">
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
@@ -482,8 +615,7 @@ const FeeHeadPage: React.FC = () => {
                 Delete Fee Head
               </h3>
               <p className="text-sm text-gray-500 text-center">
-                Are you sure you want to delete this fee head? This action cannot
-                be undone.
+                Are you sure you want to delete this fee head? This action cannot be undone.
               </p>
             </div>
             <div className="flex items-center gap-3 px-6 py-4 border-t border-gray-100">
@@ -508,4 +640,3 @@ const FeeHeadPage: React.FC = () => {
 };
 
 export default FeeHeadPage;
-

@@ -105,6 +105,7 @@ function StatCard({
 // ───────────────────────────────────────────────
 
 export default function CertificateDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<CertificateData>({
     totalGenerated: 0,
     tcIssued: 0,
@@ -415,7 +416,7 @@ export default function CertificateDashboard() {
           ].map((action, idx) => (
             <button
               key={idx}
-              onClick={() => window.location.href = action.path}
+              onClick={() => navigate(action.path)}
               className="flex flex-col items-center gap-3 p-4 rounded-xl border border-gray-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md transition-all duration-200 group"
             >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${action.color} group-hover:scale-110 transition-transform`}>

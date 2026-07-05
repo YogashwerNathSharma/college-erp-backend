@@ -107,6 +107,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // ══════════════════════════════════════════════════════════════
 
 export default function EventDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -388,9 +389,9 @@ export default function EventDashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <QuickAction icon={<Plus className="w-5 h-5" />} label="Create Event" color="indigo" onClick={() => setShowAddModal(true)} />
-        <QuickAction icon={<Calendar className="w-5 h-5" />} label="View Calendar" color="blue" onClick={() => {}} />
-        <QuickAction icon={<BarChart3 className="w-5 h-5" />} label="Generate Report" color="green" onClick={() => {}} />
-        <QuickAction icon={<Tag className="w-5 h-5" />} label="Categories" color="purple" onClick={() => {}} />
+        <QuickAction icon={<Calendar className="w-5 h-5" />} label="View Calendar" color="blue" onClick={() => navigate("/events")} />
+        <QuickAction icon={<BarChart3 className="w-5 h-5" />} label="Generate Report" color="green" onClick={() => navigate("/events")} />
+        <QuickAction icon={<Tag className="w-5 h-5" />} label="Categories" color="purple" onClick={() => navigate("/events")} />
       </div>
 
       {/* Upcoming Events Table */}

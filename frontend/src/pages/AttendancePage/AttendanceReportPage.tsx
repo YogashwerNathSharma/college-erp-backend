@@ -1,727 +1,796 @@
 
-
-import { useState, useEffect } from "react";
-import { API_BASE_URL } from "../../config/api";
-import axios from "axios";
-import { toast } from "react-hot-toast";
-import PrintSignature from "../../components/PrintSignature";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import axios from "axios";
+import { getPrintSignatureHTML } from "../../components/PrintSignature";
+import { API_BASE_URL } from "../../config/api";
+import { toast } from "react-hot-toast";
+import {
+  Users, UserCheck, UserX, Clock, Search, Printer, Download, Eye,
+  Calendar, CalendarDays, ArrowLeft, BarChart3, AlertTriangle, Award,
+  Layers, Building2, Shield, ClipboardList, FileText, Percent,
+  Timer, BookOpen, ListOrdered, Hash, TrendingUp, Zap
+} from "lucide-react";
 
 const API = `${API_BASE_URL}/api`;
 
-interface ClassOption {
-  id: string;
-  name: string;
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 
-interface SectionOption {
-  id: string;
-  name: string;
-}
+interface ClassOption { id: string; name: string; }
+interface SectionOption { id: string; name: string; }
+interface ReportType { id: string; icon: any; title: string; description: string; category: string; }
+interface ReportCategory { id: string; label: string; icon: any; color: string; }
+interface TenantInfo { name?: string; address?: string; phone?: string; email?: string; logoUrl?: string; }
 
-type ReportType = "monthly" | "datewise" | "yearly" | "classwise" | "school";
+// ═══════════════════════════════════════════════════════════════════════════
+// REPORT CATEGORIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+const REPORT_CATEGORIES: ReportCategory[] = [
+  { id: "daily", label: "Daily Reports", icon: CalendarDays, color: "blue" },
+  { id: "monthly", label: "Monthly Reports", icon: Calendar, color: "purple" },
+  { id: "yearly", label: "Yearly Reports", icon: TrendingUp, color: "teal" },
+  { id: "summary", label: "Summary Reports", icon: BarChart3, color: "green" },
+  { id: "special", label: "Special Reports", icon: AlertTriangle, color: "orange" },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REPORT TYPE DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const REPORT_TYPES: ReportType[] = [
+  // ─── Daily Reports ────────────────────────────────────
+  { id: "daily-attendance", icon: CalendarDays, title: "Daily Attendance", description: "Attendance for a specific date", category: "daily" },
+  { id: "datewise-attendance", icon: Calendar, title: "Date-wise Attendance", description: "Detailed date-wise attendance", category: "daily" },
+  { id: "period-wise", icon: Timer, title: "Period-wise Attendance", description: "Attendance by period/slot", category: "daily" },
+
+  // ─── Monthly Reports ──────────────────────────────────
+  { id: "monthly-attendance", icon: Calendar, title: "Monthly Attendance", description: "Month-wise attendance register", category: "monthly" },
+  { id: "monthly-summary", icon: BarChart3, title: "Monthly Summary", description: "Monthly attendance summary", category: "monthly" },
+
+  // ─── Yearly Reports ───────────────────────────────────
+  { id: "yearly-attendance", icon: TrendingUp, title: "Yearly Attendance", description: "Year-wise attendance register", category: "yearly" },
+  { id: "annual-summary", icon: BookOpen, title: "Annual Summary", description: "Annual attendance overview", category: "yearly" },
+
+  // ─── Summary Reports ──────────────────────────────────
+  { id: "class-summary", icon: Layers, title: "Class Summary", description: "Class-wise attendance summary", category: "summary" },
+  { id: "section-summary", icon: ListOrdered, title: "Section Summary", description: "Section-wise attendance summary", category: "summary" },
+  { id: "school-summary", icon: Building2, title: "School Attendance Summary", description: "Whole school attendance report", category: "summary" },
+
+  // ─── Special Reports ──────────────────────────────────
+  { id: "absent-students", icon: UserX, title: "Absent Students", description: "List of absent students", category: "special" },
+  { id: "late-students", icon: Clock, title: "Late Students", description: "Students with late entry", category: "special" },
+  { id: "leave-report", icon: FileText, title: "Leave Report", description: "Students on approved leave", category: "special" },
+  { id: "low-attendance", icon: AlertTriangle, title: "Low Attendance (<75%)", description: "Students below 75% attendance", category: "special" },
+  { id: "perfect-attendance", icon: Award, title: "Perfect Attendance", description: "Students with 100% attendance", category: "special" },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUICK REPORT BUTTONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const QUICK_REPORTS = [
+  { id: "daily-attendance", label: "Today's Attendance", icon: CalendarDays, color: "blue" },
+  { id: "absent-students", label: "Today's Absent", icon: UserX, color: "red" },
+  { id: "low-attendance", label: "Low Attendance", icon: AlertTriangle, color: "amber" },
+  { id: "perfect-attendance", label: "Perfect Attendance", icon: Award, color: "green" },
+  { id: "late-students", label: "Late Arrival", icon: Clock, color: "purple" },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════
 
 const AttendanceReportPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // URL se tab param read karo — default "monthly"
-  const tabFromUrl = searchParams.get("tab") as ReportType | null;
-  const validTabs: ReportType[] = ["monthly", "datewise", "yearly", "classwise", "school"];
-  const hideTabsBar = tabFromUrl && validTabs.includes(tabFromUrl);
+  const [searchParams] = useSearchParams();
 
-  const [reportType, setReportType] = useState<ReportType>(
-    tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : "monthly"
-  );
+  // ─── State ─────────────────────────────────────────────
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [sections, setSections] = useState<SectionOption[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+  const [generated, setGenerated] = useState(false);
 
-  useEffect(() => {
-    fetchClasses();
+  // ─── Report UI State ───────────────────────────────────
+  const [selectedReport, setSelectedReport] = useState("");
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // ─── Summary Data ──────────────────────────────────────
+  const [summaryData, setSummaryData] = useState({
+    totalStudents: 0, presentToday: 0, absentToday: 0, lateEntry: 0, attendancePercent: 0, leaveStudents: 0,
+  });
+
+  // ─── Tenant & User ─────────────────────────────────────
+  const tenant: TenantInfo = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("tenant") || "{}"); } catch { return {}; }
+  }, []);
+  const user = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
   }, []);
 
+  // ─── Fetch Classes ─────────────────────────────────────
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await axios.get(`${API}/class`);
+        setClasses(res.data.data || []);
+      } catch (err) { console.error("Error fetching classes:", err); }
+    };
+    fetchClasses();
+    fetchSummary();
+  }, []);
+
+  // ─── Fetch Sections ────────────────────────────────────
   useEffect(() => {
     if (selectedClass) {
-      fetchSections(selectedClass);
+      const fetchSections = async () => {
+        try {
+          const res = await axios.get(`${API}/section?classId=${selectedClass}`);
+          setSections(res.data.data || []);
+        } catch (err) { console.error("Error fetching sections:", err); }
+      };
+      fetchSections();
       setSelectedSection("");
+    } else {
+      setSections([]);
     }
   }, [selectedClass]);
 
-  const fetchClasses = async () => {
+  // ─── Fetch Summary (Today's dashboard) ─────────────────
+  const fetchSummary = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/class`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setClasses(res.data.data || []);
+      const month = new Date().getMonth() + 1;
+      const year = new Date().getFullYear();
+
+      // Fetch school report AND total students count in parallel
+      const [schoolRes, studentsRes] = await Promise.allSettled([
+        axios.get(`${API}/attendance/report/school`, { params: { month, year } }),
+        axios.get(`${API}/students`, { params: { limit: 1 } }), // Just to get total count
+      ]);
+
+      const data = schoolRes.status === "fulfilled" ? (schoolRes.value.data?.data || schoolRes.value.data) : null;
+
+      // Try to get total students from students API (more reliable)
+      let totalFromStudents = 0;
+      if (studentsRes.status === "fulfilled") {
+        const sData = studentsRes.value.data;
+        totalFromStudents = sData?.total || sData?.data?.total || sData?.data?.students?.length || sData?.data?.length || 0;
+      }
+
+      if (data) {
+        const total = data.totalStudents || totalFromStudents || 0;
+        // avgPresent is a percentage string like "94.3", not a count
+        const avgPresentPercent = parseFloat(data.avgPresent) || 0;
+        const avgAbsentPercent = parseFloat(data.avgAbsent) || 0;
+        
+        // Calculate approximate counts from classes array if available
+        let presentCount = 0;
+        let absentCount = 0;
+        if (data.classes && data.classes.length > 0) {
+          presentCount = data.classes.reduce((sum: number, c: any) => sum + (c.avgPresent || 0), 0);
+          absentCount = data.classes.reduce((sum: number, c: any) => sum + (c.avgAbsent || 0), 0);
+        }
+        
+        // If no class breakdown, estimate from total and percentage
+        if (presentCount === 0 && total > 0) {
+          presentCount = Math.round((avgPresentPercent / 100) * total);
+          absentCount = Math.round((avgAbsentPercent / 100) * total);
+        }
+        
+        setSummaryData({
+          totalStudents: total,
+          presentToday: presentCount,
+          absentToday: absentCount,
+          lateEntry: 0, // Late not tracked in current backend
+          attendancePercent: avgPresentPercent,
+          leaveStudents: 0, // Leave not tracked in attendance report
+        });
+      } else if (totalFromStudents > 0) {
+        // School report failed but we have student count
+        setSummaryData({
+          totalStudents: totalFromStudents,
+          presentToday: 0,
+          absentToday: 0,
+          lateEntry: 0,
+          attendancePercent: 0,
+          leaveStudents: 0,
+        });
+      }
     } catch (err) {
-      console.error("Error fetching classes:", err);
+      console.error("Failed to fetch summary:", err);
     }
   };
 
-  const fetchSections = async (classId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/section?classId=${classId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSections(res.data.data || []);
-    } catch (err) {
-      console.error("Error fetching sections:", err);
+  // ─── URL tab param backward compatibility ──────────────
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) {
+      const mapping: Record<string, string> = {
+        monthly: "monthly-attendance",
+        datewise: "datewise-attendance",
+        yearly: "yearly-attendance",
+        classwise: "class-summary",
+        school: "school-summary",
+      };
+      if (mapping[tab]) {
+        handleReportSelect(mapping[tab]);
+      }
     }
+  }, [searchParams]);
+
+  // ─── Filter Reports by Search ──────────────────────────
+  const filteredReports = useMemo(() => {
+    if (!searchQuery.trim()) return REPORT_TYPES;
+    const q = searchQuery.toLowerCase();
+    return REPORT_TYPES.filter(
+      r => r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || r.category.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
+  // ─── Group Reports by Category ─────────────────────────
+  const groupedReports = useMemo(() => {
+    const groups: Record<string, ReportType[]> = {};
+    for (const cat of REPORT_CATEGORIES) {
+      groups[cat.id] = filteredReports.filter(r => r.category === cat.id);
+    }
+    return groups;
+  }, [filteredReports]);
+
+  // ─── Handle Report Select ──────────────────────────────
+  const handleReportSelect = (reportId: string) => {
+    setSelectedReport(reportId);
+    setShowFilterPanel(true);
+    setGenerated(false);
+    setReportData(null);
   };
 
-  const generateReport = async () => {
-    if (reportType !== "school" && (!selectedClass || !selectedSection)) {
-      toast.error("Please select class and section");
+  // ─── Get Relevant Filters ──────────────────────────────
+  const getRelevantFilters = (reportId: string): string[] => {
+    const dailyReports = ["daily-attendance", "datewise-attendance", "period-wise", "absent-students", "late-students", "leave-report"];
+    const monthlyReports = ["monthly-attendance", "monthly-summary"];
+    const yearlyReports = ["yearly-attendance", "annual-summary"];
+    const summaryReports = ["class-summary", "section-summary", "school-summary"];
+    const specialReports = ["low-attendance", "perfect-attendance"];
+
+    if (dailyReports.includes(reportId)) return ["date", "class", "section"];
+    if (monthlyReports.includes(reportId)) return ["month", "year", "class", "section"];
+    if (yearlyReports.includes(reportId)) return ["year", "class", "section"];
+    if (summaryReports.includes(reportId)) return ["month", "year", "class"];
+    if (specialReports.includes(reportId)) return ["month", "year", "class", "section"];
+    return ["class", "section"];
+  };
+
+  // ─── Get Report Title ──────────────────────────────────
+  const getReportTitle = (): string => {
+    return REPORT_TYPES.find(r => r.id === selectedReport)?.title || "Attendance Report";
+  };
+
+  // ─── Get Subtitle ──────────────────────────────────────
+  const getSubtitle = (): string => {
+    const cls = classes.find(c => c.id === selectedClass)?.name || "All Classes";
+    const sec = sections.find(s => s.id === selectedSection)?.name || "";
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    if (getRelevantFilters(selectedReport).includes("date")) return `Date: ${selectedDate} | ${cls} ${sec}`;
+    if (getRelevantFilters(selectedReport).includes("month")) return `${monthNames[selectedMonth - 1]} ${selectedYear} | ${cls} ${sec}`;
+    return `${selectedYear} | ${cls} ${sec}`;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GENERATE REPORT
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const handleGenerate = async () => {
+    // School summary doesn't need class/section
+    const schoolReports = ["school-summary"];
+    if (!schoolReports.includes(selectedReport) && !selectedClass) {
+      toast.error("Please select a class");
       return;
     }
 
     setLoading(true);
+    setGenerated(false);
     setReportData(null);
 
     try {
-      const token = localStorage.getItem("token");
       let res;
+      const dailyReports = ["daily-attendance", "datewise-attendance", "period-wise", "absent-students", "late-students", "leave-report"];
+      const monthlyReports = ["monthly-attendance", "monthly-summary"];
+      const yearlyReports = ["yearly-attendance", "annual-summary"];
+      const summaryReports = ["class-summary", "section-summary"];
 
-      switch (reportType) {
-        case "monthly":
-          res = await axios.get(`${API}/attendance/report/monthly`, {
-            params: {
-              classId: selectedClass,
-              sectionId: selectedSection,
-              month: selectedMonth,
-              year: selectedYear,
-            },
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          break;
-
-        case "datewise":
-          res = await axios.get(`${API}/attendance/report/datewise`, {
-            params: {
-              classId: selectedClass,
-              sectionId: selectedSection,
-              date: selectedDate,
-            },
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          break;
-
-        case "yearly":
-          res = await axios.get(`${API}/attendance/report/yearly`, {
-            params: {
-              classId: selectedClass,
-              sectionId: selectedSection,
-              year: selectedYear,
-            },
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          break;
-
-        case "classwise":
-          res = await axios.get(`${API}/attendance/report/classwise`, {
-            params: {
-              classId: selectedClass,
-              sectionId: selectedSection,
-            },
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          break;
-
-        case "school":
-          res = await axios.get(`${API}/attendance/report/school`, {
-            params: { month: selectedMonth, year: selectedYear },
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          break;
+      if (dailyReports.includes(selectedReport)) {
+        res = await axios.get(`${API}/attendance/report/datewise`, {
+          params: { classId: selectedClass, sectionId: selectedSection, date: selectedDate },
+        });
+      } else if (monthlyReports.includes(selectedReport)) {
+        res = await axios.get(`${API}/attendance/report/monthly`, {
+          params: { classId: selectedClass, sectionId: selectedSection, month: selectedMonth, year: selectedYear },
+        });
+      } else if (yearlyReports.includes(selectedReport)) {
+        res = await axios.get(`${API}/attendance/report/yearly`, {
+          params: { classId: selectedClass, sectionId: selectedSection, year: selectedYear },
+        });
+      } else if (summaryReports.includes(selectedReport)) {
+        res = await axios.get(`${API}/attendance/report/classwise`, {
+          params: { classId: selectedClass, sectionId: selectedSection, month: selectedMonth, year: selectedYear },
+        });
+      } else if (selectedReport === "school-summary") {
+        res = await axios.get(`${API}/attendance/report/school`, {
+          params: { month: selectedMonth, year: selectedYear },
+        });
+      } else {
+        // Default fallback
+        res = await axios.get(`${API}/attendance/report/datewise`, {
+          params: { classId: selectedClass, sectionId: selectedSection, date: selectedDate },
+        });
       }
 
-      setReportData(res?.data || null);
-    } catch (err) {
+      const data = res?.data?.data || res?.data;
+
+      // Client-side filtering for special reports
+      if (selectedReport === "absent-students" && data) {
+        const students = Array.isArray(data) ? data : data.students || [];
+        setReportData(students.filter((s: any) => (s.status || "").toUpperCase() === "ABSENT" || s.status === "A"));
+      } else if (selectedReport === "late-students" && data) {
+        const students = Array.isArray(data) ? data : data.students || [];
+        setReportData(students.filter((s: any) => (s.status || "").toUpperCase() === "LATE" || s.status === "Lt" || s.isLate));
+      } else if (selectedReport === "leave-report" && data) {
+        const students = Array.isArray(data) ? data : data.students || [];
+        setReportData(students.filter((s: any) => (s.status || "").toUpperCase() === "LEAVE" || s.status === "L"));
+      } else if (selectedReport === "low-attendance" && Array.isArray(data)) {
+        setReportData(data.filter((s: any) => (s.percentage || s.attendancePercent || 100) < 75));
+      } else if (selectedReport === "perfect-attendance" && Array.isArray(data)) {
+        setReportData(data.filter((s: any) => (s.percentage || s.attendancePercent || 0) === 100));
+      } else {
+        setReportData(data);
+      }
+
+      setGenerated(true);
+      toast.success("Report generated successfully");
+    } catch (err: any) {
       console.error("Error generating report:", err);
-      toast.error("Error generating report");
+      toast.error(err?.response?.data?.message || "Error generating report");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  // ═══════════════════════════════════════════════════════════════════════
+  // RENDER TABLE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const renderTable = () => {
+    if (!reportData) return <div className="p-8 text-center text-gray-400">No data to display</div>;
+
+    const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
+    if (!Array.isArray(data) || data.length === 0) {
+      return <div className="p-8 text-center text-gray-400 dark:text-gray-500">No records found for the selected filters</div>;
+    }
+
+    // Determine columns based on data shape
+    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted"].includes(k));
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600">
+            <tr>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">S.No</th>
+              {columns.map((col) => (
+                <th key={col} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase whitespace-nowrap">
+                  {col.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+            {data.map((row: any, idx: number) => (
+              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{idx + 1}</td>
+                {columns.map((col) => (
+                  <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-200 text-xs whitespace-nowrap">
+                    {col === "status" || col === "Status" ? (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        (String(row[col]).toUpperCase() === "PRESENT" || row[col] === "P") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                        (String(row[col]).toUpperCase() === "ABSENT" || row[col] === "A") ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                        (String(row[col]).toUpperCase() === "LATE" || row[col] === "Lt") ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                        (String(row[col]).toUpperCase() === "NOT_MARKED") ? "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400" :
+                        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                      }`}>
+                        {String(row[col] || "-").toUpperCase()}
+                      </span>
+                    ) : col.includes("percent") || col.includes("Percent") || col === "percentage" ? (
+                      `${parseFloat(row[col] || 0).toFixed(1)}%`
+                    ) : (
+                      String(row[col] ?? "-")
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Summary Footer */}
+        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 flex flex-wrap gap-4">
+          <span><strong>Total Records:</strong> {data.length}</span>
+          {data[0]?.status && (
+            <>
+              <span><strong>Present:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "PRESENT" || r.status === "P").length}</span>
+              <span><strong>Absent:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "ABSENT" || r.status === "A").length}</span>
+              <span><strong>Leave:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "LEAVE" || r.status === "L").length}</span>
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const getClassName = () => {
-    return classes.find((c) => c.id === selectedClass)?.name || "";
+  // ═══════════════════════════════════════════════════════════════════════
+  // PRINT
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const handlePrint = async () => {
+    if (!reportData) return;
+    const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
+    if (!Array.isArray(data) || data.length === 0) { toast.error("No data to print"); return; }
+
+    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted"].includes(k));
+    const signatureHTML = await getPrintSignatureHTML();
+    const logoUrl = tenant.logoUrl || "";
+    const schoolName = tenant.name || "School Name";
+    const address = tenant.address || "";
+    const phone = tenant.phone || "";
+    const userName = user.name || user.firstName || "Admin";
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+    const presentCount = data.filter((r: any) => r.status === "present" || r.status === "P").length;
+    const absentCount = data.filter((r: any) => r.status === "absent" || r.status === "A").length;
+    const attendPercent = data.length > 0 && data[0]?.status ? ((presentCount / data.length) * 100).toFixed(2) : "";
+
+    const html = `
+      <html><head><title>${getReportTitle()}</title>
+      <style>
+        @page { margin: 10mm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #333; }
+        .header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
+        .logo { width: 50px; height: 50px; object-fit: contain; margin-right: 12px; }
+        .school-info { flex: 1; text-align: center; }
+        .school-name { font-size: 16px; font-weight: bold; }
+        .school-addr { font-size: 10px; color: #666; }
+        .print-info { text-align: right; font-size: 9px; color: #666; }
+        .report-title { text-align: center; font-size: 14px; font-weight: bold; margin: 10px 0 5px; }
+        .report-sub { text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { background: #f0f0f0; border: 1px solid #ccc; padding: 4px 6px; text-align: left; font-size: 10px; text-transform: uppercase; }
+        td { border: 1px solid #ddd; padding: 3px 6px; font-size: 10px; }
+        tr:nth-child(even) { background: #fafafa; }
+        .summary-footer { margin-top: 10px; padding: 8px; border-top: 2px solid #333; font-size: 11px; font-weight: bold; }
+        .signature { margin-top: 30px; }
+      </style></head><body>
+      <div class="header">
+        ${logoUrl ? `<img src="${logoUrl}" class="logo" />` : ""}
+        <div class="school-info">
+          <div class="school-name">${schoolName}</div>
+          <div class="school-addr">${address}${phone ? " | " + phone : ""}</div>
+        </div>
+        <div class="print-info">
+          Printed by: ${userName}<br/>Date: ${dateStr}<br/>Time: ${timeStr}
+        </div>
+      </div>
+      <div class="report-title">${getReportTitle()}</div>
+      <div class="report-sub">${getSubtitle()} | Total Records: ${data.length}</div>
+      <table>
+        <thead><tr><th>S.No</th>${columns.map(c => `<th>${c.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}</th>`).join("")}</tr></thead>
+        <tbody>${data.map((row: any, i: number) => `<tr><td>${i + 1}</td>${columns.map(c => `<td>${row[c] ?? "-"}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+      ${data[0]?.status ? `<div class="summary-footer">Total Students: ${data.length} | Present: ${presentCount} | Absent: ${absentCount} | Attendance: ${attendPercent}%</div>` : ""}
+      <div class="signature">${signatureHTML}</div>
+      </body></html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); }, 500);
+    }
   };
 
-  const getSectionName = () => {
-    return sections.find((s) => s.id === selectedSection)?.name || "";
+  // ─── Export CSV ────────────────────────────────────────
+  const exportCSV = () => {
+    if (!reportData) return;
+    const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
+    if (!Array.isArray(data) || data.length === 0) { toast.error("No data to export"); return; }
+
+    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted"].includes(k));
+    const headers = ["S.No", ...columns.map(c => c.replace(/([A-Z])/g, " $1").trim())];
+    const rows = data.map((row: any, i: number) => [i + 1, ...columns.map(c => row[c] ?? "")]);
+
+    const csv = [headers.join(","), ...rows.map((r: any[]) => r.map(v => `"${v}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${getReportTitle().replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    toast.success("Exported successfully!");
   };
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
-  const getDaysInMonth = (month: number, year: number) => {
-    return new Date(year, month, 0).getDate();
-  };
+  // ═══════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header — hide on print */}
-      <div className="mb-6 print:hidden">
-        <h1 className="text-2xl font-bold text-gray-800">📊 Attendance Reports</h1>
-        <p className="text-gray-500 mt-1">Generate & print class-wise attendance reports</p>
+    <div className="p-4 md:p-6 max-w-[1400px] mx-auto">
+      {/* ─── Page Header ───────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-primary-500" /> Attendance Reports
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Generate, Preview & Export Attendance Reports</p>
+        </div>
       </div>
 
-      {/* Filters — hide on print */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 print:hidden">
-        {/* Report Type Tabs */}
-        {!hideTabsBar && <div className="flex flex-wrap gap-2 mb-4 border-b pb-3">
-          {[
-            { value: "monthly", label: "Monthly" },
-            { value: "datewise", label: "Date-wise" },
-            { value: "yearly", label: "Yearly" },
-            { value: "classwise", label: "Class Summary" },
-            { value: "school", label: "Full School" },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => {
-                setReportType(tab.value as ReportType);
-                setReportData(null);
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                reportType === tab.value
-                  ? "bg-primary-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>}
-
-        {/* Filters Row */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          {/* Class */}
-          {reportType !== "school" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select Class</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+      {/* ─── Summary Dashboard Cards ─────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {[
+          { label: "Total Students", value: summaryData.totalStudents, icon: Users, color: "blue" },
+          { label: "Present Today", value: summaryData.presentToday, icon: UserCheck, color: "green" },
+          { label: "Absent Today", value: summaryData.absentToday, icon: UserX, color: "red" },
+          { label: "Late Entry", value: summaryData.lateEntry, icon: Clock, color: "amber" },
+          { label: "Attendance %", value: `${summaryData.attendancePercent}%`, icon: Percent, color: "purple" },
+          { label: "Leave Students", value: summaryData.leaveStudents, icon: FileText, color: "teal" },
+        ].map((card, idx) => (
+          <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <card.icon className={`w-5 h-5 text-${card.color}-500`} />
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-${card.color}-50 text-${card.color}-600 dark:bg-${card.color}-900/30 dark:text-${card.color}-400`}>
+                {card.label}
+              </span>
             </div>
-          )}
+            <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{card.value}</div>
+          </div>
+        ))}
+      </div>
 
-          {/* Section */}
-          {reportType !== "school" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={!selectedClass}
+      {/* ─── Report Selection View ─────────────────────────── */}
+      {!showFilterPanel && (
+        <>
+          {/* Quick Report Buttons */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            {QUICK_REPORTS.map((qr) => (
+              <button
+                key={qr.id}
+                onClick={() => handleReportSelect(qr.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-${qr.color}-50 text-${qr.color}-700 dark:bg-${qr.color}-900/30 dark:text-${qr.color}-400 hover:bg-${qr.color}-100 dark:hover:bg-${qr.color}-900/50 transition-colors border border-${qr.color}-200 dark:border-${qr.color}-800`}
               >
-                <option value="">Select Section</option>
-                {sections.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+                <qr.icon className="w-3.5 h-3.5" />
+                {qr.label}
+              </button>
+            ))}
+          </div>
 
-          {/* Month (for monthly, school) */}
-          {(reportType === "monthly" || reportType === "school") && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                {monthNames.map((m, i) => (
-                  <option key={i} value={i + 1}>{m}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Year */}
-          {(reportType === "monthly" || reportType === "yearly" || reportType === "school") && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Date (for datewise) */}
-          {reportType === "datewise" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          {/* Search Bar */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search reports by name or category..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
-          )}
+          </div>
 
-          {/* Generate Button */}
-          <div>
+          {/* Report Categories */}
+          {REPORT_CATEGORIES.map((category) => {
+            const reports = groupedReports[category.id] || [];
+            if (reports.length === 0) return null;
+            const CategoryIcon = category.icon;
+            return (
+              <div key={category.id} className="mb-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <CategoryIcon className={`w-5 h-5 text-${category.color}-500`} />
+                  <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">{category.label}</h2>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">({reports.length} reports)</span>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-1.5">
+                  {reports.map((report) => {
+                    const ReportIcon = report.icon;
+                    return (
+                      <button
+                        key={report.id}
+                        onClick={() => handleReportSelect(report.id)}
+                        className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-${category.color}-50 dark:bg-${category.color}-950/50 hover:scale-105 transition-all duration-200 group cursor-pointer`}
+                      >
+                        <div className={`w-7 h-7 rounded-md bg-${category.color}-500 flex items-center justify-center`}>
+                          <ReportIcon className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">{report.title.replace(" Report", "").replace(" Attendance", "")}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* ─── Filter Panel & Report Output ─────────────────── */}
+      {showFilterPanel && (
+        <>
+          {/* Back Button */}
+          <div className="mb-4">
             <button
-              onClick={generateReport}
-              disabled={loading}
-              className="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 disabled:opacity-50 text-sm font-medium"
+              onClick={() => { setShowFilterPanel(false); setGenerated(false); setSelectedReport(""); setReportData(null); }}
+              className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 flex items-center gap-1"
             >
-              {loading ? "Generating..." : "Generate Report"}
+              <ArrowLeft className="w-4 h-4" /> Back to all reports
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Print Button */}
-      {reportData && (
-        <div className="flex justify-end mb-4 print:hidden">
-          <button
-            onClick={handlePrint}
-            className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-          >
-            🖨️ Print Report
-          </button>
-        </div>
-      )}
-
-      {/* ==================== REPORT OUTPUT ==================== */}
-
-      {/* Print Header — only visible on print */}
-      {reportData && (
-        <div className="hidden print:block mb-4">
-          <div className="flex items-start justify-between">
-            <img
-              src={(() => {
-                const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
-                const logo = tenant?.logoUrl;
-                if (!logo) return "";
-                return logo.startsWith("http") ? logo : `${logo}`;
-              })()}
-              alt="logo"
-              className="w-12 h-12 object-contain"
-            />
-            <div className="text-center flex-1 leading-tight">
-              <h1 className="text-lg font-bold uppercase leading-tight">
-                {JSON.parse(localStorage.getItem("tenant") || "{}").name || "SCHOOL NAME"}
-              </h1>
-              <p className="text-xs text-gray-600 leading-tight">
-                {JSON.parse(localStorage.getItem("tenant") || "{}").address || ""}
-              </p>
-              <p className="text-xs text-gray-600 leading-tight">
-                Ph: {JSON.parse(localStorage.getItem("tenant") || "{}").phone || ""} | Email: {JSON.parse(localStorage.getItem("tenant") || "{}").email || ""}
-              </p>
-              <p className="font-bold text-sm mt-1 underline leading-tight">
-                {reportType === "monthly" && "Monthly Attendance Report"}
-                {reportType === "datewise" && "Date-wise Attendance Report"}
-                {reportType === "yearly" && "Yearly Attendance Report"}
-                {reportType === "classwise" && "Class-wise Attendance Summary"}
-                {reportType === "school" && "Full School Attendance Report"}
-              </p>
-              <p className="text-xs text-gray-600 leading-tight">
-                {reportType !== "school" && `Class: ${getClassName()} ${getSectionName()} | `}
-                {reportType === "monthly" && `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
-                {reportType === "datewise" && `Date: ${new Date(selectedDate).toLocaleDateString("en-IN")}`}
-                {reportType === "yearly" && `Year: ${selectedYear}`}
-                {reportType === "classwise" && "Overall Summary"}
-                {reportType === "school" && `Month: ${monthNames[selectedMonth - 1]} ${selectedYear}`}
-              </p>
+          {/* Filter Panel */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                  {(() => { const r = REPORT_TYPES.find(r => r.id === selectedReport); const Icon = r?.icon || Calendar; return <Icon className="w-5 h-5 text-primary-500" />; })()}
+                  {getReportTitle()}
+                </h2>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Configure filters and generate the report</p>
+              </div>
             </div>
-            <div className="text-right text-[10px] text-gray-500">
-              <p><strong>Print By:</strong> {JSON.parse(localStorage.getItem("user") || "{}").name || "Admin"}</p>
-              <p><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</p>
-              <p><strong>Time:</strong> {new Date().toLocaleTimeString("en-IN")}</p>
-            </div>
-          </div>
-          <hr className="border-t-2 border-black mt-1 mb-2" />
-        </div>
-      )}
 
-      {/* MONTHLY REPORT — Day-wise Grid */}
-      {reportType === "monthly" && reportData && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          <div className="text-center mb-1 print:hidden">
-            <h2 className="text-lg font-bold">Monthly Attendance Report</h2>
-            <p className="text-sm text-gray-600">
-              Class: {getClassName()} {getSectionName()} | Month: {monthNames[selectedMonth - 1]} {selectedYear}
-            </p>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Date */}
+              {getRelevantFilters(selectedReport).includes("date") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse border border-gray-400">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-400 px-2 py-1.5 text-left">#</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-left">Roll No</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-left min-w-[120px]">Student Name</th>
-                  {Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => (
-                    <th key={i} className="border border-gray-400 px-1 py-1.5 text-center w-6">
-                      {i + 1}
-                    </th>
-                  ))}
-                  <th className="border border-gray-400 px-2 py-1.5 text-center bg-green-50">P</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-center bg-red-50">A</th>
-                  <th className="border border-gray-400 px-2 py-1.5 text-center bg-primary-50">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.students?.map((student: any, index: number) => (
-                  <tr key={student.studentId} className="hover:bg-gray-50">
-                    <td className="border border-gray-400 px-2 py-1 text-center">{index + 1}</td>
-                    <td className="border border-gray-400 px-2 py-1">{student.rollNumber || "—"}</td>
-                    <td className="border border-gray-400 px-2 py-1 font-medium">{student.name}</td>
-                    {student.days?.map((day: any, i: number) => (
-                      <td
-                        key={i}
-                        className={`border border-gray-400 px-1 py-1 text-center font-bold ${
-                          day === "P"
-                            ? "text-green-600"
-                            : day === "A"
-                            ? "text-red-600"
-                            : "text-gray-300"
-                        }`}
-                      >
-                        {day || "—"}
-                      </td>
+              {/* Month */}
+              {getRelevantFilters(selectedReport).includes("month") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Month</label>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
+                  >
+                    {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
+                      <option key={i} value={i + 1}>{m}</option>
                     ))}
-                    <td className="border border-gray-400 px-2 py-1 text-center font-bold text-green-600 bg-green-50">
-                      {student.presentDays}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1 text-center font-bold text-red-600 bg-red-50">
-                      {student.absentDays}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1 text-center font-bold text-primary-600 bg-primary-50">
-                      {student.percentage}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-100 font-bold">
-                  <td colSpan={3} className="border border-gray-400 px-2 py-1.5 text-right">
-                    Total Present per Day:
-                  </td>
-                  {reportData.dailyTotals?.map((total: any, i: number) => (
-                    <td key={i} className="border border-gray-400 px-1 py-1.5 text-center text-xs">
-                      {total}
-                    </td>
-                  ))}
-                  <td colSpan={3} className="border border-gray-400 px-2 py-1.5 text-center">
-                    Avg: {reportData.classAverage}%
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
+                  </select>
+                </div>
+              )}
 
-      {/* DATE-WISE REPORT */}
-      {reportType === "datewise" && reportData && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          <div className="text-center mb-4 print:hidden">
-            <h2 className="text-lg font-bold">Date-wise Attendance Report</h2>
-            <p className="text-sm text-gray-600">
-              Class: {getClassName()} {getSectionName()} | Date: {new Date(selectedDate).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}
-            </p>
-          </div>
+              {/* Year */}
+              {getRelevantFilters(selectedReport).includes("year") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Year</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
+                  >
+                    {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              )}
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-4 gap-4 mb-4 print:hidden">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500">Total</p>
-              <p className="text-xl font-bold">{reportData.total}</p>
+              {/* Class */}
+              {getRelevantFilters(selectedReport).includes("class") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Class</label>
+                  <select
+                    value={selectedClass}
+                    onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection(""); }}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Select Class</option>
+                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Section */}
+              {getRelevantFilters(selectedReport).includes("section") && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Section</label>
+                  <select
+                    value={selectedSection}
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">All Sections</option>
+                    {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-gray-500">Present</p>
-              <p className="text-xl font-bold text-green-600">{reportData.present}</p>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-xs text-gray-500">Absent</p>
-              <p className="text-xl font-bold text-red-600">{reportData.absent}</p>
-            </div>
-            <div className="text-center p-3 bg-primary-50 rounded-lg">
-              <p className="text-xs text-gray-500">Percentage</p>
-              <p className="text-xl font-bold text-primary-600">{reportData.percentage}%</p>
-            </div>
-          </div>
 
-          <div className="hidden print:flex print:justify-between print:text-xs print:mb-2">
-            <span>Total: {reportData.total}</span>
-            <span>Present: {reportData.present}</span>
-            <span>Absent: {reportData.absent}</span>
-            <span>Percentage: {reportData.percentage}%</span>
-          </div>
-
-          <table className="w-full text-sm border-collapse border border-gray-400">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 px-3 py-2 text-left">#</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Roll No</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Student Name</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Adm. No</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.students?.map((student: any, index: number) => (
-                <tr key={student.studentId} className="hover:bg-gray-50">
-                  <td className="border border-gray-400 px-3 py-2">{index + 1}</td>
-                  <td className="border border-gray-400 px-3 py-2">{student.rollNumber || "—"}</td>
-                  <td className="border border-gray-400 px-3 py-2 font-medium">{student.name}</td>
-                  <td className="border border-gray-400 px-3 py-2">{student.admissionNo || "—"}</td>
-                  <td className={`border border-gray-400 px-3 py-2 text-center font-bold ${
-                    student.status === "PRESENT" ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
-                  }`}>
-                    {student.status === "PRESENT" ? "P" : "A"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* YEARLY REPORT */}
-      {reportType === "yearly" && reportData && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          <div className="text-center mb-4 print:hidden">
-            <h2 className="text-lg font-bold">Yearly Attendance Report</h2>
-            <p className="text-sm text-gray-600">
-              Class: {getClassName()} {getSectionName()} | Year: {selectedYear}
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse border border-gray-400">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-400 px-3 py-2 text-left">#</th>
-                  <th className="border border-gray-400 px-3 py-2 text-left">Roll No</th>
-                  <th className="border border-gray-400 px-3 py-2 text-left">Student Name</th>
-                  {monthNames.map((m, i) => (
-                    <th key={i} className="border border-gray-400 px-2 py-2 text-center text-xs">
-                      {m.slice(0, 3)}
-                    </th>
-                  ))}
-                  <th className="border border-gray-400 px-2 py-2 text-center bg-green-50">Total P</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center bg-red-50">Total A</th>
-                  <th className="border border-gray-400 px-2 py-2 text-center bg-primary-50">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reportData.students?.map((student: any, index: number) => (
-                  <tr key={student.studentId} className="hover:bg-gray-50">
-                    <td className="border border-gray-400 px-3 py-1.5">{index + 1}</td>
-                    <td className="border border-gray-400 px-3 py-1.5">{student.rollNumber || "—"}</td>
-                    <td className="border border-gray-400 px-3 py-1.5 font-medium">{student.name}</td>
-                    {student.months?.map((m: any, i: number) => (
-                      <td key={i} className="border border-gray-400 px-2 py-1.5 text-center text-xs">
-                        {m.total > 0 ? `${m.present}/${m.total}` : "—"}
-                      </td>
-                    ))}
-                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-green-600 bg-green-50">
-                      {student.totalPresent}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-red-600 bg-red-50">
-                      {student.totalAbsent}
-                    </td>
-                    <td className="border border-gray-400 px-2 py-1.5 text-center font-bold text-primary-600 bg-primary-50">
-                      {student.percentage}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* CLASS-WISE SUMMARY */}
-      {reportType === "classwise" && reportData && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          <div className="text-center mb-4 print:hidden">
-            <h2 className="text-lg font-bold">Class-wise Attendance Summary</h2>
-            <p className="text-sm text-gray-600">
-              Class: {getClassName()} {getSectionName()} | Overall Summary
-            </p>
-          </div>
-
-          <table className="w-full text-sm border-collapse border border-gray-400">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 px-3 py-2 text-left">#</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Roll No</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Student Name</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Father Name</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Total Days</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Present</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Absent</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Percentage</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.students?.map((student: any, index: number) => (
-                <tr key={student.studentId} className="hover:bg-gray-50">
-                  <td className="border border-gray-400 px-3 py-2">{index + 1}</td>
-                  <td className="border border-gray-400 px-3 py-2">{student.rollNumber || "—"}</td>
-                  <td className="border border-gray-400 px-3 py-2 font-medium">{student.name}</td>
-                  <td className="border border-gray-400 px-3 py-2">{student.fatherName || "—"}</td>
-                  <td className="border border-gray-400 px-3 py-2 text-center">{student.totalDays}</td>
-                  <td className="border border-gray-400 px-3 py-2 text-center text-green-600 font-bold">
-                    {student.presentDays}
-                  </td>
-                  <td className="border border-gray-400 px-3 py-2 text-center text-red-600 font-bold">
-                    {student.absentDays}
-                  </td>
-                  <td className="border border-gray-400 px-3 py-2 text-center font-bold">
-                    {student.percentage}%
-                  </td>
-                  <td className="border border-gray-400 px-3 py-2 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      parseFloat(student.percentage) >= 75
-                        ? "bg-green-100 text-green-700"
-                        : parseFloat(student.percentage) >= 50
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
-                    }`}>
-                      {parseFloat(student.percentage) >= 75 ? "Good" : parseFloat(student.percentage) >= 50 ? "Average" : "Poor"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* FULL SCHOOL REPORT */}
-      {reportType === "school" && reportData && (
-        <div className="bg-white rounded-lg shadow-sm border p-6 print:shadow-none print:border-none print:p-0">
-          <div className="text-center mb-4 print:hidden">
-            <h2 className="text-lg font-bold">Full School Attendance Report</h2>
-            <p className="text-sm text-gray-600">
-              Month: {monthNames[selectedMonth - 1]} {selectedYear}
-            </p>
-          </div>
-
-          {/* School Summary — hide on print */}
-          <div className="grid grid-cols-4 gap-4 mb-6 print:hidden">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500">Total Students</p>
-              <p className="text-xl font-bold">{reportData.totalStudents}</p>
-            </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-gray-500">Avg. Present</p>
-              <p className="text-xl font-bold text-green-600">{reportData.avgPresent}%</p>
-            </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-xs text-gray-500">Avg. Absent</p>
-              <p className="text-xl font-bold text-red-600">{reportData.avgAbsent}%</p>
-            </div>
-            <div className="text-center p-3 bg-primary-50 rounded-lg">
-              <p className="text-xs text-gray-500">Working Days</p>
-              <p className="text-xl font-bold text-primary-600">{reportData.workingDays}</p>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {loading ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generating...</>
+                ) : (
+                  <><Eye className="w-4 h-4" /> Preview Report</>
+                )}
+              </button>
+              {generated && reportData && (
+                <>
+                  <button
+                    onClick={handlePrint}
+                    className="px-5 py-2.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Printer className="w-4 h-4" /> Print
+                  </button>
+                  <button
+                    onClick={exportCSV}
+                    className="px-5 py-2.5 bg-white dark:bg-gray-700 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" /> Export Excel (CSV)
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="hidden print:flex print:justify-between print:text-xs print:mb-2">
-            <span>Total Students: {reportData.totalStudents}</span>
-            <span>Avg Present: {reportData.avgPresent}%</span>
-            <span>Avg Absent: {reportData.avgAbsent}%</span>
-            <span>Working Days: {reportData.workingDays}</span>
-          </div>
+          {/* Report Output */}
+          {generated && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              {/* Report Header Bar */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <div>
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-100">{getReportTitle()}</h3>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{getSubtitle()} | Total Records: {(Array.isArray(reportData) ? reportData : reportData?.students || reportData?.records || reportData?.data || []).length}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={exportCSV} className="px-3 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 text-xs font-medium border border-green-200 dark:border-green-700 flex items-center gap-1">
+                    <Download className="w-3 h-3" /> CSV
+                  </button>
+                  <button onClick={handlePrint} className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 text-xs font-medium border border-primary-200 dark:border-primary-700 flex items-center gap-1">
+                    <Printer className="w-3 h-3" /> Print
+                  </button>
+                </div>
+              </div>
 
-          <table className="w-full text-sm border-collapse border border-gray-400">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-400 px-3 py-2 text-left">#</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Class</th>
-                <th className="border border-gray-400 px-3 py-2 text-left">Section</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Total Students</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Avg Present</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Avg Absent</th>
-                <th className="border border-gray-400 px-3 py-2 text-center">Attendance %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.classes?.map((cls: any, index: number) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="border border-gray-400 px-3 py-2">{index + 1}</td>
-                  <td className="border border-gray-400 px-3 py-2 font-medium">{cls.className}</td>
-                  <td className="border border-gray-400 px-3 py-2">{cls.sectionName}</td>
-                  <td className="border border-gray-400 px-3 py-2 text-center">{cls.totalStudents}</td>
-                  <td className="border border-gray-400 px-3 py-2 text-center text-green-600 font-bold">
-                    {cls.avgPresent}
-                  </td>
-                  <td className="border border-gray-400 px-3 py-2 text-center text-red-600 font-bold">
-                    {cls.avgAbsent}
-                  </td>
-                  <td className="border border-gray-400 px-3 py-2 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                      parseFloat(cls.percentage) >= 75
-                        ? "bg-green-100 text-green-700"
-                        : parseFloat(cls.percentage) >= 50
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
-                    }`}>
-                      {cls.percentage}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Principal Signature — visible only on print */}
-      {reportData && <PrintSignature />}
-
-      {/* Empty State */}
-      {!reportData && !loading && (
-        <div className="bg-white rounded-lg shadow-sm border p-12 text-center print:hidden">
-          <div className="text-4xl mb-3">📊</div>
-          <p className="text-gray-500">Select filters and click "Generate Report" to view attendance data</p>
-        </div>
+              {/* Report Table */}
+              {renderTable()}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
 export default AttendanceReportPage;
-

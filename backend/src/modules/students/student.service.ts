@@ -44,7 +44,7 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
     finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
   }
 
-  const srNo = await generateSrNumber(tenantId);
+  const srNo = await generateSrNumber(tenantId, finalAdmissionNo);
 
   // Create Student + Enrollment in SAME transaction
   const result = await prisma.$transaction(async (tx) => {
@@ -53,6 +53,7 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
       data: {
         firstName,
         lastName,
+        fullName: `${firstName} ${lastName}`,
         gender,
         dob: new Date(dob),
         email: email || null,
@@ -113,7 +114,7 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
         toClassId: classId,
         toSectionId: sectionId,
         academicYearId,
-        performedBy: userId,
+        performedBy: userId || "system",
       },
     });
 
@@ -266,6 +267,19 @@ export const updateStudent = async (id: string, data: any, tenantId: string) => 
       dob: data.dob ? new Date(data.dob) : undefined,
     },
   });
+
+  // If status changed, also update enrollment status so dashboard stats stay in sync
+  if (data.status && (data.status === "active" || data.status === "inactive")) {
+    await prisma.enrollment.updateMany({
+      where: {
+        studentId: id,
+        tenantId,
+        isDeleted: false,
+      },
+      data: { status: data.status },
+    });
+  }
+
   return student;
 };
 
@@ -328,15 +342,18 @@ export const getStudentStats = async (tenantId: string, academicYearId?: string)
   if (academicYearId) {
     const enrollments = await prisma.enrollment.findMany({
       where: { tenantId, academicYearId, isDeleted: false },
-      include: { student: { select: { gender: true, createdAt: true } } },
+      include: { student: { select: { gender: true, createdAt: true, status: true } } },
     });
 
     const total = enrollments.length;
-    const active = enrollments.filter((e) => e.status === "active").length;
-    const inactive = enrollments.filter((e) => e.status === "inactive").length;
-    const left = enrollments.filter((e) => e.status === "left").length;
-    const boys = enrollments.filter((e) => ["Male", "male", "M", "MALE"].includes(e.student.gender)).length;
-    const girls = enrollments.filter((e) => ["Female", "female", "F", "FEMALE"].includes(e.student.gender)).length;
+    // Use student.status as source of truth (toggle updates student.status)
+    // Fallback to enrollment.status for backward compatibility
+    const getStatus = (e: any) => e.student.status || e.status;
+    const active = enrollments.filter((e) => getStatus(e) === "active").length;
+    const inactive = enrollments.filter((e) => getStatus(e) === "inactive").length;
+    const left = enrollments.filter((e) => getStatus(e) === "left" || e.status === "left").length;
+    const boys = enrollments.filter((e) => ["Male", "male", "M", "MALE"].includes(e.student.gender) && getStatus(e) === "active").length;
+    const girls = enrollments.filter((e) => ["Female", "female", "F", "FEMALE"].includes(e.student.gender) && getStatus(e) === "active").length;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

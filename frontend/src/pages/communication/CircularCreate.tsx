@@ -102,7 +102,8 @@ export default function CircularCreate() {
     setLoadingCirculars(true);
     try {
       const res = await axios.get("/api/communication-new/circular", { headers });
-      setCirculars(res.data.data || []);
+      const data = res.data?.data;
+      setCirculars(Array.isArray(data) ? data : []);
     } catch {
       // silent
     } finally {

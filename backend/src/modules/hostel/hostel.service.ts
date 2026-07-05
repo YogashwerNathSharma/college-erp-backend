@@ -105,7 +105,7 @@ export const allocateRoom = async (data: any, tenantId: string) => {
   });
   if (existingAllocation) throw new Error("Student already has an active room allocation");
 
-  return prisma.hostelAllocation.create({
+  const allocation = await prisma.hostelAllocation.create({
     data: {
       ...data,
       tenantId,
@@ -113,14 +113,46 @@ export const allocateRoom = async (data: any, tenantId: string) => {
       endDate: data.endDate ? new Date(data.endDate) : null,
       isActive: true,
     },
+    include: { room: true },
   });
+
+  // ═══ AUTO FEE INTEGRATION ═══
+  // When hostel is allocated, auto-add hostel fee to student's pending installments
+  try {
+    const { addHostelFeeToStudent } = await import("../fees/feeIntegration.service");
+    const monthlyFee = (allocation.room as any)?.monthlyFee || (allocation.room as any)?.rentPerBed || data.monthlyFee || 0;
+    if (monthlyFee > 0) {
+      const hostelName = (allocation.room as any)?.roomNumber || "";
+      await addHostelFeeToStudent(data.studentId, tenantId, monthlyFee, hostelName);
+    }
+  } catch (err) {
+    console.error("Auto hostel fee add failed (non-blocking):", err);
+  }
+
+  return allocation;
 };
 
 export const deallocateRoom = async (allocationId: string, tenantId: string, reason?: string) => {
-  return prisma.hostelAllocation.update({
+  // Get allocation details before deallocation
+  const allocation = await prisma.hostelAllocation.findFirst({ where: { id: allocationId, tenantId } });
+
+  const result = await prisma.hostelAllocation.update({
     where: { id: allocationId, tenantId },
     data: { isActive: false, endDate: new Date(), reason },
   });
+
+  // ═══ AUTO FEE INTEGRATION ═══
+  // Remove hostel fee from pending installments when room is vacated
+  if (allocation?.studentId) {
+    try {
+      const { removeHostelFeeFromStudent } = await import("../fees/feeIntegration.service");
+      await removeHostelFeeFromStudent(allocation.studentId, tenantId);
+    } catch (err) {
+      console.error("Auto hostel fee remove failed (non-blocking):", err);
+    }
+  }
+
+  return result;
 };
 
 export const getAllocations = async (tenantId: string, filters?: { hostelId?: string; isActive?: boolean }) => {

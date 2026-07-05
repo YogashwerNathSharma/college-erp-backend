@@ -28,7 +28,7 @@ export const createAdmission = async (body: any, user: any) => {
     // 🔐 1. GENERATE ADMISSION NUMBER & SR (outside transaction to avoid deadlock)
     ////////////////////////////
     const admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
-    const srNo = await generateSrNumber(tenantId);
+    const srNo = await generateSrNumber(tenantId, admissionNo);
 
   return await prisma.$transaction(async (tx) => {
     ////////////////////////////

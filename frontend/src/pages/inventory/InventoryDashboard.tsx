@@ -41,6 +41,7 @@ interface IssuedAsset {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export default function InventoryDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -111,10 +112,10 @@ export default function InventoryDashboard() {
 
   // ── Quick Actions ──
   const quickActions = [
-    { label: "Add Asset", icon: <Plus size={20} />, color: "bg-blue-500 hover:bg-blue-600", onClick: () => {} },
-    { label: "Issue Asset", icon: <Send size={20} />, color: "bg-orange-500 hover:bg-orange-600", onClick: () => {} },
-    { label: "Return Asset", icon: <RotateCcw size={20} />, color: "bg-emerald-500 hover:bg-emerald-600", onClick: () => {} },
-    { label: "Stock Check", icon: <ClipboardCheck size={20} />, color: "bg-purple-500 hover:bg-purple-600", onClick: () => {} },
+    { label: "Add Asset", icon: <Plus size={20} />, color: "bg-blue-500 hover:bg-blue-600", onClick: () => navigate("/inventory/assets") },
+    { label: "Issue Asset", icon: <Send size={20} />, color: "bg-orange-500 hover:bg-orange-600", onClick: () => navigate("/inventory/issue") },
+    { label: "Return Asset", icon: <RotateCcw size={20} />, color: "bg-emerald-500 hover:bg-emerald-600", onClick: () => navigate("/inventory/assets") },
+    { label: "Stock Check", icon: <ClipboardCheck size={20} />, color: "bg-purple-500 hover:bg-purple-600", onClick: () => navigate("/inventory/stock") },
   ];
 
   const DONUT_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ef4444"];

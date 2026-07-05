@@ -379,6 +379,8 @@ const FeeCollectionPage: React.FC = () => {
         remarks: paymentForm.remarks || undefined,
         discountAmount: discount || undefined,
         discountId: paymentForm.discountId || undefined,
+        fineAmount: parseFloat(paymentForm.fineAmount) || undefined,
+        selectedItems: paymentForm.selectedItems || undefined,
       });
 
       toast.success(`Payment collected! Receipt: ${res.data.receiptNo}`);
@@ -420,6 +422,7 @@ const FeeCollectionPage: React.FC = () => {
       className: student.class,
       section: student.section,
       feeHead: feeItems.map((f: any) => f.name).join(", ") || lastReceipt.feeInfo.feeHead || "Fee",
+      feeItems: feeItems,
       amount: lastReceipt.payment.amount,
       totalFee: lastReceipt.feeInfo?.totalAmount || lastReceipt.payment.amount,
       method: lastReceipt.payment.method,

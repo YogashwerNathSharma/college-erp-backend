@@ -118,16 +118,18 @@ export default function StudentList() {
   // Toggle Active/Inactive
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
-    const confirmMsg = currentStatus === "active"
-      ? "Deactivate this student?"
-      : "Reactivate this student?";
-    if (!window.confirm(confirmMsg)) return;
-
     try {
+      // Optimistic UI update
+      setStudents((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: newStatus } : s))
+      );
       await axios.put(`/api/students/${id}`, { status: newStatus });
       toast.success(`Student ${newStatus === "active" ? "activated" : "deactivated"}`);
-      fetchStudents();
     } catch (err: any) {
+      // Revert on failure
+      setStudents((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: currentStatus } : s))
+      );
       toast.error(err.response?.data?.message || "Failed");
     }
   };
@@ -289,7 +291,7 @@ export default function StudentList() {
                     <td className="px-4 py-3 text-sm text-gray-700">{student.fatherName}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{student.fatherPhone || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2.5 py-1 text-xs rounded-full font-medium ${getStatusBadge(student.status)}`}>
+                      <span onClick={() => handleToggleStatus(student.id, student.status)} className={`px-2.5 py-1 text-xs rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity ${getStatusBadge(student.status)}`}>
                         {student.status}
                       </span>
                     </td>

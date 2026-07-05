@@ -7,8 +7,14 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// GET /api/fees/heads - Get all fee heads
+// GET /api/fees/heads - Get all fee heads (supports ?category=&sourceModule=&type= filters)
 router.get("/", feeHeadController.getAll);
+
+// GET /api/fees/heads/by-category - Get fee heads grouped by category
+router.get("/by-category", feeHeadController.getByCategory);
+
+// GET /api/fees/heads/by-source/:source - Get fee heads by source module
+router.get("/by-source/:source", feeHeadController.getBySource);
 
 // GET /api/fees/heads/:id - Get fee head by ID
 router.get("/:id", feeHeadController.getById);
@@ -23,4 +29,3 @@ router.put("/:id", feeHeadController.update);
 router.delete("/:id", feeHeadController.softDelete);
 
 export default router;
-

@@ -220,19 +220,16 @@ export default function TCPrint({
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          marginTop: '15mm',
+          marginTop: '20mm',
+          alignItems: 'flex-end',
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ borderTop: '1pt solid #333', width: '35mm', margin: '0 auto 3pt' }}></div>
-            <div style={{ fontSize: '9pt', fontWeight: 500 }}>Prepared By</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ borderTop: '1pt solid #333', width: '35mm', margin: '0 auto 3pt' }}></div>
-            <div style={{ fontSize: '9pt', fontWeight: 500 }}>Checked By</div>
+            <div style={{ borderTop: '1pt solid #333', width: '40mm', margin: '0 auto 3pt' }}></div>
+            <div style={{ fontSize: '9.5pt', fontWeight: 600 }}>Class Teacher</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              width: '25mm', height: '25mm',
+              width: '22mm', height: '22mm',
               border: '1pt dashed #999',
               margin: '0 auto 2pt',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -240,8 +237,8 @@ export default function TCPrint({
             }}>
               School<br/>Seal
             </div>
-            <div style={{ borderTop: '1pt solid #333', width: '35mm', margin: '0 auto 3pt' }}></div>
-            <div style={{ fontSize: '9pt', fontWeight: 600 }}>Principal</div>
+            <div style={{ borderTop: '1pt solid #333', width: '40mm', margin: '0 auto 3pt' }}></div>
+            <div style={{ fontSize: '9.5pt', fontWeight: 600 }}>Principal</div>
           </div>
         </div>
       </div>

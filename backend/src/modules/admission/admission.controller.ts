@@ -10,7 +10,7 @@ export const admissionController = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: result,
-      message: `Admission created successfully. Admission No: ${result.admissionNo}`,
+      message: `Student Created Successfully! Admission No: ${result.admissionNo}`,
     });
   } catch (err: any) {
     console.error("🔥 ADMISSION ERROR:", err);

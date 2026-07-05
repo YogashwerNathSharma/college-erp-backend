@@ -60,21 +60,17 @@ export const generateAdmissionNumber = async (
 // ============================================
 // GENERATE SR NUMBER
 // ============================================
-export const generateSrNumber = async (tenantId: string): Promise<string> => {
-  const lastStudent = await prisma.student.findFirst({
-    where: { tenantId, srNo: { not: null } },
-    orderBy: { createdAt: "desc" },
-    select: { srNo: true },
-  });
-
+export const generateSrNumber = async (tenantId: string, admissionNo?: string): Promise<string> => {
+  // Derive SR serial from admission number to keep last digits in sync
+  // ADM/2025/302 → SR/0302
   let nextSr = 1;
-
-  if (lastStudent?.srNo) {
-    const match = lastStudent.srNo.match(/(\d+)$/);
+  if (admissionNo) {
+    const match = admissionNo.match(/(\d+)$/);
     if (match) {
-      nextSr = parseInt(match[1]) + 1;
+      nextSr = parseInt(match[1]);
     }
   } else {
+    // Fallback: count all students
     const count = await prisma.student.count({ where: { tenantId } });
     nextSr = count + 1;
   }

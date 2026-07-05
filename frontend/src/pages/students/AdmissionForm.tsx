@@ -250,7 +250,7 @@ export default function AdmissionForm() {
       const student = res.data.data?.student || res.data.data;
 
       if (!student?.id) {
-        toast.success("✅ Student admitted successfully!");
+        toast.success("✅ Student Created Successfully!");
         navigate("/students");
         return;
       }
@@ -277,7 +277,7 @@ export default function AdmissionForm() {
         }
       }
 
-      toast.success(`✅ Student admitted successfully! Admission No: ${student.admissionNo || "Auto-generated"}`);
+      toast.success(`✅ Student Created Successfully! Admission No: ${student.admissionNo || "Auto-generated"}`);
       navigate("/students");
     } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.error || "Admission failed. Please try again.";

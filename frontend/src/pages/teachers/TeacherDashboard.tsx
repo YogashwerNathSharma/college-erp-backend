@@ -5,7 +5,8 @@ import { useNavigate } from "react-router-dom";
 import {
   UserCog, Users, UserCheck, UserX, Clock, Briefcase,
   BookOpen, GraduationCap, Calendar, IndianRupee,
-  Plus, ClipboardCheck, Wallet, ArrowRight, TrendingUp,
+  Plus, ClipboardCheck, Wallet, ArrowRight, TrendingUp, 
+  LayoutDashboard, IdCard, FolderOpen, BarChart3, Star, FileText, CalendarClock,
   TrendingDown, Award, Building2, RefreshCw,
 } from "lucide-react";
 import {
@@ -312,6 +313,34 @@ export default function TeacherDashboard() {
             Add Teacher
           </button>
         </div>
+      </div>
+
+      {/* ━━━━ Quick Actions (sidebar menu items) ━━━━ */}
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-1.5 sm:gap-2">
+        {[
+          { label: "Dashboard", icon: LayoutDashboard, route: "/teacher-dashboard", color: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
+          { label: "All Teachers", icon: UserCog, route: "/teachers", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+          { label: "Assign Subject", icon: BookOpen, route: "/assign-subject", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+          { label: "Timetable", icon: CalendarClock, route: "/teacher-timetable", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+          { label: "Attendance", icon: ClipboardCheck, route: "/teacher-attendance", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+          { label: "Leave", icon: Clock, route: "/teacher-leave", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
+          { label: "Salary", icon: Wallet, route: "/teacher-salary", color: "bg-emerald-500", lightBg: "bg-emerald-50 dark:bg-emerald-950/50" },
+          { label: "Performance", icon: Star, route: "/teacher-performance", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+          { label: "Documents", icon: FolderOpen, route: "/teacher-documents", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
+          { label: "Teacher Reports", icon: BarChart3, route: "/teacher-reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+          { label: "ID Card", icon: IdCard, route: "/teacher-id-card", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={() => navigate(action.route)}
+            className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 group active:scale-95`}
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+              <action.icon size={14} className="text-white" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Stat Cards */}

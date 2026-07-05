@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Users,
   Receipt,
+  LayoutDashboard, BookOpen, Layers, UserCheck, BookOpenCheck, Settings, FileText, BarChart3,
 } from "lucide-react";
 import {
   BarChart,
@@ -352,6 +353,36 @@ const FeeDashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* ━━━━ Quick Actions ━━━━ */}
+        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-1.5 sm:gap-2">
+          {[
+            { label: "Dashboard", icon: LayoutDashboard, route: "/fees/dashboard", color: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
+            { label: "Collection", icon: IndianRupee, route: "/fees/collection", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+            { label: "Fee Heads", icon: BookOpen, route: "/fees/heads", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+            { label: "Structure", icon: Layers, route: "/fees/structures", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+            { label: "Assign", icon: UserCheck, route: "/fees/assign", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+            { label: "Discounts", icon: CreditCard, route: "/fees/discounts", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
+            { label: "Fine Rules", icon: FileText, route: "/fees/fine-rules", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
+            { label: "Fee Reports", icon: BarChart3, route: "/fees/reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+            { label: "Receipts", icon: FileText, route: "/fees/receipts", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+            { label: "Ledger", icon: BookOpenCheck, route: "/fees/ledger", color: "bg-emerald-500", lightBg: "bg-emerald-50 dark:bg-emerald-950/50" },
+            { label: "Reminders", icon: Bell, route: "/fees/reminders", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
+            { label: "Settings", icon: Settings, route: "/fees/settings", color: "bg-slate-500", lightBg: "bg-slate-100 dark:bg-slate-950/50" },
+          ].map((action) => (
+            <button
+              key={action.label}
+              onClick={() => navigate(action.route)}
+              className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 active:scale-95`}
+            >
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+                <action.icon size={14} className="text-white" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+            </button>
+          ))}
+        </div>
+
 
         {/* ─── COLLECTION PROGRESS BAR ──────────────────── */}
         <div className="animate-fade-in-up stagger-1 bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-700">

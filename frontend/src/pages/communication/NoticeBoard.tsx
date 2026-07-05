@@ -121,11 +121,13 @@ export default function NoticeBoard() {
     try {
       const params: Record<string, string> = {};
       if (filterType) params.type = filterType;
-      if (filterAudience) params.audience = filterAudience;
+      if (filterAudience) params.targetAudience = filterAudience;
       if (searchQuery) params.search = searchQuery;
 
       const res = await axios.get("/api/communication-new/notices", { headers, params });
-      setNotices(res.data.data || []);
+      const data = res.data?.data;
+      const list = Array.isArray(data) ? data : (Array.isArray(data?.notices) ? data.notices : []);
+      setNotices(list);
     } catch {
       setToast({ message: "Failed to load notices", type: "error" });
     } finally {

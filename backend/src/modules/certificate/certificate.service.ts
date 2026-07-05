@@ -8,7 +8,7 @@ import { generateMigrationCertData } from "./helpers/migration.helper";
 // ============================================
 
 export const generateTC = async (data: any, tenantId: string, generatedBy: string) => {
-  const { studentId, reason, lastAttendanceDate, remarks } = data;
+  const { studentId, reason, lastAttendanceDate, remarks, character, conduct } = data;
 
   const student = await prisma.student.findFirst({
     where: { id: studentId, tenantId },
@@ -27,8 +27,6 @@ export const generateTC = async (data: any, tenantId: string, generatedBy: strin
   const tcCount = await prisma.transferCertificate.count({ where: { tenantId } });
   const tcNumber = `TC-${new Date().getFullYear()}-${String(tcCount + 1).padStart(4, "0")}`;
 
-  const tcData = generateTCData(student, reason);
-
   const tc = await prisma.transferCertificate.create({
     data: {
       tcNumber,
@@ -37,9 +35,13 @@ export const generateTC = async (data: any, tenantId: string, generatedBy: strin
       reason,
       lastAttendanceDate: lastAttendanceDate ? new Date(lastAttendanceDate) : new Date(),
       remarks,
-      generatedBy,
+      generatedBy: generatedBy || "system",
       status: "DRAFT",
-      ...tcData,
+      conductAndCharacter: `${character || "Good"} / ${conduct || "Good"}`,
+      dateOfLeaving: lastAttendanceDate ? new Date(lastAttendanceDate) : new Date(),
+      dateOfAdmission: student.admissionDate || student.createdAt,
+      classAtLeaving: student.enrollments?.[0]?.class?.name || "N/A",
+      generalRemarks: remarks || null,
     },
   });
 

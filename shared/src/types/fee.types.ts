@@ -10,14 +10,22 @@ export type PaymentStatus = "PAID" | "PARTIAL" | "PENDING" | "OVERDUE" | "WAIVED
 
 export type DiscountType = "PERCENTAGE" | "FIXED";
 
+export type FeeCategory = "Academic" | "Transport" | "Hostel" | "Examination" | "Library" | "Miscellaneous" | "Security" | "Registration" | "Admission";
+
+export type SourceModule = "Admission" | "Transport" | "Hostel" | "Library" | "Examination" | "Manual" | "Accounts";
+
 export interface FeeHead {
   id: string;
   tenantId: string;
   name: string;
   code: string;
   description?: string;
+  category?: FeeCategory;
+  frequency?: string;
+  isTaxable: boolean;
   isOptional: boolean;
   isRefundable: boolean;
+  sourceModule?: SourceModule;
   isActive: boolean;
 }
 

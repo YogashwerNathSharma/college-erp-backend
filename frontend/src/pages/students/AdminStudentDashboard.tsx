@@ -800,33 +800,29 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg, iconColor, trend, trendLabel, onClick }) => (
   <div
     onClick={onClick}
-    className={`bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-100 dark:border-slate-700 
-      transition-all duration-200 hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600
-      ${onClick ? 'cursor-pointer hover:-translate-y-0.5' : ''}`}
+    className={`${iconBg} rounded-lg p-2.5 sm:p-3 border border-slate-100 dark:border-slate-700/50
+      transition-all duration-200 hover:scale-[1.02]
+      ${onClick ? 'cursor-pointer' : ''}`}
   >
-    <div className="flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg}`}>
-        <div className={iconColor}>{icon}</div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{value}</p>
-        {trend !== undefined && (
-          <div className="flex items-center gap-1 mt-1">
-            {trend >= 0 ? (
-              <TrendingUp size={12} className="text-emerald-500" />
-            ) : (
-              <TrendingDown size={12} className="text-red-500" />
-            )}
-            <span className={`text-xs font-medium ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {trend >= 0 ? '+' : ''}{trend}%
-            </span>
-            {trendLabel && <span className="text-xs text-gray-400">{trendLabel}</span>}
-          </div>
-        )}
-      </div>
+    <div className="flex items-center gap-1.5">
+      <span className={`${iconColor} dark:opacity-90`}>{icon}</span>
+      <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{title}</span>
     </div>
-  </div>
+    <p className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white mt-0.5 truncate">{value}</p>
+    {trend !== undefined && (
+      <div className="flex items-center gap-1 mt-0.5">
+        {trend >= 0 ? (
+          <TrendingUp size={10} className="text-emerald-500" />
+        ) : (
+          <TrendingDown size={10} className="text-red-500" />
+        )}
+        <span className={`text-[10px] font-medium ${trend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          {trend >= 0 ? '+' : ''}{trend}%
+        </span>
+        {trendLabel && <span className="text-[10px] text-gray-400">{trendLabel}</span>}
+      </div>
+    )}
+    </div>
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1044,11 +1040,11 @@ const AdminStudentDashboard: React.FC = () => {
             {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             <StatCard
               title="Total Students"
               value={stats?.totalStudents ?? 0}
-              icon={<Users size={22} />}
+              icon={<Users size={16} />}
               iconBg="bg-blue-50 dark:bg-blue-950"
               iconColor="text-blue-600 dark:text-blue-400"
               trend={12}
@@ -1058,7 +1054,7 @@ const AdminStudentDashboard: React.FC = () => {
             <StatCard
               title="New Admissions"
               value={stats?.newAdmissions ?? 0}
-              icon={<UserPlus size={22} />}
+              icon={<UserPlus size={16} />}
               iconBg="bg-emerald-50 dark:bg-emerald-950"
               iconColor="text-emerald-600 dark:text-emerald-400"
               trend={8}
@@ -1068,7 +1064,7 @@ const AdminStudentDashboard: React.FC = () => {
             <StatCard
               title="Active"
               value={stats?.active ?? 0}
-              icon={<UserCheck size={22} />}
+              icon={<UserCheck size={16} />}
               iconBg="bg-green-50 dark:bg-green-950"
               iconColor="text-green-600 dark:text-green-400"
               onClick={() => openModal('active', 'Active Students List')}
@@ -1076,7 +1072,7 @@ const AdminStudentDashboard: React.FC = () => {
             <StatCard
               title="Inactive"
               value={stats?.inactive ?? 0}
-              icon={<UserX size={22} />}
+              icon={<UserX size={16} />}
               iconBg="bg-red-50 dark:bg-red-950"
               iconColor="text-red-600 dark:text-red-400"
               onClick={() => openModal('inactive', 'Inactive Students (Class-wise)')}
@@ -1084,7 +1080,7 @@ const AdminStudentDashboard: React.FC = () => {
             <StatCard
               title="Boys"
               value={stats?.boys ?? 0}
-              icon={<Users size={22} />}
+              icon={<Users size={16} />}
               iconBg="bg-indigo-50 dark:bg-indigo-950"
               iconColor="text-indigo-600 dark:text-indigo-400"
               onClick={() => openModal('boys', 'Active Boys List')}
@@ -1092,7 +1088,7 @@ const AdminStudentDashboard: React.FC = () => {
             <StatCard
               title="Girls"
               value={stats?.girls ?? 0}
-              icon={<Users size={22} />}
+              icon={<Users size={16} />}
               iconBg="bg-pink-50 dark:bg-pink-950"
               iconColor="text-pink-600 dark:text-pink-400"
               onClick={() => openModal('girls', 'Active Girls List')}

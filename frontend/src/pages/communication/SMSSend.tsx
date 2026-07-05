@@ -107,7 +107,7 @@ export default function SMSSend() {
     setLoadingLog(true);
     try {
       const res = await axios.get("/api/communication-new/sms/log", { headers, params: { limit: 20 } });
-      setSmsLog(res.data.data || []);
+      setSmsLog(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       // silent
     } finally {
@@ -127,7 +127,7 @@ export default function SMSSend() {
   const fetchClasses = useCallback(async () => {
     try {
       const res = await axios.get("/api/communication-new/sms/classes", { headers });
-      setClasses(res.data.data || []);
+      setClasses(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       setClasses([
         { id: "1", name: "Class 1" }, { id: "2", name: "Class 2" }, { id: "3", name: "Class 3" },

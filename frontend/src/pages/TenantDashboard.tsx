@@ -136,6 +136,10 @@ const quickActions = [
   { label: "Fee Receipt", icon: Receipt, route: "/fees/receipts", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
   { label: "Attendance", icon: CalendarCheck, route: "/attendance", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
   { label: "Exams", icon: ClipboardList, route: "/exams", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
+  { label: "Fee Reports", icon: BarChart3, route: "/fees/reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
+  { label: "Teacher Reports", icon: BarChart3, route: "/teacher-reports", color: "bg-violet-500", lightBg: "bg-violet-50 dark:bg-violet-950/50" },
+  { label: "Attend Reports", icon: BarChart3, route: "/attendance-report", color: "bg-fuchsia-500", lightBg: "bg-fuchsia-50 dark:bg-fuchsia-950/50" },
+  { label: "Exam Reports", icon: BarChart3, route: "/exam-reports", color: "bg-pink-500", lightBg: "bg-pink-50 dark:bg-pink-950/50" },
   { label: "Timetable", icon: Clock, route: "/timeTable", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
   { label: "Transport", icon: Bus, route: "/transport", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
   { label: "Library", icon: BookOpen, route: "/library", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
@@ -464,6 +468,28 @@ export default function Dashboard() {
                 <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
               </button>
             ))}
+        </div>
+
+        {/* ═══ REPORTS HUB ═══ */}
+        <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 sm:p-3 animate-fade-in-up stagger-2">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 size={14} className="text-indigo-500" />
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Reports</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => navigate('/students/reports')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+              <GraduationCap size={12} /> Student Reports
+            </button>
+            <button onClick={() => navigate('/fees/reports')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">
+              <IndianRupee size={12} /> Fee Reports
+            </button>
+            <button onClick={() => navigate('/teacher-reports')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 text-xs font-medium hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors">
+              <UserCog size={12} /> Teacher Reports
+            </button>
+            <button onClick={() => navigate('/attendance-report')} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-xs font-medium hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
+              <CalendarCheck size={12} /> Attendance Reports
+            </button>
+          </div>
         </div>
 
         {/* ═══ STAT CARDS ═══ */}

@@ -133,7 +133,7 @@ export default function WhatsAppSend() {
     setLoadingLog(true);
     try {
       const res = await axios.get("/api/communication-new/whatsapp/log", { headers, params: { limit: 20 } });
-      setWaLog(res.data.data || []);
+      setWaLog(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       // silent
     } finally {
@@ -144,7 +144,7 @@ export default function WhatsAppSend() {
   const fetchClasses = useCallback(async () => {
     try {
       const res = await axios.get("/api/communication-new/whatsapp/classes", { headers });
-      setClasses(res.data.data || []);
+      setClasses(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       setClasses([
         { id: "1", name: "Class 1" }, { id: "2", name: "Class 2" }, { id: "3", name: "Class 3" },

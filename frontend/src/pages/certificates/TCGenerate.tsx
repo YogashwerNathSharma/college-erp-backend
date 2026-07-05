@@ -77,6 +77,10 @@ export default function TCGenerate() {
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searching, setSearching] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [filterClassId, setFilterClassId] = useState("");
+  const [filterSectionId, setFilterSectionId] = useState("");
   const [generating, setGenerating] = useState(false);
   const [tcHistory, setTcHistory] = useState<TCRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -96,14 +100,41 @@ export default function TCGenerate() {
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
+  // ─── Fetch Classes ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    axios.get("/api/class").then((res) => setClasses(res.data?.data || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (filterClassId) {
+      axios.get(`/api/section?classId=${filterClassId}`).then((res) => setSections(res.data?.data || [])).catch(() => {});
+      setFilterSectionId("");
+    } else { setSections([]); setFilterSectionId(""); }
+  }, [filterClassId]);
+
+  useEffect(() => { if (filterClassId) fetchStudents(); }, [filterClassId, filterSectionId]);
+
   // ─── Fetch TC History ──────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res = await axios.get("/api/certificate/tc", { headers });
-      setTcHistory(res.data.data || []);
+      const res = await axios.get("/api/certificate/tc");
+      const data = res.data.data;
+      const rawList = Array.isArray(data) ? data : data?.tcs || [];
+      // Normalize backend fields to match frontend TCRecord interface
+      setTcHistory(rawList.map((tc: any) => ({
+        id: tc.id,
+        serialNumber: tc.serialNumber || tc.tcNumber || "—",
+        studentName: tc.studentName || (tc.student ? `${tc.student.firstName || ""} ${tc.student.lastName || ""}`.trim() : "—"),
+        admissionNo: tc.admissionNo || tc.student?.admissionNo || "—",
+        className: tc.className || tc.classAtLeaving || "—",
+        leavingDate: tc.leavingDate || tc.dateOfLeaving || "",
+        reason: tc.reason || "—",
+        generatedAt: tc.generatedAt || tc.createdAt || "",
+        status: tc.status || "DRAFT",
+      })));
     } catch {
-      // silent
+      setTcHistory([]);
     } finally {
       setLoadingHistory(false);
     }
@@ -114,23 +145,44 @@ export default function TCGenerate() {
   }, [fetchHistory]);
 
   // ─── Search Student ────────────────────────────────────────────────────────
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const fetchStudents = async () => {
     setSearching(true);
     try {
-      const res = await axios.get("/api/certificate/tc/search-students", {
-        headers,
-        params: { q: searchQuery },
-      });
-      setSearchResults(res.data.data || []);
-      if (!res.data.data?.length) {
+      const params: any = { limit: 50, status: "active" };
+      if (filterClassId) params.classId = filterClassId;
+      if (filterSectionId) params.sectionId = filterSectionId;
+      if (searchQuery.trim()) params.search = searchQuery.trim();
+
+      const res = await axios.get("/api/students", { params });
+      const result = res.data?.data;
+      const students = result?.students || result || [];
+      setSearchResults(students.map((s: any) => ({
+        id: s.id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        admissionNo: s.admissionNo,
+        admissionDate: s.admissionDate || s.createdAt,
+        fatherName: s.fatherName,
+        motherName: s.motherName,
+        dateOfBirth: s.dob,
+        class: s.enrollments?.[0]?.class || null,
+        section: s.enrollments?.[0]?.section || null,
+        rollNo: s.rollNumber || s.enrollments?.[0]?.rollNumber || "",
+        gender: s.gender,
+      })));
+      if (!students.length) {
         setToast({ message: "No students found", type: "error" });
       }
-    } catch {
-      setToast({ message: "Search failed", type: "error" });
+    } catch (err) {
+      setToast({ message: "Failed to fetch students", type: "error" });
     } finally {
       setSearching(false);
     }
+  };
+
+  const handleSearch = () => {
+    if (!searchQuery.trim() && !filterClassId) return;
+    fetchStudents();
   };
 
   const selectStudent = (student: Student) => {
@@ -150,12 +202,17 @@ export default function TCGenerate() {
     if (!selectedStudent) return;
     setGenerating(true);
     try {
-      const res = await axios.post("/api/certificate/tc", {
+      const res = await axios.post("/api/certificate/tc/generate", {
         studentId: selectedStudent.id,
-        ...form,
-      }, { headers });
+        reason: form.reason,
+        lastAttendanceDate: form.leavingDate,
+        remarks: form.remarks,
+        character: form.character,
+        conduct: form.conduct,
+        examPassed: form.examPassed,
+      });
 
-      setToast({ message: `TC Generated! Serial No: ${res.data.data?.serialNumber || "N/A"}`, type: "success" });
+      setToast({ message: `TC Generated! Serial No: ${res.data.data?.tcNumber || "N/A"}`, type: "success" });
       setShowPrintPreview(true);
       fetchHistory();
     } catch {
@@ -182,50 +239,67 @@ export default function TCGenerate() {
 
       {/* Student Search */}
       <div className="bg-white rounded-xl border shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Search size={16} />
-          Search Student
+          Find Student for Certificate
         </h3>
-        <div className="flex gap-3">
-          <div className="relative flex-1 max-w-lg">
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <select value={filterClassId} onChange={(e) => setFilterClassId(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+            <option value="">All Classes</option>
+            {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterSectionId} onChange={(e) => setFilterSectionId(e.target.value)} disabled={!filterClassId} className="border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:opacity-50">
+            <option value="">All Sections</option>
+            {sections.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <div className="relative md:col-span-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Search by name or admission number..."
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-            />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()} placeholder="Name, Adm No, SR No, Roll No..." className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none" />
           </div>
-          <button
-            onClick={handleSearch}
-            disabled={searching}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition font-medium text-sm"
-          >
+          <button onClick={handleSearch} disabled={searching} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition font-medium text-sm">
             {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
             Search
           </button>
         </div>
 
-        {/* Search Results */}
+        {/* Students Table */}
         {searchResults.length > 0 && (
-          <div className="mt-3 border rounded-lg divide-y max-h-48 overflow-y-auto">
-            {searchResults.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => selectStudent(s)}
-                className="w-full px-4 py-3 text-left hover:bg-amber-50 transition flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{s.firstName} {s.lastName}</p>
-                  <p className="text-xs text-gray-500">
-                    Adm No: {s.admissionNo} | Class: {s.class?.name || "—"} {s.section?.name || ""}
-                  </p>
-                </div>
-                <span className="text-xs text-amber-600 font-medium">Select</span>
-              </button>
-            ))}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Adm No</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Father</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Roll No</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {searchResults.map((s, idx) => (
+                    <tr key={s.id} className="hover:bg-amber-50 transition cursor-pointer" onClick={() => selectStudent(s)}>
+                      <td className="px-3 py-2.5 text-gray-500">{idx + 1}</td>
+                      <td className="px-3 py-2.5 font-medium text-gray-900">{s.firstName} {s.lastName}</td>
+                      <td className="px-3 py-2.5 text-gray-600 font-mono text-xs">{s.admissionNo}</td>
+                      <td className="px-3 py-2.5 text-gray-600">{s.class?.name || "—"} - {s.section?.name || ""}</td>
+                      <td className="px-3 py-2.5 text-gray-600">{s.fatherName || "—"}</td>
+                      <td className="px-3 py-2.5 text-gray-600">{s.rollNo || "—"}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-md hover:bg-amber-100 transition">Select</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-gray-50 px-3 py-2 text-xs text-gray-500 border-t">
+              Showing {searchResults.length} students — click to select for certificate
+            </div>
           </div>
         )}
       </div>
@@ -412,7 +486,29 @@ export default function TCGenerate() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Print">
+                      <button
+                        onClick={() => {
+                          const printContent = `
+                            <html><head><title>Transfer Certificate - ${tc.serialNumber}</title>
+                            <style>body{font-family:serif;padding:40px;} table{width:100%;border-collapse:collapse;} td{padding:8px;border:1px solid #333;} h2{text-align:center;}</style></head>
+                            <body>
+                              <h2>TRANSFER CERTIFICATE</h2>
+                              <p style="text-align:center;font-size:14px;">TC No: <strong>${tc.serialNumber}</strong></p>
+                              <table>
+                                <tr><td><strong>Student Name</strong></td><td>${tc.studentName}</td></tr>
+                                <tr><td><strong>Admission No</strong></td><td>${tc.admissionNo}</td></tr>
+                                <tr><td><strong>Class</strong></td><td>${tc.className}</td></tr>
+                                <tr><td><strong>Date of Leaving</strong></td><td>${formatDate(tc.leavingDate)}</td></tr>
+                                <tr><td><strong>Reason</strong></td><td>${tc.reason}</td></tr>
+                                <tr><td><strong>Status</strong></td><td>${tc.status}</td></tr>
+                              </table>
+                              <br/><p style="text-align:right;margin-top:40px;"><strong>Principal</strong></p>
+                            </body></html>`;
+                          const w = window.open('', '_blank');
+                          if (w) { w.document.write(printContent); w.document.close(); setTimeout(() => w.print(), 300); }
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Print TC"
+                      >
                         <Download size={16} />
                       </button>
                     </td>

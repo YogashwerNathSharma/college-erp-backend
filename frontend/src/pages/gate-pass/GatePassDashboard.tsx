@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { getFullUrl } from "../../utils/url";
 import {
   Users,
@@ -87,6 +88,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // ══════════════════════════════════════════════════════════════
 
 export default function GatePassDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -308,19 +310,19 @@ export default function GatePassDashboard() {
           icon={<CheckCircle className="w-5 h-5" />}
           label="Approve Pending"
           color="green"
-          onClick={() => {}}
+          onClick={() => navigate("/gate-pass/pending")}
         />
         <QuickAction
           icon={<BarChart3 className="w-5 h-5" />}
           label="View Report"
           color="blue"
-          onClick={() => {}}
+          onClick={() => navigate("/gate-pass")}
         />
         <QuickAction
           icon={<LogOut className="w-5 h-5" />}
           label="Mark Exit"
           color="amber"
-          onClick={() => {}}
+          onClick={() => navigate("/gate-pass")}
         />
       </div>
 

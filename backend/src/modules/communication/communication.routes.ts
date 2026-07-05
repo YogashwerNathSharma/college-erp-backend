@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
@@ -16,6 +17,8 @@ import {
 
 const router = Router();
 
+const noticeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
 router.use(authMiddleware, resolveTenant);
 
 // ============================================
@@ -23,8 +26,8 @@ router.use(authMiddleware, resolveTenant);
 // ============================================
 router.get("/notices", getAllNoticesHandler);
 router.get("/notices/:id", getNoticeByIdHandler);
-router.post("/notices", allowRoles("ADMIN", "TEACHER"), createNoticeHandler);
-router.put("/notices/:id", allowRoles("ADMIN", "TEACHER"), updateNoticeHandler);
+router.post("/notices", allowRoles("ADMIN", "TEACHER"), noticeUpload.single("attachment"), createNoticeHandler);
+router.put("/notices/:id", allowRoles("ADMIN", "TEACHER"), noticeUpload.single("attachment"), updateNoticeHandler);
 router.delete("/notices/:id", allowRoles("ADMIN"), deleteNoticeHandler);
 
 // ============================================

@@ -95,6 +95,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 // ══════════════════════════════════════════════════════════════
 
 export default function HelpDeskDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -336,9 +337,9 @@ export default function HelpDeskDashboard() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <QuickAction icon={<Plus className="w-5 h-5" />} label="New Ticket" color="indigo" onClick={() => setShowAddModal(true)} />
-        <QuickAction icon={<UserPlus className="w-5 h-5" />} label="Assign" color="blue" onClick={() => {}} />
-        <QuickAction icon={<Eye className="w-5 h-5" />} label="View All" color="green" onClick={() => {}} />
-        <QuickAction icon={<BarChart3 className="w-5 h-5" />} label="Reports" color="purple" onClick={() => {}} />
+        <QuickAction icon={<UserPlus className="w-5 h-5" />} label="Assign" color="blue" onClick={() => navigate("/helpdesk")} />
+        <QuickAction icon={<Eye className="w-5 h-5" />} label="View All" color="green" onClick={() => navigate("/helpdesk")} />
+        <QuickAction icon={<BarChart3 className="w-5 h-5" />} label="Reports" color="purple" onClick={() => navigate("/helpdesk")} />
       </div>
 
       {/* Recent Tickets Table */}

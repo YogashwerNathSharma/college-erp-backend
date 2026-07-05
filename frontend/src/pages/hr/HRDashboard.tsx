@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 import {
@@ -17,6 +18,7 @@ import {
   Plus,
   DollarSign,
   Building2,
+  LayoutDashboard, ClipboardCheck,
 } from "lucide-react";
 import {
   AreaChart,
@@ -111,6 +113,7 @@ function StatCard({
 // ───────────────────────────────────────────────
 
 export default function HRDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData>({
     totalStaff: 0,
     presentToday: 0,
@@ -207,6 +210,28 @@ export default function HRDashboard() {
           <Plus size={16} />
           Add Staff
         </button>
+      </div>
+
+
+      {/* ━━━━ Quick Actions ━━━━ */}
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-4 gap-1.5 sm:gap-2">
+        {[
+          { label: "Staff List", icon: Users, route: "/hr/staff", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+          { label: "Payroll", icon: Wallet, route: "/hr/payroll", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+          { label: "Leave Mgmt", icon: Clock, route: "/hr/leave", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
+          { label: "Staff Attendance", icon: ClipboardCheck, route: "/hr/attendance", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={() => navigate(action.route)}
+            className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 active:scale-95`}
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+              <action.icon size={14} className="text-white" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Stat Cards */}

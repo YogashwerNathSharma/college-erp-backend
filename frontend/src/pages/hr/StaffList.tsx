@@ -43,7 +43,8 @@ export default function StaffList() {
     setError("");
     try {
       const res = await axios.get("/api/hr/staff", { headers });
-      setStaff(res.data.data || []);
+      const data = res.data?.data;
+      setStaff(Array.isArray(data) ? data : []);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch staff");
     } finally {

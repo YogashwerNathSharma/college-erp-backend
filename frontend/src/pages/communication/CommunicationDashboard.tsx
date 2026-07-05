@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 import {
@@ -17,6 +18,7 @@ import {
   FileText,
   Smartphone,
   Megaphone,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   AreaChart,
@@ -110,6 +112,7 @@ function StatCard({
 // ───────────────────────────────────────────────
 
 export default function CommunicationDashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState<CommunicationData>({
     noticesSent: 0,
     smsSent: 0,
@@ -224,6 +227,28 @@ export default function CommunicationDashboard() {
           <Plus size={16} />
           New Message
         </button>
+      </div>
+
+
+      {/* ━━━━ Quick Actions ━━━━ */}
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-4 gap-1.5 sm:gap-2">
+        {[
+          { label: "Notice Board", icon: FileText, route: "/communication/notices", color: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
+          { label: "Send SMS", icon: Send, route: "/communication/sms", color: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+          { label: "WhatsApp", icon: MessageSquare, route: "/communication/whatsapp", color: "bg-emerald-500", lightBg: "bg-emerald-50 dark:bg-emerald-950/50" },
+          { label: "Circular", icon: FileText, route: "/communication/circular", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={() => navigate(action.route)}
+            className={`flex flex-col items-center gap-1 py-2 sm:py-2.5 px-1 rounded-lg ${action.lightBg} hover:scale-105 transition-all duration-200 active:scale-95`}
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md ${action.color} flex items-center justify-center`}>
+              <action.icon size={14} className="text-white" />
+            </div>
+            <span className="text-[9px] sm:text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center">{action.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Stat Cards */}
@@ -421,29 +446,6 @@ export default function CommunicationDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { icon: Megaphone, label: "Send Notice", color: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400", path: "/communication/notices" },
-            { icon: Smartphone, label: "Bulk SMS", color: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400", path: "/communication/sms" },
-            { icon: MessageSquare, label: "WhatsApp", color: "bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400", path: "/communication/whatsapp" },
-            { icon: FileText, label: "Create Template", color: "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400", path: "/communication/circular" },
-          ].map((action, idx) => (
-            <button
-              key={idx}
-              onClick={() => window.location.href = action.path}
-              className="flex flex-col items-center gap-3 p-4 rounded-xl border border-gray-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 hover:shadow-md transition-all duration-200 group"
-            >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${action.color} group-hover:scale-110 transition-transform`}>
-                <action.icon size={22} />
-              </div>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{action.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

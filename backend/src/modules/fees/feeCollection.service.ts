@@ -930,6 +930,8 @@ export const collectPayment = async (data: {
   tenantId: string;
   discountAmount?: number;
   discountId?: string;
+  fineAmount?: number;
+  selectedItems?: number[];
 }) => {
   const {
     studentFeeId,
@@ -941,6 +943,8 @@ export const collectPayment = async (data: {
     tenantId,
     discountAmount = 0,
     discountId,
+    fineAmount = 0,
+    selectedItems,
   } = data;
 
   // Get the student fee with structure items, per-student items, and enrollment info
@@ -1022,8 +1026,10 @@ export const collectPayment = async (data: {
 
     // 3. Update student fee amounts
     const newDiscountAmount = studentFee.discountAmount + discountAmount;
-    const newNetAmount = studentFee.totalAmount - newDiscountAmount + studentFee.fineAmount;
-    const newPaidAmount = studentFee.paidAmount + amount;
+    // Manual fine: add to existing fineAmount
+    const newFineAmount = studentFee.fineAmount + fineAmount;
+    const newNetAmount = studentFee.totalAmount - newDiscountAmount + newFineAmount;
+    const newPaidAmount = studentFee.paidAmount + amount + fineAmount;
     const newBalanceAmount = newNetAmount - newPaidAmount;
     const newStatus = newBalanceAmount <= 0 ? "PAID" : newPaidAmount > 0 ? "PARTIAL" : "PENDING";
 
@@ -1031,6 +1037,7 @@ export const collectPayment = async (data: {
       where: { id: studentFeeId },
       data: {
         discountAmount: newDiscountAmount,
+        fineAmount: newFineAmount,
         netAmount: newNetAmount,
         paidAmount: newPaidAmount,
         balanceAmount: Math.max(0, newBalanceAmount),
@@ -1068,6 +1075,17 @@ export const collectPayment = async (data: {
           amount: item.amount || 0,
           frequency: item.frequency || "PER_INSTALLMENT",
         })) || [];
+
+  // If STILL no items found, create a single entry from the structure name & totalAmount
+  // This handles legacy assignments where no FeeStructureItems exist
+  if (feeItems.length === 0) {
+    feeItems.push({
+      name: studentFee.feeStructure.name || "Monthly Fee",
+      code: "",
+      amount: studentFee.totalAmount,
+      frequency: "PER_INSTALLMENT",
+    });
+  }
 
   // Build feeHead string (comma-separated names)
   const feeHeadStr = feeItems.map((i: any) => i.name).join(", ") || studentFee.feeStructure.name;

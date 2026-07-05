@@ -1360,6 +1360,11 @@ model FeeHead {
   code        String?     // Short code: "TF", "LF", "TR"
   description String?
   type        FeeHeadType @default(RECURRING)
+  category    String?     // Academic, Transport, Hostel, Examination, Library, Misc, Security, Registration, Admission
+  frequency   String?     // Monthly, Quarterly, HalfYearly, Yearly, OneTime, Custom
+  isTaxable   Boolean     @default(false)
+  isRefundable Boolean    @default(false)
+  sourceModule String?    // Admission, Transport, Hostel, Library, Examination, Manual, Accounts
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 

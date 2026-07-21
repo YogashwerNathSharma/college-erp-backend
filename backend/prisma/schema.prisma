@@ -130,6 +130,8 @@ rolePermissions         RolePermission[]
 
   // Audit
   auditLogs            AuditLog[]
+  dashboardWidgets     DashboardWidget[]
+  qrCodes              QRCode[]
 
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -276,9 +278,11 @@ rolePermissions         RolePermission[]
   queueJobs  QueueJob[]
   queueConfigs  QueueConfig[]
   dashboardLayouts  DashboardLayout[]
-  dashboardWidgets  DashboardWidget[]
+
   themeConfigs  ThemeConfig[]
-  qRCodes  QRCode[]
+
+  tenantModules TenantModule[]
+
   qRScanLogs  QRScanLog[]
   paymentGatewayConfigs  PaymentGatewayConfig[]
   onlinePayments  OnlinePayment[]
@@ -359,6 +363,12 @@ freeTrialRecords FreeTrialRecord[]
   resetOtp       String?
   resetOtpExpiry DateTime?
   createdAt      DateTime  @default(now())
+
+  // Enterprise back-relations
+  sessions          Session[]
+  reportedTickets   SupportTicket[] @relation("TicketReporter")
+  assignedTickets   SupportTicket[] @relation("TicketAssignee")
+  kbArticles        KbArticle[]     @relation("KBAuthor")
 
   @@map("User")
 }
@@ -536,6 +546,31 @@ model Student {
   seatingArrangements    SeatingArrangement[]
   admitCards             AdmitCard[]
   resultSummaries        ResultSummary[]
+
+  // ── Medical History ──
+  medicalConditions  String[]
+  allergies          String[]
+  medications        String[]
+  emergencyContact   String?
+  emergencyPhone     String?
+  insuranceId        String?
+  lastMedicalCheckup DateTime?
+
+  // ── Identification ──
+  rfidCardNo         String?
+  qrCode             String?
+  biometricId        String?
+  previousSchool     String?
+  previousClass      String?
+
+  // ── Custom & Extended ──
+  customFields       Json?
+
+  // ── Extended Relations ──
+  achievements        StudentAchievement[]
+  disciplinaryRecords StudentDisciplinaryRecord[]
+  timeline            StudentTimelineEntry[]
+
   @@unique([admissionNo, tenantId])
   @@index([srNo, tenantId])
   @@index([tenantId, status])
@@ -6120,12 +6155,15 @@ model DeviceToken {
 model Notification {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
-  tenantId  String   @db.ObjectId
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenantId  String?  @db.ObjectId
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
 
   title     String
   body      String
   type      String   @default("GENERAL")
+  channel   String?  @default("push") // email, sms, push, whatsapp
+  status    String?  @default("sent") // pending, sent, delivered, failed
+  recipients String[]
   data      Json?
   isRead    Boolean  @default(false)
   readAt    DateTime?
@@ -6135,6 +6173,9 @@ model Notification {
 
   @@index([tenantId])
   @@index([userId, tenantId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model NotificationPreference {
@@ -6657,4 +6698,381 @@ model Setting {
   
   @@index([tenantId])
   @@unique([tenantId, key])
+}
+
+// ══════════════════════════════════════
+// SYSTEM SETTINGS (Super Admin Platform Config)
+// ══════════════════════════════════════
+model SystemSettings {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Application
+  appName     String   @default("College ERP")
+  appUrl      String   @default("http://localhost:5000")
+  timezone    String   @default("Asia/Kolkata")
+  currency    String   @default("INR")
+  language    String   @default("en")
+
+  // SMTP
+  smtpHost    String   @default("")
+  smtpPort    Int      @default(587)
+  smtpUser    String   @default("")
+  smtpPass    String   @default("")
+  smtpFrom    String   @default("")
+
+  // SMS
+  smsProvider  String  @default("none")
+  smsApiKey    String  @default("")
+  smsSenderId  String  @default("")
+
+  // WhatsApp
+  whatsappEnabled  Boolean @default(false)
+  whatsappApiKey   String  @default("")
+  whatsappPhoneId  String  @default("")
+
+  // Firebase
+  firebaseEnabled    Boolean @default(false)
+  firebaseProjectId  String  @default("")
+  firebaseServerKey  String  @default("")
+
+  // OAuth - Google
+  googleLoginEnabled  Boolean @default(false)
+  googleClientId      String  @default("")
+  googleClientSecret  String  @default("")
+
+  // OAuth - Microsoft
+  microsoftLoginEnabled  Boolean @default(false)
+  microsoftClientId      String  @default("")
+  microsoftClientSecret  String  @default("")
+
+  // OAuth - Facebook
+  facebookLoginEnabled  Boolean @default(false)
+  facebookAppId         String  @default("")
+  facebookAppSecret     String  @default("")
+
+  // Storage
+  storageProvider  String  @default("local")
+  s3Bucket         String  @default("")
+  s3Region         String  @default("")
+  s3AccessKey      String  @default("")
+  s3SecretKey      String  @default("")
+
+  // Backup
+  backupEnabled       Boolean @default(false)
+  backupSchedule      String  @default("0 2 * * *")
+  backupRetentionDays Int     @default(30)
+
+  // Cache
+  cacheProvider  String  @default("memory")
+  redisHost      String  @default("")
+  redisPort      Int     @default(6379)
+  redisPassword  String  @default("")
+
+  // Maintenance
+  maintenanceMode    Boolean @default(false)
+  maintenanceMessage String  @default("System is under maintenance.")
+
+  // Localization
+  availableLanguages String  @default("[\"en\",\"hi\"]")
+  rtlEnabled         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ══════════════════════════════════════════════════════
+// MODULE MANAGEMENT
+// ══════════════════════════════════════════════════════
+
+model ErpModule {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String
+  description     String   @default("")
+  version         String
+  category        String
+  icon            String   @default("Package")
+  author          String   @default("Core Team")
+  license         String   @default("Standard")
+  dependencies    String[] @default([])
+  isCore          Boolean  @default(false)
+  isEnabled       Boolean  @default(true)
+  isInstalled     Boolean  @default(true)
+  isDeleted       Boolean  @default(false)
+  price           Float    @default(0)
+  features        String[] @default([])
+  healthStatus    String   @default("healthy")
+  lastHealthCheck DateTime @default(now())
+
+  tenantModules TenantModule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([category])
+}
+
+model TenantModule {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String  @db.ObjectId
+  moduleId  String  @db.ObjectId
+  isEnabled Boolean @default(true)
+
+  tenant Tenant    @relation(fields: [tenantId], references: [id])
+  module ErpModule @relation(fields: [moduleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([moduleId])
+}
+
+// ══════════════════════════════════════════════════════
+// PLUGIN MANAGEMENT
+// ══════════════════════════════════════════════════════
+
+model Plugin {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  slug           String
+  description    String   @default("")
+  version        String
+  category       String
+  author         String   @default("Unknown")
+  icon           String   @default("Puzzle")
+  permissions    String[] @default([])
+  configSchema   Json     @default("{}")
+  config         Json     @default("{}")
+  isEnabled      Boolean  @default(true)
+  isInstalled    Boolean  @default(true)
+  isDeleted      Boolean  @default(false)
+  hasUpdate      Boolean  @default(false)
+  latestVersion  String?
+  price          Float    @default(0)
+  homepage       String   @default("")
+  repository     String   @default("")
+  installedAt    DateTime @default(now())
+
+  activityLogs PluginActivityLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([category])
+}
+
+model PluginActivityLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  pluginId  String   @db.ObjectId
+  action    String
+  message   String
+  metadata  Json?
+
+  plugin Plugin @relation(fields: [pluginId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([pluginId])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════
+// ENTERPRISE SUPER ADMIN - MISSING MODELS
+// ═══════════════════════════════════════════════════════
+
+// ─── Session (User sessions for management/revoke) ───
+model Session {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  token       String
+  ipAddress   String?
+  userAgent   String?
+  device      String?
+  browser     String?
+  os          String?
+  location    String?
+  isActive    Boolean  @default(true)
+  lastActivity DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([isActive])
+}
+
+// ─── SystemSetting (key-value system config) ───
+model SystemSetting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     String
+  metadata  Json?
+  category  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+// ─── SupportTicket ───
+model SupportTicket {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  ticketNumber String    @unique
+  title        String
+  description  String
+  status       String    @default("open") // open, in_progress, resolved, closed
+  priority     String    @default("medium") // low, medium, high, critical
+  category     String?
+  reportedBy   String?   @db.ObjectId
+  reporter     User?     @relation("TicketReporter", fields: [reportedBy], references: [id])
+  assignedTo   String?   @db.ObjectId
+  assignee     User?     @relation("TicketAssignee", fields: [assignedTo], references: [id])
+  tenantId     String?   @db.ObjectId
+  resolution   String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  comments     SupportTicketComment[]
+  tags         String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([reportedBy])
+  @@index([createdAt])
+}
+
+// ─── KbArticle (Knowledge Base) ───
+model KbArticle {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  content     String
+  category    String
+  tags        String[]
+  isPublished Boolean  @default(false)
+  status      String   @default("published") // draft, published, archived
+  views       Int      @default(0)
+  helpfulCount Int     @default(0)
+  authorId    String?  @db.ObjectId
+  author      User?    @relation("KBAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+// ─── Announcement ───
+model Announcement {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  content        String
+  type           String    @default("info") // info, warning, critical, maintenance
+  targetAudience String    @default("all") // all, tenants, admins, specific
+  isActive       Boolean   @default(true)
+  isPinned       Boolean   @default(false)
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  expiresAt      DateTime?
+  createdBy      String?   @db.ObjectId
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ─── NotificationTemplate ───
+model NotificationTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  channel     String   // email, sms, push, whatsapp
+  subject     String?
+  body        String
+  variables   String[] // e.g., ["{{name}}", "{{school}}"]
+  isActive    Boolean  @default(true)
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([channel])
+  @@index([isActive])
+}
+
+// ─── SupportTicketComment ───
+model SupportTicketComment {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  ticketId        String        @db.ObjectId
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id])
+  message         String
+  author          String
+  authorRole      String?
+  isInternal      Boolean       @default(false)
+  attachments     String[]
+  createdAt       DateTime      @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════
+// STUDENT MODULE - EXTENDED MODELS
+// ═══════════════════════════════════════════════════════
+
+model StudentAchievement {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @db.ObjectId
+  student     Student  @relation(fields: [studentId], references: [id])
+  tenantId    String   @db.ObjectId
+  title       String
+  category    String   // academic, sports, cultural, extracurricular
+  description String?
+  date        DateTime
+  awardedBy   String?
+  certificate String?
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+model StudentDisciplinaryRecord {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String    @db.ObjectId
+  student     Student   @relation(fields: [studentId], references: [id])
+  tenantId    String    @db.ObjectId
+  type        String    // warning, suspension, expulsion, detention, counseling
+  reason      String
+  description String?
+  date        DateTime
+  actionTaken String?
+  issuedBy    String?
+  resolvedAt  DateTime?
+  status      String    @default("open") // open, resolved, dismissed
+  createdAt   DateTime  @default(now())
+
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+model StudentTimelineEntry {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @db.ObjectId
+  student     Student  @relation(fields: [studentId], references: [id])
+  tenantId    String   @db.ObjectId
+  type        String   // admission, promotion, transfer, achievement, disciplinary, medical, document, attendance, fee, custom
+  title       String
+  description String?
+  metadata    Json?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@index([studentId, createdAt])
+  @@index([tenantId])
 }

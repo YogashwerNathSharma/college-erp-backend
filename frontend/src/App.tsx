@@ -66,6 +66,20 @@ const SuperAdminDashboard = lazyWithRetry(() => import("./pages/superAdmin/Super
 // SuperAdmin Pages
 const TenantsPage = lazyWithRetry(() => import("./pages/superAdmin/TenantsPage"));
 const SuperAdminSettings = lazyWithRetry(() => import("./pages/superAdmin/SuperAdminSettings"));
+const SubscriptionManagement = lazyWithRetry(() => import("./pages/superAdmin/SubscriptionManagement"));
+const UserManagement = lazyWithRetry(() => import("./pages/superAdmin/UserManagement"));
+const IAMPage = lazyWithRetry(() => import("./pages/superAdmin/IAMPage"));
+const ModuleManagement = lazyWithRetry(() => import("./pages/superAdmin/ModuleManagement"));
+const PluginManagement = lazyWithRetry(() => import("./pages/superAdmin/PluginManagement"));
+const ThemeManagement = lazyWithRetry(() => import("./pages/superAdmin/ThemeManagement"));
+const MonitoringPage = lazyWithRetry(() => import("./pages/superAdmin/MonitoringPage"));
+const DatabaseManagement = lazyWithRetry(() => import("./pages/superAdmin/DatabaseManagement"));
+const SecurityCenter = lazyWithRetry(() => import("./pages/superAdmin/SecurityCenter"));
+const AuditCenter = lazyWithRetry(() => import("./pages/superAdmin/AuditCenter"));
+const ReportCenter = lazyWithRetry(() => import("./pages/superAdmin/ReportCenter"));
+const SANotificationCenter = lazyWithRetry(() => import("./pages/superAdmin/NotificationCenter"));
+const SupportCenter = lazyWithRetry(() => import("./pages/superAdmin/SupportCenter"));
+const SystemSettings = lazyWithRetry(() => import("./pages/superAdmin/SystemSettings"));
 
 // Student Module
 const StudentsPage = lazyWithRetry(() => import("./pages/students/StudentsPage"));
@@ -81,6 +95,30 @@ const StudentReportsPage = lazyWithRetry(() => import("./pages/students/StudentR
 const AdminStudentDashboard = lazyWithRetry(() => import("./pages/students/AdminStudentDashboard"));
 const StudentDashboard = lazyWithRetry(() => import("./pages/students/StudentDashboard"));
 const StudentProfilePage = lazyWithRetry(() => import("./pages/students/StudentProfilePage"));
+
+// Student Module - Extended Pages
+const BulkAdmission = lazyWithRetry(() => import("./pages/students/BulkAdmission"));
+const StudentTimeline = lazyWithRetry(() => import("./pages/students/StudentTimeline"));
+const MedicalHistory = lazyWithRetry(() => import("./pages/students/MedicalHistory"));
+const AchievementsPage = lazyWithRetry(() => import("./pages/students/AchievementsPage"));
+const DisciplinaryRecords = lazyWithRetry(() => import("./pages/students/DisciplinaryRecords"));
+const BulkExport = lazyWithRetry(() => import("./pages/students/BulkExport"));
+const AcademicRecord = lazyWithRetry(() => import("./pages/students/AcademicRecord"));
+const StudentIdentification = lazyWithRetry(() => import("./pages/students/StudentIdentification"));
+const StudentPrintEngine = lazyWithRetry(() => import("./pages/students/StudentPrintEngine"));
+
+// Student Module - Enterprise Upgrade Pages (NEW)
+const QuickAdmissionForm = lazyWithRetry(() => import("./pages/students/QuickAdmissionForm"));
+const AdmissionApproval = lazyWithRetry(() => import("./pages/students/AdmissionApproval"));
+const StudentTransfer = lazyWithRetry(() => import("./pages/students/StudentTransfer"));
+const StudentCertificates = lazyWithRetry(() => import("./pages/students/StudentCertificates"));
+const StudentCommunication = lazyWithRetry(() => import("./pages/students/StudentCommunication"));
+const BulkCommunication = lazyWithRetry(() => import("./pages/students/BulkCommunication"));
+const StudentVaccination = lazyWithRetry(() => import("./pages/students/StudentVaccination"));
+const StudentSiblings = lazyWithRetry(() => import("./pages/students/StudentSiblings"));
+const DuplicateManager = lazyWithRetry(() => import("./pages/students/DuplicateManager"));
+const StudentAuditLog = lazyWithRetry(() => import("./pages/students/StudentAuditLog"));
+const SavedFilters = lazyWithRetry(() => import("./pages/students/SavedFilters"));
 
 // Reports
 const ReportsPage = lazyWithRetry(() => import("./pages/reports/ReportsPage"));
@@ -630,7 +668,7 @@ function Layout() {
 //////////////////////////////////////////////////////
 function RoleDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  if (user?.role === "SUPER_ADMIN") return <SuperAdminDashboard />;
+  if (user?.role === "SUPER_ADMIN") return <Navigate to="/super-admin" />;
   if (user?.role === "STUDENT") return <Navigate to="/student-portal" />;
   if (user?.role === "TEACHER") return <Navigate to="/teacher-portal" />;
   if (user?.role === "PRINCIPAL") return <Navigate to="/principal-portal" />;
@@ -685,6 +723,24 @@ export default function App() {
               {/* TENANTS (SuperAdmin only) */}
               <Route path="/tenants" element={<TenantsPage />} />
 
+              {/* SUPER ADMIN ENTERPRISE ROUTES */}
+              <Route path="/super-admin" element={<SuperAdminDashboard />} />
+              <Route path="/super-admin/tenants" element={<TenantsPage />} />
+              <Route path="/super-admin/subscriptions" element={<SubscriptionManagement />} />
+              <Route path="/super-admin/users" element={<UserManagement />} />
+              <Route path="/super-admin/iam" element={<IAMPage />} />
+              <Route path="/super-admin/modules" element={<ModuleManagement />} />
+              <Route path="/super-admin/plugins" element={<PluginManagement />} />
+              <Route path="/super-admin/theme" element={<ThemeManagement />} />
+              <Route path="/super-admin/monitoring" element={<MonitoringPage />} />
+              <Route path="/super-admin/database" element={<DatabaseManagement />} />
+              <Route path="/super-admin/security" element={<SecurityCenter />} />
+              <Route path="/super-admin/audit" element={<AuditCenter />} />
+              <Route path="/super-admin/reports" element={<ReportCenter />} />
+              <Route path="/super-admin/notifications" element={<SANotificationCenter />} />
+              <Route path="/super-admin/support" element={<SupportCenter />} />
+              <Route path="/super-admin/settings" element={<SystemSettings />} />
+
               {/* SUBSCRIPTIONS */}
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
 
@@ -718,10 +774,37 @@ export default function App() {
               <Route path="/students/promotion" element={<PromotionPage />} />
               <Route path="/students/age-settings" element={<AgeSettings />} />
               <Route path="/students/print" element={<PrintStudents />} />
+              <Route path="/students/print-engine" element={<StudentPrintEngine />} />
               <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
               <Route path="/students/:id/edit" element={<EditStudentPage />} />
               <Route path="/students/reports" element={<StudentReportsPage />} />
               <Route path="/students/id-card" element={<StudentIdCardPage />} />
+
+              {/* Student Module - Extended */}
+              <Route path="/students/bulk-admission" element={<BulkAdmission />} />
+              <Route path="/students/bulk-export" element={<BulkExport />} />
+              <Route path="/students/:id/timeline" element={<StudentTimeline />} />
+              <Route path="/students/:id/medical" element={<MedicalHistory />} />
+              <Route path="/students/:id/achievements" element={<AchievementsPage />} />
+              <Route path="/students/:id/disciplinary" element={<DisciplinaryRecords />} />
+              <Route path="/students/:id/academic-record" element={<AcademicRecord />} />
+              <Route path="/students/:id/identification" element={<StudentIdentification />} />
+
+              {/* Student Module - Enterprise Upgrade Routes (NEW) */}
+              <Route path="/students/quick-admission" element={<QuickAdmissionForm />} />
+              <Route path="/students/admission-approval" element={<AdmissionApproval />} />
+              <Route path="/students/transfer" element={<StudentTransfer />} />
+              <Route path="/students/certificates" element={<StudentCertificates />} />
+              <Route path="/students/communication" element={<StudentCommunication />} />
+              <Route path="/students/bulk-communication" element={<BulkCommunication />} />
+              <Route path="/students/:id/vaccination" element={<StudentVaccination />} />
+              <Route path="/students/:id/siblings" element={<StudentSiblings />} />
+              <Route path="/students/duplicates" element={<DuplicateManager />} />
+              <Route path="/students/:id/audit" element={<StudentAuditLog />} />
+              <Route path="/students/saved-filters" element={<SavedFilters />} />
+              <Route path="/students/:id/communication" element={<StudentCommunication />} />
+              <Route path="/students/:id/certificates" element={<StudentCertificates />} />
+              <Route path="/students/:id/transfer" element={<StudentTransfer />} />
 
               {/* ACADEMIC */}
               <Route path="/academic-years" element={<AcademicYearPage />} />

@@ -1,26 +1,15 @@
 {
   "name": "college-erp",
   "private": true,
-  "workspaces": [
-    "backend",
-    "frontend",
-    "student-portal",
-    "yn-udp/server",
-    "yn-udp/client",
-    "shared"
-  ],
   "scripts": {
-    "dev:backend": "npm --workspace backend run dev",
-    "dev:frontend": "npm --workspace frontend run dev",
-    "dev:student": "npm --workspace student-portal run dev",
-    "dev:udp": "npm --workspace yn-udp/server run dev",
-    "build:frontend": "npm --workspace frontend run build",
-    "build:backend": "npm --workspace backend run build",
-    "build": "npm run build:frontend",
-    "seed": "npm --workspace backend run seed"
-  },
-  "overrides": {
-    "vite": "5.4.19",
-    "rollup": "4.52.3"
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:student": "cd student-portal && npm run dev",
+    "dev:udp": "cd yn-udp/server && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build": "cd frontend && npm run build",
+    "seed": "cd backend && npm run seed",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../student-portal && npm install"
   }
 }

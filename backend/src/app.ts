@@ -54,6 +54,13 @@ import sectionRoutes from "./modules/Section/section.routes";
 import studentRoutes from "./modules/students/student.routes";
 import teacherRoutes from "./modules/teacher/teacher.routes";
 import subjectRoutes from "./modules/subject/subject.routes";
+
+// STUDENT MODULE - ENTERPRISE ENHANCED ROUTES
+import studentDashboardRoutes from "./modules/students/student-dashboard.routes";
+import studentSearchRoutes from "./modules/students/student-search.routes";
+import studentCommunicationRoutes from "./modules/students/student-communication.routes";
+import studentOperationsRoutes from "./modules/students/student-operations.routes";
+
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import attendanceReportRoutes from "./modules/attendance/attendance-report.routes";
 
@@ -79,6 +86,26 @@ import feesRoutes from "./modules/fees/fees.routes";
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
+
+// SUPER ADMIN - SECURITY, DATABASE, MONITORING
+import securityRoutes from "./modules/super-admin/security.routes";
+import databaseRoutes from "./modules/super-admin/database.routes";
+import monitoringRoutes from "./modules/super-admin/monitoring.routes";
+
+// SUPER ADMIN ENTERPRISE SETTINGS
+// SUPER ADMIN - MODULE, PLUGIN, THEME MANAGEMENT
+import moduleManagementRoutes from "./modules/super-admin/module-management.routes";
+import pluginManagementRoutes from "./modules/super-admin/plugin-management.routes";
+import themeManagementRoutes from "./modules/super-admin/theme-management.routes";
+
+import systemSettingsRoutes from "./modules/super-admin/system-settings.routes";
+import auditCenterRoutes from "./modules/super-admin/audit-center.routes";
+import notificationCenterRoutes from "./modules/super-admin/notification-center.routes";
+import reportCenterRoutes from "./modules/super-admin/report-center.routes";
+import supportCenterRoutes from "./modules/super-admin/support-center.routes";
+import subscriptionMgmtRoutes from "./modules/super-admin/subscription-management.routes";
+import userManagementRoutes from "./modules/super-admin/user-management.routes";
+import iamRoutes from "./modules/super-admin/iam.routes";
 
 // SUBSCRIPTIONS
 import subscriptionRoutes from "./modules/subscription/subscription.routes";
@@ -178,8 +205,24 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tenant", tenantRoutes);
 app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/reports", superadminreportsRoutes);
+app.use("/api/super-admin/system-settings", systemSettingsRoutes);
+app.use("/api/security", securityRoutes);
+app.use("/api/database", databaseRoutes);
+app.use("/api/monitoring", monitoringRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
-app.use("/api/subscription-payments", subscriptionPaymentRoutes);
+
+// SUPER ADMIN - MODULE, PLUGIN, THEME MANAGEMENT
+app.use("/api/super-admin/modules", moduleManagementRoutes);
+app.use("/api/super-admin/plugins", pluginManagementRoutes);
+app.use("/api/super-admin/themes", themeManagementRoutes);
+app.use("/api/super-admin/audit", auditCenterRoutes);
+app.use("/api/super-admin/notifications", notificationCenterRoutes);
+app.use("/api/super-admin/reports", reportCenterRoutes);
+app.use("/api/super-admin/support", supportCenterRoutes);
+app.use("/api/super-admin/subscriptions", subscriptionMgmtRoutes);
+app.use("/api/super-admin/users", userManagementRoutes);
+app.use("/api/super-admin/iam", iamRoutes);
+
 
 //////////////////////////////////////////////////////
 // 🔥 SUBSCRIPTION CHECK MIDDLEWARE
@@ -215,6 +258,17 @@ app.use("/api/academic", academicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
 app.use("/api/students", studentRoutes);
+import studentExtendedRoutes from "./modules/students/student-extended.routes";
+app.use("/api/students", studentExtendedRoutes);
+
+//////////////////////////////////////////////////////
+// STUDENT MODULE - ENTERPRISE ENHANCED ROUTES
+//////////////////////////////////////////////////////
+app.use("/api/students/dashboard", studentDashboardRoutes);
+app.use("/api/students/search", studentSearchRoutes);
+app.use("/api/students/communication", studentCommunicationRoutes);
+app.use("/api/students/operations", studentOperationsRoutes);
+
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/attendance", attendanceRoutes);

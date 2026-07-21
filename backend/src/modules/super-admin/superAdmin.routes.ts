@@ -10,6 +10,10 @@ import {
   updateTenant,
   deleteTenant,
   toggleTenantStatus,
+  cloneTenant,
+  impersonateTenant,
+  restoreTenant,
+  getTenantActivity,
   getSuperAdminSettings,
   updatePlatformSettings,
   updateSuperAdminProfile,
@@ -49,7 +53,7 @@ const tenantUpload = upload.fields([
   { name: "background", maxCount: 1 },
 ]);
 
-// 🔒 All routes require SUPER_ADMIN
+// 🔐 All routes require SUPER_ADMIN
 router.use(authMiddleware, allowRoles("SUPER_ADMIN"));
 
 //////////////////////////////////////////////////////
@@ -70,6 +74,10 @@ router.get("/tenants/:id", getTenantById);
 router.put("/tenants/:id", tenantUpload, updateTenant);
 router.delete("/tenants/:id", deleteTenant);
 router.patch("/tenants/:id/toggle-status", toggleTenantStatus);
+router.post("/tenants/:id/clone", cloneTenant);
+router.post("/tenants/:id/impersonate", impersonateTenant);
+router.post("/tenants/:id/restore", restoreTenant);
+router.get("/tenants/:id/activity", getTenantActivity);
 
 //////////////////////////////////////////////////////
 // ⚙️ SUPER ADMIN SETTINGS
@@ -88,4 +96,3 @@ router.get("/developer-profile", getDeveloperProfile);
 router.put("/developer-profile", upsertDeveloperProfile);
 
 export default router;
-

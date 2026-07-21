@@ -1,0 +1,320 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE STUDENT MODULE — ADDITIVE SCHEMA MIGRATION
+// ══════════════════════════════════════════════════════════════════════════════
+// 
+// PURPOSE: This file documents ALL new fields and models to ADD to the existing
+//          schema.prisma file. DO NOT remove or rename any existing fields.
+//
+// DATABASE: MongoDB (via Prisma ORM)
+// DATE: 2026-07-21
+// VERSION: 2.0.0
+//
+// HOW TO APPLY: 
+//   1. Open backend/prisma/schema.prisma
+//   2. Add the new fields to the Student model (Section A)
+//   3. Add the new fields to the StudentDocument model (Section B)
+//   4. Add the new models (Section C) at the end of the file
+//   5. Add new relation fields to the Tenant model (Section D)
+//   6. Run: npx prisma generate
+//   7. Run: npx prisma db push
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ SECTION A: NEW FIELDS TO ADD TO EXISTING "Student" MODEL                  ┃
+// ┃ (Add these INSIDE the model Student { ... } block, after existing fields) ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+// ── Personal Information (Enhanced) ──────────────────────────────────────────
+  middleName            String?
+  signatureUrl          String?
+  motherTongue          String?
+  identificationMarks   String?
+
+// ── Registration & ID Numbers ────────────────────────────────────────────────
+  registrationNo        String?
+  boardRegNo            String?
+  penNumber             String?
+  apaarId               String?
+  passportNo            String?
+  birthCertNo           String?
+
+// ── Contact (Enhanced) ───────────────────────────────────────────────────────
+  whatsApp              String?
+
+// ── Structured Address ───────────────────────────────────────────────────────
+  // JSON structure: { line1, line2, city, district, state, country, pinCode, village, landmark, lat, lng }
+  permanentAddress      Json?
+  correspondenceAddress Json?
+
+// ── Admission Workflow ───────────────────────────────────────────────────────
+  admissionType         String?       // "quick" | "complete" | "bulk" | "transfer" | "lateral"
+  admissionStatus       String?       // "pending" | "approved" | "rejected" | "verified" | "waitlisted"
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  approvedBy            String?
+  approvedAt            DateTime?
+
+// ── Father (Enhanced) ────────────────────────────────────────────────────────
+  fatherEmail           String?
+  fatherQualification   String?
+  fatherAnnualIncome    Float?
+  fatherPhotoUrl        String?
+  fatherWhatsApp        String?
+  fatherOfficeAddress   String?
+
+// ── Mother (Enhanced) ────────────────────────────────────────────────────────
+  motherEmail           String?
+  motherQualification   String?
+  motherPhotoUrl        String?
+  motherWhatsApp        String?
+
+// ── Guardian (Enhanced) ──────────────────────────────────────────────────────
+  guardianOccupation    String?
+  guardianEmail         String?
+  guardianWhatsApp      String?
+  guardianPhotoUrl      String?
+
+// ── Academic Placement ───────────────────────────────────────────────────────
+  houseId               String?   @db.ObjectId
+  shiftId               String?   @db.ObjectId
+  streamId              String?   @db.ObjectId
+  mediumId              String?   @db.ObjectId
+  subjectGroupId        String?   @db.ObjectId
+
+// ── Previous Education (Enhanced) ────────────────────────────────────────────
+  previousResult        String?
+  previousPercentage    Float?
+  tcNumber              String?
+  tcDate                DateTime?
+  migrationNo           String?
+  migrationDate         DateTime?
+
+// ── Medical (Enhanced) ───────────────────────────────────────────────────────
+  height                Float?        // in cm
+  weight                Float?        // in kg
+  bmi                   Float?        // computed: weight / (height/100)^2
+  disabilities          String[]
+  insuranceProvider     String?
+  insuranceExpiry       DateTime?
+  doctorName            String?
+  doctorPhone           String?
+
+// ── Status Audit Trail ───────────────────────────────────────────────────────
+  statusChangedAt       DateTime?
+  statusChangedBy       String?
+  statusReason          String?
+
+// ── Record Audit Trail ───────────────────────────────────────────────────────
+  deletedBy             String?
+  createdBy             String?
+  updatedBy             String?
+
+// ── NEW RELATIONS (add after existing relations) ─────────────────────────────
+  vaccinations          StudentVaccination[]
+  siblings              StudentSibling[]
+  communicationLogs     StudentCommunicationLog[]
+  credential            StudentCredential?
+
+// ── NEW INDEXES (add after existing @@unique and @@index) ────────────────────
+  @@unique([aadharNo, tenantId])
+  @@index([tenantId, dob])
+  @@index([fatherPhone, tenantId])
+  @@index([phone, tenantId])
+  @@index([registrationNo, tenantId])
+  @@index([tenantId, admissionStatus])
+  @@index([tenantId, houseId])
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ SECTION B: NEW FIELDS TO ADD TO EXISTING "StudentDocument" MODEL           ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+// Add these fields INSIDE the existing StudentDocument model:
+
+  expiryDate            DateTime?
+  verificationStatus    String?       // "pending" | "verified" | "rejected" | "expired"
+  verifiedBy            String?
+  verifiedAt            DateTime?
+  documentCategory      String?       // "birth_cert" | "tc" | "migration" | "marksheet" | "aadhaar" | "pan" | "passport" | "income" | "caste" | "medical" | "photo" | "other"
+  isRequired            Boolean       @default(false)
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ SECTION C: NEW MODELS TO ADD (append at end of schema.prisma)              ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STUDENT VACCINATION RECORDS
+// ══════════════════════════════════════════════════════════════════════════════
+model StudentVaccination {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId      String    @db.ObjectId
+  tenantId       String    @db.ObjectId
+
+  vaccineName    String         // e.g., "BCG", "Polio", "Hepatitis B", "MMR", "COVID-19"
+  doseNumber     Int            // 1, 2, 3 (dose sequence)
+  dateGiven      DateTime
+  nextDueDate    DateTime?
+  hospital       String?
+  doctorName     String?
+  batchNo        String?        // vaccine batch/lot number
+  remarks        String?
+  documentUrl    String?        // uploaded certificate/proof
+  isCompleted    Boolean   @default(true)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, tenantId])
+  @@index([tenantId, nextDueDate])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STUDENT SIBLING RECORDS
+// ══════════════════════════════════════════════════════════════════════════════
+model StudentSibling {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId         String    @db.ObjectId
+  tenantId          String    @db.ObjectId
+
+  siblingStudentId  String?   @db.ObjectId    // if sibling is also enrolled in same school
+  name              String
+  relation          String         // "brother" | "sister" | "step_brother" | "step_sister"
+  className         String?        // class name (free text if not in system)
+  school            String?        // school name (if different school)
+  dob               DateTime?
+  gender            String?
+  admissionNo       String?        // if in same system
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  student           Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, tenantId])
+  @@index([siblingStudentId, tenantId])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STUDENT COMMUNICATION LOG
+// ══════════════════════════════════════════════════════════════════════════════
+model StudentCommunicationLog {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId      String    @db.ObjectId
+  tenantId       String    @db.ObjectId
+
+  type           String         // "sms" | "email" | "whatsapp" | "push" | "notice" | "call"
+  subject        String?        // for emails
+  message        String
+  sentTo         String         // phone number or email address
+  sentToName     String?        // recipient name (Father/Mother/Guardian/Student)
+  sentBy         String         // userId who sent it
+  sentByName     String?        // name of sender
+
+  status         String    @default("queued")  // "queued" | "sent" | "delivered" | "failed" | "read"
+  failureReason  String?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+
+  // Template info
+  templateId     String?
+  templateName   String?
+
+  // Metadata (provider response, message ID, etc.)
+  metadata       Json?
+
+  sentAt         DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, tenantId])
+  @@index([tenantId, type, sentAt])
+  @@index([tenantId, status])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STUDENT PORTAL CREDENTIALS
+// ══════════════════════════════════════════════════════════════════════════════
+model StudentCredential {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId      String    @unique @db.ObjectId
+  tenantId       String    @db.ObjectId
+
+  username       String         // usually admissionNo or email
+  passwordHash   String         // bcrypt hashed
+  isActive       Boolean   @default(true)
+  mustChangePassword Boolean @default(true)    // force password change on first login
+
+  lastLogin      DateTime?
+  lastLoginIp    String?
+  loginCount     Int       @default(0)
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?      // account lockout after failed attempts
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([username, tenantId])
+  @@index([tenantId, isActive])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SAVED SEARCH FILTERS (per user, per tenant)
+// ══════════════════════════════════════════════════════════════════════════════
+model StudentSavedFilter {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+
+  tenantId       String    @db.ObjectId
+  userId         String    @db.ObjectId       // user who saved this filter
+
+  name           String                        // "My Class 10 Filter", "Transport Boys", etc.
+  description    String?
+
+  // The actual filter configuration (stored as JSON)
+  // Structure: { classId?, sectionId?, academicYearId?, status?, gender?, category?, 
+  //              religion?, bloodGroup?, transport?, hostel?, houseId?, search?, 
+  //              admissionDateFrom?, admissionDateTo?, dobFrom?, dobTo? }
+  filters        Json
+
+  isDefault      Boolean   @default(false)     // if true, auto-applied on page load
+  isShared       Boolean   @default(false)     // visible to other users in same tenant
+  sortOrder      Int       @default(0)         // for ordering in the dropdown
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, userId])
+  @@index([tenantId, isShared])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ SECTION D: ADD TO EXISTING "Tenant" MODEL (relation fields)               ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+// Add these relation arrays inside the Tenant model:
+
+  studentVaccinations      StudentVaccination[]
+  studentSiblings          StudentSibling[]
+  studentCommunicationLogs StudentCommunicationLog[]
+  studentCredentials       StudentCredential[]
+  studentSavedFilters      StudentSavedFilter[]

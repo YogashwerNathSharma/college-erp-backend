@@ -99,15 +99,28 @@ export const registerTenant = async (req: Request, res: Response) => {
   
       const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
+      // 🔥 Cloudinary upload — graceful (don't crash if not configured)
+      let logoUrl: string | null = null;
+      let bgUrl: string | null = null;
+      try {
+        if (logoFile) logoUrl = await uploadToCloudinary(logoFile.buffer, "tenants");
+      } catch (e: any) {
+        console.warn("⚠️ Logo upload failed (Cloudinary):", e.message);
+      }
+      try {
+        if (bgFile) bgUrl = await uploadToCloudinary(bgFile.buffer, "tenants");
+      } catch (e: any) {
+        console.warn("⚠️ Background upload failed (Cloudinary):", e.message);
+      }
+
       const tenant = await tx.tenant.create({
        data: {
        name: schoolName,
        type: "SCHOOL",
         isDeleted: false,
         isActive: true,
-      // 🔥 NEW: Logo + Background save
-        logoUrl: logoFile ? await uploadToCloudinary(logoFile.buffer, "tenants") : null,
-       backgroundUrl: bgFile ? await uploadToCloudinary(bgFile.buffer, "tenants") : null,
+        logoUrl,
+        backgroundUrl: bgUrl,
     },
   });
      
@@ -212,11 +225,11 @@ const freePlan = await prisma.subscriptionPlan.findFirst({
     });
 
   } catch (error: any) {
-    console.error("TENANT ERROR:", error);
+    console.error("TENANT ERROR:", error?.message || error);
 
     return res.status(500).json({
       success: false,
-      message: "Tenant creation failed",
+      message: error?.message || "Tenant creation failed",
     });
     
   }

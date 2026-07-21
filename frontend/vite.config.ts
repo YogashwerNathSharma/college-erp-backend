@@ -19,11 +19,11 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/designer/, '/api'),
       },
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
     },

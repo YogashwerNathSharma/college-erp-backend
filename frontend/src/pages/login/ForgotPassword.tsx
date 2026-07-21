@@ -17,11 +17,13 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      await axios.post("/api/auth/forgot-password", {
+      const res = await axios.post("/api/auth/forgot-password", {
         email: email.toLowerCase().trim(),
       });
 
-      alert("✅ OTP sent to your email! Check console/email.");
+      const otpFromServer = res.data?.otp;
+      console.log("🔑 OTP:", otpFromServer);
+      alert(`✅ OTP sent! Your OTP is: ${otpFromServer || "Check backend terminal"}`);
       setStep(2);
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to send OTP");

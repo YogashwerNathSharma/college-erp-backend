@@ -1,10 +1,12 @@
-
-
 import { Response } from "express";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import {
   getSuperAdminDashboardService,
   getTenantsService,
+  cloneTenantService,
+  impersonateTenantService,
+  restoreTenantService,
+  getTenantActivityService,
   createTenantService,
   updateTenantService,
   deleteTenantService,
@@ -60,12 +62,10 @@ export const getTenantById = async (req: any, res: Response) => {
 
 //////////////////////////////////////////////////////
 // ✅ CREATE TENANT (with file upload + FREE PLAN AUTO-ASSIGN)
-// 🔥 FIXED: Now returns freeTrialAssigned info
 //////////////////////////////////////////////////////
 
 export const createTenant = async (req: any, res: Response) => {
   try {
-    // Handle uploaded files (multer)
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     let logoUrl: string | null = null;
@@ -79,7 +79,6 @@ export const createTenant = async (req: any, res: Response) => {
       backgroundUrl = await uploadToCloudinary(files.background[0].buffer, "tenants");
     }
 
-    // Merge file URLs with body data
     const tenantData = {
       ...req.body,
       logoUrl,
@@ -95,7 +94,7 @@ export const createTenant = async (req: any, res: Response) => {
         email: result.adminEmail,
         defaultPassword: result.defaultPassword,
       },
-      freeTrialAssigned: result.freeTrialAssigned, // ✅ NEW
+      freeTrialAssigned: result.freeTrialAssigned,
     });
   } catch (error: any) {
     console.log("❌ CREATE TENANT ERROR:", error.message);
@@ -236,3 +235,71 @@ export const upsertDeveloperProfile = async (req: any, res: Response) => {
   }
 };
 
+//////////////////////////////////////////////////////
+// 🔄 CLONE TENANT
+//////////////////////////////////////////////////////
+
+export const cloneTenant = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: "New tenant name is required" });
+    }
+
+    const result = await cloneTenantService(id, name);
+    res.status(201).json({
+      success: true,
+      data: result.tenant,
+      admin: {
+        email: result.adminEmail,
+        defaultPassword: result.defaultPassword,
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 🎭 IMPERSONATE TENANT
+//////////////////////////////////////////////////////
+
+export const impersonateTenant = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const result = await impersonateTenantService(id);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// ♻️ RESTORE TENANT
+//////////////////////////////////////////////////////
+
+export const restoreTenant = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenant = await restoreTenantService(id);
+    res.json({ success: true, data: tenant });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// 📜 TENANT ACTIVITY LOG
+//////////////////////////////////////////////////////
+
+export const getTenantActivity = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data = await getTenantActivityService(id);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};

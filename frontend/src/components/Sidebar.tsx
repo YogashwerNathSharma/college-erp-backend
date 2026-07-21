@@ -3,6 +3,7 @@ import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
 
+
 import {
   LayoutDashboard,
   Users,
@@ -55,6 +56,14 @@ import {
   FileArchive,
   ShieldCheck,
   Activity,
+  Monitor,
+  Puzzle,
+  Blocks,
+  Megaphone,
+  LifeBuoy,
+  Cpu,
+  Lock,
+  ScrollText,
 } from "lucide-react";
 
 //////////////////////////////////////////////////
@@ -117,12 +126,19 @@ const tenantMenu: SectionGroup[] = [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/student-dashboard" },
           { name: "All Students", icon: <Users size={16} />, path: "/students" },
           { name: "New Admission", icon: <UserCheck size={16} />, path: "/students/new-admission" },
+          { name: "Quick Admission", icon: <UserCheck size={16} />, path: "/students/quick-admission" },
+          { name: "Admission Approval", icon: <FileText size={16} />, path: "/students/admission-approval" },
           { name: "Old Student Entry", icon: <FileText size={16} />, path: "/students/old-entry" },
           { name: "Promotion", icon: <GraduationCap size={16} />, path: "/students/promotion" },
+          { name: "Transfer", icon: <FileText size={16} />, path: "/students/transfer" },
+          { name: "Certificates", icon: <FileText size={16} />, path: "/students/certificates" },
+          { name: "Communication", icon: <FileText size={16} />, path: "/students/bulk-communication" },
+          { name: "Duplicates", icon: <Users size={16} />, path: "/students/duplicates" },
           { name: "Age Settings", icon: <Calendar size={16} />, path: "/students/age-settings" },
           { name: "Print List", icon: <FileText size={16} />, path: "/students/print" },
           { name: "Reports", icon: <BarChart3 size={16} />, path: "/students/reports" },
           { name: "ID Card", icon: <IdCard size={16} />, path: "/students/id-card" },
+          { name: "Saved Filters", icon: <FileText size={16} />, path: "/students/saved-filters" },
           { name: "Recycle Bin", icon: <FolderOpen size={16} />, path: "/students/recycle-bin" },
         ],
       },
@@ -327,28 +343,50 @@ const tenantMenu: SectionGroup[] = [
 
 const superAdminMenu: SectionGroup[] = [
   {
-    section: "",
+    section: "PLATFORM",
     items: [
-      { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
+      { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/super-admin" },
+      { name: "Tenant Management", icon: <Building2 size={20} />, path: "/super-admin/tenants" },
+      { name: "Subscription & Billing", icon: <CreditCard size={20} />, path: "/super-admin/subscriptions" },
     ],
   },
   {
-    section: "SaaS Control",
+    section: "ADMINISTRATION",
     items: [
-      { name: "Tenants", icon: <Building2 size={20} />, path: "/tenants" },
-      { name: "Subscriptions", icon: <CreditCard size={20} />, path: "/subscriptions" },
+      { name: "User Management", icon: <Users size={20} />, path: "/super-admin/users" },
+      { name: "IAM & Permissions", icon: <ShieldCheck size={20} />, path: "/super-admin/iam" },
+      { name: "Module Management", icon: <Blocks size={20} />, path: "/super-admin/modules" },
+      { name: "Plugin Management", icon: <Puzzle size={20} />, path: "/super-admin/plugins" },
     ],
   },
   {
-    section: "Analytics",
+    section: "OPERATIONS",
     items: [
-      { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
+      { name: "Monitoring", icon: <Monitor size={20} />, path: "/super-admin/monitoring" },
+      { name: "Database", icon: <Database size={20} />, path: "/super-admin/database" },
+      { name: "Security Center", icon: <Lock size={20} />, path: "/super-admin/security" },
     ],
   },
   {
-    section: "System",
+    section: "REPORTS & LOGS",
     items: [
-      { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+      { name: "Audit Center", icon: <ScrollText size={20} />, path: "/super-admin/audit" },
+      { name: "Report Center", icon: <BarChart3 size={20} />, path: "/super-admin/reports" },
+      { name: "Notification Center", icon: <Bell size={20} />, path: "/super-admin/notifications" },
+    ],
+  },
+  {
+    section: "SUPPORT",
+    items: [
+      { name: "Support Center", icon: <LifeBuoy size={20} />, path: "/super-admin/support" },
+      { name: "Announcements", icon: <Megaphone size={20} />, path: "/super-admin/announcements" },
+    ],
+  },
+  {
+    section: "SETTINGS",
+    items: [
+      { name: "System Settings", icon: <Settings size={20} />, path: "/super-admin/settings" },
+      { name: "Theme", icon: <Palette size={20} />, path: "/super-admin/theme" },
     ],
   },
 ];
@@ -467,7 +505,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
             )}
             <div className="min-w-0 flex-1">
               <h1 className="text-sm font-bold text-white leading-tight truncate">
-                {safeTenant?.name || sidebarTitle}
+                {sidebarTitle}
               </h1>
               <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
                 {isSuperAdmin ? "System Control" : "Institution ERP"}
@@ -525,7 +563,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                   {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
                 </div>
               )}
-              <span className="font-bold text-sm truncate">{safeTenant?.name || sidebarTitle}</span>
+              <span className="font-bold text-sm truncate">{sidebarTitle}</span>
             </div>
             <button
               onClick={handleMobileNavClick}

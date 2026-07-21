@@ -157,8 +157,7 @@ export default function LoginPage() {
         .right-content {
           position: relative;
           z-index: 2;
-          margin-left: auto;
-          margin-right: 60px;
+          margin-left: 80px;
           max-width: 500px;
         }
 

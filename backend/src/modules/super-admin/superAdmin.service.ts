@@ -2,12 +2,17 @@
 
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 //////////////////////////////////////////////////////
 // 📊 DASHBOARD SERVICE
 //////////////////////////////////////////////////////
 
 export const getSuperAdminDashboardService = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
   const [
     totalSchools,
     totalStudents,
@@ -17,6 +22,9 @@ export const getSuperAdminDashboardService = async () => {
     recentTenants,
     activeTenantList,
     inactiveTenantList,
+    totalRevenueAgg,
+    todayRevenueAgg,
+    monthlyRevenueAgg,
   ] = await Promise.all([
     prisma.tenant.count({ where: { isDeleted: false } }),
     prisma.student.count({ where: { isDeleted: false } }),
@@ -31,12 +39,15 @@ export const getSuperAdminDashboardService = async () => {
     }),
     prisma.tenant.findMany({
       where: { isActive: true, isDeleted: false },
-      select: { id: true, name: true },
+      select: { id: true, name: true, createdAt: true },
     }),
     prisma.tenant.findMany({
       where: { isActive: false, isDeleted: false },
-      select: { id: true, name: true },
+      select: { id: true, name: true, createdAt: true },
     }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }).catch(() => ({ _sum: { amount: 0 } })),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: today } } }).catch(() => ({ _sum: { amount: 0 } })),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: firstOfMonth } } }).catch(() => ({ _sum: { amount: 0 } })),
   ]);
 
   return {
@@ -48,6 +59,9 @@ export const getSuperAdminDashboardService = async () => {
     recentTenants,
     activeTenantList,
     inactiveTenantList,
+    totalRevenue: totalRevenueAgg._sum?.amount || 0,
+    todayRevenue: todayRevenueAgg._sum?.amount || 0,
+    monthlyRevenue: monthlyRevenueAgg._sum?.amount || 0,
   };
 };
 
@@ -435,5 +449,266 @@ export const upsertDeveloperProfileService = async (data: any) => {
       },
     });
   }
+};
+
+//////////////////////////////////////////////////////
+// 🔄 CLONE TENANT
+//////////////////////////////////////////////////////
+
+export const cloneTenantService = async (id: string, newName: string) => {
+  const source = await prisma.tenant.findUnique({ where: { id } });
+  if (!source || source.isDeleted) {
+    throw new Error("Source tenant not found");
+  }
+
+  // Check duplicate name
+  const existing = await prisma.tenant.findFirst({
+    where: { name: newName, isDeleted: false },
+  });
+  if (existing) {
+    throw new Error("A tenant with this name already exists");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Clone tenant with same settings
+    const cloned = await tx.tenant.create({
+      data: {
+        name: newName,
+        type: source.type,
+        email: null,
+        phone: source.phone,
+        address: source.address,
+        logoUrl: source.logoUrl,
+        backgroundUrl: source.backgroundUrl,
+        primaryColor: source.primaryColor,
+        maxStudents: source.maxStudents,
+        maxTeachers: source.maxTeachers,
+        maxAdmins: source.maxAdmins,
+        maxStorageInGB: source.maxStorageInGB,
+        isActive: true,
+      },
+    });
+
+    // Create admin for cloned tenant
+    const adminEmail = `admin.${cloned.id}@erp.com`;
+    const defaultPassword = "Admin@123";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    await tx.user.create({
+      data: {
+        name: `${newName} Admin`,
+        email: adminEmail,
+        password: hashedPassword,
+        role: "ADMIN",
+        tenantId: cloned.id,
+        isFirstLogin: true,
+      },
+    });
+
+    return { tenant: cloned, adminEmail, defaultPassword };
+  });
+
+  return result;
+};
+
+//////////////////////////////////////////////////////
+// 🎭 IMPERSONATE TENANT (Generate token for tenant admin)
+//////////////////////////////////////////////////////
+
+export const impersonateTenantService = async (tenantId: string) => {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant || tenant.isDeleted) {
+    throw new Error("Tenant not found");
+  }
+
+  if (!tenant.isActive) {
+    throw new Error("Cannot impersonate an inactive tenant");
+  }
+
+  // Find admin user for this tenant
+  const adminUser = await prisma.user.findFirst({
+    where: { tenantId, role: "ADMIN", isDeleted: false },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!adminUser) {
+    throw new Error("No admin user found for this tenant");
+  }
+
+  // Generate JWT token for the admin user
+  const secret = process.env.JWT_SECRET || "supersecret";
+  const token = jwt.sign(
+    {
+      userId: adminUser.id,
+      email: adminUser.email,
+      role: adminUser.role,
+      tenantId: adminUser.tenantId,
+      impersonated: true,
+      impersonatedBy: "SUPER_ADMIN",
+    },
+    secret,
+    { expiresIn: "2h" }
+  );
+
+  return {
+    token,
+    user: {
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      role: adminUser.role,
+    },
+    tenant: {
+      id: tenant.id,
+      name: tenant.name,
+      type: tenant.type,
+    },
+  };
+};
+
+//////////////////////////////////////////////////////
+// ♻️ RESTORE TENANT (un-delete)
+//////////////////////////////////////////////////////
+
+export const restoreTenantService = async (id: string) => {
+  const tenant = await prisma.tenant.findUnique({ where: { id } });
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+  if (!tenant.isDeleted) {
+    throw new Error("Tenant is not deleted");
+  }
+
+  return prisma.tenant.update({
+    where: { id },
+    data: { isDeleted: false, isActive: true },
+  });
+};
+
+//////////////////////////////////////////////////////
+// 📜 TENANT ACTIVITY LOG
+//////////////////////////////////////////////////////
+
+export const getTenantActivityService = async (tenantId: string) => {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  // Gather activity from multiple sources
+  const [recentUsers, recentStudents, recentTeachers, subscriptions] =
+    await Promise.all([
+      prisma.user.findMany({
+        where: { tenantId },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
+      prisma.student.findMany({
+        where: { tenantId, isDeleted: false },
+        select: { id: true, firstName: true, lastName: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.teacher.findMany({
+        where: { tenantId, isDeleted: false },
+        select: { id: true, name: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+      prisma.tenantSubscription.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          subscriptionCode: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          amount: true,
+          plan: { select: { name: true } },
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
+    ]);
+
+  // Build activity timeline
+  const activities: Array<{
+    id: string;
+    action: string;
+    description: string;
+    type: string;
+    timestamp: Date;
+    user?: string;
+  }> = [];
+
+  // Tenant creation
+  activities.push({
+    id: `tenant-created-${tenant.id}`,
+    action: "Tenant Created",
+    description: `${tenant.name} was registered on the platform`,
+    type: "create",
+    timestamp: tenant.createdAt,
+    user: "System",
+  });
+
+  // User registrations
+  recentUsers.forEach((u) => {
+    activities.push({
+      id: `user-${u.id}`,
+      action: "User Registered",
+      description: `${u.name} (${u.role}) joined`,
+      type: "create",
+      timestamp: u.createdAt,
+      user: u.email,
+    });
+  });
+
+  // Student enrollments
+  recentStudents.forEach((s) => {
+    activities.push({
+      id: `student-${s.id}`,
+      action: "Student Enrolled",
+      description: `${s.firstName} ${s.lastName} was enrolled`,
+      type: "create",
+      timestamp: s.createdAt,
+    });
+  });
+
+  // Teacher additions
+  recentTeachers.forEach((t) => {
+    activities.push({
+      id: `teacher-${t.id}`,
+      action: "Teacher Added",
+      description: `${t.name} was added as a teacher`,
+      type: "create",
+      timestamp: t.createdAt,
+    });
+  });
+
+  // Subscriptions
+  subscriptions.forEach((sub) => {
+    activities.push({
+      id: `sub-${sub.id}`,
+      action: "Subscription Updated",
+      description: `${sub.plan?.name || "Plan"} — ${sub.status}`,
+      type: "payment",
+      timestamp: sub.createdAt,
+    });
+  });
+
+  // Sort by timestamp desc
+  activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  return {
+    activities: activities.slice(0, 20),
+    summary: {
+      totalUsers: recentUsers.length,
+      totalStudents: recentStudents.length,
+      totalTeachers: recentTeachers.length,
+      totalSubscriptions: subscriptions.length,
+    },
+  };
 };
 

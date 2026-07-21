@@ -93,7 +93,7 @@ export const getStrengthReportHandler = async (req: any, res: Response) => {
         id: true,
         name: true,
         sections: {
-          where: { isDeleted: false },
+          where: { isActive: true },
           select: {
             id: true,
             name: true,
@@ -290,7 +290,7 @@ export const getTransportReportHandler = async (req: any, res: Response) => {
     const tenantId = req.tenantId;
 
     const assignments = await prisma.transportAssignment.findMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId, status: "ACTIVE", isDeleted: false },
       include: {
         student: {
           select: {
@@ -303,7 +303,7 @@ export const getTransportReportHandler = async (req: any, res: Response) => {
             },
           },
         },
-        route: { select: { name: true, routeNo: true } },
+        route: { select: { name: true, code: true } },
         vehicle: { select: { vehicleNo: true, type: true } },
         stop: { select: { name: true, pickupTime: true, dropTime: true } },
       },
@@ -338,7 +338,7 @@ export const getHostelReportHandler = async (req: any, res: Response) => {
     const tenantId = req.tenantId;
 
     const allocations = await prisma.hostelAllocation.findMany({
-      where: { tenantId, status: "active" },
+      where: { tenantId, status: "ACTIVE" },
       include: {
         student: {
           select: {
@@ -352,7 +352,7 @@ export const getHostelReportHandler = async (req: any, res: Response) => {
           },
         },
         hostel: { select: { name: true } },
-        room: { select: { roomNo: true, floor: true } },
+        room: { select: { roomNumber: true, floor: true } },
       },
     }).catch(() => []);
 
@@ -382,18 +382,16 @@ export const getScholarshipReportHandler = async (req: any, res: Response) => {
     const tenantId = req.tenantId;
 
     const discounts = await prisma.feeDiscount.findMany({
-      where: { tenantId, isDeleted: false, type: "scholarship" },
+      where: { tenantId, isDeleted: false, name: { contains: "scholarship", mode: "insensitive" } },
       include: {
-        enrollment: {
+        studentFeeDiscounts: {
           include: {
-            student: {
+            studentFee: { include: { student: {
               select: {
                 id: true, firstName: true, lastName: true, fullName: true,
                 admissionNo: true, category: true, fatherName: true,
               },
-            },
-            class: { select: { name: true } },
-            section: { select: { name: true } },
+            } } },
           },
         },
       },
@@ -651,10 +649,8 @@ export const getPromotionReportHandler = async (req: any, res: Response) => {
         student: {
           select: { firstName: true, lastName: true, fullName: true, admissionNo: true },
         },
-        fromClass: { select: { name: true } },
-        toClass: { select: { name: true } },
-        fromSection: { select: { name: true } },
-        toSection: { select: { name: true } },
+        // Promotion stores IDs only, not relations
+        // fromClassId, toClassId, fromSectionId, toSectionId are raw strings
         academicYear: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },

@@ -70,6 +70,11 @@ model Tenant {
   maxTeachers           Int     @default(0)
   maxAdmins             Int     @default(0)
   maxStorageInGB        Int     @default(0)
+  plan                  String?
+  subscriptionStatus    String?   // active, expired, cancelled, trial
+  subscriptionStart     DateTime?
+  subscriptionEnd       DateTime?
+  monthlyFee            Float?    @default(0)
  /////exam
  examSchedules          ExamSchedule[]
 seatingArrangements    SeatingArrangement[]
@@ -341,6 +346,10 @@ rolePermissions         RolePermission[]
   backupSettings     BackupSettings?    // 1:1 per tenant (tenantId is @unique)
   designerSettings   DesignerSettings[]
   backups            Backup[]
+  studentSiblings       StudentSibling[]
+  studentVaccinations   StudentVaccination[]
+  studentSavedFilters   StudentSavedFilter[]
+  studentCredentials    StudentCredential[]
 
 }
 
@@ -363,6 +372,12 @@ freeTrialRecords FreeTrialRecord[]
   resetOtp       String?
   resetOtpExpiry DateTime?
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime? @updatedAt
+
+  isActive         Boolean   @default(true)
+  isDeleted        Boolean   @default(false)
+  twoFactorEnabled Boolean   @default(false)
+  passwordHash     String?
 
   // Enterprise back-relations
   sessions          Session[]
@@ -570,6 +585,18 @@ model Student {
   achievements        StudentAchievement[]
   disciplinaryRecords StudentDisciplinaryRecord[]
   timeline            StudentTimelineEntry[]
+  siblings            StudentSibling[]
+  vaccinations        StudentVaccination[]
+  credential          StudentCredential?
+
+  // ── Status Tracking ──
+  statusChangedAt     DateTime?
+  statusChangedBy     String?
+  statusReason        String?
+  updatedBy           String?
+
+  // ── Verification ──
+  verificationStatus  String?
 
   @@unique([admissionNo, tenantId])
   @@index([srNo, tenantId])
@@ -599,6 +626,9 @@ model StudentDocument {
   uploadedAt DateTime @default(now())
 
   isDeleted Boolean @default(false)
+  verificationStatus String?  // pending, verified, rejected, expired
+  expiryDate         DateTime?
+  documentCategory   String?  // birth_cert, tc, aadhaar, etc.
 
   @@index([studentId])
   @@index([tenantId, type])
@@ -1645,6 +1675,8 @@ model Payment {
   paymentMode  String?
   receiptNumber String?
 
+  status    String?   // PAID, PENDING, FAILED, REFUNDED
+  paidAt    DateTime?
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
   createdAt DateTime  @default(now())
@@ -1679,16 +1711,22 @@ model AuditLog {
   entity    String
   entityId  String
   entityType    String?
+  type          String?   // SECURITY, DATA, CONFIG, ACCESS
   oldValue  Json?
   newValue  Json?
   previousData  Json?
   newData       Json?
   ipAddress String?
   data      Json?    // Generic data payload
+  details   Json?    // Alias for extended data
+  userAgent     String?
+  metadata      Json?
   rolledBack    Boolean  @default(false)
   userName      String?
   userRole      String?
   module        String?
+  severity      String?   // LOW, MEDIUM, HIGH, CRITICAL
+  performedBy   String?
   isRollbackable Boolean @default(false)
 
   tenantId String @db.ObjectId
@@ -6164,6 +6202,12 @@ model Notification {
   channel   String?  @default("push") // email, sms, push, whatsapp
   status    String?  @default("sent") // pending, sent, delivered, failed
   recipients String[]
+  scheduledAt DateTime?
+  priority    String?   @default("normal")
+  subject     String?
+  templateId  String?
+  metadata    Json?
+  sentAt      DateTime?
   data      Json?
   isRead    Boolean  @default(false)
   readAt    DateTime?
@@ -6430,6 +6474,12 @@ model TransferCertificate {
   classAtLeaving       String?
   conductAndCharacter  String?
   generalRemarks       String?
+
+  issueDate            DateTime?
+  destinationSchool    String?
+  issuedBy             String?  @db.ObjectId
+  lastClass            String?
+  lastSection          String?
   
   isActive             Boolean  @default(true)
   createdAt            DateTime @default(now())
@@ -7075,4 +7125,100 @@ model StudentTimelineEntry {
 
   @@index([studentId, createdAt])
   @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════
+// STUDENT SIBLINGS
+// ══════════════════════════════════════════════════════
+model StudentSibling {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId       String   @db.ObjectId
+  student         Student  @relation(fields: [studentId], references: [id])
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  name            String
+  relation        String
+  className       String?
+  school          String?
+  gender          String?
+  dob             DateTime?
+  siblingStudentId String?  @db.ObjectId
+  admissionNo     String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════
+// STUDENT VACCINATIONS
+// ══════════════════════════════════════════════════════
+model StudentVaccination {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId       String   @db.ObjectId
+  student         Student  @relation(fields: [studentId], references: [id])
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  vaccineName     String
+  doseNumber      Int
+  dateGiven       DateTime
+  nextDueDate     DateTime?
+  hospital        String?
+  doctorName      String?
+  batchNo         String?
+  remarks         String?
+  documentUrl     String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════
+// STUDENT SAVED FILTERS
+// ══════════════════════════════════════════════════════
+model StudentSavedFilter {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  userId      String   @db.ObjectId
+
+  name        String
+  description String?
+  filters     Json
+  isDefault   Boolean  @default(false)
+  isShared    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, userId])
+}
+
+// ══════════════════════════════════════════════════════
+// STUDENT CREDENTIALS (Portal Login)
+// ══════════════════════════════════════════════════════
+model StudentCredential {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @unique @db.ObjectId
+  student     Student  @relation(fields: [studentId], references: [id])
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  username    String
+  passwordHash String
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([username, tenantId])
 }

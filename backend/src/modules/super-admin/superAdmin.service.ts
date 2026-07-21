@@ -45,9 +45,9 @@ export const getSuperAdminDashboardService = async () => {
       where: { isActive: false, isDeleted: false },
       select: { id: true, name: true, createdAt: true },
     }),
-    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }).catch(() => ({ _sum: { amount: 0 } })),
-    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: today } } }).catch(() => ({ _sum: { amount: 0 } })),
-    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: firstOfMonth } } }).catch(() => ({ _sum: { amount: 0 } })),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID" } }).catch(() => ({ _sum: { amount: 0 } } as any)),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: today } } }).catch(() => ({ _sum: { amount: 0 } } as any)),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: { status: "PAID", paidAt: { gte: firstOfMonth } } }).catch(() => ({ _sum: { amount: 0 } } as any)),
   ]);
 
   return {

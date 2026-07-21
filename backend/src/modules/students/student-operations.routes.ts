@@ -129,12 +129,9 @@ router.get("/:id/status-history", async (req: any, res: Response) => {
 // Audit log
 router.get("/:id/audit-log", async (req: any, res: Response) => {
   try {
-    const { action, fromDate, toDate } = req.query;
-    const data = await getAuditLog(req.tenantId, req.params.id, {
-      action: action as string,
-      fromDate: fromDate as string,
-      toDate: toDate as string,
-    });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const data = await getAuditLog(req.tenantId, req.params.id, page, limit);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

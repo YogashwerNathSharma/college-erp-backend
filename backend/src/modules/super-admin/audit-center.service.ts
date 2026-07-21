@@ -161,12 +161,12 @@ export async function getAuditStats() {
     todayLogs,
     weekLogs,
     monthLogs,
-    bySeverity: bySeverity.reduce((acc, item) => {
-      acc[item.severity] = item._count;
+    bySeverity: (bySeverity as any[]).reduce((acc: Record<string, number>, item: any) => {
+      acc[item.severity || "unknown"] = typeof item._count === "number" ? item._count : item._count?._all || 0;
       return acc;
     }, {} as Record<string, number>),
-    byType: byType.reduce((acc, item) => {
-      acc[item.type] = item._count;
+    byType: (byType as any[]).reduce((acc: Record<string, number>, item: any) => {
+      acc[item.type || "unknown"] = typeof item._count === "number" ? item._count : item._count?._all || 0;
       return acc;
     }, {} as Record<string, number>),
     recentCritical,

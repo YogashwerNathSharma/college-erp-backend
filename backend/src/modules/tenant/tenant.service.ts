@@ -219,6 +219,10 @@ export const tenantSelfSubscribeService = async (
   // ═══ PAID PLAN — Create Razorpay order ═══
   // Create Razorpay order
   let order;
+  if (!razorpay) {
+    throw new Error("Payment gateway not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.");
+  }
+
   try {
     order = await razorpay.orders.create({
       amount: Math.round(plan.price * 100),

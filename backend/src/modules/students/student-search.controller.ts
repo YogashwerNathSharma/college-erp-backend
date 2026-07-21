@@ -105,7 +105,7 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
     if (transport === true || transport === "true") {
       // Students who have active transport assignment
       const transportStudentIds = await prisma.transportAssignment.findMany({
-        where: { tenantId, isActive: true },
+        where: { tenantId, status: "ACTIVE", isDeleted: false },
         select: { studentId: true },
       }).then(results => results.map((r: any) => r.studentId)).catch(() => []);
 
@@ -120,15 +120,15 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
     // Hostel filter
     if (hostel === true || hostel === "true") {
       const hostelStudentIds = await prisma.hostelAllocation.findMany({
-        where: { tenantId, status: "active" },
+        where: { tenantId, status: "ACTIVE" },
         select: { studentId: true },
       }).then(results => results.map((r: any) => r.studentId)).catch(() => []);
 
       if (hostelStudentIds.length > 0) {
-        if (where.id?.in) {
-          where.id.in = where.id.in.filter((id: string) => hostelStudentIds.includes(id));
+        if ((where as any).id?.in) {
+          (where as any).id.in = (where as any).id.in.filter((id: string) => hostelStudentIds.includes(id));
         } else {
-          where.id = { ...(where.id || {}), in: hostelStudentIds };
+          (where as any).id = { ...((where as any).id || {}), in: hostelStudentIds };
         }
       } else {
         return res.json({ success: true, data: { students: [], total: 0, page, limit, totalPages: 0 } });

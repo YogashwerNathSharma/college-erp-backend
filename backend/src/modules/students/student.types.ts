@@ -319,6 +319,7 @@ export interface CommunicationInput {
 
 export interface StatusChangeInput {
   status: StudentStatus;
+  newStatus?: StudentStatus;
   reason: string;
   effectiveDate?: string;
 }
@@ -329,6 +330,7 @@ export interface TransferInput {
   effectiveDate: string;
   generateTC: boolean;
   remarks?: string;
+  tcNumber?: string;
 }
 
 // ── Bulk Operation Types ─────────────────────────────────────────────────────
@@ -360,4 +362,28 @@ export interface ReportResult {
   filters: Record<string, any>;
   data: any[];
   summary?: Record<string, number>;
+}
+
+// ── Login Credential Types ──────────────────────────────────────
+
+export interface StudentLoginCredentials {
+  username: string;
+  password: string;
+  studentId: string;
+  isNew: boolean;
+}
+
+// ── Audit Action Enum ───────────────────────────────────────────
+
+export enum AuditAction {
+  STATUS_CHANGE = "STATUS_CHANGE",
+  TRANSFER = "TRANSFER",
+  ADMISSION = "ADMISSION",
+  PROMOTION = "PROMOTION",
+  DELETE = "DELETE",
+  LOGIN_GENERATED = "LOGIN_GENERATED",
+  PASSWORD_RESET = "PASSWORD_RESET",
+  UPDATE = "UPDATE",
+  CREATE = "CREATE",
+  BULK_STATUS_CHANGE = "BULK_STATUS_CHANGE",
 }

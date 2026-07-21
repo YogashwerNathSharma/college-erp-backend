@@ -451,3 +451,8 @@ export const getAuditLog = async (
     totalPages: Math.ceil(total / limit),
   };
 };
+
+// Named export aliases for backward compatibility
+export { changeStatus as changeStudentStatus };
+export { generateLogin as generateStudentLogin };
+export { resetPassword as resetStudentPassword };

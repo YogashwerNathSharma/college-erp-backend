@@ -161,8 +161,8 @@ export async function addTicketComment(ticketId: string, authorId: string, conte
   return prisma.supportTicketComment.create({
     data: {
       ticketId,
-      authorId,
-      content,
+      author: authorId,
+      message: content,
     },
   });
 }
@@ -331,7 +331,7 @@ export async function getSystemStatus() {
   // Check database connectivity
   let dbStatus = "operational";
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await (prisma as any).$runCommandRaw({ ping: 1 });
   } catch {
     dbStatus = "degraded";
   }

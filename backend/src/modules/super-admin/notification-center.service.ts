@@ -97,7 +97,8 @@ export async function sendNotification(input: SendNotificationInput) {
       return prisma.notification.create({
         data: {
           channel,
-          recipient,
+          recipients: [recipient],
+          userId: recipient,
           subject: subject || "",
           body,
           templateId,
@@ -136,12 +137,12 @@ export async function getNotificationStats() {
     monthSent,
     pending,
     failed,
-    byChannel: byChannel.reduce((acc, item) => {
-      acc[item.channel] = item._count;
+    byChannel: (byChannel as any[]).reduce((acc: Record<string, number>, item: any) => {
+      acc[item.channel || "unknown"] = typeof item._count === "number" ? item._count : item._count?._all || 0;
       return acc;
     }, {} as Record<string, number>),
-    byStatus: byStatus.reduce((acc, item) => {
-      acc[item.status] = item._count;
+    byStatus: (byStatus as any[]).reduce((acc: Record<string, number>, item: any) => {
+      acc[item.status || "unknown"] = typeof item._count === "number" ? item._count : item._count?._all || 0;
       return acc;
     }, {} as Record<string, number>),
     deliveryRate: total > 0 ? Math.round(((total - (failed || 0)) / total) * 100) : 100,

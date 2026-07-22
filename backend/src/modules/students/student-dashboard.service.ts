@@ -59,6 +59,7 @@ export const getFullDashboardData = async (
     genderRatio,
     monthlyAdmission,
     studentGrowth,
+    admissionTrend: monthlyAdmission,
     recentAdmissions,
     birthdayStudents,
     feeDefaultersList,

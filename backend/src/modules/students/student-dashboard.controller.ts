@@ -315,14 +315,13 @@ async function getBirthdayTodayData(tenantId: string) {
 
 async function getClassStrengthData(tenantId: string, academicYearId?: string) {
   const classes = await prisma.class.findMany({
-    where: { tenantId, status: "ACTIVE" },
+    where: { tenantId },
     select: {
       id: true,
       name: true,
       enrollments: {
         where: {
-          isDeleted: false,
-          status: "active", isDeleted: false,
+          isDeleted: false, status: "active",
           ...(academicYearId && { academicYearId }),
         },
         select: { id: true },
@@ -340,15 +339,14 @@ async function getClassStrengthData(tenantId: string, academicYearId?: string) {
 
 async function getSectionStrengthData(tenantId: string, academicYearId?: string) {
   const sections = await prisma.section.findMany({
-    where: { tenantId, status: "ACTIVE" },
+    where: { tenantId, isActive: true },
     select: {
       id: true,
       name: true,
       class: { select: { id: true, name: true } },
       enrollments: {
         where: {
-          isDeleted: false,
-          status: "active", isDeleted: false,
+          isDeleted: false, status: "active",
           ...(academicYearId && { academicYearId }),
         },
         select: { id: true },

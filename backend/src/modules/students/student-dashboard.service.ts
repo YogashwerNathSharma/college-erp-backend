@@ -68,7 +68,7 @@ export const getFullDashboardData = async (
 // ============================================
 // DASHBOARD STATS (counts)
 // ============================================
-const getDashboardStats = async (
+export const getDashboardStats = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<DashboardStats> => {
@@ -79,8 +79,8 @@ const getDashboardStats = async (
     totalStudents,
     activeStudents,
     inactiveStudents,
-    boys,
-    girls,
+    boysCount: boys,
+    girlsCount: girls,
     newAdmissions,
     leavingStudents,
     transportStudents,
@@ -113,8 +113,8 @@ const getDashboardStats = async (
     inactiveStudents,
     newAdmissions,
     leavingStudents,
-    boys,
-    girls,
+    boysCount: boys,
+    girlsCount: girls,
     transportStudents,
     hostelStudents,
     scholarshipStudents,
@@ -345,7 +345,7 @@ export const getStudentGrowth = async (tenantId: string): Promise<StudentGrowthI
 export const getTransportStudentCount = async (tenantId: string): Promise<number> => {
   try {
     const count = await prisma.transportAssignment.count({
-      where: { tenantId, isActive: true },
+      where: { tenantId, status: "ACTIVE" },
     });
     return count;
   } catch {
@@ -360,7 +360,7 @@ export const getTransportStudentCount = async (tenantId: string): Promise<number
 export const getHostelStudentCount = async (tenantId: string): Promise<number> => {
   try {
     const count = await prisma.hostelAllocation.count({
-      where: { tenantId, status: "active" },
+      where: { tenantId, status: "ACTIVE" },
     });
     return count;
   } catch {
@@ -377,7 +377,7 @@ export const getScholarshipStudentCount = async (tenantId: string): Promise<numb
       where: {
         tenantId,
         isDeleted: false,
-        type: { in: ["scholarship", "Scholarship", "SCHOLARSHIP"] },
+        name: { contains: "scholarship", mode: "insensitive" },
       },
     });
     return count;
@@ -425,7 +425,7 @@ export const getGenderRatio = async (
 // ============================================
 // CATEGORY DISTRIBUTION
 // ============================================
-const getCategoryDistribution = async (
+export const getCategoryDistribution = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<CategoryItem[]> => {

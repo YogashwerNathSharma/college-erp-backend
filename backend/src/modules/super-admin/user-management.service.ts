@@ -168,8 +168,10 @@ export const createAdminUserService = async (data: CreateAdminUserDTO) => {
   await prisma.auditLog.create({
     data: {
       action: "ADMIN_USER_CREATED",
+      entity: "User",
       entityType: "User",
       entityId: user.id,
+      tenantId: user.tenantId,
       details: { name: user.name, email: user.email, role: user.role },
     },
   }).catch(() => {}); // Non-critical

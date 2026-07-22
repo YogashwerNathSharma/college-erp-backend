@@ -292,17 +292,6 @@ export const getTransportReportHandler = async (req: any, res: Response) => {
     const assignments = await prisma.transportAssignment.findMany({
       where: { tenantId, status: "ACTIVE", isDeleted: false },
       include: {
-        student: {
-          select: {
-            id: true, firstName: true, lastName: true, fullName: true,
-            admissionNo: true, phone: true, fatherName: true, fatherPhone: true,
-            enrollments: {
-              where: { isDeleted: false, status: "active" },
-              select: { class: { select: { name: true } }, section: { select: { name: true } } },
-              take: 1, orderBy: { createdAt: "desc" },
-            },
-          },
-        },
         route: { select: { name: true, code: true } },
         vehicle: { select: { vehicleNo: true, type: true } },
         stop: { select: { name: true, pickupTime: true, dropTime: true } },
@@ -386,12 +375,12 @@ export const getScholarshipReportHandler = async (req: any, res: Response) => {
       include: {
         studentFeeDiscounts: {
           include: {
-            studentFee: { include: { student: {
+            studentFee: { include: { enrollment: { include: { student: {
               select: {
                 id: true, firstName: true, lastName: true, fullName: true,
                 admissionNo: true, category: true, fatherName: true,
               },
-            } } },
+            } } } } },
           },
         },
       },
@@ -649,9 +638,6 @@ export const getPromotionReportHandler = async (req: any, res: Response) => {
         student: {
           select: { firstName: true, lastName: true, fullName: true, admissionNo: true },
         },
-        // Promotion stores IDs only, not relations
-        // fromClassId, toClassId, fromSectionId, toSectionId are raw strings
-        academicYear: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
     });

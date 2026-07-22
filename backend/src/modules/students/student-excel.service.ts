@@ -135,7 +135,7 @@ export const importFromExcel = async (
   }
 
   const errors: ExcelImportError[] = [];
-  const createdStudents: string[] = [];
+  const createdStudents: any[] = [];
   let successCount = 0;
   let failedCount = 0;
 

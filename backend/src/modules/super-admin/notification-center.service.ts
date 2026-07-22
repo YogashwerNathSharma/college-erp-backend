@@ -99,6 +99,7 @@ export async function sendNotification(input: SendNotificationInput) {
           channel,
           recipients: [recipient],
           userId: recipient,
+          title: subject || "Notification",
           subject: subject || "",
           body,
           templateId,

@@ -48,7 +48,7 @@ export const sendSMSHandler = async (req: any, res: Response) => {
     }
 
     // Log the communication (actual SMS sending would use a provider like Twilio/MSG91)
-    const log = await prisma.studentCommunicationLog.create({
+    const log = await prisma.communicationLog.create({
       data: {
         studentId,
         tenantId,
@@ -130,7 +130,7 @@ export const sendEmailHandler = async (req: any, res: Response) => {
     }
 
     // Log communication
-    const log = await prisma.studentCommunicationLog.create({
+    const log = await prisma.communicationLog.create({
       data: {
         studentId,
         tenantId,
@@ -209,7 +209,7 @@ export const sendWhatsAppHandler = async (req: any, res: Response) => {
     }
 
     // Log communication
-    const log = await prisma.studentCommunicationLog.create({
+    const log = await prisma.communicationLog.create({
       data: {
         studentId,
         tenantId,
@@ -299,7 +299,7 @@ export const bulkSMSHandler = async (req: any, res: Response) => {
 
       try {
         // Log + send
-        await prisma.studentCommunicationLog.create({
+        await prisma.communicationLog.create({
           data: {
             studentId: student.id,
             tenantId,
@@ -374,7 +374,7 @@ export const bulkEmailHandler = async (req: any, res: Response) => {
           .replace(/{{student_name}}/g, `${student.firstName} ${student.lastName}`)
           .replace(/{{father_name}}/g, student.fatherName || "Parent");
 
-        await prisma.studentCommunicationLog.create({
+        await prisma.communicationLog.create({
           data: {
             studentId: student.id, tenantId, type: "email",
             subject, message: personalizedBody, sentTo: emailAddr,
@@ -446,7 +446,7 @@ export const bulkWhatsAppHandler = async (req: any, res: Response) => {
         const personalizedMessage = message
           .replace(/{{student_name}}/g, `${student.firstName} ${student.lastName}`);
 
-        await prisma.studentCommunicationLog.create({
+        await prisma.communicationLog.create({
           data: {
             studentId: student.id, tenantId, type: "whatsapp",
             message: personalizedMessage, sentTo: number,
@@ -510,7 +510,7 @@ export const sendBirthdayWishesHandler = async (req: any, res: Response) => {
       const contactEmail = student.email;
 
       try {
-        await prisma.studentCommunicationLog.create({
+        await prisma.communicationLog.create({
           data: {
             studentId: student.id, tenantId, type: selectedChannel,
             message: personalizedMsg,
@@ -605,7 +605,7 @@ export const sendFeeReminderHandler = async (req: any, res: Response) => {
       if (!contactNumber) continue;
 
       try {
-        await prisma.studentCommunicationLog.create({
+        await prisma.communicationLog.create({
           data: {
             studentId, tenantId, type: "sms",
             message: personalizedMsg, sentTo: contactNumber,
@@ -646,13 +646,13 @@ export const getCommunicationLogHandler = async (req: any, res: Response) => {
     // Try the new model first, fallback to timeline
     try {
       const [logs, total] = await Promise.all([
-        prisma.studentCommunicationLog.findMany({
+        prisma.communicationLog.findMany({
           where,
           orderBy: { sentAt: "desc" },
           skip: (pageNum - 1) * limitNum,
           take: limitNum,
         }),
-        prisma.studentCommunicationLog.count({ where }),
+        prisma.communicationLog.count({ where }),
       ]);
 
       res.json({

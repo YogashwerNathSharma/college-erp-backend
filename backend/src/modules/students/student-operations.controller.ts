@@ -84,6 +84,7 @@ export const changeStatusHandler = async (req: any, res: Response) => {
         tenantId,
         module: "STUDENT",
         action: "STATUS_CHANGE",
+        entity: "Student",
         entityId: studentId,
         entityType: "Student",
         previousData: JSON.stringify({ status: previousStatus }),
@@ -169,21 +170,22 @@ export const transferStudentHandler = async (req: any, res: Response) => {
     let tcData = null;
     if (generateTC) {
       // Generate Transfer Certificate number
-      const tcCount = await prisma.certificate.count({ where: { tenantId, type: "leaving" } }).catch(() => 0);
+      const tcCount = await prisma.certificate.count({ where: { tenantId, type: "TC" } }).catch(() => 0);
       const tcNo = `TC/${new Date().getFullYear().toString().slice(-2)}/${(tcCount + 1).toString().padStart(5, "0")}`;
       
       await prisma.certificate.create({
         data: {
-          tenantId, studentId, type: "leaving",
+          tenantId, studentId, type: "TC",
           certificateNo: tcNo,
-          generatedBy: req.user?.name || "Admin",
+          generatedBy: req.user?.id || null,
+          issuedBy: req.user?.name || "Admin",
           generatedAt: new Date(),
-          status: "generated",
+          status: "ISSUED",
           metadata: { reason, destinationSchool },
         },
       }).catch(() => null);
 
-      tcData = { certificateNo: tcNo, type: "leaving" };
+      tcData = { certificateNo: tcNo, type: "TC" };
     }
 
     res.json({
@@ -1286,7 +1288,7 @@ export const addSiblingHandler = async (req: any, res: Response) => {
         name,
         relation,
         siblingStudentId: siblingStudentId || null,
-        class: sibClass || null,
+        className: sibClass || null,
         school: school || null,
         dob: dob ? new Date(dob) : null,
       },

@@ -588,12 +588,14 @@ model Student {
   siblings            StudentSibling[]
   vaccinations        StudentVaccination[]
   credential          StudentCredential?
+  hostelAllocations   HostelAllocation[]
 
   // ── Status Tracking ──
   statusChangedAt     DateTime?
   statusChangedBy     String?
   statusReason        String?
   updatedBy           String?
+  createdBy           String?
 
   // ── Verification ──
   verificationStatus  String?
@@ -2525,6 +2527,7 @@ model HostelRoom {
 model HostelAllocation {
   id             String                 @id @default(auto()) @map("_id") @db.ObjectId
   studentId      String                 @db.ObjectId
+  student        Student                @relation(fields: [studentId], references: [id])
   hostelId       String                 @db.ObjectId
   roomId         String                 @db.ObjectId
   academicYearId String                 @db.ObjectId
@@ -2849,6 +2852,9 @@ enum CertificateType {
   TC
   CHARACTER
   MIGRATION
+  BONAFIDE
+  LEAVING
+  STUDY
 }
 
 enum CertificateStatus {
@@ -2868,6 +2874,13 @@ model Certificate {
   studentName        String?
   certificateNumber  String?
 
+  certificateNo      String?
+  issuedDate         DateTime?
+  issuedBy           String?
+  purpose            String?
+  generatedAt        DateTime?
+  metadata           Json?
+
   tenantId String @db.ObjectId
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
@@ -2877,6 +2890,7 @@ model Certificate {
   @@index([tenantId])
   @@index([studentId])
   @@index([serialNumber])
+  @@index([certificateNo])
 }
 
 
@@ -6610,8 +6624,20 @@ model CommunicationLog {
   tenantId       String   @db.ObjectId
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
   
+  studentId      String?  @db.ObjectId
   channel        String   // SMS, EMAIL, WHATSAPP, PUSH
+  type           String?  // sms, email, whatsapp, push
   message        String?
+  subject        String?
+  sentTo         String?
+  sentToName     String?
+  sentBy         String?
+  status         String?  @default("queued")
+  templateId     String?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedReason   String?
+  
   recipientCount Int      @default(0)
   successCount   Int      @default(0)
   failedCount    Int      @default(0)
@@ -6619,9 +6645,11 @@ model CommunicationLog {
   metadata       Json?
   
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   
   @@index([tenantId])
   @@index([tenantId, channel])
+  @@index([studentId])
 }
 
 model NoticeTemplate {

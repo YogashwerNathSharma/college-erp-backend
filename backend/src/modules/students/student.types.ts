@@ -387,3 +387,71 @@ export enum AuditAction {
   CREATE = "CREATE",
   BULK_STATUS_CHANGE = "BULK_STATUS_CHANGE",
 }
+
+
+// ══════════════════════════════════════════════════════════════════
+// DASHBOARD ITEM TYPES
+// ══════════════════════════════════════════════════════════════════
+
+export interface ClassStrengthItem {
+  class: string;
+  classId: string;
+  count: number;
+}
+
+export interface SectionStrengthItem {
+  class: string;
+  section: string;
+  count: number;
+}
+
+export interface CategoryItem {
+  category: string;
+  count: number;
+}
+
+export interface GenderRatioItem {
+  gender: string;
+  count: number;
+}
+
+export interface MonthlyAdmissionItem {
+  month: string;
+  count: number;
+}
+
+export interface StudentGrowthItem {
+  year: string;
+  count: number;
+}
+
+export interface RecentAdmissionItem {
+  id: string;
+  name: string;
+  class: string;
+  admissionDate: string;
+}
+
+export interface BirthdayStudentItem {
+  id: string;
+  name: string;
+  class: string;
+  dob: string;
+}
+
+export interface FeeDefaulterItem {
+  id: string;
+  name: string;
+  class: string;
+  amount: number;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EXCEL TYPES
+// ══════════════════════════════════════════════════════════════════
+
+export interface ExcelImportError {
+  row: number;
+  field?: string;
+  message: string;
+}

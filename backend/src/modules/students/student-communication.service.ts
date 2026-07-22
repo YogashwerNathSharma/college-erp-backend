@@ -39,7 +39,7 @@ export const sendSMS = async (
 
   // TODO: Integrate with actual SMS provider (Twilio, MSG91, etc.)
   // For now, log the communication
-  const log = await prisma.studentCommunicationLog.create({
+  const log = await prisma.communicationLog.create({
     data: {
       studentId,
       tenantId,
@@ -57,13 +57,13 @@ export const sendSMS = async (
   // Simulate sending (replace with actual provider call)
   try {
     // await smsProvider.send({ to, message: processedMessage });
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "sent" },
     });
     return { success: true, logId: log.id, message: "SMS queued for delivery" };
   } catch (err: any) {
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "failed", failureReason: err.message },
     });
@@ -98,7 +98,7 @@ export const sendEmail = async (
     father_name: student.fatherName,
   });
 
-  const log = await prisma.studentCommunicationLog.create({
+  const log = await prisma.communicationLog.create({
     data: {
       studentId,
       tenantId,
@@ -116,13 +116,13 @@ export const sendEmail = async (
   try {
     // TODO: Integrate with nodemailer or email service
     // await emailService.send({ to, subject, html: processedBody });
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "sent" },
     });
     return { success: true, logId: log.id, message: "Email sent successfully" };
   } catch (err: any) {
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "failed", failureReason: err.message },
     });
@@ -157,7 +157,7 @@ export const sendWhatsApp = async (
     father_name: student.fatherName,
   });
 
-  const log = await prisma.studentCommunicationLog.create({
+  const log = await prisma.communicationLog.create({
     data: {
       studentId,
       tenantId,
@@ -174,13 +174,13 @@ export const sendWhatsApp = async (
   try {
     // TODO: Integrate with WhatsApp Business API
     // await whatsappService.send({ to: `+91${to}`, message: processedMessage });
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "sent" },
     });
     return { success: true, logId: log.id, message: "WhatsApp message queued" };
   } catch (err: any) {
-    await prisma.studentCommunicationLog.update({
+    await prisma.communicationLog.update({
       where: { id: log.id },
       data: { status: "failed", failureReason: err.message },
     });
@@ -375,7 +375,7 @@ export const getCommunicationLog = async (
   if (filters?.type) where.type = filters.type;
   if (filters?.status) where.status = filters.status;
 
-  return prisma.studentCommunicationLog.findMany({
+  return prisma.communicationLog.findMany({
     where,
     orderBy: { sentAt: "desc" },
     take: filters?.limit || 50,

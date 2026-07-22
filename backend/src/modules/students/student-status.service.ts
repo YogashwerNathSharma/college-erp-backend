@@ -98,6 +98,7 @@ export const changeStatus = async (
         tenantId,
         module: "STUDENT",
         action: "STATUS_CHANGE",
+        entity: "Student",
         entityId: studentId,
         entityType: "Student",
         previousData: { status: currentStatus },
@@ -276,6 +277,7 @@ export const generateLogin = async (
       data: {
         name: `${student.firstName} ${student.lastName}`,
         email: student.email || `${username}@student.local`,
+        password: passwordHash,
         passwordHash,
         role: "STUDENT",
         tenantId,
@@ -374,7 +376,7 @@ export const bulkStatusChange = async (
 
   for (const studentId of studentIds) {
     try {
-      await changeStatus(tenantId, studentId, { newStatus: newStatus as StudentStatus, reason }, userId);
+      await changeStatus(tenantId, studentId, { status: newStatus as StudentStatus, reason }, userId);
       success++;
     } catch (error: any) {
       failed++;

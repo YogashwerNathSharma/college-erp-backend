@@ -39,12 +39,12 @@ This certificate is issued for the purpose of **${options.purpose || "official u
     data: {
       tenantId,
       studentId,
-      type: "bonafide",
+      type: "BONAFIDE",
       certificateNo: certNo,
       issuedDate: new Date(options.issuedDate || Date.now()),
       purpose: options.purpose || "Official use",
       issuedBy: userId,
-      status: "issued",
+      status: "ISSUED",
     },
   });
 
@@ -105,9 +105,9 @@ We wish ${student.gender === "Male" ? "him" : "her"} success in all future endea
 
   await prisma.certificate.create({
     data: {
-      tenantId, studentId, type: "character", certificateNo: certNo,
+      tenantId, studentId, type: "CHARACTER", certificateNo: certNo,
       issuedDate: new Date(), purpose: options.purpose || "Character reference",
-      issuedBy: userId, status: "issued",
+      issuedBy: userId, status: "ISSUED",
     },
   });
 
@@ -156,9 +156,9 @@ export const generateLeaving = async (
 
   await prisma.certificate.create({
     data: {
-      tenantId, studentId, type: "leaving", certificateNo: certNo,
+      tenantId, studentId, type: "LEAVING", certificateNo: certNo,
       issuedDate: new Date(), purpose: options.purpose || "Transfer/Leaving",
-      issuedBy: userId, status: "issued",
+      issuedBy: userId, status: "ISSUED",
     },
   });
 
@@ -191,7 +191,7 @@ The student has no dues pending against ${student.gender === "Male" ? "him" : "h
   });
 
   await prisma.certificate.create({
-    data: { tenantId, studentId, type: "migration", certificateNo: certNo, issuedDate: new Date(), purpose: options.purpose || "Migration", issuedBy: userId, status: "issued" },
+    data: { tenantId, studentId, type: "MIGRATION", certificateNo: certNo, issuedDate: new Date(), purpose: options.purpose || "Migration", issuedBy: userId, status: "ISSUED" },
   });
 
   return { pdfBuffer, certificateNo: certNo, metadata: { studentId, studentName: student.fullName || `${student.firstName} ${student.lastName}`, type: CertificateType.MIGRATION, issuedDate: new Date().toISOString(), issuedBy: userId } };
@@ -220,7 +220,7 @@ This certificate is issued on ${student.gender === "Male" ? "his" : "her"} reque
   });
 
   await prisma.certificate.create({
-    data: { tenantId, studentId, type: "study", certificateNo: certNo, issuedDate: new Date(), purpose: options.purpose || "Study confirmation", issuedBy: userId, status: "issued" },
+    data: { tenantId, studentId, type: "STUDY", certificateNo: certNo, issuedDate: new Date(), purpose: options.purpose || "Study confirmation", issuedBy: userId, status: "ISSUED" },
   });
 
   return { pdfBuffer, certificateNo: certNo, metadata: { studentId, studentName: student.fullName || `${student.firstName} ${student.lastName}`, type: CertificateType.STUDY, issuedDate: new Date().toISOString(), issuedBy: userId } };

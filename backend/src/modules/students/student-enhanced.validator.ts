@@ -164,7 +164,7 @@ export const advancedSearchSchema = z.object({
  */
 export const savedFilterSchema = z.object({
   name: z.string().min(2, "Filter name must be at least 2 characters").max(50),
-  filters: z.record(z.any()),
+  filters: z.record(z.string(), z.any()),
   isDefault: z.boolean().default(false),
 });
 
@@ -187,7 +187,7 @@ export const communicationSchema = z.object({
  */
 export const bulkCommunicationSchema = z.object({
   studentIds: z.array(z.string()).optional(),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
   message: z.string().min(1).max(2000),
   to: z.enum(["student", "father", "mother", "guardian"]).default("father"),
   subject: z.string().max(200).optional(),
@@ -232,7 +232,7 @@ export const excelImportSchema = z.object({
 export const bulkOperationSchema = z.object({
   studentIds: z.array(z.string()).min(1, "At least one student ID is required"),
   action: z.enum(["delete", "activate", "deactivate", "transfer", "promote", "generate-id", "send-sms", "send-email"]),
-  params: z.record(z.any()).optional(),
+  params: z.record(z.string(), z.any()).optional(),
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -274,7 +274,7 @@ export const siblingSchema = z.object({
 
 export const customReportSchema = z.object({
   fields: z.array(z.string()).min(1, "At least one field is required"),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
   groupBy: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),

@@ -38,7 +38,7 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
       }),
       // Active students
       prisma.student.count({
-        where: { tenantId, isDeleted: false, status: "active", ...(academicYearId && { academicYearId }) },
+        where: { tenantId, isDeleted: false, status: "ACTIVE", ...(academicYearId && { academicYearId }) },
       }),
       // Inactive students
       prisma.student.count({
@@ -54,11 +54,11 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
       }),
       // Transport students count
       prisma.transportAssignment.count({
-        where: { tenantId, isActive: true },
+        where: { tenantId, status: "ACTIVE", isDeleted: false },
       }).catch(() => 0),
       // Hostel students count
       prisma.hostelAllocation.count({
-        where: { tenantId, status: "active" },
+        where: { tenantId, status: "ACTIVE" },
       }).catch(() => 0),
       // Birthday today
       getBirthdayTodayData(tenantId),
@@ -98,7 +98,7 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
 
     // Scholarship count (students who have scholarship fee discounts)
     const scholarshipCount = await prisma.feeDiscount.count({
-      where: { tenantId, isDeleted: false, type: "scholarship" },
+      where: { tenantId, isDeleted: false, name: { contains: "scholarship", mode: "insensitive" } },
     }).catch(() => 0);
 
     res.json({
@@ -213,7 +213,7 @@ export const getStudentGrowthHandler = async (req: any, res: Response) => {
 export const getTransportCountHandler = async (req: any, res: Response) => {
   try {
     const count = await prisma.transportAssignment.count({
-      where: { tenantId: req.tenantId, isActive: true },
+      where: { tenantId: req.tenantId, status: "ACTIVE", isDeleted: false },
     }).catch(() => 0);
 
     res.json({ success: true, data: { count } });
@@ -228,7 +228,7 @@ export const getTransportCountHandler = async (req: any, res: Response) => {
 export const getHostelCountHandler = async (req: any, res: Response) => {
   try {
     const count = await prisma.hostelAllocation.count({
-      where: { tenantId: req.tenantId, status: "active" },
+      where: { tenantId: req.tenantId, status: "ACTIVE" },
     }).catch(() => 0);
 
     res.json({ success: true, data: { count } });
@@ -243,7 +243,7 @@ export const getHostelCountHandler = async (req: any, res: Response) => {
 export const getScholarshipCountHandler = async (req: any, res: Response) => {
   try {
     const count = await prisma.feeDiscount.count({
-      where: { tenantId: req.tenantId, isDeleted: false, type: "scholarship" },
+      where: { tenantId: req.tenantId, isDeleted: false, name: { contains: "scholarship", mode: "insensitive" } },
     }).catch(() => 0);
 
     res.json({ success: true, data: { count } });
@@ -275,7 +275,7 @@ async function getBirthdayTodayData(tenantId: string) {
 
   // MongoDB date matching for birthday — get all students and filter by month/day
   const students = await prisma.student.findMany({
-    where: { tenantId, isDeleted: false, status: "active" },
+    where: { tenantId, isDeleted: false, status: "ACTIVE" },
     select: {
       id: true,
       firstName: true,
@@ -285,7 +285,7 @@ async function getBirthdayTodayData(tenantId: string) {
       photoUrl: true,
       admissionNo: true,
       enrollments: {
-        where: { status: "active", isDeleted: false },
+        where: { status: "ACTIVE", isDeleted: false },
         select: {
           class: { select: { name: true } },
           section: { select: { name: true } },
@@ -322,7 +322,7 @@ async function getClassStrengthData(tenantId: string, academicYearId?: string) {
       enrollments: {
         where: {
           isDeleted: false,
-          status: "active",
+          status: "ACTIVE",
           ...(academicYearId && { academicYearId }),
         },
         select: { id: true },
@@ -348,7 +348,7 @@ async function getSectionStrengthData(tenantId: string, academicYearId?: string)
       enrollments: {
         where: {
           isDeleted: false,
-          status: "active",
+          status: "ACTIVE",
           ...(academicYearId && { academicYearId }),
         },
         select: { id: true },
@@ -368,7 +368,7 @@ async function getSectionStrengthData(tenantId: string, academicYearId?: string)
 
 async function getCategoryDistributionData(tenantId: string, academicYearId?: string) {
   const students = await prisma.student.findMany({
-    where: { tenantId, isDeleted: false, status: "active", ...(academicYearId && { academicYearId }) },
+    where: { tenantId, isDeleted: false, status: "ACTIVE", ...(academicYearId && { academicYearId }) },
     select: { category: true },
   });
 
@@ -417,7 +417,7 @@ async function getMonthlyAdmissionData(tenantId: string, academicYearId?: string
 }
 
 async function getGenderRatioData(tenantId: string, academicYearId?: string) {
-  const where: any = { tenantId, isDeleted: false, status: "active", ...(academicYearId && { academicYearId }) };
+  const where: any = { tenantId, isDeleted: false, status: "ACTIVE", ...(academicYearId && { academicYearId }) };
 
   const [male, female, other] = await Promise.all([
     prisma.student.count({ where: { ...where, gender: { in: ["Male", "male", "M", "MALE"] } } }),

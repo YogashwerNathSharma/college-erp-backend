@@ -300,7 +300,6 @@ export interface ExcelImportResult {
   success?: number;
   failed?: number;
   errors?: any[];
-}>;
 }
 
 // ── Communication Types ──────────────────────────────────────────────────────

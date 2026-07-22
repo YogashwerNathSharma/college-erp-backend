@@ -107,7 +107,7 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
       const transportStudentIds = await prisma.transportAssignment.findMany({
         where: { tenantId, status: "ACTIVE", isDeleted: false },
         select: { studentId: true },
-      }).then(results => results.map((r: any) => r.studentId)).catch(() => []);
+      }).then(results => results.map((r: any) => r.studentId)).catch((): string[] => []);
 
       if (transportStudentIds.length > 0) {
         where.id = { ...(where.id || {}), in: transportStudentIds };
@@ -122,7 +122,7 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
       const hostelStudentIds = await prisma.hostelAllocation.findMany({
         where: { tenantId, status: "ACTIVE" },
         select: { studentId: true },
-      }).then(results => results.map((r: any) => r.studentId)).catch(() => []);
+      }).then(results => results.map((r: any) => r.studentId)).catch((): string[] => []);
 
       if (hostelStudentIds.length > 0) {
         if ((where as any).id?.in) {

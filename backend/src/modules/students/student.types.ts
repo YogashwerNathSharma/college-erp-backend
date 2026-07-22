@@ -235,15 +235,15 @@ export interface DashboardStats {
 
 export interface DashboardFullData {
   stats: DashboardStats;
-  classStrength: Array<{ class: string; classId: string; count: number }>;
-  sectionStrength: Array<{ class: string; section: string; count: number }>;
+  classStrength: any[];
+  sectionStrength: any[];
   categoryDistribution: any[];
   genderRatio: any;
   monthlyAdmission: Array<{ month: string; count: number }>;
-  studentGrowth: Array<{ year: string; count: number }>;
-  admissionTrend: Array<{ month: string; count: number }>;
+  studentGrowth: any[];
+  admissionTrend: any[];
   recentAdmissions: any[];
-  birthdayStudents: Array<{ id: string; name: string; class: string; photoUrl?: string; dob: string }>;
+  birthdayStudents: any[];
   feeDefaultersList: any[];
 }
 
@@ -295,11 +295,12 @@ export interface ExcelExportOptions {
 }
 
 export interface ExcelImportResult {
-  total: number;
-  success: number;
-  failed: number;
-  errors: ExcelImportError[];
-  createdStudents: Array<{ id: string; admissionNo: string; name: string }>;
+  [key: string]: any;
+  total?: number;
+  success?: number;
+  failed?: number;
+  errors?: any[];
+}>;
 }
 
 // ── Communication Types ──────────────────────────────────────────────────────
@@ -422,7 +423,6 @@ export interface MonthlyAdmissionItem {
 
 export interface StudentGrowthItem {
   [key: string]: any;
-  count: number;
 }
 
 export interface RecentAdmissionItem {

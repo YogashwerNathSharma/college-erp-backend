@@ -99,7 +99,7 @@ export async function getTenantReport(filter: ReportFilter) {
       _count: { select: { users: true } },
     },
     orderBy: { createdAt: "desc" },
-  }); as any[]
+  }) as any[]
 
   const now = new Date();
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -238,7 +238,7 @@ export async function getLoginReport(filter: ReportFilter) {
     },
     orderBy: { createdAt: "desc" },
     take: 5000,
-  }); as any[]
+  }) as any[]
 
   const successful = loginLogs.filter((l) => l.action !== "LOGIN_FAILED").length;
   const failed = loginLogs.filter((l) => l.action === "LOGIN_FAILED").length;

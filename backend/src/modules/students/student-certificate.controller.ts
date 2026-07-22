@@ -46,7 +46,7 @@ async function getTenantInfo(tenantId: string) {
 
 // Helper: Generate certificate number
 async function generateCertificateNo(tenantId: string, type: string): Promise<string> {
-  const count = await prisma.certificate.count({
+  const count = await (prisma.certificate as any).count({
     where: { tenantId, type },
   }).catch(() => 0);
 
@@ -61,7 +61,7 @@ async function saveCertificateRecord(
   tenantId: string, studentId: string, type: string,
   certificateNo: string, generatedBy: string, metadata?: any
 ) {
-  return prisma.certificate.create({
+  return (prisma.certificate as any).create({
     data: {
       tenantId,
       studentId,
@@ -69,7 +69,7 @@ async function saveCertificateRecord(
       certificateNo,
       generatedBy,
       generatedAt: new Date(),
-      status: "generated",
+      status: "ISSUED",
       metadata: metadata || {},
     },
   }).catch(() => null);
@@ -593,7 +593,7 @@ export const getCertificateHistoryHandler = async (req: any, res: Response) => {
     const tenantId = req.tenantId;
     const studentId = req.params.id;
 
-    const certificates = await prisma.certificate.findMany({
+    const certificates = await (prisma.certificate as any).findMany({
       where: { tenantId, studentId },
       orderBy: { generatedAt: "desc" },
       select: {
@@ -647,7 +647,7 @@ export const bulkCertificateHandler = async (req: any, res: Response) => {
           studentId,
           name: student.fullName || `${student.firstName} ${student.lastName}`,
           certificateNo,
-          status: "generated",
+          status: "ISSUED",
         });
       } catch (e: any) {
         errors.push({ studentId, error: e.message });

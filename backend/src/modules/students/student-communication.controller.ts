@@ -48,11 +48,10 @@ export const sendSMSHandler = async (req: any, res: Response) => {
     }
 
     // Log the communication (actual SMS sending would use a provider like Twilio/MSG91)
-    const log = await prisma.communicationLog.create({
-      data: {
+    const log = await (prisma.communicationLog as any).create({ data: {
         studentId,
         tenantId,
-        type: "sms",
+        type: "sms", channel: "SMS",
         message,
         sentTo: phoneNumber,
         sentBy: req.user?.name || req.user?.userId || "System",
@@ -130,11 +129,10 @@ export const sendEmailHandler = async (req: any, res: Response) => {
     }
 
     // Log communication
-    const log = await prisma.communicationLog.create({
-      data: {
+    const log = await (prisma.communicationLog as any).create({ data: {
         studentId,
         tenantId,
-        type: "email",
+        type: "email", channel: "EMAIL",
         subject,
         message: body,
         sentTo: emailAddress,
@@ -209,11 +207,10 @@ export const sendWhatsAppHandler = async (req: any, res: Response) => {
     }
 
     // Log communication
-    const log = await prisma.communicationLog.create({
-      data: {
+    const log = await (prisma.communicationLog as any).create({ data: {
         studentId,
         tenantId,
-        type: "whatsapp",
+        type: "whatsapp", channel: "WHATSAPP",
         message,
         sentTo: whatsappNumber,
         sentBy: req.user?.name || req.user?.userId || "System",
@@ -299,11 +296,10 @@ export const bulkSMSHandler = async (req: any, res: Response) => {
 
       try {
         // Log + send
-        await prisma.communicationLog.create({
-          data: {
+        await (prisma.communicationLog as any).create({ data: {
             studentId: student.id,
             tenantId,
-            type: "sms",
+            type: "sms", channel: "SMS",
             message: message.replace("{{student_name}}", `${student.firstName} ${student.lastName}`),
             sentTo: phoneNumber,
             sentBy: req.user?.name || "System",
@@ -374,9 +370,8 @@ export const bulkEmailHandler = async (req: any, res: Response) => {
           .replace(/{{student_name}}/g, `${student.firstName} ${student.lastName}`)
           .replace(/{{father_name}}/g, student.fatherName || "Parent");
 
-        await prisma.communicationLog.create({
-          data: {
-            studentId: student.id, tenantId, type: "email",
+        await (prisma.communicationLog as any).create({ data: {
+            studentId: student.id, tenantId, type: "email", channel: "EMAIL",
             subject, message: personalizedBody, sentTo: emailAddr,
             sentBy: req.user?.name || "System", status: "sent",
             metadata: { to, bulk: true },
@@ -446,9 +441,8 @@ export const bulkWhatsAppHandler = async (req: any, res: Response) => {
         const personalizedMessage = message
           .replace(/{{student_name}}/g, `${student.firstName} ${student.lastName}`);
 
-        await prisma.communicationLog.create({
-          data: {
-            studentId: student.id, tenantId, type: "whatsapp",
+        await (prisma.communicationLog as any).create({ data: {
+            studentId: student.id, tenantId, type: "whatsapp", channel: "WHATSAPP",
             message: personalizedMessage, sentTo: number,
             sentBy: req.user?.name || "System", status: "sent",
             metadata: { to, bulk: true },
@@ -510,8 +504,7 @@ export const sendBirthdayWishesHandler = async (req: any, res: Response) => {
       const contactEmail = student.email;
 
       try {
-        await prisma.communicationLog.create({
-          data: {
+        await (prisma.communicationLog as any).create({ data: {
             studentId: student.id, tenantId, type: selectedChannel,
             message: personalizedMsg,
             sentTo: selectedChannel === "email" ? (contactEmail || "") : (contactNumber || ""),
@@ -605,9 +598,8 @@ export const sendFeeReminderHandler = async (req: any, res: Response) => {
       if (!contactNumber) continue;
 
       try {
-        await prisma.communicationLog.create({
-          data: {
-            studentId, tenantId, type: "sms",
+        await (prisma.communicationLog as any).create({ data: {
+            studentId, tenantId, type: "sms", channel: "SMS",
             message: personalizedMsg, sentTo: contactNumber,
             sentBy: req.user?.name || "System", status: "sent",
             metadata: { occasion: "fee_reminder", pendingAmount: totalPending },

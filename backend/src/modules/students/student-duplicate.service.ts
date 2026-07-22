@@ -321,7 +321,7 @@ export const cloneStudent = async (
   const { generateAdmissionNumber } = require("./admission-number.service");
   const newAdmNo = overrides.admissionNo || await generateAdmissionNumber(tenantId, source.academicYearId);
 
-  const cloned = await prisma.student.create({
+  const cloned = await (prisma.student as any).create({
     data: {
       ...cloneData,
       admissionNo: newAdmNo,

@@ -31,7 +31,7 @@ export const changeStatus = async (
   // Validate status transition
   const currentStatus = student.status;
   const allowedTransitions = VALID_STATUS_TRANSITIONS[currentStatus] || [];
-  if (!allowedTransitions.includes(newStatus)) {
+  if (!allowedTransitions.includes(newStatus as string)) {
     throw new Error(
       `Invalid status transition: ${currentStatus} → ${newStatus}. ` +
       `Allowed transitions from "${currentStatus}": ${allowedTransitions.join(", ") || "none"}`
@@ -57,7 +57,7 @@ export const changeStatus = async (
         where: { studentId, tenantId, isDeleted: false },
         data: { status: "active" },
       });
-    } else if (["inactive", "suspended", "dropped", "transferred"].includes(newStatus)) {
+    } else if (["inactive", "suspended", "dropped", "transferred"].includes(newStatus as string)) {
       await tx.enrollment.updateMany({
         where: { studentId, tenantId, status: "active", isDeleted: false },
         data: { status: newStatus },
@@ -216,6 +216,7 @@ export const transferStudent = async (
         tenantId,
         module: "STUDENT",
         action: "TRANSFER",
+        entity: "Student",
         entityId: studentId,
         entityType: "Student",
         previousData: { status: student.status },

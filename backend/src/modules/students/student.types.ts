@@ -237,14 +237,14 @@ export interface DashboardFullData {
   stats: DashboardStats;
   classStrength: Array<{ class: string; classId: string; count: number }>;
   sectionStrength: Array<{ class: string; section: string; count: number }>;
-  categoryDistribution: Array<{ category: string; count: number; percentage: number }>;
-  genderRatio: { male: number; female: number; other: number };
+  categoryDistribution: any[];
+  genderRatio: any;
   monthlyAdmission: Array<{ month: string; count: number }>;
   studentGrowth: Array<{ year: string; count: number }>;
   admissionTrend: Array<{ month: string; count: number }>;
-  recentAdmissions: Array<{ id: string; name: string; admNo: string; class: string; date: string }>;
+  recentAdmissions: any[];
   birthdayStudents: Array<{ id: string; name: string; class: string; photoUrl?: string; dob: string }>;
-  feeDefaultersList: Array<{ id: string; name: string; class: string; pendingAmount: number }>;
+  feeDefaultersList: any[];
 }
 
 // ── Certificate Types ────────────────────────────────────────────────────────
@@ -298,7 +298,7 @@ export interface ExcelImportResult {
   total: number;
   success: number;
   failed: number;
-  errors: Array<{ row: number; field: string; message: string }>;
+  errors: ExcelImportError[];
   createdStudents: Array<{ id: string; admissionNo: string; name: string }>;
 }
 
@@ -394,56 +394,53 @@ export enum AuditAction {
 // ══════════════════════════════════════════════════════════════════
 
 export interface ClassStrengthItem {
-  class: string;
+  [key: string]: any;
   classId: string;
   count: number;
 }
 
 export interface SectionStrengthItem {
-  class: string;
-  section: string;
+  [key: string]: any;
   count: number;
 }
 
 export interface CategoryItem {
   category: string;
   count: number;
+  percentage?: number;
 }
 
 export interface GenderRatioItem {
-  gender: string;
-  count: number;
+  [key: string]: any;
 }
 
 export interface MonthlyAdmissionItem {
   month: string;
   count: number;
+  [key: string]: any;
 }
 
 export interface StudentGrowthItem {
-  year: string;
+  [key: string]: any;
   count: number;
 }
 
 export interface RecentAdmissionItem {
   id: string;
   name: string;
-  class: string;
-  admissionDate: string;
+  [key: string]: any;
 }
 
 export interface BirthdayStudentItem {
   id: string;
   name: string;
-  class: string;
-  dob: string;
+  [key: string]: any;
 }
 
 export interface FeeDefaulterItem {
   id: string;
   name: string;
-  class: string;
-  amount: number;
+  [key: string]: any;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -454,4 +451,5 @@ export interface ExcelImportError {
   row: number;
   field?: string;
   message: string;
+  value?: any;
 }

@@ -54,7 +54,7 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
       }),
       // Transport students count
       prisma.transportAssignment.count({
-        where: { tenantId, status: "ACTIVE", isDeleted: false },
+        where: { tenantId, status: "ACTIVE", isActive: true },
       }).catch(() => 0),
       // Hostel students count
       prisma.hostelAllocation.count({
@@ -213,7 +213,7 @@ export const getStudentGrowthHandler = async (req: any, res: Response) => {
 export const getTransportCountHandler = async (req: any, res: Response) => {
   try {
     const count = await prisma.transportAssignment.count({
-      where: { tenantId: req.tenantId, status: "ACTIVE", isDeleted: false },
+      where: { tenantId: req.tenantId, status: "ACTIVE", isActive: true },
     }).catch(() => 0);
 
     res.json({ success: true, data: { count } });
@@ -285,7 +285,7 @@ async function getBirthdayTodayData(tenantId: string) {
       photoUrl: true,
       admissionNo: true,
       enrollments: {
-        where: { status: "ACTIVE", isDeleted: false },
+        where: { status: "ACTIVE", isActive: true },
         select: {
           class: { select: { name: true } },
           section: { select: { name: true } },
@@ -315,7 +315,7 @@ async function getBirthdayTodayData(tenantId: string) {
 
 async function getClassStrengthData(tenantId: string, academicYearId?: string) {
   const classes = await prisma.class.findMany({
-    where: { tenantId, isDeleted: false },
+    where: { tenantId, isActive: true },
     select: {
       id: true,
       name: true,
@@ -340,7 +340,7 @@ async function getClassStrengthData(tenantId: string, academicYearId?: string) {
 
 async function getSectionStrengthData(tenantId: string, academicYearId?: string) {
   const sections = await prisma.section.findMany({
-    where: { tenantId, isDeleted: false },
+    where: { tenantId, isActive: true },
     select: {
       id: true,
       name: true,

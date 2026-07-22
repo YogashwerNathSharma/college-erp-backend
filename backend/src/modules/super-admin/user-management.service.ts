@@ -171,7 +171,7 @@ export const createAdminUserService = async (data: CreateAdminUserDTO) => {
       entity: "User",
       entityType: "User",
       entityId: user.id,
-      tenantId: user.tenantId,
+      tenantId: (user as any).tenantId || '',
       details: { name: user.name, email: user.email, role: user.role },
     },
   }).catch(() => {}); // Non-critical

@@ -1701,17 +1701,13 @@ function gridPlaceNoAdjacent(
     for (let s = 0; s < SEATS_PER_BENCH; s++) {
       if (s !== seatIdx && benchClasses[benchIdx][s] === classId) return false;
     }
-    // Previous bench (front)
+    // Previous bench (front) — same seat position only (directly in front)
     if (benchIdx > 0) {
-      for (let s = 0; s < SEATS_PER_BENCH; s++) {
-        if (benchClasses[benchIdx - 1][s] === classId) return false;
-      }
+      if (benchClasses[benchIdx - 1][seatIdx] === classId) return false;
     }
-    // Next bench (back) — only check if already assigned
+    // Next bench (back) — same seat position only (directly behind)
     if (benchIdx < maxBenches - 1) {
-      for (let s = 0; s < SEATS_PER_BENCH; s++) {
-        if (benchClasses[benchIdx + 1][s] === classId) return false;
-      }
+      if (benchClasses[benchIdx + 1][seatIdx] === classId) return false;
     }
     return true;
   }
@@ -1723,7 +1719,8 @@ function gridPlaceNoAdjacent(
       const classId = classOrder[classIdx];
       if (!classQueues[classId] || classQueues[classId].length === 0) continue;
       if (canPlaceClass(benchIdx, seatIdx, classId)) {
-        colClassPointer[seatIdx] = classIdx;
+        // Advance pointer to NEXT class for this column (ensures rotation across benches)
+        colClassPointer[seatIdx] = (classIdx + 1) % totalClasses;
         return classId;
       }
     }
@@ -1732,7 +1729,7 @@ function gridPlaceNoAdjacent(
 
   let totalPlaced = 0;
   let backtrackCount = 0;
-  const MAX_BACKTRACKS = 1000;
+  const MAX_BACKTRACKS = 5000;
 
   for (let bench = 0; bench < maxBenches; bench++) {
     const remainingTotal = Object.values(classQueues).reduce((sum, q) => sum + q.length, 0);
@@ -1779,9 +1776,24 @@ function gridPlaceNoAdjacent(
               colClassPointer[prev] = (colClassPointer[prev] + 1) % totalClasses;
             }
           } else {
-            // Fallback: try same-bench constraint only (relax adjacency)
+            // Fallback 1: try same-bench + vertical constraint (full rules)
             let placed = false;
             for (const cid of classOrder) {
+              if (!classQueues[cid] || classQueues[cid].length === 0) continue;
+              if (canPlaceClass(bench, seat, cid)) {
+                const student = pullFromClass(cid);
+                if (student) {
+                  benches[bench][seat] = student;
+                  benchClasses[bench][seat] = cid;
+                  assignedIds.add(student.id);
+                  totalPlaced++;
+                  placed = true; break;
+                }
+              }
+            }
+            // Fallback 2: relax vertical, keep same-bench only
+            if (!placed) {
+             for (const cid of classOrder) {
               if (!classQueues[cid] || classQueues[cid].length === 0) continue;
               let sameBench = false;
               for (let s = 0; s < SEATS_PER_BENCH; s++) {
@@ -1796,8 +1808,9 @@ function gridPlaceNoAdjacent(
                 totalPlaced++;
                 placed = true; break;
               }
+              }
             }
-            // Ultimate fallback: any student
+            // Fallback 3 (ultimate): any student at all
             if (!placed) {
               for (const cid of classOrder) {
                 if (!classQueues[cid] || classQueues[cid].length === 0) continue;
@@ -1883,10 +1896,8 @@ export const generateCustomSeatingService = async (
 
   // Rooms to use
   const allRoomIds = (roomIds && roomIds.length > 0) ? roomIds : [roomId];
-  // Enforce 3 seats per bench; rows = number of benches per room
-  const gridSize = rows * SEATS_PER_BENCH; // seats per room (e.g. 20 benches x 3 = 60)
 
-  console.log("\n🪑 [SEATING] Benches:", rows, "x", SEATS_PER_BENCH, "seats =", gridSize, "seats/room | Rooms:", allRoomIds.length, "| Classes:", classIds.length);
+  console.log("\n🪑 [SEATING] Rooms:", allRoomIds.length, "| Classes:", classIds.length);
 
   // Validate schedule
   const schedule = await prisma.examSchedule.findFirst({
@@ -2010,12 +2021,18 @@ export const generateCustomSeatingService = async (
     if (remainingStudents.length === 0) break;
 
     const currentRoomId = allRoomIds[roomIndex];
+    const roomInfo = roomsData.find((r: any) => r.id === currentRoomId);
+    // Use actual room capacity from DB; fallback to frontend-provided rows
+    const roomCapacity = (roomInfo as any)?.capacity || (rows * SEATS_PER_BENCH);
+    const roomBenches = Math.ceil(roomCapacity / SEATS_PER_BENCH);
+    const gridSize = roomBenches * SEATS_PER_BENCH;
+
     let placed: any[];
     let overflow: any[];
 
     if (mixClasses && classIds.length > 1) {
       // Grid placement with no-adjacent-same-class rule
-      const result = gridPlaceNoAdjacent(remainingStudents, rows, SEATS_PER_BENCH);
+      const result = gridPlaceNoAdjacent(remainingStudents, roomBenches, SEATS_PER_BENCH);
       placed = result.placed;
       overflow = result.overflow;
     } else {
@@ -2052,14 +2069,13 @@ export const generateCustomSeatingService = async (
     totalAssigned += seatingData.length;
     remainingStudents = overflow;
 
-    const roomInfo = roomsData.find((r: any) => r.id === currentRoomId);
     roomAssignments.push({
       roomId: currentRoomId,
       roomName: (roomInfo as any)?.name || `Room ${roomIndex + 1}`,
       count: seatingData.length,
     });
 
-    console.log(`🪑 [SEATING] Room ${roomIndex + 1} (${(roomInfo as any)?.name}): ${seatingData.length} students assigned`);
+    console.log(`🪑 [SEATING] Room ${roomIndex + 1} (${(roomInfo as any)?.name}): ${seatingData.length}/${gridSize} seats filled`);
   }
 
   const unassigned = remainingStudents.length;

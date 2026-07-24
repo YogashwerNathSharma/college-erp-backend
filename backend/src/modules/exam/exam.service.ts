@@ -1629,8 +1629,8 @@ export const getExamReportsService = async (
 // CUSTOM SEATING ARRANGEMENT — Multi-class, Configurable
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * Interleave students from different classes so no two from same class are adjacent
+//
+// Interleave students from different classes so no two from same class are adjacent
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BENCH-AWARE SEATING ENGINE v2

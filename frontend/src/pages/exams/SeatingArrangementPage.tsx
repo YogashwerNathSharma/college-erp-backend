@@ -51,6 +51,8 @@ const CLASS_COLORS = [
 interface Exam {
   id: string;
   name: string;
+  classId?: string;
+  academicYearId?: string;
   className?: string;
 }
 
@@ -62,6 +64,7 @@ interface ClassItem {
 interface ScheduleItem {
   id: string;
   subjectName: string;
+  examDate?: string;
   date: string;
   startTime: string;
   endTime?: string;
@@ -167,6 +170,13 @@ const SeatingArrangementPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedExam) fetchSchedules();
+    // Auto-select exam's class when exam is selected
+    if (selectedExam) {
+      const exam = exams.find((e) => e.id === selectedExam);
+      if (exam?.classId && classes.length > 0 && !selectedClassIds.includes(exam.classId)) {
+        setSelectedClassIds([exam.classId]);
+      }
+    }
   }, [selectedExam]);
 
   useEffect(() => {
@@ -223,9 +233,22 @@ const SeatingArrangementPage: React.FC = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get("/api/class", { headers });
+      // Get active academic year first
+      let academicYearId = "";
+      try {
+        const ayRes = await axios.get("/api/academic", { headers });
+        const years = ayRes.data?.data || ayRes.data || [];
+        const active = years.find((y: any) => y.isCurrent || y.isActive);
+        if (active) academicYearId = active.id;
+      } catch {}
+
+      const res = await axios.get("/api/class", {
+        headers,
+        params: academicYearId ? { academicYearId } : undefined,
+      });
       setClasses(res.data?.data || res.data || []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load classes:", err);
       // Silently fail
     }
   };
@@ -242,7 +265,13 @@ const SeatingArrangementPage: React.FC = () => {
   const fetchSchedules = async () => {
     try {
       const res = await axios.get(`/api/exam/${selectedExam}/schedule`, { headers });
-      setSchedules(res.data?.data || res.data || []);
+      const raw = res.data?.data || res.data || [];
+      // Map backend "examDate" to frontend "date" field
+      const mapped = (Array.isArray(raw) ? raw : []).map((sch: any) => ({
+        ...sch,
+        date: sch.date || sch.examDate || "",
+      }));
+      setSchedules(mapped);
     } catch {
       toast.error("Failed to load schedules");
     }
@@ -335,8 +364,11 @@ const SeatingArrangementPage: React.FC = () => {
       }
       try {
         const counts: Record<string, number> = {};
+        // Get academicYearId from selected exam for accurate counting
+        const exam = exams.find((e) => e.id === selectedExam);
+        const ayParam = exam?.academicYearId ? `&academicYearId=${exam.academicYearId}` : "";
         for (const classId of selectedClassIds) {
-          const res = await axios.get(`/api/enrollment/count?classId=${classId}`, { headers });
+          const res = await axios.get(`/api/enrollment/count?classId=${classId}${ayParam}`, { headers });
           counts[classId] = res.data?.count || res.data?.data || 0;
         }
         setClassStudentCounts(counts);
@@ -345,7 +377,7 @@ const SeatingArrangementPage: React.FC = () => {
       }
     };
     fetchClassCounts();
-  }, [selectedClassIds]);
+  }, [selectedClassIds, selectedExam]);
 
   // Fetch how many students are already assigned per room for current schedule
   const fetchRoomUsage = async () => {
@@ -403,6 +435,69 @@ const SeatingArrangementPage: React.FC = () => {
     try {
       // If "Full Schedule" selected, generate for all schedules
       if (selectedSchedule === "__ALL__") {
+        if (schedules.length === 0) {
+          // No schedules exist — generate for exam directly by creating a temp schedule
+          try {
+            const res = await axios.post(
+              "/api/exam/seating/generate-custom",
+              {
+                examScheduleId: selectedExam, // fallback: use exam ID — backend will find exam from schedule
+                roomId: selectedRoomIds[0],
+                roomIds: selectedRoomIds,
+                capacity: customCapacity,
+                rows: customRows,
+                cols: customCols,
+                classIds: selectedClassIds,
+                mixClasses,
+                aiInstruction: aiInstruction.trim() || undefined,
+              },
+              { headers }
+            );
+            const result = res.data?.data || res.data || {};
+            toast.success(`Seating generated! Total: ${result.total || 0} students.`);
+
+            // Refresh schedules (temp schedule was created by backend), then fetch seating
+            const schRes = await axios.get(`/api/exam/${selectedExam}/schedule`, { headers });
+            const rawSch = schRes.data?.data || schRes.data || [];
+            const mappedSch = (Array.isArray(rawSch) ? rawSch : []).map((sch: any) => ({
+              ...sch,
+              date: sch.date || sch.examDate || "",
+            }));
+            setSchedules(mappedSch);
+
+            // Fetch seating directly using the new schedules (can't rely on state yet)
+            let allSeats: Seat[] = [];
+            for (const sch of mappedSch) {
+              try {
+                const seatRes = await axios.get(`/api/exam/seating/${sch.id}`, { headers });
+                const rawData = seatRes.data?.data || seatRes.data || {};
+                const rawSeats = Array.isArray(rawData) ? rawData : rawData.seats || [];
+                const schSeats: Seat[] = rawSeats.map((s: any) => ({
+                  seatNumber: s.seatNumber || s.seatNo || "",
+                  studentId: s.studentId || "",
+                  studentName: s.studentName || "",
+                  fatherName: s.fatherName || "",
+                  roomName: s.roomName || "",
+                  rollNo: s.rollNo || s.admissionNo || "",
+                  className: s.className || "",
+                  sectionName: s.sectionName || "",
+                  assigned: s.assigned ?? !!s.studentId,
+                }));
+                allSeats = [...allSeats, ...schSeats];
+              } catch {}
+            }
+            setSeats(allSeats);
+            const assignedCount = allSeats.filter((s) => s.assigned).length;
+            const totalCap = customRows * customCols * Math.max(selectedRoomIds.length, 1);
+            setStats({ totalCapacity: totalCap, assigned: assignedCount, available: totalCap - assignedCount });
+
+          } catch (err: any) {
+            toast.error(err.response?.data?.message || "No schedules found. Please create exam schedule (subjects/dates) first.");
+          }
+          setGenerating(false);
+          return;
+        }
+
         let successCount = 0;
 
         if (seatingPlanType === "same") {
@@ -476,7 +571,8 @@ const SeatingArrangementPage: React.FC = () => {
       }
       fetchSeating();
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Failed to generate seating";
+      console.error("GENERATE SEATING ERROR:", error);
+      const msg = error.response?.data?.message || error.message || "Failed to generate seating";
       toast.error(msg);
     } finally {
       setGenerating(false);
@@ -662,6 +758,108 @@ const SeatingArrangementPage: React.FC = () => {
   };
 
   // ═══════════════════════════════════════════
+  // CLASS-WISE PRINTABLE LIST
+  // ═══════════════════════════════════════════
+  const handleClassWisePrint = () => {
+    const examName = exams.find((e) => e.id === selectedExam)?.name || "Exam";
+    const schedule = schedules.find((s) => s.id === selectedSchedule);
+    const logoUrl = getFullUrl(tenant?.logoUrl);
+    const schoolName = tenant?.name || "School Name";
+    const schoolAddress = tenant?.address || "";
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const printedBy = user?.name || user?.username || "Admin";
+    const now = new Date();
+    const printDate = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const printTime = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups for printing");
+      return;
+    }
+
+    // Group assigned seats by class
+    const assignedSeats = seats.filter((s) => s.assigned);
+    const classGroups: Record<string, typeof assignedSeats> = {};
+    assignedSeats.forEach((seat) => {
+      const cls = seat.className || "Unknown";
+      if (!classGroups[cls]) classGroups[cls] = [];
+      classGroups[cls].push(seat);
+    });
+
+    // Sort students within each class by rollNo
+    Object.values(classGroups).forEach((group) => {
+      group.sort((a, b) => {
+        const rollA = parseInt(a.rollNo || "0") || 0;
+        const rollB = parseInt(b.rollNo || "0") || 0;
+        return rollA - rollB;
+      });
+    });
+
+    // Logo HTML
+    const logoHTML = logoUrl ? '<img src="' + logoUrl + '" style="width:50px;height:50px;object-fit:contain;" />' : '';
+
+    // Build pages per class
+    const classPages = Object.entries(classGroups).map(([className, students]) => {
+      const rows = students.map((s, idx) =>
+        '<tr>' +
+        '<td style="border:1px solid #333;padding:4px 8px;text-align:center;font-size:11px;">' + (idx + 1) + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;font-size:11px;">' + (s.rollNo || '-') + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;font-size:11px;font-weight:600;">' + (s.studentName || '') + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;font-size:11px;">' + (s.fatherName || '') + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;font-size:11px;">' + (s.sectionName || '-') + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;text-align:center;font-size:11px;font-weight:bold;">' + (s.seatNumber || '-') + '</td>' +
+        '<td style="border:1px solid #333;padding:4px 8px;text-align:center;font-size:11px;">' + (s.roomName || '-') + '</td>' +
+        '</tr>'
+      ).join("");
+
+      return '<div class="class-page">' +
+        '<div class="header">' +
+        '<div style="display:flex;align-items:center;gap:12px;"><div>' + logoHTML + '</div>' +
+        '<div style="text-align:center;flex:1;"><div style="font-size:16px;font-weight:bold;text-transform:uppercase;">' + schoolName + '</div>' +
+        (schoolAddress ? '<div style="font-size:9px;color:#555;">' + schoolAddress + '</div>' : '') + '</div>' +
+        '<div style="font-size:9px;text-align:right;color:#555;">Printed by: ' + printedBy + '<br/>Date: ' + printDate + '<br/>Time: ' + printTime + '</div></div>' +
+        '</div>' +
+        '<div style="border-bottom:2px solid #333;margin:6px 0;"></div>' +
+        '<div style="text-align:center;margin:8px 0;">' +
+        '<div style="font-size:13px;font-weight:bold;">SEATING ARRANGEMENT — CLASS-WISE LIST</div>' +
+        '<div style="font-size:11px;margin-top:4px;">Exam: <strong>' + examName + '</strong>' +
+        (schedule?.subjectName ? ' | Subject: <strong>' + schedule.subjectName + '</strong>' : ' | All Subjects') +
+        (schedule?.date ? ' | Date: ' + new Date(schedule.date).toLocaleDateString("en-IN") : '') +
+        '</div>' +
+        '<div style="font-size:11px;margin-top:2px;">Total Records: <strong>' + students.length + '</strong></div>' +
+        '</div>' +
+        '<div style="font-size:12px;font-weight:bold;margin:8px 0 4px;padding:4px 8px;background:#f0f0f0;border:1px solid #ccc;">Class: ' + className + '</div>' +
+        '<table style="width:100%;border-collapse:collapse;margin-top:4px;">' +
+        '<thead><tr style="background:#e5e7eb;">' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;width:35px;">S.No</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;width:60px;">Roll No</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;text-align:left;">Student Name</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;text-align:left;">Father Name</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;width:60px;">Section</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;width:60px;">Seat No</th>' +
+        '<th style="border:1px solid #333;padding:5px;font-size:10px;width:70px;">Room</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+        '</div>';
+    }).join("");
+
+    const htmlContent = '<!DOCTYPE html><html><head><title>Class-Wise Seating List - ' + examName + '</title>' +
+      '<style>' +
+      '@page { size: A4 portrait; margin: 10mm; }' +
+      'body { font-family: Times New Roman, serif; margin: 0; padding: 0; }' +
+      '.class-page { padding: 14px; page-break-after: always; }' +
+      '.class-page:last-child { page-break-after: auto; }' +
+      '.header { margin-bottom: 4px; }' +
+      '</style></head><body>' + classPages + '</body></html>';
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  // ═══════════════════════════════════════════
   // YN-UDP PRINT
   // ═══════════════════════════════════════════
   const handleYnUdpPrint = async () => {
@@ -742,6 +940,13 @@ const SeatingArrangementPage: React.FC = () => {
                 >
                   <Printer className="w-4 h-4" />
                   Print
+                </button>
+                <button
+                  onClick={handleClassWisePrint}
+                  className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Class-Wise List
                 </button>
                 <button
                   onClick={handleYnUdpPrint}

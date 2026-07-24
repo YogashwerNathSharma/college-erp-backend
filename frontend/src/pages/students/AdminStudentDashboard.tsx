@@ -111,7 +111,7 @@ export default function AdminStudentDashboard() {
 
   const fetchAcademicYears = async () => {
     try {
-      const res = await api.get("/academic-years");
+      const res = await api.get("/academic");
       if (res.data.success) setAcademicYears(res.data.data || []);
     } catch { /* silent */ }
   };

@@ -17,7 +17,7 @@ export const createClassService = async (data: any, tenantId: string) => {
 // ─── Get All Classes (non-deleted) ───────────────────────────────────────────
 
 export const getClassesService = async (tenantId: string, academicYearId?: string) => {
-  const where: any = { tenantId, isDeleted: false };
+  const where: any = { tenantId, NOT: { isDeleted: true } };
 
   if (academicYearId) {
     where.academicYearId = academicYearId;
@@ -26,10 +26,7 @@ export const getClassesService = async (tenantId: string, academicYearId?: strin
   return prisma.class.findMany({
     where,
     include: {
-      sections: {
-        where: { isActive: true },
-        select: { id: true, name: true },
-      },
+      sections: { select: { id: true, name: true } },
     },
     orderBy: { name: "asc" },
   });

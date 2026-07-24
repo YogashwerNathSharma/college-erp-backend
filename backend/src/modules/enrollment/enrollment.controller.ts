@@ -70,6 +70,7 @@ export const getEnrollmentCount = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const classId = req.query.classId as string;
+    const academicYearId = req.query.academicYearId as string | undefined;
 
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -78,7 +79,7 @@ export const getEnrollmentCount = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "classId required" });
     }
 
-    const count = await service.getEnrollmentCountByClass(classId, tenantId);
+    const count = await service.getEnrollmentCountByClass(classId, tenantId, academicYearId);
 
     return res.status(200).json({ success: true, count });
   } catch (error: any) {

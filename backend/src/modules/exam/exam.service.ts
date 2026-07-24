@@ -14,6 +14,11 @@ import {
 } from "./exam.types";
 
 // ─────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────
+const SEATS_PER_BENCH = 3; // Left, Middle, Right
+
+// ─────────────────────────────────────────────────────
 // HELPER: Calculate grade from percentage
 // ─────────────────────────────────────────────────────
 function calculateGrade(
@@ -1040,13 +1045,14 @@ export const generateSeatingService = async (
 
   // Auto assign: A1, A2, A3... B1, B2...
   const seatingData = students.map((student: any, index: number) => {
-    const row = String.fromCharCode(65 + Math.floor(index / 6));
-    const col = (index % 6) + 1;
+    const benchNum = Math.floor(index / SEATS_PER_BENCH) + 1;
+    const seatPositions = ["L", "M", "R"];
+    const seatPos = seatPositions[index % SEATS_PER_BENCH];
     return {
       examScheduleId,
       studentId: student.id,
       tenantId,
-      seatNo: `${row}${col}`,
+      seatNo: `B${benchNum}-${seatPos}`,
       roomId,
       isDeleted: false,
     };
@@ -1625,118 +1631,235 @@ export const getExamReportsService = async (
 
 /**
  * Interleave students from different classes so no two from same class are adjacent
- */
-function interleaveByClass(students: any[]): any[] {
-  // Group students by classId
-  const groups: Record<string, any[]> = {};
-  for (const s of students) {
-    const key = s._classId || "unknown";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
-  }
 
-  const classKeys = Object.keys(groups);
-  if (classKeys.length <= 1) return students; // only one class, no mixing needed
+// ═══════════════════════════════════════════════════════════════════════════
+// BENCH-AWARE SEATING ENGINE v2
+// ═══════════════════════════════════════════════════════════════════════════
+// Rules:
+//   1. Each bench has 3 seats: Left (col 0), Middle (col 1), Right (col 2)
+//   2. No bench may have 2 students from the same class
+//   3. Adjacent benches (front/back) must not have the same class in ANY seat
+//   4. One student = one seat only (no duplicates)
+//   5. Continuous allocation: exhaust current class, then seamlessly move to next
+//   6. Sequential room fill: fill rooms one after another
+//   7. Backtracking when constraints cannot be satisfied
+// ═══════════════════════════════════════════════════════════════════════════
 
-  // Round-robin pick from each class
-  const result: any[] = [];
-  let idx = 0;
-  let hasMore = true;
-  while (hasMore) {
-    hasMore = false;
-    for (const key of classKeys) {
-      if (groups[key].length > 0) {
-        result.push(groups[key].shift()!);
-        hasMore = true;
-      }
-    }
-    idx++;
-    if (idx > 10000) break; // safety
-  }
-  return result;
-}
-
-/**
- * Grid-aware placement: No same-class student in adjacent seats (left, right, front, back)
- * Returns array in grid-row order (row-major). Students that can't fit are returned in overflow.
- */
 function gridPlaceNoAdjacent(
   students: any[],
   rows: number,
   cols: number
 ): { placed: any[]; overflow: any[] } {
-  const gridSize = rows * cols;
+  const maxBenches = rows;
+  const gridSize = maxBenches * SEATS_PER_BENCH;
 
-  // If fewer students than grid, all go in this room
-  // If more students than grid, first gridSize go here, rest overflow
-  const forThisRoom = students.slice(0, gridSize);
-  const overflow = students.slice(gridSize);
+  if (students.length === 0) return { placed: [], overflow: [] };
 
-  // Now arrange forThisRoom in grid with best-effort no-adjacent-same-class
-  const grid: (any | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null));
-
-  // Group by class for round-robin
-  const groups: Record<string, any[]> = {};
-  for (const s of forThisRoom) {
-    const key = s._classId || "unknown";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
+  // Build class queues in order of appearance (continuous allocation)
+  const classOrder: string[] = [];
+  const classQueues: Record<string, any[]> = {};
+  for (const s of students) {
+    const cid = s._classId || "unknown";
+    if (!classQueues[cid]) {
+      classQueues[cid] = [];
+      classOrder.push(cid);
+    }
+    classQueues[cid].push(s);
   }
-  const classKeys = Object.keys(groups);
 
-  // Helper: check adjacency
-  function canPlace(r: number, c: number, classId: string): boolean {
-    if (c > 0 && grid[r][c - 1] && grid[r][c - 1]._classId === classId) return false;
-    if (c < cols - 1 && grid[r][c + 1] && grid[r][c + 1]._classId === classId) return false;
-    if (r > 0 && grid[r - 1][c] && grid[r - 1][c]._classId === classId) return false;
-    if (r < rows - 1 && grid[r + 1][c] && grid[r + 1][c]._classId === classId) return false;
+  const totalClasses = classOrder.length;
+
+  // If only 1 class, no mixing possible — fill sequentially
+  if (totalClasses === 1) {
+    return { placed: students.slice(0, gridSize), overflow: students.slice(gridSize) };
+  }
+
+  // Grid: benches[benchIdx][seatIdx]
+  const benches: (any | null)[][] = Array.from({ length: maxBenches }, () => Array(SEATS_PER_BENCH).fill(null));
+  const benchClasses: (string | null)[][] = Array.from({ length: maxBenches }, () => Array(SEATS_PER_BENCH).fill(null));
+  const assignedIds = new Set<string>();
+
+  // Stagger class pointers per column for maximum diversity
+  const colClassPointer: number[] = [];
+  for (let col = 0; col < SEATS_PER_BENCH; col++) {
+    colClassPointer.push(col % totalClasses);
+  }
+
+  function pullFromClass(classId: string): any | null {
+    const queue = classQueues[classId];
+    if (!queue) return null;
+    while (queue.length > 0) {
+      const student = queue.shift()!;
+      if (!assignedIds.has(student.id)) return student;
+    }
+    return null;
+  }
+
+  // Constraint check: no same class on bench + no same class on adjacent benches
+  function canPlaceClass(benchIdx: number, seatIdx: number, classId: string): boolean {
+    // Same bench check
+    for (let s = 0; s < SEATS_PER_BENCH; s++) {
+      if (s !== seatIdx && benchClasses[benchIdx][s] === classId) return false;
+    }
+    // Previous bench (front)
+    if (benchIdx > 0) {
+      for (let s = 0; s < SEATS_PER_BENCH; s++) {
+        if (benchClasses[benchIdx - 1][s] === classId) return false;
+      }
+    }
+    // Next bench (back) — only check if already assigned
+    if (benchIdx < maxBenches - 1) {
+      for (let s = 0; s < SEATS_PER_BENCH; s++) {
+        if (benchClasses[benchIdx + 1][s] === classId) return false;
+      }
+    }
     return true;
   }
 
-  // Fill grid: try best-effort adjacency, but NEVER leave a seat empty
-  let classIdx = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      let placed = false;
+  function findNextClass(benchIdx: number, seatIdx: number): string | null {
+    const startPointer = colClassPointer[seatIdx];
+    for (let attempt = 0; attempt < totalClasses; attempt++) {
+      const classIdx = (startPointer + attempt) % totalClasses;
+      const classId = classOrder[classIdx];
+      if (!classQueues[classId] || classQueues[classId].length === 0) continue;
+      if (canPlaceClass(benchIdx, seatIdx, classId)) {
+        colClassPointer[seatIdx] = classIdx;
+        return classId;
+      }
+    }
+    return null;
+  }
 
-      // Try round-robin with adjacency check
-      for (let attempt = 0; attempt < classKeys.length; attempt++) {
-        const tryIdx = (classIdx + attempt) % classKeys.length;
-        const tryKey = classKeys[tryIdx];
-        if (groups[tryKey].length > 0 && canPlace(r, c, tryKey)) {
-          grid[r][c] = groups[tryKey].shift()!;
-          classIdx = (tryIdx + 1) % classKeys.length;
-          placed = true;
+  let totalPlaced = 0;
+  let backtrackCount = 0;
+  const MAX_BACKTRACKS = 1000;
+
+  for (let bench = 0; bench < maxBenches; bench++) {
+    const remainingTotal = Object.values(classQueues).reduce((sum, q) => sum + q.length, 0);
+    if (remainingTotal === 0) break;
+
+    let benchDone = false;
+    let benchAttempts = 0;
+
+    while (!benchDone && benchAttempts < totalClasses * 3) {
+      benchAttempts++;
+      let allOk = true;
+
+      for (let seat = 0; seat < SEATS_PER_BENCH; seat++) {
+        if (benches[bench][seat] !== null) continue;
+
+        const remaining = Object.values(classQueues).reduce((sum, q) => sum + q.length, 0);
+        if (remaining === 0) { allOk = true; break; }
+
+        const classId = findNextClass(bench, seat);
+        if (classId) {
+          const student = pullFromClass(classId);
+          if (student) {
+            benches[bench][seat] = student;
+            benchClasses[bench][seat] = classId;
+            assignedIds.add(student.id);
+            totalPlaced++;
+          } else {
+            allOk = false; break;
+          }
+        } else {
+          // Backtrack or fallback
+          allOk = false;
+          if (backtrackCount < MAX_BACKTRACKS && seat > 0) {
+            backtrackCount++;
+            const prev = seat - 1;
+            const prevStudent = benches[bench][prev];
+            if (prevStudent) {
+              const prevCid = benchClasses[bench][prev]!;
+              classQueues[prevCid].unshift(prevStudent);
+              assignedIds.delete(prevStudent.id);
+              benches[bench][prev] = null;
+              benchClasses[bench][prev] = null;
+              totalPlaced--;
+              colClassPointer[prev] = (colClassPointer[prev] + 1) % totalClasses;
+            }
+          } else {
+            // Fallback: try same-bench constraint only (relax adjacency)
+            let placed = false;
+            for (const cid of classOrder) {
+              if (!classQueues[cid] || classQueues[cid].length === 0) continue;
+              let sameBench = false;
+              for (let s = 0; s < SEATS_PER_BENCH; s++) {
+                if (s !== seat && benchClasses[bench][s] === cid) { sameBench = true; break; }
+              }
+              if (sameBench) continue;
+              const student = pullFromClass(cid);
+              if (student) {
+                benches[bench][seat] = student;
+                benchClasses[bench][seat] = cid;
+                assignedIds.add(student.id);
+                totalPlaced++;
+                placed = true; break;
+              }
+            }
+            // Ultimate fallback: any student
+            if (!placed) {
+              for (const cid of classOrder) {
+                if (!classQueues[cid] || classQueues[cid].length === 0) continue;
+                const student = pullFromClass(cid);
+                if (student) {
+                  benches[bench][seat] = student;
+                  benchClasses[bench][seat] = cid;
+                  assignedIds.add(student.id);
+                  totalPlaced++;
+                  placed = true; break;
+                }
+              }
+            }
+            if (!placed) { allOk = true; break; }
+          }
           break;
         }
       }
-
-      // If adjacency failed, place ANY remaining student (no empty seats!)
-      if (!placed) {
-        for (const key of classKeys) {
-          if (groups[key].length > 0) {
-            grid[r][c] = groups[key].shift()!;
-            placed = true;
-            break;
-          }
-        }
-      }
-
-      if (!placed) break; // No students left
+      if (allOk) benchDone = true;
     }
   }
 
-  // Collect placed students in row-major order
+  // Collect in bench-row order
   const placed: any[] = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c] !== null) {
-        placed.push(grid[r][c]);
-      }
+  for (let b = 0; b < maxBenches; b++) {
+    for (let s = 0; s < SEATS_PER_BENCH; s++) {
+      if (benches[b][s] !== null) placed.push(benches[b][s]);
     }
+  }
+
+  // Overflow: remaining students
+  const overflow: any[] = [];
+  for (const cid of classOrder) {
+    if (classQueues[cid]) overflow.push(...classQueues[cid]);
   }
 
   return { placed, overflow };
+}
+
+
+function interleaveByClass(students: any[]): any[] {
+  const groups: Record<string, any[]> = {};
+  const classOrder: string[] = [];
+  for (const s of students) {
+    const key = s._classId || "unknown";
+    if (!groups[key]) { groups[key] = []; classOrder.push(key); }
+    groups[key].push(s);
+  }
+  if (classOrder.length <= 1) return students;
+
+  const result: any[] = [];
+  let hasMore = true;
+  let safety = 0;
+  while (hasMore) {
+    hasMore = false;
+    for (const key of classOrder) {
+      if (groups[key].length > 0) { result.push(groups[key].shift()!); hasMore = true; }
+    }
+    safety++;
+    if (safety > 500000) break;
+  }
+  return result;
 }
 
 
@@ -1760,15 +1883,15 @@ export const generateCustomSeatingService = async (
 
   // Rooms to use
   const allRoomIds = (roomIds && roomIds.length > 0) ? roomIds : [roomId];
-  const gridSize = rows * cols; // seats per room (e.g. 5x8 = 40)
+  // Enforce 3 seats per bench; rows = number of benches per room
+  const gridSize = rows * SEATS_PER_BENCH; // seats per room (e.g. 20 benches x 3 = 60)
 
-  console.log("\n🪑 [SEATING] Grid:", rows, "x", cols, "=", gridSize, "seats/room | Rooms:", allRoomIds.length, "| Classes:", classIds.length);
+  console.log("\n🪑 [SEATING] Benches:", rows, "x", SEATS_PER_BENCH, "seats =", gridSize, "seats/room | Rooms:", allRoomIds.length, "| Classes:", classIds.length);
 
   // Validate schedule
   const schedule = await prisma.examSchedule.findFirst({
     where: { id: examScheduleId, tenantId, isDeleted: false },
   });
-  if (!schedule) throw new Error("Schedule not found");
 
   // Validate rooms
   const roomsData = await prisma.room.findMany({
@@ -1776,11 +1899,44 @@ export const generateCustomSeatingService = async (
   });
   if (roomsData.length === 0) throw new Error("No valid rooms found");
 
-  // Get exam
-  const exam = await prisma.exam.findFirst({
-    where: { id: schedule.examId, tenantId, isDeleted: false },
-  });
-  if (!exam) throw new Error("Exam not found");
+  // Get exam — try from schedule, fallback to examScheduleId being an exam ID directly (no schedules case)
+  let exam: any = null;
+  let actualScheduleId = examScheduleId;
+
+  if (schedule) {
+    exam = await prisma.exam.findFirst({
+      where: { id: schedule.examId, tenantId, isDeleted: false },
+    });
+  }
+  if (!exam) {
+    // Fallback: examScheduleId might be the exam ID itself (when no schedules exist)
+    exam = await prisma.exam.findFirst({
+      where: { id: examScheduleId, tenantId, isDeleted: false },
+    });
+    if (exam) {
+      // Create a temp schedule so we can store seating (FK constraint requires valid examScheduleId)
+      // Get a valid subjectId for this exam's class
+      const firstSubject = await prisma.subject.findFirst({
+        where: { classId: exam.classId, tenantId },
+      });
+      if (!firstSubject) throw new Error("No subjects found for this class. Please add subjects first.");
+
+      const tempSchedule = await prisma.examSchedule.create({
+        data: {
+          examId: exam.id,
+          subjectId: firstSubject.id,
+          tenantId,
+          examDate: new Date(),
+          startTime: "09:00",
+          endTime: "12:00",
+          roomId: allRoomIds[0],
+        },
+      });
+      actualScheduleId = tempSchedule.id;
+      console.log("🪑 [SEATING] Created temp schedule:", tempSchedule.id, "for exam:", exam.id);
+    }
+  }
+  if (!exam) throw new Error("Exam not found. Please create an exam schedule first.");
 
   // Fetch students from selected classes
   const enrollments = await prisma.enrollment.findMany({
@@ -1842,7 +1998,7 @@ export const generateCustomSeatingService = async (
 
   // *** HARD DELETE all old seating for this schedule (no soft-delete bloat) ***
   await prisma.seatingArrangement.deleteMany({
-    where: { examScheduleId, tenantId },
+    where: { examScheduleId: actualScheduleId, tenantId },
   });
 
   // Fill rooms one by one with grid-aware placement
@@ -1859,7 +2015,7 @@ export const generateCustomSeatingService = async (
 
     if (mixClasses && classIds.length > 1) {
       // Grid placement with no-adjacent-same-class rule
-      const result = gridPlaceNoAdjacent(remainingStudents, rows, cols);
+      const result = gridPlaceNoAdjacent(remainingStudents, rows, SEATS_PER_BENCH);
       placed = result.placed;
       overflow = result.overflow;
     } else {
@@ -1876,13 +2032,14 @@ export const generateCustomSeatingService = async (
 
     // Create seating records
     const seatingData = placed.map((student: any, index: number) => {
-      const rowChar = String.fromCharCode(65 + Math.floor(index / cols));
-      const colNum = (index % cols) + 1;
+      const benchNum = Math.floor(index / SEATS_PER_BENCH) + 1;
+      const seatPositions = ["L", "M", "R"];
+      const seatPos = seatPositions[index % SEATS_PER_BENCH];
       return {
-        examScheduleId,
+        examScheduleId: actualScheduleId,
         studentId: student.id,
         tenantId,
-        seatNo: `${rowChar}${colNum}`,
+        seatNo: `B${benchNum}-${seatPos}`,
         roomId: currentRoomId,
         isDeleted: false,
       };
@@ -1915,7 +2072,7 @@ export const generateCustomSeatingService = async (
 
     // Get all seating records just created for the primary schedule
     const primaryRecords = await prisma.seatingArrangement.findMany({
-      where: { examScheduleId, tenantId, isDeleted: false },
+      where: { examScheduleId: actualScheduleId, tenantId, isDeleted: false },
     });
 
     for (const targetScheduleId of copyToScheduleIds) {
@@ -1968,41 +2125,22 @@ function applyAiInstruction(
 ): any[] {
   const lower = instruction.toLowerCase();
 
-  // Pattern: "random" — shuffle then interleave
+  // Pattern: "random" — shuffle students before bench placement
   if (lower.includes("random")) {
-    const shuffled = shuffleArray(students);
-    return interleaveByClass(shuffled);
+    return shuffleArray(students);
   }
 
-  // Pattern: "alternate" — alternate classes in a strict pattern
+  // Pattern: "alternate" — interleave classes for better distribution
   if (lower.includes("alternate") || lower.includes("alternating")) {
     return interleaveByClass(students);
   }
 
-  // Pattern: "row" — assign classes to specific rows
-  // e.g., "Put class 5 in first 2 rows and class 6 in last 3 rows"
-  if (lower.includes("row")) {
-    // Group by class
-    const groups: Record<string, any[]> = {};
-    for (const s of students) {
-      const key = s._classId || "unknown";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(s);
-    }
-    // Assign each class sequentially row-by-row
-    const result: any[] = [];
-    for (const key of Object.keys(groups)) {
-      result.push(...groups[key]);
-    }
-    return result;
-  }
-
-  // Pattern: "reverse" — reverse roll number order
+  // Pattern: "reverse" — reverse order
   if (lower.includes("reverse")) {
     return [...students].reverse();
   }
 
-  // Default: interleave
+  // Default: interleave for maximum constraint satisfaction
   return interleaveByClass(students);
 }
 

@@ -27,6 +27,10 @@ export const getFullDashboardData = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<DashboardFullData> => {
+  const safeCall = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try { return await fn(); } catch (e) { console.error("Dashboard sub-query failed:", e); return fallback; }
+  };
+
   const [
     stats,
     classStrength,
@@ -39,16 +43,16 @@ export const getFullDashboardData = async (
     birthdayStudents,
     feeDefaultersList,
   ] = await Promise.all([
-    getDashboardStats(tenantId, academicYearId),
-    getClassStrength(tenantId, academicYearId),
-    getSectionStrength(tenantId, academicYearId),
-    getCategoryDistribution(tenantId, academicYearId),
-    getGenderRatio(tenantId, academicYearId),
-    getMonthlyAdmissionTrend(tenantId, academicYearId),
-    getStudentGrowth(tenantId),
-    getRecentAdmissions(tenantId, 10),
-    getBirthdayToday(tenantId),
-    getFeeDefaulters(tenantId, academicYearId),
+    safeCall(() => getDashboardStats(tenantId, academicYearId), {} as DashboardStats),
+    safeCall(() => getClassStrength(tenantId, academicYearId), []),
+    safeCall(() => getSectionStrength(tenantId, academicYearId), []),
+    safeCall(() => getCategoryDistribution(tenantId, academicYearId), []),
+    safeCall(() => getGenderRatio(tenantId, academicYearId), { male: 0, female: 0, other: 0, total: 0 }),
+    safeCall(() => getMonthlyAdmissionTrend(tenantId, academicYearId), []),
+    safeCall(() => getStudentGrowth(tenantId), []),
+    safeCall(() => getRecentAdmissions(tenantId, 10), []),
+    safeCall(() => getBirthdayToday(tenantId), []),
+    safeCall(() => getFeeDefaulters(tenantId, academicYearId), []),
   ]);
 
   return {
@@ -63,8 +67,9 @@ export const getFullDashboardData = async (
     recentAdmissions,
     birthdayStudents,
     feeDefaultersList,
-  };
+  } as any;
 };
+
 
 // ============================================
 // DASHBOARD STATS (counts)
@@ -411,16 +416,12 @@ export const getGenderRatio = async (
   ).length;
   const otherCount = total - maleCount - femaleCount;
 
-  const result: GenderRatioItem[] = [
-    { gender: "Male", count: maleCount, percentage: total > 0 ? Math.round((maleCount / total) * 100) : 0 },
-    { gender: "Female", count: femaleCount, percentage: total > 0 ? Math.round((femaleCount / total) * 100) : 0 },
-  ];
-
-  if (otherCount > 0) {
-    result.push({ gender: "Other", count: otherCount, percentage: Math.round((otherCount / total) * 100) });
-  }
-
-  return result;
+  return {
+    male: maleCount,
+    female: femaleCount,
+    other: otherCount,
+    total,
+  } as any;
 };
 
 // ============================================

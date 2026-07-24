@@ -156,13 +156,14 @@ export const createEnrollment = async (body: any, user: any) => {
 /////////////////////////
 // COUNT ENROLLMENTS BY CLASS
 /////////////////////////
-export const getEnrollmentCountByClass = async (classId: string, tenantId: string) => {
+export const getEnrollmentCountByClass = async (classId: string, tenantId: string, academicYearId?: string) => {
   const count = await prisma.enrollment.count({
     where: {
       classId,
       tenantId,
       status: "active",
       isDeleted: false,
+      ...(academicYearId && { academicYearId }),
     },
   });
   return count;

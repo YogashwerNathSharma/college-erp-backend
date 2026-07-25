@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
+import { cached, invalidateCache } from "../../utils/cache";
 
 export const getDashboard = async (
   req: Request,
@@ -7,13 +8,12 @@ export const getDashboard = async (
 ) => {
 
   try {
+    const _startTime = Date.now();
 
     const {
       tenantId,
       role,
     } = req.user as any;
-
-    console.log("USER =>", req.user);
 
     //////////////////////////////////////////////////////
     // 🧠 SUPER ADMIN DASHBOARD
@@ -227,121 +227,86 @@ export const getDashboard = async (
     // 👨‍🎓 TOTAL STUDENTS
     //////////////////////////////////////////////////////
 
-    const totalStudents =
-      await prisma.student.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-        },
-      });
-
-    //////////////////////////////////////////////////////
-    // 🏫 TOTAL CLASSES
-    //////////////////////////////////////////////////////
-
-    const totalClasses =
-      await prisma.class.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-        },
-      });
-
-    //////////////////////////////////////////////////////
-    // 👨🏫 TOTAL TEACHERS
-    //////////////////////////////////////////////////////
-
-    const totalTeachers =
-      await prisma.teacher.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-        },
-      });
-
-    //////////////////////////////////////////////////////
-    // 📋 ATTENDANCE TODAY
-    //////////////////////////////////////////////////////
+    // 🚀 CACHED DASHBOARD DATA (30s TTL — instant on repeated loads)
+    const dashData = await cached(`dashboard:${tenantId}`, 30000, async () => {
+    // ══════════════════════════════════════════════════════
+    // 🚀 PARALLEL QUERY EXECUTION (all independent queries at once)
+    // ══════════════════════════════════════════════════════
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const todayDay = dayNames[new Date().getDay()] as any;
 
-    const totalAttendanceToday = await prisma.attendance.count({
-      where: {
-        tenantId,
-        date: { gte: today, lt: tomorrow },
-      },
-    });
+    // ─── BATCH 1: All counts + aggregates (independent) ───
+    const [
+      totalStudents,
+      totalClasses,
+      totalTeachers,
+      totalAttendanceToday,
+      presentToday,
+      maleCount,
+      femaleCount,
+      classStrength,
+      classRecords,
+      fees,
+      tenant,
+    ] = await Promise.all([
+      prisma.student.count({ where: { tenantId, isDeleted: false } }),
+      prisma.class.count({ where: { tenantId, isDeleted: false } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+      prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
+      prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
+      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "Male" } }),
+      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "Female" } }),
+      prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
+      prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
+      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
+    ]);
 
-    const presentToday = await prisma.attendance.count({
-      where: {
-        tenantId,
-        date: { gte: today, lt: tomorrow },
-        status: { in: ["PRESENT", "LATE"] },
-      },
-    });
+    // ─── BATCH 2: Data-heavy queries (also parallel) ───
+    const [
+      attendanceRecords,
+      feeData,
+      recentPaymentsRaw,
+      defaultersRaw,
+      todayTimetableRaw,
+      upcomingEvents,
+      noticesRaw,
+      allStudents,
+      upcomingExamsRaw,
+    ] = await Promise.all([
+      prisma.attendance.findMany({ where: { tenantId, date: { gte: sevenDaysAgo, lt: tomorrow } }, select: { date: true, status: true } }),
+      prisma.studentFee.findMany({ where: { tenantId }, select: { paidAmount: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
+      prisma.payment.findMany({ where: { tenantId, isDeleted: false }, orderBy: { paymentDate: "desc" }, take: 5, select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } }),
+      prisma.studentFee.findMany({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 }, enrollment: { status: "active" } }, orderBy: { balanceAmount: "desc" }, take: 5, select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+      todayDay !== "SUN" ? prisma.timetable.findMany({ where: { tenantId, day: todayDay }, orderBy: { period: "asc" }, select: { period: true, subject: { select: { name: true } }, class: { select: { name: true } }, section: { select: { name: true } }, teacher: { select: { firstName: true, lastName: true } } } }) : Promise.resolve([]),
+      prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
+      prisma.notice.findMany({ where: { tenantId, isDeleted: false, isActive: true }, orderBy: { createdAt: "desc" }, take: 10, select: { title: true, content: true, type: true, createdAt: true } }),
+      prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true } }),
+      prisma.examSchedule.findMany({ where: { tenantId, isDeleted: false, examDate: { gte: new Date() } }, orderBy: { examDate: "asc" }, take: 10, select: { examDate: true, startTime: true, subject: { select: { name: true } }, exam: { select: { name: true } } } }),
+    ]);
 
-    const attendanceToday = totalAttendanceToday > 0
-      ? Math.round((presentToday / totalAttendanceToday) * 100)
-      : null;
+    // ─── PROCESS RESULTS (CPU only, no I/O) ───
 
-    //////////////////////////////////////////////////////
-    // 👦👧 GENDER BREAKDOWN
-    //////////////////////////////////////////////////////
+    const attendanceToday = totalAttendanceToday > 0 ? Math.round((presentToday / totalAttendanceToday) * 100) : null;
 
-    const maleCount = await prisma.student.count({
-      where: { tenantId, isDeleted: false, gender: "Male" },
-    });
-    const femaleCount = await prisma.student.count({
-      where: { tenantId, isDeleted: false, gender: "Female" },
-    });
     const otherGenderCount = totalStudents - maleCount - femaleCount;
-
     const genderData = [
       { name: "Boys", value: maleCount },
       { name: "Girls", value: femaleCount },
       { name: "Other", value: otherGenderCount > 0 ? otherGenderCount : 0 },
     ];
 
-    //////////////////////////////////////////////////////
-    // 📊 CLASS-WISE STRENGTH
-    //////////////////////////////////////////////////////
-
-    const classStrength = await prisma.enrollment.groupBy({
-      by: ["classId"],
-      where: { tenantId, isDeleted: false, status: "active" },
-      _count: { id: true },
-    });
-
-    const classRecords = await prisma.class.findMany({
-      where: { tenantId, isDeleted: false },
-      select: { id: true, name: true },
-    });
-
     const classWiseStrength = classStrength.map((cs: any) => {
       const cls = classRecords.find((c: any) => c.id === cs.classId);
       return { name: cls?.name || "Unknown", students: cs._count.id };
-    }).sort((a: any, b: any) => {
-      // Natural sort for class names
-      return a.name.localeCompare(b.name, undefined, { numeric: true });
-    });
-
-    //////////////////////////////////////////////////////
-    // 📈 ATTENDANCE TREND (7 days)
-    //////////////////////////////////////////////////////
-
-    const sevenDaysAgo = new Date(today);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const attendanceRecords = await prisma.attendance.findMany({
-      where: {
-        tenantId,
-        date: { gte: sevenDaysAgo, lt: tomorrow },
-      },
-      select: { date: true, status: true },
-    });
+    }).sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
     const attendanceTrendMap: Record<string, { total: number; present: number }> = {};
     attendanceRecords.forEach((a: any) => {
@@ -350,383 +315,81 @@ export const getDashboard = async (
       attendanceTrendMap[day].total++;
       if (a.status === "PRESENT" || a.status === "LATE") attendanceTrendMap[day].present++;
     });
-
     const attendanceTrend = Object.entries(attendanceTrendMap).map(([day, val]) => ({
-      day,
-      percentage: val.total > 0 ? Math.round((val.present / val.total) * 100) : 0,
+      day, percentage: val.total > 0 ? Math.round((val.present / val.total) * 100) : 0,
     }));
 
-    //////////////////////////////////////////////////////
-    // 💰 FEES SUMMARY
-    //////////////////////////////////////////////////////
+    const totalPaid = Math.round(fees._sum.paidAmount ?? 0);
+    const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
 
-   const fees = await prisma.studentFee.aggregate({
-  _sum: {
-    paidAmount: true,
-    balanceAmount: true,
-    totalAmount: true,
-  },
-  where: {
-    tenantId: tenantId,
-    isDeleted: false,
-  },
-});
-
-   const totalPaid = Math.round(fees._sum.paidAmount ?? 0);
-const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
-
-    const tenant =
-  await prisma.tenant.findUnique({
-
-    where: {
-      id: tenantId,
-    },
-
-    select: {
-      name: true,
-      logoUrl: true,
-      backgroundUrl: true,
-      type: true,
-
-      address: true,
-      phone: true,
-      email: true,
-    },
-  });
-    //////////////////////////////////////////////////////
-    // 📈 MONTHLY FEES DATA
-    //////////////////////////////////////////////////////
-
-    const feeData =
-      await prisma.studentFee.findMany({
-
-        where: {
-          tenantId,
-        },
-
-        select: {
-          paidAmount: true,
-          createdAt: true,
-        },
-
-        orderBy: {
-          createdAt: "asc",
-        },
-      });
-
-    const monthlyMap:
-      Record<string, number> = {};
-
-   feeData.forEach((f: any) => {
-
+    const monthlyMap: Record<string, number> = {};
+    feeData.forEach((f: any) => {
       if (!f.createdAt) return;
-
-      const date =
-        new Date(f.createdAt);
-
-      const key =
-        `${date.getFullYear()}-${date.getMonth()}`;
-
-      monthlyMap[key] =
-        (monthlyMap[key] || 0) +
-        (f.paidAmount ?? 0);
-
+      const date = new Date(f.createdAt);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      monthlyMap[key] = (monthlyMap[key] || 0) + (f.paidAmount ?? 0);
+    });
+    const monthlyData = Object.keys(monthlyMap).map((k) => {
+      const [year, month] = k.split("-");
+      const date = new Date(Number(year), Number(month));
+      return { month: date.toLocaleString("default", { month: "short" }), amount: monthlyMap[k] };
     });
 
-    const monthlyData =
-      Object.keys(monthlyMap).map(
-        (k) => {
+    const recentPayments = recentPaymentsRaw.map((p: any) => ({
+      amount: p.amount ?? 0,
+      studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+      className: p.studentFee?.enrollment?.class?.name || "—",
+      sectionName: p.studentFee?.enrollment?.section?.name || "",
+      date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—",
+      method: p.method,
+      receiptNo: p.receiptNo,
+    }));
 
-          const [year, month] =
-            k.split("-");
+    const defaulters = defaultersRaw.map((d: any) => ({
+      pendingAmount: d.balanceAmount ?? 0,
+      studentName: `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+      className: d.enrollment?.class?.name || "—",
+      sectionName: d.enrollment?.section?.name || "",
+    }));
 
-          const date =
-            new Date(
-              Number(year),
-              Number(month)
-            );
-
-          return {
-            month: date.toLocaleString("default", { month: "short" }),
-            amount: monthlyMap[k],
-          };
-        }
-      );
-
-    //////////////////////////////////////////////////////
-    // 💳 RECENT PAYMENTS (with class/section info)
-    //////////////////////////////////////////////////////
-
-    const recentPaymentsRaw =
-      await prisma.payment.findMany({
-
-        where: {
-          tenantId,
-          isDeleted: false,
-        },
-
-        orderBy: {
-          paymentDate: "desc",
-        },
-
-        take: 5,
-
-        select: {
-          amount: true,
-          paymentDate: true,
-          receiptNo: true,
-          method: true,
-          studentFee: {
-            select: {
-              enrollment: {
-                select: {
-                  student: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                    },
-                  },
-                  class: {
-                    select: { name: true },
-                  },
-                  section: {
-                    select: { name: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-    const recentPayments =
-      recentPaymentsRaw.map(
-        (p: any) => ({
-          amount: p.amount ?? 0,
-          totalFee: p.studentFee?.netAmount || p.studentFee?.totalAmount || p.amount || 0,
-          netAmount: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
-          totalPaidTillDate: p.studentFee?.paidAmount || p.amount || 0,
-          balance: p.studentFee?.balanceAmount || 0,
-          enrollmentId: p.studentFee?.enrollmentId || "",
-          studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
-          className: p.studentFee?.enrollment?.class?.name || "—",
-          sectionName: p.studentFee?.enrollment?.section?.name || "",
-          date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—",
-          paidAt: p.paymentDate,
-          method: p.method,
-          receiptNo: p.receiptNo,
-        })
-      );
-
-    //////////////////////////////////////////////////////
-    // ⚠️ TOP DEFAULTERS
-    //////////////////////////////////////////////////////
-
-    const defaultersRaw =
-      await prisma.studentFee.findMany({
-
-        where: {
-
-          tenantId,
-
-          isDeleted: false,
-
-          balanceAmount: {
-            gt: 0,
-          },
-
-          enrollment: {
-            status: "active",
-          },
-        },
-
-        orderBy: {
-          balanceAmount: "desc",
-        },
-
-        take: 5,
-
-        select: {
-
-          balanceAmount: true,
-
-          enrollment: {
-            select: {
-              student: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-              class: {
-                select: { name: true },
-              },
-              section: {
-                select: { name: true },
-              },
-            },
-          },
-        },
-      });
-
-    const defaulters =
-      defaultersRaw.map(
-        (d: any) => ({
-          pendingAmount: d.balanceAmount ?? 0,
-          studentName: `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
-          className: d.enrollment?.class?.name || "—",
-          sectionName: d.enrollment?.section?.name || "",
-        })
-      );
-
-    //////////////////////////////////////////////////////
-    // 📊 MONTHLY INSIGHTS
-    //////////////////////////////////////////////////////
-
-    const currentMonth =
-      monthlyData[monthlyData.length - 1]?.amount ?? 0;
-
-    const prevMonth =
-      monthlyData[monthlyData.length - 2]?.amount ?? 0;
-
+    const currentMonth = monthlyData[monthlyData.length - 1]?.amount ?? 0;
+    const prevMonth = monthlyData[monthlyData.length - 2]?.amount ?? 0;
     let growth = 0;
-
-    if (prevMonth > 0 && currentMonth > 0) {
-      growth = ((currentMonth - prevMonth) / prevMonth) * 100;
-    } else if (prevMonth === 0 && currentMonth > 0) {
-      growth = 100;
-    } else if (prevMonth > 0 && currentMonth === 0) {
-      growth = -100;
-    }
+    if (prevMonth > 0 && currentMonth > 0) growth = ((currentMonth - prevMonth) / prevMonth) * 100;
+    else if (prevMonth === 0 && currentMonth > 0) growth = 100;
+    else if (prevMonth > 0 && currentMonth === 0) growth = -100;
 
     const insights = {
       growth: `${growth.toFixed(1)}%`,
-      message:
-        growth > 0
-          ? "Fees collection increased this month 📈"
-          : growth < 0
-          ? "Fees collection dropped this month 📉"
-          : "No change in fee collection",
+      message: growth > 0 ? "Fees collection increased this month 📈" : growth < 0 ? "Fees collection dropped this month 📉" : "No change in fee collection",
     };
 
-    //////////////////////////////////////////////////////
-    // 📋 TODAY'S TIMETABLE
-    //////////////////////////////////////////////////////
-
-    const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const todayDay = dayNames[new Date().getDay()] as any;
-
-    const todayTimetableRaw = todayDay !== "SUN" ? await prisma.timetable.findMany({
-      where: {
-        tenantId,
-        day: todayDay,
-      },
-      orderBy: { period: "asc" },
-      select: {
-        period: true,
-        subject: { select: { name: true } },
-        class: { select: { name: true } },
-        section: { select: { name: true } },
-        teacher: { select: { firstName: true, lastName: true } },
-      },
-    }) : [];
-
     const todayTimetable = todayTimetableRaw.map((t: any) => ({
-      subject: t.subject?.name || "—",
-      period: `Period ${t.period}`,
-      class: t.class?.name || "",
-      section: t.section?.name || "",
+      subject: t.subject?.name || "—", period: `Period ${t.period}`,
+      class: t.class?.name || "", section: t.section?.name || "",
       teacher: `${t.teacher?.firstName || ""} ${t.teacher?.lastName || ""}`.trim(),
     }));
 
-    //////////////////////////////////////////////////////
-    // 📅 UPCOMING EVENTS
-    //////////////////////////////////////////////////////
-
-    const upcomingEvents = await prisma.event.findMany({
-      where: {
-        tenantId,
-        startDate: { gte: new Date() },
-      },
-      orderBy: { startDate: "asc" },
-      take: 10,
-      select: { title: true, startDate: true, type: true, venue: true },
-    });
-
     const events = upcomingEvents.map((e: any) => ({
-      title: e.title,
-      date: new Date(e.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
-      type: e.type,
-      venue: e.venue,
+      title: e.title, date: new Date(e.startDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
+      type: e.type, venue: e.venue,
     }));
-
-    //////////////////////////////////////////////////////
-    // 🔔 NOTIFICATIONS (Notices)
-    //////////////////////////////////////////////////////
-
-    const noticesRaw = await prisma.notice.findMany({
-      where: { tenantId, isDeleted: false, isActive: true },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: { title: true, content: true, type: true, createdAt: true },
-    });
 
     const notifications = noticesRaw.map((n: any) => ({
-      title: n.title,
-      message: n.content?.substring(0, 100) || n.title,
-      type: n.type,
-      date: n.createdAt,
+      title: n.title, message: n.content?.substring(0, 100) || n.title, type: n.type, date: n.createdAt,
     }));
 
-    //////////////////////////////////////////////////////
-    // 🎂 BIRTHDAYS TODAY
-    //////////////////////////////////////////////////////
-
     const todayMonth = new Date().getMonth() + 1;
-    const todayDate = new Date().getDate();
-
-    const allStudents = await prisma.student.findMany({
-      where: { tenantId, isDeleted: false },
-      select: { firstName: true, lastName: true, dob: true },
-    });
-
+    const todayDateNum = new Date().getDate();
     const birthdays = allStudents.filter((s: any) => {
       if (!s.dob) return false;
       const d = new Date(s.dob);
-      return d.getMonth() + 1 === todayMonth && d.getDate() === todayDate;
-    }).map((s: any) => ({
-      name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
-      role: "Student",
-    }));
-
-    //////////////////////////////////////////////////////
-    // 📢 ANNOUNCEMENTS (same as notices but recent ones)
-    //////////////////////////////////////////////////////
+      return d.getMonth() + 1 === todayMonth && d.getDate() === todayDateNum;
+    }).map((s: any) => ({ name: `${s.firstName || ""} ${s.lastName || ""}`.trim(), role: "Student" }));
 
     const announcements = noticesRaw.slice(0, 5).map((n: any) => ({
-      title: n.title,
-      message: n.content?.substring(0, 80) || "",
+      title: n.title, message: n.content?.substring(0, 80) || "",
     }));
-
-    //////////////////////////////////////////////////////
-    // 📊 UPCOMING EXAMS
-    //////////////////////////////////////////////////////
-
-    const upcomingExamsRaw = await prisma.examSchedule.findMany({
-      where: {
-        tenantId,
-        isDeleted: false,
-        examDate: { gte: new Date() },
-      },
-      orderBy: { examDate: "asc" },
-      take: 10,
-      select: {
-        examDate: true,
-        startTime: true,
-        subject: { select: { name: true } },
-        exam: { select: { name: true } },
-      },
-    });
 
     const upcomingExams = upcomingExamsRaw.map((e: any) => ({
       name: `${e.exam?.name || "Exam"} - ${e.subject?.name || "Subject"}`,
@@ -734,51 +397,19 @@ const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
       time: e.startTime || "",
     }));
 
-    //////////////////////////////////////////////////////
-    // 🚀 TENANT DASHBOARD RESPONSE
-    //////////////////////////////////////////////////////
 
-    return res.json({
 
-      success: true,
-
-      data: {
-
-        totalStudents,
-        totalClasses,
-        totalTeachers,
-
-        totalPaid,
-        totalPending,
-
-        monthlyData,
-
-        recentPayments,
-
-        defaulters,
-
-        insights: {
-          ...insights,
-          totalTeachers,
-          attendanceToday,
-        },
-
-        genderData,
-        classWiseStrength,
-        attendanceTrend,
-
-        // New data for Live Updates + Timetable + Assignments
-        todayTimetable,
-        events,
-        notifications,
-        birthdays,
-        announcements,
-        upcomingExams,
-        assignments: [], // Will be populated when homework module is active
-
-        tenant,
-      },
+    
+    return {
+      totalStudents, totalClasses, totalTeachers, totalPaid, totalPending,
+      monthlyData, recentPayments, defaulters, insights: { ...insights, totalTeachers, attendanceToday },
+      genderData, classWiseStrength, attendanceTrend,
+      todayTimetable, events, notifications, birthdays, announcements, upcomingExams,
+      tenant,
+    };
     });
+
+    return res.json({ success: true, data: dashData });;
 
   } catch (err: any) {
 

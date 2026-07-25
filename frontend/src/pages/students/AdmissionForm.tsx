@@ -143,6 +143,73 @@ const authHeaders = () => ({
 // COMPONENT
 // ═══════════════════════════════════════════════════════
 
+
+const getDefaultFormData = (): FormDataType => ({
+  firstName: "",
+  middleName: "",
+  lastName: "",
+  gender: "",
+  dob: "",
+  bloodGroup: "",
+  religion: "",
+  category: "",
+  nationality: "Indian",
+  motherTongue: "",
+  aadhaarNumber: "",
+  email: "",
+  mobile: "",
+  emergencyContact: "",
+  identificationMarks: "",
+  admissionNo: "",
+  admissionDate: new Date().toISOString().split("T")[0],
+  academicYearId: "",
+  classId: "",
+  sectionId: "",
+  rollNumber: "",
+  previousSchool: "",
+  previousClass: "",
+  previousResult: "",
+  medium: "",
+  stream: "",
+  group: "",
+  fatherName: "",
+  fatherPhone: "",
+  fatherOccupation: "",
+  fatherQualification: "",
+  fatherEmail: "",
+  motherName: "",
+  motherPhone: "",
+  motherOccupation: "",
+  motherQualification: "",
+  motherEmail: "",
+  guardianName: "",
+  guardianPhone: "",
+  guardianRelation: "",
+  guardianAddress: "",
+  annualIncome: "",
+  permanentAddress: "",
+  permanentCity: "",
+  permanentState: "",
+  permanentDistrict: "",
+  permanentPinCode: "",
+  permanentCountry: "India",
+  sameAsPermanent: false,
+  correspondenceAddress: "",
+  correspondenceCity: "",
+  correspondenceState: "",
+  correspondenceDistrict: "",
+  correspondencePinCode: "",
+  correspondenceCountry: "India",
+  transportRoute: "",
+  transportPickupPoint: "",
+  hostelName: "",
+  hostelRoom: "",
+  medicalConditions: [],
+  allergies: [],
+  height: "",
+  weight: "",
+});
+
 export default function AdmissionForm() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -182,76 +249,14 @@ export default function AdmissionForm() {
     const draft = localStorage.getItem(DRAFT_KEY);
     if (draft) {
       try {
-        return JSON.parse(draft);
+        const parsed = JSON.parse(draft);
+        // Merge with defaults to handle missing fields from old drafts
+        return { ...getDefaultFormData(), ...parsed, medicalConditions: parsed.medicalConditions || [], allergies: parsed.allergies || [] };
       } catch {
         // ignore
       }
     }
-    return {
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      gender: "",
-      dob: "",
-      bloodGroup: "",
-      religion: "",
-      category: "",
-      nationality: "Indian",
-      motherTongue: "",
-      aadhaarNumber: "",
-      email: "",
-      mobile: "",
-      emergencyContact: "",
-      identificationMarks: "",
-      admissionNo: "",
-      admissionDate: new Date().toISOString().split("T")[0],
-      academicYearId: "",
-      classId: "",
-      sectionId: "",
-      rollNumber: "",
-      previousSchool: "",
-      previousClass: "",
-      previousResult: "",
-      medium: "",
-      stream: "",
-      group: "",
-      fatherName: "",
-      fatherPhone: "",
-      fatherOccupation: "",
-      fatherQualification: "",
-      fatherEmail: "",
-      motherName: "",
-      motherPhone: "",
-      motherOccupation: "",
-      motherQualification: "",
-      motherEmail: "",
-      guardianName: "",
-      guardianPhone: "",
-      guardianRelation: "",
-      guardianAddress: "",
-      annualIncome: "",
-      permanentAddress: "",
-      permanentCity: "",
-      permanentState: "",
-      permanentDistrict: "",
-      permanentPinCode: "",
-      permanentCountry: "India",
-      sameAsPermanent: false,
-      correspondenceAddress: "",
-      correspondenceCity: "",
-      correspondenceState: "",
-      correspondenceDistrict: "",
-      correspondencePinCode: "",
-      correspondenceCountry: "India",
-      transportRoute: "",
-      transportPickupPoint: "",
-      hostelName: "",
-      hostelRoom: "",
-      medicalConditions: [],
-      allergies: [],
-      height: "",
-      weight: "",
-    };
+    return getDefaultFormData();
   });
 
   // ─── Autosave Draft ───
@@ -268,8 +273,8 @@ export default function AdmissionForm() {
       setLoading(true);
       try {
         const [yearRes, classRes] = await Promise.all([
-          axios.get(getFullUrl("/api/academic-years"), authHeaders()).catch(() => ({ data: { data: [] } })),
-          axios.get(getFullUrl("/api/classes"), authHeaders()).catch(() => ({ data: { data: [] } })),
+          axios.get(getFullUrl("/api/academic"), authHeaders()).catch(() => ({ data: { data: [] } })),
+          axios.get(getFullUrl("/api/class"), authHeaders()).catch(() => ({ data: { data: [] } })),
         ]);
         setAcademicYears(yearRes.data?.data || yearRes.data || []);
         setClasses(classRes.data?.data || classRes.data || []);
@@ -294,7 +299,7 @@ export default function AdmissionForm() {
 
         // Hostels
         try {
-          const hostelRes = await axios.get(getFullUrl("/api/hostels"), authHeaders());
+          const hostelRes = await axios.get(getFullUrl("/api/hostel"), authHeaders());
           setHostels(hostelRes.data?.data || []);
         } catch {
           // optional
@@ -312,7 +317,7 @@ export default function AdmissionForm() {
   useEffect(() => {
     if (formData.classId) {
       axios
-        .get(getFullUrl(`/api/sections?classId=${formData.classId}`), authHeaders())
+        .get(getFullUrl(`/api/section?classId=${formData.classId}`), authHeaders())
         .then((res) => setSections(res.data?.data || res.data || []))
         .catch(() => setSections([]));
     } else {
@@ -324,7 +329,7 @@ export default function AdmissionForm() {
   useEffect(() => {
     if (formData.transportRoute) {
       axios
-        .get(getFullUrl(`/api/transport/routes/${formData.transportRoute}/stops`), authHeaders())
+        .get(getFullUrl(`/api/transport/stops/route/${formData.transportRoute}`), authHeaders())
         .then((res) => setPickupPoints(res.data?.data || []))
         .catch(() => setPickupPoints([]));
     } else {
@@ -444,7 +449,6 @@ export default function AdmissionForm() {
       }
 
       if (step === 2) {
-        if (!formData.admissionNo.trim()) newErrors.admissionNo = "Admission number is required";
         if (!formData.admissionDate) newErrors.admissionDate = "Admission date is required";
         if (!formData.academicYearId) newErrors.academicYearId = "Academic year is required";
         if (!formData.classId) newErrors.classId = "Class is required";
@@ -473,6 +477,7 @@ export default function AdmissionForm() {
 
   // ─── Submit ───
   const handleSubmit = async () => {
+    console.log("[Admission] Submit clicked! formData:", { firstName: formData.firstName, classId: formData.classId, academicYearId: formData.academicYearId, sectionId: formData.sectionId });
     if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
       toast.error("Please complete all required fields");
       return;
@@ -480,48 +485,61 @@ export default function AdmissionForm() {
 
     setSubmitting(true);
     try {
-      const payload = new FormData();
+      // Step 1: Create student with JSON payload
+      const jsonPayload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        gender: formData.gender,
+        dob: formData.dob,
+        email: formData.email || undefined,
+        phone: formData.mobile || undefined,
+        address: formData.permanentAddress || undefined,
+        admissionNo: formData.admissionNo || undefined,
+        bloodGroup: formData.bloodGroup || undefined,
+        religion: formData.religion || undefined,
+        caste: formData.category || undefined,
+        category: formData.category || undefined,
+        nationality: formData.nationality || undefined,
+        aadharNo: formData.aadhaarNumber || undefined,
+        fatherName: formData.fatherName || undefined,
+        fatherPhone: formData.fatherPhone || undefined,
+        fatherOccupation: formData.fatherOccupation || undefined,
+        motherName: formData.motherName || undefined,
+        motherPhone: formData.motherPhone || undefined,
+        motherOccupation: formData.motherOccupation || undefined,
+        guardianName: formData.guardianName || undefined,
+        guardianPhone: formData.guardianPhone || undefined,
+        guardianRelation: formData.guardianRelation || undefined,
+        classId: formData.classId,
+        sectionId: formData.sectionId || undefined,
+        academicYearId: formData.academicYearId,
+        rollNumber: formData.rollNumber || undefined,
+      };
 
-      // Append all form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          payload.append(key, JSON.stringify(value));
-        } else if (typeof value === "boolean") {
-          payload.append(key, value ? "true" : "false");
-        } else {
-          payload.append(key, String(value));
-        }
-      });
+      const res = await axios.post(getFullUrl("/api/students"), jsonPayload, authHeaders());
+      const studentId = res.data?.data?.student?.id || res.data?.data?.id;
 
-      // Append photo
-      if (photoFile) {
-        payload.append("photo", photoFile);
+      // Step 2: Upload photo if provided
+      if (photoFile && studentId) {
+        const photoFormData = new FormData();
+        photoFormData.append("photo", photoFile);
+        await axios.post(getFullUrl(`/api/students/${studentId}/photo`), photoFormData, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }).catch(() => {}); // Photo upload is optional, don't block admission
       }
-
-      // Append father photo
-      if (fatherPhotoFile) {
-        payload.append("fatherPhoto", fatherPhotoFile);
-      }
-
-      // Append documents
-      documents.forEach((doc, idx) => {
-        payload.append(`documents`, doc.file);
-        payload.append(`documentTypes[${idx}]`, doc.type);
-      });
-
-      await axios.post(getFullUrl("/api/students"), payload, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
 
       toast.success("Student admitted successfully!");
       localStorage.removeItem(DRAFT_KEY);
-      navigate("/students");
+      // Small delay so user sees the success toast before redirect
+      setTimeout(() => navigate("/students"), 1000);
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Failed to submit admission form";
+      console.error("Admission submit error:", err.response?.data || err.message || err);
+      const msg = err.response?.data?.message || err.message || "Failed to submit admission form";
       toast.error(msg);
+      toast.error("Check console (F12) for details", { duration: 5000 });
     } finally {
       setSubmitting(false);
     }
@@ -590,7 +608,7 @@ export default function AdmissionForm() {
   const renderSelect = (
     label: string,
     name: keyof FormDataType,
-    options: DropdownItem[] | string[],
+    options: DropdownItem[] | string[] | any,
     opts?: { required?: boolean; placeholder?: string }
   ) => (
     <div>
@@ -605,7 +623,7 @@ export default function AdmissionForm() {
         className={`${inputClasses} ${errors[name] ? "border-red-400 dark:border-red-500 ring-1 ring-red-400" : ""}`}
       >
         <option value="">{opts?.placeholder || `Select ${label}`}</option>
-        {options.map((opt) =>
+        {(Array.isArray(options) ? options : []).map((opt) =>
           typeof opt === "string" ? (
             <option key={opt} value={opt}>
               {opt}
@@ -1073,7 +1091,7 @@ export default function AdmissionForm() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {formData.medicalConditions.map((tag, i) => (
+            {(formData.medicalConditions || []).map((tag, i) => (
               <span
                 key={i}
                 className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-medium"
@@ -1113,7 +1131,7 @@ export default function AdmissionForm() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {formData.allergies.map((tag, i) => (
+            {(formData.allergies || []).map((tag, i) => (
               <span
                 key={i}
                 className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium"
@@ -1367,14 +1385,14 @@ export default function AdmissionForm() {
             Edit
           </button>
         </div>
-        {renderReviewField("Transport Route", routes.find((r) => r.id === formData.transportRoute)?.name)}
-        {renderReviewField("Hostel", hostels.find((h) => h.id === formData.hostelName)?.name)}
+        {renderReviewField("Transport Route", (Array.isArray(routes) ? routes : []).find((r) => r.id === formData.transportRoute)?.name)}
+        {renderReviewField("Hostel", (Array.isArray(hostels) ? hostels : []).find((h) => h.id === formData.hostelName)?.name)}
         {renderReviewField("Height", formData.height ? `${formData.height} cm` : undefined)}
         {renderReviewField("Weight", formData.weight ? `${formData.weight} kg` : undefined)}
-        {formData.medicalConditions.length > 0 &&
-          renderReviewField("Medical Conditions", formData.medicalConditions.join(", "))}
-        {formData.allergies.length > 0 &&
-          renderReviewField("Allergies", formData.allergies.join(", "))}
+        {(formData.medicalConditions || []).length > 0 &&
+          renderReviewField("Medical Conditions", (formData.medicalConditions || []).join(", "))}
+        {(formData.allergies || []).length > 0 &&
+          renderReviewField("Allergies", (formData.allergies || []).join(", "))}
         {documents.length > 0 &&
           renderReviewField("Documents", `${documents.length} file(s) attached`)}
       </div>

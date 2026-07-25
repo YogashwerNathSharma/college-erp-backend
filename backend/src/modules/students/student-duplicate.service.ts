@@ -2,9 +2,7 @@
 // STUDENT DUPLICATE SERVICE — Detection, Merge, Clone
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../utils/prisma";
 
 // ============================================
 // CHECK DUPLICATE (pre-admission check)

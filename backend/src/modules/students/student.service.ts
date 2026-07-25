@@ -1,7 +1,6 @@
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import { generateSrNumber, generateAdmissionNumber } from "./admission-number.service";
-const prisma = new PrismaClient();
 
 // ============================================
 // CREATE STUDENT — WITH AUTO ENROLLMENT
@@ -46,193 +45,79 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
 
   const srNo = await generateSrNumber(tenantId, finalAdmissionNo);
 
-  // Create Student + Enrollment in SAME transaction
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. Create Student
-    const student = await tx.student.create({
-      data: {
-        firstName,
-        lastName,
-        fullName: `${firstName} ${lastName}`,
-        gender,
-        dob: new Date(dob),
-        email: email || null,
-        phone: phone || null,
-        address: address || "N/A",
+  // 1. Create Student (no transaction — avoids MongoDB replica set timeout)
+  const student = await prisma.student.create({
+    data: {
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`,
+      gender,
+      dob: new Date(dob),
+      email: email || null,
+      phone: phone || null,
+      address: address || "N/A",
+      admissionNo: finalAdmissionNo,
+      srNo,
+      bloodGroup: bloodGroup || null,
+      religion: religion || null,
+      caste: caste || null,
+      category: category || null,
+      nationality: nationality || "Indian",
+      aadharNo: aadharNo || null,
+      fatherName: fatherName || "N/A",
+      fatherPhone: fatherPhone || "N/A",
+      fatherOccupation: fatherOccupation || null,
+      motherName: motherName || "N/A",
+      motherPhone: motherPhone || null,
+      motherOccupation: motherOccupation || null,
+      guardianName: guardianName || null,
+      guardianPhone: guardianPhone || null,
+      guardianRelation: guardianRelation || null,
+      photoUrl: photoUrl || null,
+      admissionDate: new Date(),
+      status: "active",
+      isDeleted: false,
+      tenant: { connect: { id: tenantId } },
+      academicYear: { connect: { id: academicYearId } },
+    },
+  });
+
+  // 2. Create Enrollment (if classId provided)
+  let enrollment = null;
+  if (classId && sectionId) {
+    const enrollmentData: any = {
+      student: { connect: { id: student.id } },
+      class: { connect: { id: classId } },
+      section: { connect: { id: sectionId } },
+      academicYear: { connect: { id: academicYearId } },
+      tenant: { connect: { id: tenantId } },
+      rollNumber: rollNumber || null,
+      status: "active",
+    };
+    enrollment = await prisma.enrollment.create({ data: enrollmentData });
+  }
+
+  // 3. Log to StudentHistory (fire-and-forget — non-critical)
+  prisma.studentHistory.create({
+    data: {
+      studentId: student.id,
+      tenantId,
+      action: "ADMISSION",
+      details: JSON.stringify({
         admissionNo: finalAdmissionNo,
-        srNo,
-        bloodGroup: bloodGroup || null,
-        religion: religion || null,
-        caste: caste || null,
-        category: category || null,
-        nationality: nationality || "Indian",
-        aadharNo: aadharNo || null,
-        fatherName: fatherName || "N/A",
-        fatherPhone: fatherPhone || "N/A",
-        fatherOccupation: fatherOccupation || null,
-        motherName: motherName || "N/A",
-        motherPhone: motherPhone || null,
-        motherOccupation: motherOccupation || null,
-        guardianName: guardianName || null,
-        guardianPhone: guardianPhone || null,
-        guardianRelation: guardianRelation || null,
-        photoUrl: photoUrl || null,
-        admissionDate: new Date(),
-        status: "active",
-        isDeleted: false,
-        tenant: { connect: { id: tenantId } },
-        academicYear: { connect: { id: academicYearId } },
-      },
-    });
-
-    // 2. AUTO-CREATE ENROLLMENT
-    const enrollment = await tx.enrollment.create({
-      data: {
-        student: { connect: { id: student.id } },
-        class: { connect: { id: classId } },
-        section: { connect: { id: sectionId } },
-        academicYear: { connect: { id: academicYearId } },
-        tenant: { connect: { id: tenantId } },
-        rollNumber: rollNumber || null,
-        status: "active",
-      },
-    });
-
-    // 3. Log to StudentHistory
-    await tx.studentHistory.create({
-      data: {
-        studentId: student.id,
-        tenantId,
-        action: "ADMISSION",
-        details: JSON.stringify({
-          admissionNo: finalAdmissionNo,
-          classId,
-          sectionId,
-          academicYearId,
-          rollNumber: rollNumber || null,
-        }),
-        toClassId: classId,
-        toSectionId: sectionId,
+        classId,
+        sectionId,
         academicYearId,
-        performedBy: userId || "system",
-      },
-    });
+        rollNumber: rollNumber || null,
+      }),
+      toClassId: classId || null,
+      toSectionId: sectionId || null,
+      academicYearId,
+      performedBy: userId || "system",
+    },
+  }).catch(() => {}); // Don't block admission if history fails
 
-    return { student, enrollment };
-  });
-
-  return result;
-};
-
-// ============================================
-// GET ALL STUDENTS (with enrollment info)
-// ============================================
-export const getAllStudents = async (
-  tenantId: string,
-  filters: {
-    classId?: string;
-    sectionId?: string;
-    academicYearId?: string;
-    status?: string;
-    search?: string;
-    gender?: string;
-    page?: number;
-    limit?: number;
-  }
-) => {
-  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters;
-
-  const where: any = {
-    tenantId,
-    isDeleted: false,
-  };
-
-  if (status) where.status = status;
-  if (gender) {
-    const genderMap: Record<string, string[]> = {
-      male: ["Male", "male", "M", "MALE"],
-      female: ["Female", "female", "F", "FEMALE"],
-    };
-    where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
-  }
-  if (search) {
-    where.OR = [
-      { firstName: { contains: search, mode: "insensitive" } },
-      { lastName: { contains: search, mode: "insensitive" } },
-      { admissionNo: { contains: search, mode: "insensitive" } },
-      { fatherName: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
-    ];
-  }
-
-  const enrollmentFilter: any = {};
-  if (classId) enrollmentFilter.classId = classId;
-  if (sectionId) enrollmentFilter.sectionId = sectionId;
-  if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
-
-  if (Object.keys(enrollmentFilter).length > 0) {
-    where.enrollments = {
-      some: {
-        ...enrollmentFilter,
-        status: "active",
-        isDeleted: false,
-      },
-    };
-  }
-
-  const [students, total] = await Promise.all([
-    prisma.student.findMany({
-      where,
-      include: {
-        enrollments: {
-          where: {
-            status: "active",
-            isDeleted: false,
-            ...(academicYearId ? { academicYearId } : {}),
-          },
-          include: {
-            class: { select: { id: true, name: true } },
-            section: { select: { id: true, name: true } },
-            academicYear: { select: { id: true, name: true } },
-            studentFees: {
-              where: { isDeleted: false },
-              select: { totalAmount: true, paidAmount: true, balanceAmount: true },
-            },
-          },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.student.count({ where }),
-  ]);
-
-  // Aggregate fee data from enrollments
-  const studentsWithFees = students.map((student: any) => {
-    const enrollment = student.enrollments?.[0];
-    const fees = enrollment?.studentFees || [];
-    const totalFee = fees.reduce((sum: number, f: any) => sum + (f.totalAmount || 0), 0);
-    const paidFee = fees.reduce((sum: number, f: any) => sum + (f.paidAmount || 0), 0);
-    const balanceFee = fees.reduce((sum: number, f: any) => sum + (f.balanceAmount || 0), 0);
-
-    return {
-      ...student,
-      totalFee,
-      paidFee,
-      balanceFee,
-    };
-  });
-
-  return {
-    students: studentsWithFees,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  };
+  return { student, enrollment };
 };
 
 // ============================================

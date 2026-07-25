@@ -512,7 +512,7 @@ export default function StudentsPage() {
 
       setLoading(true);
 
-      const res = await axios.get("/api/students", authHeaders());
+      const res = await axios.get("/api/students?limit=500", authHeaders());
 
       const payload = res.data?.data;
 

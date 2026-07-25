@@ -104,8 +104,8 @@ export default function QuickAdmissionForm() {
     const fetchData = async () => {
       try {
         const [classRes, yearRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/classes`, authHeaders()),
-          axios.get(`${API_BASE_URL}/api/academic-years`, authHeaders()),
+          axios.get(`${API_BASE_URL}/api/class`, authHeaders()),
+          axios.get(`${API_BASE_URL}/api/academic`, authHeaders()),
         ]);
 
         setClasses(classRes.data.data || classRes.data || []);
@@ -135,7 +135,7 @@ export default function QuickAdmissionForm() {
     const fetchSections = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE_URL}/api/sections?classId=${formData.classId}`,
+          `${API_BASE_URL}/api/section?classId=${formData.classId}`,
           authHeaders()
         );
         setSections(res.data.data || res.data || []);

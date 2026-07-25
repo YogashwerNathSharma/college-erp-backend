@@ -1,4 +1,5 @@
 
+import { invalidateCache } from "../../utils/cache";
 import {
   createStudent,
   getAllStudents,
@@ -33,10 +34,15 @@ import {
 
 export const createStudentHandler = async (req: any, res: any) => {
   try {
+    console.log("[Admission] Received payload keys:", Object.keys(req.body));
+    console.log("[Admission] tenantId:", req.tenantId, "| userId:", req.user?.userId);
     const result = await createStudent(req.body, req.tenantId, req.user?.userId);
+    // Invalidate dashboard caches so they refresh with new student
+    invalidateCache(`dashboard:${req.tenantId}`);
+    invalidateCache(`student-dash:${req.tenantId}`);
     res.status(201).json({ success: true, data: result });
   } catch (err: any) {
-    console.error("Create student error:", err.message);
+    console.error("Create student error:", err.message, "\nStack:", err.stack?.split("\n").slice(0, 5).join("\n"));
     res.status(400).json({ success: false, message: err.message });
   }
 };
@@ -292,7 +298,7 @@ export const seedAgeConfigHandler = async (req: any, res: any) => {
 
     // Verify tenant exists in DB
     const { PrismaClient } = require("@prisma/client");
-    const prisma = new PrismaClient();
+    
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
     console.log(">>> Tenant found in DB:", tenant);
 

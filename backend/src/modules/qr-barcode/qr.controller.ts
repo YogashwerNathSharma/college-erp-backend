@@ -1,12 +1,10 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { createCanvas } from "canvas";
 import path from "path";
 import fs from "fs";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════
 // QR CODE & BARCODE CONTROLLER

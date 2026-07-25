@@ -1,7 +1,4 @@
-
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../utils/prisma";
 
 // ============================================
 // GENERATE ADMISSION NUMBER — Format: ADM/2026/001

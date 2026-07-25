@@ -1,6 +1,7 @@
 
 import { Router } from "express";
 import prisma from "../../utils/prisma";
+import { generateAdmissionNumber } from "./admission-number.service";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 
@@ -127,6 +128,53 @@ router.delete("/documents/:documentId", allowRoles("ADMIN"), async (req: any, re
 });
 // --- Stats ---
 router.get("/stats", getStudentStatsHandler);
+
+// --- Next Admission Number (preview — does NOT increment counter) ---
+router.get("/next-admission-no", async (req: any, res: any) => {
+  try {
+    const tenantId = req.tenantId;
+    const academicYearId = req.query.academicYearId as string;
+
+    // Find current active academic year if not provided
+    let yearId = academicYearId;
+    if (!yearId) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { tenantId, isCurrent: true, isDeleted: false },
+      });
+      if (activeYear) yearId = activeYear.id;
+    }
+
+    if (!yearId) {
+      return res.json({ success: true, admissionNo: "" });
+    }
+
+    // Preview only — peek at next number without incrementing
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { id: yearId },
+      select: { name: true },
+    });
+
+    let yearPart = new Date().getFullYear().toString();
+    if (academicYear?.name) {
+      const match = academicYear.name.match(/(\d{4})/);
+      if (match) yearPart = match[1];
+    }
+
+    const counter = await prisma.admissionCounter.findFirst({
+      where: { tenantId, academicYearId: yearId },
+    });
+
+    let nextSerial = counter ? counter.lastNumber + 1 : 
+      (await prisma.student.count({ where: { tenantId, academicYearId: yearId } })) + 1;
+
+    const serialPadded = String(nextSerial).padStart(3, "0");
+    const admissionNo = `ADM/${yearPart}/${serialPadded}`;
+
+    return res.json({ success: true, admissionNo });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // --- Class Strength ---
 router.get("/class-strength", async (req: any, res: any) => {

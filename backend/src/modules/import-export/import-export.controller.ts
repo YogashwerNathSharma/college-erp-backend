@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import path from "path";
 import fs from "fs";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════════════
 // IMPORT/EXPORT ENGINE CONTROLLER

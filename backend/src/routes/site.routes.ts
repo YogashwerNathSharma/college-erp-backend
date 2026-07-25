@@ -1,9 +1,7 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../utils/prisma";
 
 const router = Router();
-
-const prisma = new PrismaClient();
 
 // 👉 Dummy site content (abhi DB nahi, baad me connect karenge)
 router.get("/site-content", (req, res) => {

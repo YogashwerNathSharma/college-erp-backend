@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import queueService from "./queue.service";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════════════
 // QUEUE CONTROLLER

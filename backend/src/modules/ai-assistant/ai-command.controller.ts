@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════════
 // PROCESS COMMAND — Main AI command handler

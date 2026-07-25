@@ -156,7 +156,7 @@ export default function StudentPrintEngine() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await axios.get(getFullUrl("/api/classes"), authHeaders());
+        const res = await axios.get(getFullUrl("/api/class"), authHeaders());
         setClasses(res.data?.data || res.data || []);
       } catch {
         // silent
@@ -169,7 +169,7 @@ export default function StudentPrintEngine() {
   useEffect(() => {
     if (selectedClass) {
       axios
-        .get(getFullUrl(`/api/sections?classId=${selectedClass}`), authHeaders())
+        .get(getFullUrl(`/api/section?classId=${selectedClass}`), authHeaders())
         .then((res) => setSections(res.data?.data || res.data || []))
         .catch(() => setSections([]));
     } else {

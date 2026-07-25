@@ -1,5 +1,3 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
+// Re-export the shared singleton — avoids duplicate connection pools
+import prisma from "../utils/prisma";
 export default prisma;

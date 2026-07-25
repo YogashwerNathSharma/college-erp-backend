@@ -6,6 +6,7 @@
 import { Router, Request, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { cached } from "../../utils/cache";
 import {
   getFullDashboardData,
   getBirthdayToday,
@@ -29,7 +30,12 @@ router.use(authMiddleware, resolveTenant);
 // ── Full Dashboard (single call) ─────────────────────────────────────────────
 router.get("/full", async (req: any, res: Response) => {
   try {
-    const data = await getFullDashboardData(req.tenantId, req.query.academicYearId as string);
+    const _start = Date.now();
+    const yearId = req.query.academicYearId as string || "";
+    const data = await cached(`student-dash:${req.tenantId}:${yearId}`, 30000, () =>
+      getFullDashboardData(req.tenantId, req.query.academicYearId as string)
+    );
+    console.log(`⚡ Student Dashboard loaded in ${Date.now() - _start}ms`);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════
 // DIGITAL SIGNATURE CONTROLLER

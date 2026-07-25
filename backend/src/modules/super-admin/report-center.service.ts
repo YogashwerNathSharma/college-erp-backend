@@ -2,9 +2,7 @@
 // REPORT CENTER SERVICE - Enterprise Analytics & Reporting
 // ═══════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../utils/prisma";
 
 // ─── Types ───────────────────────────────────────────────
 export interface ReportFilter {

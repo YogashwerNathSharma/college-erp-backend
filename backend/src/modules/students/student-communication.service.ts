@@ -2,10 +2,8 @@
 // STUDENT COMMUNICATION SERVICE — SMS, Email, WhatsApp, Push Notifications
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import { CommunicationType, CommunicationStatus } from "./student.types";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // SEND SMS

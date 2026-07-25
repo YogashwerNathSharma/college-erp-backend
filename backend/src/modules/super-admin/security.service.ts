@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import os from "os";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
 
 //////////////////////////////////////////////////////
 // TYPES

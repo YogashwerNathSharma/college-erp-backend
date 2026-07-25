@@ -1,11 +1,9 @@
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import { uploadToCloudinary, deleteFromCloudinary } from "../../config/cloudinary";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // UPLOAD STUDENT PHOTO

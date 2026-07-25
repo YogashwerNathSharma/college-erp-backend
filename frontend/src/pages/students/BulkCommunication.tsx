@@ -72,7 +72,7 @@ export default function BulkCommunication() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/classes`, authHeaders());
+        const res = await axios.get(`${API_BASE_URL}/api/class`, authHeaders());
         setClasses(res.data.data || res.data || []);
       } catch {}
     };
@@ -83,7 +83,7 @@ export default function BulkCommunication() {
     if (!filters.classId) { setSections([]); return; }
     const fetchSections = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/sections?classId=${filters.classId}`, authHeaders());
+        const res = await axios.get(`${API_BASE_URL}/api/section?classId=${filters.classId}`, authHeaders());
         setSections(res.data.data || res.data || []);
       } catch { setSections([]); }
     };

@@ -7,8 +7,6 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { MASTER_CATEGORIES, getMasterConfig, getAllMasterKeys } from './master.config';
 
-const prisma = new PrismaClient();
-
 // ─────────────────────────────────────────────────────────────────
 // Helper: Get Prisma model delegate dynamically
 // ─────────────────────────────────────────────────────────────────

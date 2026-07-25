@@ -2,9 +2,7 @@
 // SUPPORT CENTER SERVICE - Tickets, KB, Announcements
 // ═══════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../utils/prisma";
 
 // ─── Types ───────────────────────────────────────────────
 export type TicketPriority = "low" | "medium" | "high" | "critical";

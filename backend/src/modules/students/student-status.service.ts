@@ -2,12 +2,10 @@
 // ENTERPRISE STUDENT MODULE — Status & Operations Service
 // ══════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import { StudentStatus, StatusChangeInput, TransferInput, StudentLoginCredentials, AuditAction } from "./student.types";
 import { VALID_STATUS_TRANSITIONS } from "./student.constants";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // CHANGE STUDENT STATUS

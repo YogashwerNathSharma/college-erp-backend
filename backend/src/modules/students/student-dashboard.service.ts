@@ -2,7 +2,7 @@
 // ENTERPRISE STUDENT MODULE — Dashboard Service
 // ══════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import {
   DashboardFullData,
   DashboardStats,
@@ -17,8 +17,6 @@ import {
   FeeDefaulterItem,
 } from "./student.types";
 import { MONTHS } from "./student.constants";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // GET FULL DASHBOARD DATA (single API call)
@@ -69,7 +67,6 @@ export const getFullDashboardData = async (
     feeDefaultersList,
   } as any;
 };
-
 
 // ============================================
 // DASHBOARD STATS (counts)
@@ -201,8 +198,8 @@ export const getClassStrength = async (
       name: true,
       enrollments: {
         where: {
-          isDeleted: false,
           status: "active",
+          isDeleted: false,
           ...(academicYearId && { academicYearId }),
         },
         include: {
@@ -242,13 +239,13 @@ export const getSectionStrength = async (
   academicYearId?: string
 ): Promise<SectionStrengthItem[]> => {
   const sections = await prisma.section.findMany({
-    where: { tenantId, isDeleted: false },
+    where: { tenantId },
     include: {
       class: { select: { id: true, name: true } },
       enrollments: {
         where: {
-          isDeleted: false,
           status: "active",
+          isDeleted: false,
           ...(academicYearId && { academicYearId }),
         },
         select: { id: true },
@@ -531,7 +528,7 @@ const getFeeDefaulters = async (
         tenantId,
         isDeleted: false,
         balanceAmount: { gt: 0 },
-        ...(academicYearId && { enrollment: { academicYearId, isDeleted: false } }),
+        ...(academicYearId && { enrollment: { academicYearId } }),
       },
       include: {
         enrollment: {

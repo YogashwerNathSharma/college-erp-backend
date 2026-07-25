@@ -143,7 +143,7 @@ export default function AdmissionApproval() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/classes`, authHeaders());
+        const res = await axios.get(`${API_BASE_URL}/api/class`, authHeaders());
         setClasses(res.data.data || res.data || []);
       } catch {}
     };

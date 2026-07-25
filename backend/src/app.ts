@@ -22,6 +22,7 @@ import masterRoutes from "./modules/masters/master.routes";
 
 import compression from "compression";
 import cors from "cors";
+import { autoCacheMiddleware } from "./middleware/autoCache.middleware";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 // Other route imports ke saath:
@@ -230,6 +231,12 @@ app.use("/api/super-admin/iam", iamRoutes);
 //////////////////////////////////////////////////////
 
 app.use(subscriptionCheckMiddleware);
+
+//////////////////////////////////////////////////////
+// ⚡ AUTO-CACHE (caches dashboards & heavy GETs for 30s)
+//////////////////////////////////////////////////////
+
+app.use(autoCacheMiddleware);
 
 //////////////////////////////////////////////////////
 // DASHBOARD

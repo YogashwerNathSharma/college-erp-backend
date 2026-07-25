@@ -2,11 +2,9 @@
 // STUDENT SEARCH SERVICE — Advanced Search & Saved Filters
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import { StudentAdvancedSearch, SavedFilterInput } from "./student.types";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./student.constants";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // ADVANCED SEARCH (Multi-field)

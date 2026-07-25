@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
 
 // ══════════════════════════════════════════════════════════
 // FILE MANAGER CONTROLLER

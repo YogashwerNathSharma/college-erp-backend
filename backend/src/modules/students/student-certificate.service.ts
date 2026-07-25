@@ -2,11 +2,9 @@
 // STUDENT CERTIFICATE SERVICE — All Certificate Generation
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import PDFDocument from "pdfkit";
 import { CertificateOptions, CertificateResult, CertificateType } from "./student.types";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // GENERATE BONAFIDE CERTIFICATE

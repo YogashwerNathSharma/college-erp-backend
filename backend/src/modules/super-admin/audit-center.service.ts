@@ -2,9 +2,7 @@
 // AUDIT CENTER SERVICE - Enterprise Audit Log Management
 // ═══════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../utils/prisma";
 
 // ─── Types ───────────────────────────────────────────────
 export interface AuditLogFilter {

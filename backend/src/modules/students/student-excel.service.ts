@@ -2,7 +2,7 @@
 // ENTERPRISE STUDENT MODULE — Excel Import/Export Service
 // ══════════════════════════════════════════════════════════════════
 
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma";
 import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
@@ -16,8 +16,6 @@ import {
   RELIGION_OPTIONS,
 } from "./student.constants";
 import { generateAdmissionNumber, generateSrNumber } from "./admission-number.service";
-
-const prisma = new PrismaClient();
 
 // ============================================
 // GET IMPORT TEMPLATE

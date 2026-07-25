@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma';
 import { MASTER_CATEGORIES, getMasterConfig, getAllMasterKeys } from './master.config';
 
 // ─────────────────────────────────────────────────────────────────

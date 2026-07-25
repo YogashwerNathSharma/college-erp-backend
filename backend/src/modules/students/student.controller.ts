@@ -1,5 +1,6 @@
 
 import { invalidateCache } from "../../utils/cache";
+import prisma from "../../utils/prisma";
 import {
   createStudent,
   getAllStudents,

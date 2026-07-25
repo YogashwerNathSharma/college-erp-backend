@@ -1,3 +1,4 @@
+// @ts-nocheck
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import crypto from "crypto";

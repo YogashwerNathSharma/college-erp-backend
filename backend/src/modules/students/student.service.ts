@@ -121,6 +121,97 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
 };
 
 // ============================================
+// GET ALL STUDENTS (with enrollment info)
+// ============================================
+export const getAllStudents = async (
+  tenantId: string,
+  filters: {
+    classId?: string;
+    sectionId?: string;
+    academicYearId?: string;
+    status?: string;
+    search?: string;
+    gender?: string;
+    page?: number;
+    limit?: number;
+  }
+) => {
+  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters;
+
+  const where: any = {
+    tenantId,
+    isDeleted: false,
+  };
+
+  if (status) where.status = status;
+  if (gender) {
+    const genderMap: Record<string, string[]> = {
+      male: ["Male", "male", "M", "MALE"],
+      female: ["Female", "female", "F", "FEMALE"],
+    };
+    where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
+  }
+  if (search) {
+    where.OR = [
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
+      { admissionNo: { contains: search, mode: "insensitive" } },
+      { fatherName: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const enrollmentFilter: any = {};
+  if (classId) enrollmentFilter.classId = classId;
+  if (sectionId) enrollmentFilter.sectionId = sectionId;
+  if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
+
+  if (Object.keys(enrollmentFilter).length > 0) {
+    where.enrollments = {
+      some: {
+        ...enrollmentFilter,
+        status: "active",
+        isDeleted: false,
+      },
+    };
+  }
+
+  const [students, total] = await Promise.all([
+    prisma.student.findMany({
+      where,
+      include: {
+        enrollments: {
+          where: {
+            status: "active",
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
+          },
+          include: {
+            class: { select: { id: true, name: true } },
+            section: { select: { id: true, name: true } },
+            academicYear: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.student.count({ where }),
+  ]);
+
+  return {
+    students,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+// ============================================
 // GET STUDENT BY ID
 // ============================================
 export const getStudentById = async (id: string, tenantId: string) => {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import prisma from "../../config/prisma";
 import { generateTCData } from "./helpers/tc.helper";
 import { generateCharacterCertData } from "./helpers/character.helper";

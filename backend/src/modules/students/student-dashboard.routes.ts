@@ -2,7 +2,7 @@
 // STUDENT DASHBOARD ROUTES
 // Mount at: app.use("/api/students/dashboard", studentDashboardRoutes)
 // ══════════════════════════════════════════════════════════════════════════════
-
+console.log("✅ Student Dashboard Routes Loaded");
 import { Router, Request, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";

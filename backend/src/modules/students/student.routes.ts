@@ -129,6 +129,7 @@ router.delete("/documents/:documentId", allowRoles("ADMIN"), async (req: any, re
 // --- Stats ---
 router.get("/stats", getStudentStatsHandler);
 
+
 // --- Next Admission Number (preview — does NOT increment counter) ---
 router.get("/next-admission-no", async (req: any, res: any) => {
   try {

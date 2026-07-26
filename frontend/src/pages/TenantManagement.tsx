@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../utils/url";
+
 type Tenant = {
   id: string;
   name: string;
@@ -31,7 +33,7 @@ export default function TenantManagement() {
   //////////////////////////////////////////////////////
   const fetchTenants = async () => {
     try {
-      const res = await axios.get("/api/tenant", {
+      const res = await axios.get(getFullUrl("/api/tenant"), {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -64,7 +66,7 @@ export default function TenantManagement() {
       if (logoFile) formData.append("logo", logoFile);
       if (bgFile) formData.append("background", bgFile);
 
-      await axios.post("/api/tenant", formData, {
+      await axios.post(getFullUrl("/api/tenant"), formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -101,7 +103,7 @@ const createTenant = async () => {
     if (logoFile) formData.append("logo", logoFile);
     if (bgFile) formData.append("background", bgFile);
 
-    const res = await axios.post("/api/tenant", formData, {
+    const res = await axios.post(getFullUrl("/api/tenant"), formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
@@ -149,8 +151,7 @@ const createTenant = async () => {
   // TOGGLE ACTIVE
   //////////////////////////////////////////////////////
   const toggleTenant = async (id: string, isActive?: boolean) => {
-    await axios.patch(
-      `/api/tenant/${id}`,
+    await axios.patch(getFullUrl(`/api/tenant/${id}`),
       { isActive: !isActive },
       { headers: { Authorization: `Bearer ${token}` } }
     );

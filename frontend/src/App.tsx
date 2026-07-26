@@ -200,6 +200,8 @@ import ReportCard from "./pages/exams/ReportCard";
 import BulkReportCard from "./pages/exams/BulkReportCard";
 import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 
+import { getFullUrl } from "./utils/url";
+
 const ExamSchedule = lazyWithRetry(() => import("./pages/exams/ExamSchedule"));
 const SeatingArrangement = lazyWithRetry(() => import("./pages/exams/SeatingArrangement"));
 const AdmitCard = lazyWithRetry(() => import("./pages/exams/AdmitCard"));
@@ -456,7 +458,7 @@ function ProtectedRoute() {
         }
       }
       try {
-        const res = await axios.get("/api/tenant/my-subscription", {
+        const res = await axios.get(getFullUrl("/api/tenant/my-subscription"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = res.data?.data || res.data;

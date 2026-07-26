@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Package,
   Plus,
   Search,
@@ -124,7 +126,7 @@ export default function AssetList() {
       if (filterCondition) params.condition = filterCondition;
       if (filterLocation) params.location = filterLocation;
 
-      const res = await axios.get("/api/inventory/assets", { headers, params });
+      const res = await axios.get(getFullUrl("/api/inventory/assets"), { headers, params });
       const rawData = res.data?.data || {};
       const data = Array.isArray(rawData) ? rawData : (rawData.assets || []);
       setAssets(data);
@@ -154,7 +156,7 @@ export default function AssetList() {
   // ─── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`/api/inventory/assets/${id}`, { headers });
+      await axios.delete(getFullUrl(`/api/inventory/assets/${id}`), { headers });
       setAssets((prev) => prev.filter((a) => a.id !== id));
       setToast({ message: "Asset deleted", type: "success" });
     } catch {
@@ -479,9 +481,9 @@ function AssetFormModal({
       };
 
       if (asset) {
-        await axios.put(`/api/inventory/assets/${asset.id}`, payload, { headers });
+        await axios.put(getFullUrl(`/api/inventory/assets/${asset.id}`), payload, { headers });
       } else {
-        await axios.post("/api/inventory/assets", payload, { headers });
+        await axios.post(getFullUrl("/api/inventory/assets"), payload, { headers });
       }
       onSuccess();
     } catch {

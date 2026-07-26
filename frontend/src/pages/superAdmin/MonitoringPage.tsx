@@ -16,6 +16,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -84,11 +86,11 @@ export default function MonitoringPage() {
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
-  const fetchDashboard = useCallback(async () => { try { const res = await axios.get("/api/monitoring/dashboard", { headers }); setDashboard(res.data.data); } catch (err) { console.error(err); } }, []);
-  const fetchCPUHistory = useCallback(async () => { try { const res = await axios.get("/api/monitoring/cpu-history", { headers }); setCpuHistory(res.data.data); } catch (err) { console.error(err); } }, []);
-  const fetchRAMHistory = useCallback(async () => { try { const res = await axios.get("/api/monitoring/ram-history", { headers }); setRamHistory(res.data.data); } catch (err) { console.error(err); } }, []);
-  const fetchResponseTime = useCallback(async () => { try { const res = await axios.get("/api/monitoring/response-time", { headers }); setResponseTime(res.data.data); } catch (err) { console.error(err); } }, []);
-  const fetchAPIStats = useCallback(async () => { try { const res = await axios.get("/api/monitoring/api-stats", { headers }); setApiStats(res.data.data); } catch (err) { console.error(err); } }, []);
+  const fetchDashboard = useCallback(async () => { try { const res = await axios.get(getFullUrl("/api/monitoring/dashboard"), { headers }); setDashboard(res.data.data); } catch (err) { console.error(err); } }, []);
+  const fetchCPUHistory = useCallback(async () => { try { const res = await axios.get(getFullUrl("/api/monitoring/cpu-history"), { headers }); setCpuHistory(res.data.data); } catch (err) { console.error(err); } }, []);
+  const fetchRAMHistory = useCallback(async () => { try { const res = await axios.get(getFullUrl("/api/monitoring/ram-history"), { headers }); setRamHistory(res.data.data); } catch (err) { console.error(err); } }, []);
+  const fetchResponseTime = useCallback(async () => { try { const res = await axios.get(getFullUrl("/api/monitoring/response-time"), { headers }); setResponseTime(res.data.data); } catch (err) { console.error(err); } }, []);
+  const fetchAPIStats = useCallback(async () => { try { const res = await axios.get(getFullUrl("/api/monitoring/api-stats"), { headers }); setApiStats(res.data.data); } catch (err) { console.error(err); } }, []);
 
   useEffect(() => { const loadAll = async () => { setLoading(true); await Promise.all([fetchDashboard(), fetchCPUHistory(), fetchRAMHistory(), fetchResponseTime(), fetchAPIStats()]); setLoading(false); }; loadAll(); }, []);
   useEffect(() => { if (!autoRefresh) return; const interval = setInterval(() => { fetchDashboard(); fetchCPUHistory(); fetchRAMHistory(); }, 15000); return () => clearInterval(interval); }, [autoRefresh]);

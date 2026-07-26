@@ -63,7 +63,7 @@ const BulkReportCard: React.FC = () => {
       const allData: StudentReportData[] = [];
       for (let i = 0; i < studentIds.length; i++) {
         try {
-          const res = await axios.get(`/api/exam/${examId}/report-card/${studentIds[i]}`, { headers });
+          const res = await axios.get(getFullUrl(`/api/exam/${examId}/report-card/${studentIds[i]}`), { headers });
           const raw = res.data?.data || res.data;
           allData.push({
             school: { name: raw.tenant?.name || "", address: raw.tenant?.address || "", phone: raw.tenant?.phone || "", logo: raw.tenant?.logoUrl || raw.tenant?.logo || "" },

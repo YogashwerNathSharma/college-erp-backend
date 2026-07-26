@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 🚀 SUPER ADMIN SETTINGS PAGE
 //////////////////////////////////////////////////////
@@ -77,8 +79,7 @@ export default function SuperAdminSettings() {
   const fetchSettings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        "/api/super-admin/settings",
+      const res = await axios.get(getFullUrl("/api/super-admin/settings"),
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -121,7 +122,7 @@ export default function SuperAdminSettings() {
   const fetchDevProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/developer-profile", {
+      const res = await axios.get(getFullUrl("/api/super-admin/developer-profile"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = res.data?.data;
@@ -151,7 +152,7 @@ export default function SuperAdminSettings() {
     setDevSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put("/api/super-admin/developer-profile", devProfile, {
+      await axios.put(getFullUrl("/api/super-admin/developer-profile"), devProfile, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Developer profile updated! 🎉");
@@ -170,8 +171,7 @@ export default function SuperAdminSettings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
-        "/api/super-admin/settings/platform",
+      await axios.put(getFullUrl("/api/super-admin/settings/platform"),
         platform,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -193,8 +193,7 @@ export default function SuperAdminSettings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
-        "/api/super-admin/settings/profile",
+      await axios.put(getFullUrl("/api/super-admin/settings/profile"),
         profile,
         { headers: { Authorization: `Bearer ${token}` } }
       );

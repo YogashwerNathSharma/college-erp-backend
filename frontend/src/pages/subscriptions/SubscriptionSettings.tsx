@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { CreditCard, Crown, Clock, Gift, GraduationCap, Users, ShieldCheck, HardDrive } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 export default function SubscriptionSettings() {
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [usage, setUsage] = useState<any>(null);
@@ -31,8 +33,8 @@ export default function SubscriptionSettings() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [subRes, usageRes] = await Promise.all([
-        axios.get("/api/tenant/my-subscription", { headers }),
-        axios.get("/api/tenant/usage", { headers }),
+        axios.get(getFullUrl("/api/tenant/my-subscription"), { headers }),
+        axios.get(getFullUrl("/api/tenant/usage"), { headers }),
       ]);
 
       setSubscriptionInfo(subRes.data.data);
@@ -47,7 +49,7 @@ export default function SubscriptionSettings() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/tenant/plans", {
+      const res = await axios.get(getFullUrl("/api/tenant/plans"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPlans(res.data.data || []);
@@ -63,8 +65,7 @@ export default function SubscriptionSettings() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const res = await axios.post(
-        "/api/tenant/self-subscribe",
+      const res = await axios.post(getFullUrl("/api/tenant/self-subscribe"),
         { planId },
         { headers }
       );
@@ -82,8 +83,7 @@ export default function SubscriptionSettings() {
         theme: { color: "#4f46e5" },
         handler: async function (response: any) {
           try {
-            await axios.post(
-              "/api/subscription-payments/verify",
+            await axios.post(getFullUrl("/api/subscription-payments/verify"),
               {
                 subscriptionId,
                 razorpay_order_id: response.razorpay_order_id,

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Plus,
   Edit,
   Trash2,
@@ -43,7 +45,7 @@ const RoomManagement: React.FC = () => {
   const fetchRooms = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/room", { headers });
+      const res = await axios.get(getFullUrl("/api/room"), { headers });
       setRooms(res.data?.data || res.data || []);
     } catch {
       toast.error("Failed to load rooms");
@@ -82,16 +84,14 @@ const RoomManagement: React.FC = () => {
     try {
       if (editingRoom) {
         // Update
-        await axios.put(
-          `/api/room/${editingRoom.id}`,
+        await axios.put(getFullUrl(`/api/room/${editingRoom.id}`),
           { name: formName.trim(), capacity: formCapacity, location: formLocation.trim() || null },
           { headers }
         );
         toast.success("Room updated successfully");
       } else {
         // Create
-        await axios.post(
-          "/api/room",
+        await axios.post(getFullUrl("/api/room"),
           { name: formName.trim(), capacity: formCapacity, location: formLocation.trim() || null },
           { headers }
         );
@@ -111,7 +111,7 @@ const RoomManagement: React.FC = () => {
     if (!confirm(`Delete "${room.name}"? This action cannot be undone.`)) return;
 
     try {
-      await axios.delete(`/api/room/${room.id}`, { headers });
+      await axios.delete(getFullUrl(`/api/room/${room.id}`), { headers });
       toast.success("Room deleted");
       fetchRooms();
     } catch (error: any) {

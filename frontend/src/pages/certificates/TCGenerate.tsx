@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   FileText,
   Search,
   Printer,
@@ -102,12 +104,12 @@ export default function TCGenerate() {
 
   // ─── Fetch Classes ─────────────────────────────────────────────────────────
   useEffect(() => {
-    axios.get("/api/class").then((res) => setClasses(res.data?.data || [])).catch(() => {});
+    axios.get(getFullUrl("/api/class")).then((res) => setClasses(res.data?.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (filterClassId) {
-      axios.get(`/api/section?classId=${filterClassId}`).then((res) => setSections(res.data?.data || [])).catch(() => {});
+      axios.get(getFullUrl(`/api/section?classId=${filterClassId}`)).then((res) => setSections(res.data?.data || [])).catch(() => {});
       setFilterSectionId("");
     } else { setSections([]); setFilterSectionId(""); }
   }, [filterClassId]);
@@ -118,7 +120,7 @@ export default function TCGenerate() {
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res = await axios.get("/api/certificate/tc");
+      const res = await axios.get(getFullUrl("/api/certificate/tc"));
       const data = res.data.data;
       const rawList = Array.isArray(data) ? data : data?.tcs || [];
       // Normalize backend fields to match frontend TCRecord interface
@@ -153,7 +155,7 @@ export default function TCGenerate() {
       if (filterSectionId) params.sectionId = filterSectionId;
       if (searchQuery.trim()) params.search = searchQuery.trim();
 
-      const res = await axios.get("/api/students", { params });
+      const res = await axios.get(getFullUrl("/api/students"), { params });
       const result = res.data?.data;
       const students = result?.students || result || [];
       setSearchResults(students.map((s: any) => ({
@@ -202,7 +204,7 @@ export default function TCGenerate() {
     if (!selectedStudent) return;
     setGenerating(true);
     try {
-      const res = await axios.post("/api/certificate/tc/generate", {
+      const res = await axios.post(getFullUrl("/api/certificate/tc/generate"), {
         studentId: selectedStudent.id,
         reason: form.reason,
         lastAttendanceDate: form.leavingDate,

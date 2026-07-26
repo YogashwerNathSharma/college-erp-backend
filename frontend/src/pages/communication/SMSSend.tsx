@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   MessageSquare,
   Send,
   Users,
@@ -106,7 +108,7 @@ export default function SMSSend() {
   const fetchLog = useCallback(async () => {
     setLoadingLog(true);
     try {
-      const res = await axios.get("/api/communication-new/sms/log", { headers, params: { limit: 20 } });
+      const res = await axios.get(getFullUrl("/api/communication-new/sms/log"), { headers, params: { limit: 20 } });
       setSmsLog(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       // silent
@@ -117,7 +119,7 @@ export default function SMSSend() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await axios.get("/api/communication-new/sms/stats", { headers });
+      const res = await axios.get(getFullUrl("/api/communication-new/sms/stats"), { headers });
       setStats(res.data.data || { totalSentToday: 0, delivered: 0, failed: 0 });
     } catch {
       // silent
@@ -126,7 +128,7 @@ export default function SMSSend() {
 
   const fetchClasses = useCallback(async () => {
     try {
-      const res = await axios.get("/api/communication-new/sms/classes", { headers });
+      const res = await axios.get(getFullUrl("/api/communication-new/sms/classes"), { headers });
       setClasses(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       setClasses([
@@ -156,7 +158,7 @@ export default function SMSSend() {
     setShowConfirm(false);
     setSending(true);
     try {
-      await axios.post("/api/communication-new/sms/send", {
+      await axios.post(getFullUrl("/api/communication-new/sms/send"), {
         recipientMode,
         classId: recipientMode === "CLASS" ? selectedClass : undefined,
         section: recipientMode === "CLASS" ? selectedSection : undefined,

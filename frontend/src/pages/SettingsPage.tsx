@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { User, Palette, Shield, Save, Eye, EyeOff } from "lucide-react";
 
+import { getFullUrl } from "../utils/url";
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,7 +25,7 @@ export default function SettingsPage() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("/api/settings", {
+        const res = await axios.get(getFullUrl("/api/settings"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const d = res.data.data;
@@ -58,7 +60,7 @@ export default function SettingsPage() {
         body.newPassword = passwords.newPassword;
       }
 
-      await axios.put("/api/settings/profile", body, {
+      await axios.put(getFullUrl("/api/settings/profile"), body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -77,7 +79,7 @@ export default function SettingsPage() {
       setSaving(true);
       const token = localStorage.getItem("token");
 
-      await axios.put("/api/settings/platform", platform, {
+      await axios.put(getFullUrl("/api/settings/platform"), platform, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

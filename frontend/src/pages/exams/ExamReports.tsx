@@ -4,6 +4,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { getPrintSignatureHTML } from "../../components/PrintSignature";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ClipboardList, Calendar, CalendarDays, BookOpen, Users, UserCheck, UserX,
   BarChart3, FileText, Award, Search, Printer, Download, Eye, ArrowLeft,
   TrendingUp, AlertCircle, Clock, Shield, Hash, Layers, Building2,
@@ -198,8 +200,8 @@ const ExamReports = () => {
     const fetchData = async () => {
       try {
         const [examRes, classRes] = await Promise.all([
-          axios.get("/api/exam"),
-          axios.get("/api/class"),
+          axios.get(getFullUrl("/api/exam")),
+          axios.get(getFullUrl("/api/class")),
         ]);
         const examList = examRes.data?.data || examRes.data || [];
         setExams(Array.isArray(examList) ? examList : []);
@@ -220,7 +222,7 @@ const ExamReports = () => {
   // Fetch sections when class changes
   useEffect(() => {
     if (selectedClass) {
-      axios.get(`/api/section?classId=${selectedClass}`)
+      axios.get(getFullUrl(`/api/section?classId=${selectedClass}`))
         .then((res) => setSections(res.data?.data || []))
         .catch(() => setSections([]));
       setSelectedSection("");
@@ -276,7 +278,7 @@ const ExamReports = () => {
 
       if (examListReports.includes(selectedReport)) {
         // Fetch all exams directly
-        res = await axios.get("/api/exam", {
+        res = await axios.get(getFullUrl("/api/exam"), {
           params: { ...(selectedClass ? { classId: selectedClass } : {}) },
         });
       } else {
@@ -287,7 +289,7 @@ const ExamReports = () => {
           return;
         }
         const reportType = REPORT_API_MAP[selectedReport] || "result_summary";
-        res = await axios.get("/api/exam/reports", {
+        res = await axios.get(getFullUrl("/api/exam/reports"), {
           params: { examId: selectedExam, reportType },
         });
       }

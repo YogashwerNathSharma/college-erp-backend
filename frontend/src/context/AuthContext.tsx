@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
+import { getFullUrl } from "../utils/url";
+
 //////////////////////////////////////////////////////
 // 🔐 AUTH CONTEXT
 //////////////////////////////////////////////////////
@@ -49,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await axios.post("/api/auth/login", { email, password });
+      const res = await axios.post(getFullUrl("/api/auth/login"), { email, password });
       const { token: newToken, user: userData } = res.data.data;
       localStorage.setItem("token", newToken);
       localStorage.setItem("user", JSON.stringify(userData));

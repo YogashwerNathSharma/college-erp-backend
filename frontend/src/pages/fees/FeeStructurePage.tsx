@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 // Types
 interface FeeHead {
   id: string;
@@ -181,7 +183,7 @@ const FeeStructurePage: React.FC = () => {
       if (filterAcademicYear) params.academicYearId = filterAcademicYear;
       if (filterClass) params.classId = filterClass;
 
-      const response = await axios.get("/api/fees/structures", { params });
+      const response = await axios.get(getFullUrl("/api/fees/structures"), { params });
       if (response.data.success) {
         setFeeStructures(response.data.data);
       }
@@ -194,7 +196,7 @@ const FeeStructurePage: React.FC = () => {
 
   const fetchClasses = async () => {
     try {
-      const response = await axios.get("/api/class");
+      const response = await axios.get(getFullUrl("/api/class"));
       if (response.data.success) {
         setClasses(response.data.data);
       }
@@ -205,7 +207,7 @@ const FeeStructurePage: React.FC = () => {
 
   const fetchAcademicYears = async () => {
     try {
-      const response = await axios.get("/api/academic");
+      const response = await axios.get(getFullUrl("/api/academic"));
       if (response.data.success) {
         setAcademicYears(response.data.data);
       }
@@ -216,7 +218,7 @@ const FeeStructurePage: React.FC = () => {
 
   const fetchFeeHeads = async () => {
     try {
-      const response = await axios.get("/api/fees/heads");
+      const response = await axios.get(getFullUrl("/api/fees/heads"));
       const data = response.data.data || response.data;
       setFeeHeads(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -452,7 +454,7 @@ const FeeStructurePage: React.FC = () => {
               dueDay: formData.dueDay,
               items,
             };
-            const response = await axios.post("/api/fees/structures", payload);
+            const response = await axios.post(getFullUrl("/api/fees/structures"), payload);
             if (response.data.success) successCount++;
           } catch (error: any) {
             failCount++;
@@ -499,10 +501,10 @@ const FeeStructurePage: React.FC = () => {
         };
 
         if (editingStructure) {
-          const response = await axios.put(`/api/fees/structures/${editingStructure.id}`, payload);
+          const response = await axios.put(getFullUrl(`/api/fees/structures/${editingStructure.id}`), payload);
           if (response.data.success) toast.success("Fee structure updated successfully");
         } else {
-          const response = await axios.post("/api/fees/structures", payload);
+          const response = await axios.post(getFullUrl("/api/fees/structures"), payload);
           if (response.data.success) toast.success("Fee structure created successfully");
         }
       }
@@ -520,7 +522,7 @@ const FeeStructurePage: React.FC = () => {
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     try {
-      const response = await axios.delete(`/api/fees/structures/${id}`);
+      const response = await axios.delete(getFullUrl(`/api/fees/structures/${id}`));
       if (response.data.success) {
         toast.success("Fee structure deleted successfully");
         fetchFeeStructures();

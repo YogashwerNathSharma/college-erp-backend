@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Calendar, CheckCircle2, XCircle, Clock, Users, UserCheck,
   Home, ChevronRight, Loader2, X, AlertCircle, Save, BarChart3
 } from "lucide-react";
@@ -51,7 +53,7 @@ export default function StaffAttendance() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hr/attendance", { headers, params: { date } });
+      const res = await axios.get(getFullUrl("/api/hr/attendance"), { headers, params: { date } });
       setRecords(res.data.data || []);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch attendance");
@@ -64,7 +66,7 @@ export default function StaffAttendance() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hr/attendance/report", { headers, params: { month: reportMonth } });
+      const res = await axios.get(getFullUrl("/api/hr/attendance/report"), { headers, params: { month: reportMonth } });
       setMonthlyReport(res.data.data || []);
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to fetch report");
@@ -85,7 +87,7 @@ export default function StaffAttendance() {
     setSaving(true);
     setError("");
     try {
-      await axios.post("/api/hr/attendance/mark", {
+      await axios.post(getFullUrl("/api/hr/attendance/mark"), {
         date,
         records: records.map(r => ({ employeeId: r.employeeId, status: r.status })),
       }, { headers });

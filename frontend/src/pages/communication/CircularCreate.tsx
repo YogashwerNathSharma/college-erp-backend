@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   FileText,
   Send,
   Eye,
@@ -101,7 +103,7 @@ export default function CircularCreate() {
   const fetchCirculars = useCallback(async () => {
     setLoadingCirculars(true);
     try {
-      const res = await axios.get("/api/communication-new/circular", { headers });
+      const res = await axios.get(getFullUrl("/api/communication-new/circular"), { headers });
       const data = res.data?.data;
       setCirculars(Array.isArray(data) ? data : []);
     } catch {
@@ -149,7 +151,7 @@ export default function CircularCreate() {
       formData.append("isImportant", String(form.isImportant));
       if (file) formData.append("attachment", file);
 
-      await axios.post("/api/communication-new/circular", formData, {
+      await axios.post(getFullUrl("/api/communication-new/circular"), formData, {
         headers: { ...headers, "Content-Type": "multipart/form-data" },
       });
       setToast({ message: "Circular published successfully!", type: "success" });
@@ -169,7 +171,7 @@ export default function CircularCreate() {
   // ─── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`/api/communication-new/circular/${id}`, { headers });
+      await axios.delete(getFullUrl(`/api/communication-new/circular/${id}`), { headers });
       setCirculars((prev) => prev.filter((c) => c.id !== id));
       setToast({ message: "Circular deleted", type: "success" });
     } catch {

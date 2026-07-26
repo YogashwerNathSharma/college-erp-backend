@@ -12,6 +12,8 @@ import {
 import { DataTable, PageHeader, StatsCard, ChartCard } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════════════
 // TYPES & CONFIG
 // ═══════════════════════════════════════════════════════════
@@ -47,7 +49,7 @@ export default function ReportCenter() {
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`/api/super-admin/report-center/${activeTab}`, { params: filter });
+      const { data } = await axios.get(getFullUrl(`/api/super-admin/report-center/${activeTab}`), { params: filter });
       if (data.success) setReportData(data.report);
     } catch { setReportData(generateMockData(activeTab)); }
     finally { setLoading(false); }
@@ -56,7 +58,7 @@ export default function ReportCenter() {
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
   const handleExport = async (format: string) => {
-    try { await axios.post("/api/super-admin/report-center/export", { reportType: activeTab, format, ...filter }); } catch {}
+    try { await axios.post(getFullUrl("/api/super-admin/report-center/export"), { reportType: activeTab, format, ...filter }); } catch {}
     toast.success(`Report exported as ${format.toUpperCase()}`);
   };
 

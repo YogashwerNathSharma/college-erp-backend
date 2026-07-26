@@ -18,6 +18,7 @@ import {
   Home,
 } from 'lucide-react';
 import PrintSignature from '../../components/PrintSignature';
+import { getFullUrl } from "../../utils/url";
 
 interface StudentProfile {
   id: string;
@@ -86,7 +87,7 @@ const StudentProfilePage: React.FC = () => {
     const fetchAcademicYears = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/academic');
+        const response = await axios.get(getFullUrl('/api/academic'));
         const rawYears = response.data?.data || response.data || [];
         const years = Array.isArray(rawYears) ? rawYears : [];
         setAcademicYears(years);
@@ -114,7 +115,7 @@ const StudentProfilePage: React.FC = () => {
     const fetchClasses = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/class?academicYearId=${selectedYear.id}`);
+        const response = await axios.get(getFullUrl(`/api/class?academicYearId=${selectedYear.id}`));
         const rawClasses = response.data?.data || response.data || [];
         const classData = Array.isArray(rawClasses) ? rawClasses : [];
         setClasses(classData);
@@ -143,7 +144,7 @@ const StudentProfilePage: React.FC = () => {
     const fetchSections = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/section?classId=${selectedClass.id}`);
+        const response = await axios.get(getFullUrl(`/api/section?classId=${selectedClass.id}`));
         const rawSections = response.data?.data || response.data || [];
         const sectionData = Array.isArray(rawSections) ? rawSections : [];
         setSections(sectionData);
@@ -170,8 +171,7 @@ const StudentProfilePage: React.FC = () => {
     const fetchStudents = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(
-          `/api/students?classId=${selectedClass.id}&sectionId=${selectedSection.id}&academicYearId=${selectedYear.id}`
+        const response = await axios.get(getFullUrl(`/api/students?classId=${selectedClass.id}&sectionId=${selectedSection.id}&academicYearId=${selectedYear.id}`)
         );
         const rawStudents = response.data?.data?.students || response.data?.data || response.data?.students || response.data || [];
         const studentData = Array.isArray(rawStudents) ? rawStudents : [];
@@ -197,7 +197,7 @@ const StudentProfilePage: React.FC = () => {
     const fetchStudentProfile = async () => {
       try {
         setFetchingProfile(true);
-        const response = await axios.get(`/api/students/${selectedStudent.id}`);
+        const response = await axios.get(getFullUrl(`/api/students/${selectedStudent.id}`));
         setStudentProfile(response.data.data || null);
         toast.success('Student profile loaded');
       } catch (error) {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   UtensilsCrossed, Coffee, Sun, Moon, Plus, Save, Trash2,
   Home, ChevronRight, Loader2, X, AlertCircle, Edit2
 } from "lucide-react";
@@ -41,7 +43,7 @@ export default function MessManage() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hostel/mess-menu", { headers });
+      const res = await axios.get(getFullUrl("/api/hostel/mess-menu"), { headers });
       const data = res.data.data || [];
       if (data.length > 0) {
         setMenu(data);
@@ -82,7 +84,7 @@ export default function MessManage() {
     setSaving(true);
     setError("");
     try {
-      await axios.post("/api/hostel/mess-menu", { menu }, { headers });
+      await axios.post(getFullUrl("/api/hostel/mess-menu"), { menu }, { headers });
       setSuccess("Menu saved successfully!");
       setEditMode(false);
       setTimeout(() => setSuccess(""), 3000);

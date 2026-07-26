@@ -180,7 +180,7 @@ const SeatingArrangementPage: React.FC = () => {
   // ─── API Calls ─────────────────────────────────────────────
   const fetchTenant = async () => {
     try {
-      const res = await axios.get("/api/settings", { headers });
+      const res = await axios.get(getFullUrl("/api/settings"), { headers });
       setTenant(res.data?.data?.tenant || JSON.parse(localStorage.getItem("tenant") || "{}"));
     } catch {
       setTenant(JSON.parse(localStorage.getItem("tenant") || "{}"));
@@ -189,7 +189,7 @@ const SeatingArrangementPage: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       const raw = res.data?.data || res.data || [];
       setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch {
@@ -199,7 +199,7 @@ const SeatingArrangementPage: React.FC = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("/api/room", { headers });
+      const res = await axios.get(getFullUrl("/api/room"), { headers });
       setRooms(res.data?.data || res.data || []);
     } catch {
       toast.error("Failed to load rooms");
@@ -210,12 +210,12 @@ const SeatingArrangementPage: React.FC = () => {
     try {
       let academicYearId = "";
       try {
-        const ayRes = await axios.get("/api/academic", { headers });
+        const ayRes = await axios.get(getFullUrl("/api/academic"), { headers });
         const years = ayRes.data?.data || ayRes.data || [];
         const active = years.find((y: any) => y.isCurrent || y.isActive);
         if (active) academicYearId = active.id;
       } catch {}
-      const res = await axios.get("/api/class", {
+      const res = await axios.get(getFullUrl("/api/class"), {
         headers,
         params: academicYearId ? { academicYearId } : undefined,
       });
@@ -225,7 +225,7 @@ const SeatingArrangementPage: React.FC = () => {
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get(`/api/exam/${selectedExam}/schedule`, { headers });
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/schedule`), { headers });
       const raw = res.data?.data || res.data || [];
       setSchedules((Array.isArray(raw) ? raw : []).map((sch: any) => ({
         ...sch,
@@ -243,7 +243,7 @@ const SeatingArrangementPage: React.FC = () => {
       // Fallback: get active academic year if exam doesn't have it
       if (!academicYearId) {
         try {
-          const ayRes = await axios.get("/api/academic", { headers });
+          const ayRes = await axios.get(getFullUrl("/api/academic"), { headers });
           const years = ayRes.data?.data || ayRes.data || [];
           const active = years.find((y: any) => y.isCurrent || y.isActive);
           if (active) academicYearId = active.id;
@@ -251,7 +251,7 @@ const SeatingArrangementPage: React.FC = () => {
       }
       const ayParam = academicYearId ? `&academicYearId=${academicYearId}` : "";
       for (const classId of selectedClassIds) {
-        const res = await axios.get(`/api/enrollment/count?classId=${classId}${ayParam}`, { headers });
+        const res = await axios.get(getFullUrl(`/api/enrollment/count?classId=${classId}${ayParam}`), { headers });
         counts[classId] = res.data?.count || res.data?.data || 0;
       }
       setClassStudentCounts(counts);
@@ -266,12 +266,12 @@ const SeatingArrangementPage: React.FC = () => {
 
       if (schedulesToFetch.length === 0) {
         // Try fetching by exam ID directly (temp schedule case)
-        const schRes = await axios.get(`/api/exam/${selectedExam}/schedule`, { headers });
+        const schRes = await axios.get(getFullUrl(`/api/exam/${selectedExam}/schedule`), { headers });
         const rawSch = schRes.data?.data || schRes.data || [];
         const mapped = (Array.isArray(rawSch) ? rawSch : []).map((s: any) => ({ ...s, date: s.date || s.examDate || "" }));
         setSchedules(mapped);
         for (const sch of mapped) {
-          const seatRes = await axios.get(`/api/exam/seating/${sch.id}`, { headers });
+          const seatRes = await axios.get(getFullUrl(`/api/exam/seating/${sch.id}`), { headers });
           const raw = seatRes.data?.data || seatRes.data || {};
           const rawSeats = Array.isArray(raw) ? raw : raw.seats || [];
           allSeats.push(...rawSeats.map(mapSeat));
@@ -279,7 +279,7 @@ const SeatingArrangementPage: React.FC = () => {
       } else {
         for (const sch of schedulesToFetch) {
           try {
-            const seatRes = await axios.get(`/api/exam/seating/${sch.id}`, { headers });
+            const seatRes = await axios.get(getFullUrl(`/api/exam/seating/${sch.id}`), { headers });
             const raw = seatRes.data?.data || seatRes.data || {};
             const rawSeats = Array.isArray(raw) ? raw : raw.seats || [];
             allSeats.push(...rawSeats.map(mapSeat));
@@ -325,7 +325,7 @@ const SeatingArrangementPage: React.FC = () => {
       const scheduleId = schedules.length > 0 ? schedules[0].id : selectedExam;
       const copyToIds = schedules.length > 1 ? schedules.slice(1).map(s => s.id) : undefined;
 
-      const res = await axios.post("/api/exam/seating/generate-custom", {
+      const res = await axios.post(getFullUrl("/api/exam/seating/generate-custom"), {
         examScheduleId: scheduleId,
         roomId: selectedRoomIds[0],
         roomIds: selectedRoomIds,

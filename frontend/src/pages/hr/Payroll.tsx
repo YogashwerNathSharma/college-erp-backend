@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   IndianRupee, Download, CheckCircle2, Clock, Calculator,
   Home, ChevronRight, Loader2, X, AlertCircle, FileDown, Check
 } from "lucide-react";
@@ -40,7 +42,7 @@ export default function Payroll() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hr/payroll", { headers, params: { month } });
+      const res = await axios.get(getFullUrl("/api/hr/payroll"), { headers, params: { month } });
       setPayroll(res.data.data || []);
       setSelectedIds([]);
     } catch (err: any) {
@@ -54,7 +56,7 @@ export default function Payroll() {
     setProcessing(true);
     setError("");
     try {
-      await axios.post("/api/hr/payroll/generate", { month }, { headers });
+      await axios.post(getFullUrl("/api/hr/payroll/generate"), { month }, { headers });
       setSuccess("Payroll generated successfully!");
       setTimeout(() => setSuccess(""), 3000);
       fetchPayroll();
@@ -67,7 +69,7 @@ export default function Payroll() {
 
   const markAsPaid = async (ids: string[]) => {
     try {
-      await axios.patch("/api/hr/payroll/mark-paid", { ids }, { headers });
+      await axios.patch(getFullUrl("/api/hr/payroll/mark-paid"), { ids }, { headers });
       setSuccess(`${ids.length} payroll(s) marked as paid`);
       setTimeout(() => setSuccess(""), 3000);
       fetchPayroll();
@@ -78,7 +80,7 @@ export default function Payroll() {
 
   const downloadSlip = async (id: string, name: string) => {
     try {
-      const res = await axios.get(`/api/hr/payroll/slip/${id}`, { headers, responseType: "blob" });
+      const res = await axios.get(getFullUrl(`/api/hr/payroll/slip/${id}`), { headers, responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;

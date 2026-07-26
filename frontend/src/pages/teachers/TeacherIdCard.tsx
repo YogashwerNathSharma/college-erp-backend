@@ -1980,7 +1980,7 @@ const TeacherIdCardPage: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/teacher", {
+      const res = await axios.get(getFullUrl("/api/teacher"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Response: { success, data: { data: [...teachers], meta: {...} } }
@@ -1997,7 +1997,7 @@ const TeacherIdCardPage: React.FC = () => {
 
   const fetchAcademicYears = async () => {
     try {
-      const res = await axios.get("/api/academic");
+      const res = await axios.get(getFullUrl("/api/academic"));
       const years = res.data.data || [];
       const active = years.find((y: any) => y.isActive);
       if (active?.name) setActiveAcademicYear(active.name);
@@ -2016,7 +2016,7 @@ const TeacherIdCardPage: React.FC = () => {
   const fetchPrincipalSignature = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/signature", {
+      const res = await axios.get(getFullUrl("/api/signature"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const signatures = res.data?.data || res.data || [];

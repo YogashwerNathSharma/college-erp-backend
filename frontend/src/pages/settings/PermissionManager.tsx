@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // TYPES
 //////////////////////////////////////////////////////
@@ -216,7 +218,7 @@ export default function PermissionManager({
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/permissions/${user.id}`, { headers });
+      const res = await axios.get(getFullUrl(`/api/permissions/${user.id}`), { headers });
       const data = res.data.data || res.data;
 
       // Set permissions from API (fields are flat on the response object)
@@ -274,8 +276,7 @@ export default function PermissionManager({
 
     setSaving(true);
     try {
-      await axios.put(
-        `/api/permissions/${user.id}`,
+      await axios.put(getFullUrl(`/api/permissions/${user.id}`),
         { permissions: changedPermissions },
         { headers }
       );
@@ -307,8 +308,7 @@ export default function PermissionManager({
 
     setGrantingTempAdmin(true);
     try {
-      const res = await axios.post(
-        `/api/permissions/temp-admin/${user.id}`,
+      const res = await axios.post(getFullUrl(`/api/permissions/temp-admin/${user.id}`),
         { durationInHours: hours },
         { headers }
       );
@@ -340,7 +340,7 @@ export default function PermissionManager({
   const handleRevokeTempAdmin = async () => {
     setRevokingTempAdmin(true);
     try {
-      await axios.delete(`/api/permissions/temp-admin/${user.id}`, { headers });
+      await axios.delete(getFullUrl(`/api/permissions/temp-admin/${user.id}`), { headers });
       setTempAdmin({ active: false, expiresAt: null, grantedAt: null });
       toast.success("Temporary admin revoked! 🔒");
     } catch (err: any) {

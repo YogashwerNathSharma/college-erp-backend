@@ -4,6 +4,8 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+import { getFullUrl } from "../../utils/url";
+
 export default function RegisterSchool() {
   const [schoolName, setSchoolName] = useState("");
   const [type, setType] = useState("School");
@@ -39,8 +41,7 @@ export default function RegisterSchool() {
     if (logo) formData.append("logo", logo);
     if (background) formData.append("background", background);
 
-    const res = await axios.post(
-      "/api/auth/register-tenant",
+    const res = await axios.post(getFullUrl("/api/auth/register-tenant"),
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );

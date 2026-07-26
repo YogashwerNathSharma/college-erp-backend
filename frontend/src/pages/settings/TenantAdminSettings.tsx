@@ -26,6 +26,8 @@ import {
 import toast from "react-hot-toast";
 import PermissionManager from "./PermissionManager";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 🏫 TENANT ADMIN SETTINGS PAGE
 // Tab 1: School Info (branding + logo/bg upload)
@@ -122,7 +124,7 @@ export default function TenantAdminSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get("/api/settings", {
+      const res = await axios.get(getFullUrl("/api/settings"), {
         headers,
       });
       const data = res.data.data;
@@ -168,7 +170,7 @@ export default function TenantAdminSettings() {
       if (roleFilter !== "ALL") params.role = roleFilter;
       if (statusFilter !== "ALL") params.status = statusFilter;
 
-      const res = await axios.get("/api/settings/users", {
+      const res = await axios.get(getFullUrl("/api/settings/users"), {
         headers,
         params,
       });
@@ -229,8 +231,7 @@ export default function TenantAdminSettings() {
 
     try {
       toast.loading("Uploading...", { id: "upload" });
-      const res = await axios.post(
-        "/api/settings/upload",
+      const res = await axios.post(getFullUrl("/api/settings/upload"),
         formData,
         {
           headers: {
@@ -266,7 +267,7 @@ export default function TenantAdminSettings() {
   const handleUpdateSchoolInfo = async () => {
     setSaving(true);
     try {
-      await axios.put("/api/settings", schoolInfo, {
+      await axios.put(getFullUrl("/api/settings"), schoolInfo, {
         headers,
       });
       toast.success("School info updated! 🏫");
@@ -290,8 +291,7 @@ export default function TenantAdminSettings() {
         payload.newPassword = profile.newPwd;
       }
 
-      await axios.put(
-        "/api/settings/profile",
+      await axios.put(getFullUrl("/api/settings/profile"),
         payload,
         { headers }
       );
@@ -334,8 +334,7 @@ export default function TenantAdminSettings() {
         payload["password"] = createForm.pwd;
       }
 
-      const res = await axios.post(
-        "/api/settings/users",
+      const res = await axios.post(getFullUrl("/api/settings/users"),
         payload,
         { headers }
       );
@@ -367,8 +366,7 @@ export default function TenantAdminSettings() {
     if (!selectedUser) return;
     setSaving(true);
     try {
-      await axios.put(
-        `/api/settings/users/${selectedUser.id}`,
+      await axios.put(getFullUrl(`/api/settings/users/${selectedUser.id}`),
         editForm,
         { headers }
       );
@@ -391,8 +389,7 @@ export default function TenantAdminSettings() {
     if (!selectedUser) return;
     setSaving(true);
     try {
-      await axios.delete(
-        `/api/settings/users/${selectedUser.id}`,
+      await axios.delete(getFullUrl(`/api/settings/users/${selectedUser.id}`),
         { headers }
       );
       toast.success("User deactivated! 🗑️");

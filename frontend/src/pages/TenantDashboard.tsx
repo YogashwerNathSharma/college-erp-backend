@@ -212,7 +212,7 @@ export default function Dashboard() {
       script.async = true;
       document.body.appendChild(script);
     }
-    axios.get("/api/tenant/my-subscription", { headers })
+    axios.get(getFullUrl("/api/tenant/my-subscription"), { headers })
       .then((res) => setSubscriptionInfo(res.data?.data || res.data))
       .catch(() => { });
   }, []);
@@ -223,7 +223,7 @@ export default function Dashboard() {
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.get("/api/dashboard", { headers });
+        const res = await axios.get(getFullUrl("/api/dashboard"), { headers });
         const d = res.data?.data;
 
         setData({
@@ -291,7 +291,7 @@ export default function Dashboard() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/tenant/plans", {
+      const res = await axios.get(getFullUrl("/api/tenant/plans"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPlans(res.data.data || []);
@@ -306,7 +306,7 @@ export default function Dashboard() {
       setPaymentLoading(true);
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.post("/api/tenant/self-subscribe", { planId }, { headers });
+      const res = await axios.post(getFullUrl("/api/tenant/self-subscribe"), { planId }, { headers });
       const { order, subscriptionId } = res.data.data;
 
       const options = {
@@ -320,7 +320,7 @@ export default function Dashboard() {
         theme: { color: "#4f46e5" },
         handler: async function (response: any) {
           try {
-            await axios.post("/api/subscription-payments/verify", {
+            await axios.post(getFullUrl("/api/subscription-payments/verify"), {
               subscriptionId,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -353,14 +353,14 @@ export default function Dashboard() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       const query = p.admissionNo || p.studentName || "";
-      const res = await axios.get(`/api/fees/collection/search?q=${encodeURIComponent(query)}`, { headers });
+      const res = await axios.get(getFullUrl(`/api/fees/collection/search?q=${encodeURIComponent(query)}`), { headers });
       const result = res.data;
       
       if (result?.type === "single" && result?.data?.fees) {
         setPaymentStudentFees(result.data.fees);
       } else if (result?.type === "list" && result?.students?.length > 0) {
         const enrollId = result.students[0].enrollmentId || result.students[0].id;
-        const feeRes = await axios.get(`/api/fees/collection/student/${enrollId}`, { headers });
+        const feeRes = await axios.get(getFullUrl(`/api/fees/collection/student/${enrollId}`), { headers });
         setPaymentStudentFees(feeRes.data?.fees || []);
       }
     } catch (err) {
@@ -375,7 +375,7 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get("/api/students?limit=1000", { headers });
+      const res = await axios.get(getFullUrl("/api/students?limit=1000"), { headers });
       setGenderStudents(res.data?.data?.students || res.data?.data || []);
     } catch {
       setGenderStudents([]);

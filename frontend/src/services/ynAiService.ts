@@ -10,6 +10,8 @@
 
 import axios from "axios";
 
+import { getFullUrl } from "../utils/url";
+
 type ActionType = "navigate" | "fetch" | "print" | "show" | "generate";
 
 type AiResponse = {
@@ -595,8 +597,7 @@ async function fetchFromBackend(endpoint: string, query: string): Promise<AiResp
 
 async function sendToAiBackend(command: string): Promise<AiResponse> {
   const token = localStorage.getItem("token");
-  const response = await axios.post(
-    "/api/ai/process-command",
+  const response = await axios.post(getFullUrl("/api/ai/process-command"),
     { command },
     { headers: { Authorization: `Bearer ${token}` } }
   );

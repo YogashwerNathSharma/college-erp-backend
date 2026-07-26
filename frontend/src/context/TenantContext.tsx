@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../utils/url";
+
 //////////////////////////////////////////////////////
 // 🏫 TENANT CONTEXT
 //////////////////////////////////////////////////////
@@ -40,7 +42,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const refreshTenant = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/tenant/profile");
+      const res = await axios.get(getFullUrl("/api/tenant/profile"));
       const data = res.data.data;
       setTenant(data);
     } catch (error) {

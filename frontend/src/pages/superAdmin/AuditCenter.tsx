@@ -27,6 +27,8 @@ import axios from "axios";
 import { DataTable, PageHeader, StatsCard, StatusBadge } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════
@@ -119,7 +121,7 @@ export default function AuditCenter() {
       if (filters.action) params.action = filters.action;
       if (filters.severity) params.severity = filters.severity;
 
-      const { data } = await axios.get("/api/super-admin/audit-center/logs", { params });
+      const { data } = await axios.get(getFullUrl("/api/super-admin/audit-center/logs"), { params });
       if (data.success) {
         setLogs(data.logs);
         setPagination(data.pagination);
@@ -135,7 +137,7 @@ export default function AuditCenter() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/audit-center/stats");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/audit-center/stats"));
       if (data.success) setStats(data.stats);
     } catch {
       setStats({
@@ -161,7 +163,7 @@ export default function AuditCenter() {
   // ─── Export ──────────────────────────────────────────────
   const handleExport = async (format: "csv" | "excel" | "pdf") => {
     try {
-      const { data } = await axios.post("/api/super-admin/audit-center/export", {
+      const { data } = await axios.post(getFullUrl("/api/super-admin/audit-center/export"), {
         format,
         type: activeTab,
         ...filters,
@@ -184,7 +186,7 @@ export default function AuditCenter() {
   const handleBulkDelete = async () => {
     try {
       const olderThan = new Date(Date.now() - bulkDeleteDays * 24 * 60 * 60 * 1000).toISOString();
-      await axios.post("/api/super-admin/audit-center/bulk-delete", {
+      await axios.post(getFullUrl("/api/super-admin/audit-center/bulk-delete"), {
         olderThan,
         type: activeTab,
       });
@@ -516,7 +518,7 @@ export default function AuditCenter() {
               variant: "danger",
               onClick: async (ids) => {
                 try {
-                  await axios.post("/api/super-admin/audit-center/bulk-delete", { ids });
+                  await axios.post(getFullUrl("/api/super-admin/audit-center/bulk-delete"), { ids });
                   toast.success(`Deleted ${ids.length} logs`);
                   fetchLogs();
                 } catch {

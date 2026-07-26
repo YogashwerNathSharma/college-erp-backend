@@ -3,6 +3,8 @@ import { X, Printer, Download, Search, Filter } from "lucide-react";
 import axios from "axios";
 import { printDocument, printMultipleReceipts } from "../../utils/print";
 
+import { getFullUrl } from "../../utils/url";
+
 type ModalType = "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments";
 
 type Props = {
@@ -48,7 +50,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get("/api/class", { headers });
+      const res = await axios.get(getFullUrl("/api/class"), { headers });
       const d = res.data?.data || res.data;
       setClasses(Array.isArray(d) ? d : d?.classes || []);
     } catch {
@@ -78,7 +80,7 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
           break;
         }
         case "classes": {
-          const res = await axios.get("/api/class", { headers });
+          const res = await axios.get(getFullUrl("/api/class"), { headers });
           const d = res.data?.data || res.data;
           result = Array.isArray(d) ? d : d?.classes || [];
           break;
@@ -86,12 +88,12 @@ export default function DashboardDetailModal({ isOpen, type, onClose }: Props) {
         case "fees_collected":
         case "receipts":
         case "recent_payments": {
-          const res = await axios.get("/api/fees/collection/all-payments", { headers });
+          const res = await axios.get(getFullUrl("/api/fees/collection/all-payments"), { headers });
           result = res.data?.data || [];
           break;
         }
         case "fees_pending": {
-          const res = await axios.get("/api/fees/collection/defaulters", { headers });
+          const res = await axios.get(getFullUrl("/api/fees/collection/defaulters"), { headers });
           result = res.data?.data?.defaulters || res.data?.defaulters || res.data?.data || [];
           break;
         }

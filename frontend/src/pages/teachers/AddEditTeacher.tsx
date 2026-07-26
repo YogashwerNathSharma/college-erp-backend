@@ -8,6 +8,8 @@ import { FiArrowLeft, FiSave, FiUpload } from "react-icons/fi";
 
 
 
+import { getFullUrl } from "../../utils/url";
+
 interface SubjectOption {
   id: string;
   name: string;
@@ -62,9 +64,9 @@ const AddEditTeacher = () => {
   const fetchOptions = async () => {
     try {
       const [subRes, classRes, yearRes] = await Promise.all([
-        axios.get("/api/subjects"),
-        axios.get("/api/class"),
-        axios.get("/api/academic"),
+        axios.get(getFullUrl("/api/subjects")),
+        axios.get(getFullUrl("/api/class")),
+        axios.get(getFullUrl("/api/academic")),
       ]);
 
       const subs = subRes.data.data?.data || subRes.data.data || [];
@@ -115,7 +117,7 @@ const AddEditTeacher = () => {
     if (!id) return;
     setFetching(true);
     try {
-      const res = await axios.get(`/api/teacher/${id}`);
+      const res = await axios.get(getFullUrl(`/api/teacher/${id}`));
 
       if (res.data.success) {
         const t = res.data.data;
@@ -204,11 +206,11 @@ const AddEditTeacher = () => {
     try {
       let res;
       if (isEdit) {
-        res = await axios.put(`/api/teacher/${id}`, formData, {
+        res = await axios.put(getFullUrl(`/api/teacher/${id}`), formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
-        res = await axios.post("/api/teacher", formData, {
+        res = await axios.post(getFullUrl("/api/teacher"), formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }

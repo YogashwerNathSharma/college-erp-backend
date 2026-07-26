@@ -79,6 +79,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -374,7 +376,7 @@ export default function SubscriptionManagement() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/stats", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/stats"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) {
@@ -498,7 +500,7 @@ function PlansTab() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/plans", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/plans"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success && res.data.data?.length > 0) {
@@ -1039,7 +1041,7 @@ function BillingTab() {
   const fetchBilling = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/billing", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/billing"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const rawData = res.data.success ? (res.data.data?.data || res.data.data || []) : [];
@@ -1193,7 +1195,7 @@ function InvoicesTab() {
   const fetchInvoices = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/invoices", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/invoices"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const rawData = res.data.success ? (res.data.data?.data || res.data.data || []) : [];
@@ -1420,7 +1422,7 @@ function CouponsTab() {
   const fetchCoupons = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/coupons", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/coupons"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const rawData = res.data.success ? (res.data.data || []) : [];
@@ -1925,7 +1927,7 @@ function RefundsTab() {
   const fetchRefunds = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/subscriptions/refunds", {
+      const res = await axios.get(getFullUrl("/api/super-admin/subscriptions/refunds"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const rawData = res.data.success ? (res.data.data || []) : [];

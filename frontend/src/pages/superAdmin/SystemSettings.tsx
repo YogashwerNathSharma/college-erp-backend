@@ -9,6 +9,8 @@ import {
 import PageHeader from "../../components/enterprise/PageHeader";
 import LoadingSkeleton from "../../components/enterprise/LoadingSkeleton";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════
@@ -54,7 +56,7 @@ export default function SystemSettings() {
   const fetchSettings = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/system-settings", {
+      const res = await axios.get(getFullUrl("/api/super-admin/system-settings"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSettings(res.data.data);
@@ -68,7 +70,7 @@ export default function SystemSettings() {
   const fetchCronJobs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/system-settings/cron-jobs", {
+      const res = await axios.get(getFullUrl("/api/super-admin/system-settings/cron-jobs"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCronJobs(res.data.data);
@@ -84,7 +86,7 @@ export default function SystemSettings() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`/api/super-admin/system-settings/${section}`, data, {
+      await axios.put(getFullUrl(`/api/super-admin/system-settings/${section}`), data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Settings saved successfully");
@@ -101,7 +103,7 @@ export default function SystemSettings() {
     if (!email) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.post("/api/super-admin/system-settings/smtp/test", { testEmail: email }, {
+      await axios.post(getFullUrl("/api/super-admin/system-settings/smtp/test"), { testEmail: email }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success(`Test email sent to ${email}`);
@@ -113,7 +115,7 @@ export default function SystemSettings() {
   const toggleCronJob = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(`/api/super-admin/system-settings/cron-jobs/${id}/toggle`, {}, {
+      await axios.patch(getFullUrl(`/api/super-admin/system-settings/cron-jobs/${id}/toggle`), {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCronJobs((prev) => prev.map((j) => j.id === id ? { ...j, enabled: !j.enabled } : j));

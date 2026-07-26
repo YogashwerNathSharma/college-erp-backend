@@ -27,6 +27,8 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import { PageHeader } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -198,7 +200,7 @@ export default function ThemeManagement() {
   useEffect(() => {
     const fetchTheme = async () => {
       try {
-        const res = await axios.get("/api/super-admin/themes/current");
+        const res = await axios.get(getFullUrl("/api/super-admin/themes/current"));
         if (res.data.success && res.data.data && res.data.data.id !== "default") {
           setTheme(res.data.data);
         }
@@ -264,9 +266,9 @@ export default function ThemeManagement() {
     setSaving(true);
     try {
       if (theme.id) {
-        await axios.put(`/api/super-admin/themes/${theme.id}`, theme);
+        await axios.put(getFullUrl(`/api/super-admin/themes/${theme.id}`), theme);
       } else {
-        await axios.post("/api/super-admin/themes", { ...theme, isGlobal: true });
+        await axios.post(getFullUrl("/api/super-admin/themes"), { ...theme, isGlobal: true });
       }
       toast.success("Theme saved successfully");
       setHasChanges(false);

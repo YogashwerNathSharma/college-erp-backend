@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import PrintSignature from '../../components/PrintSignature';
 
+import { getFullUrl } from "../../utils/url";
+
 interface AcademicYear {
   id: string;
   year: string;
@@ -140,7 +142,7 @@ useEffect(() => {
 const fetchAcademicYears = async () => {
   try {
     setLoading(true);
-    const response = await axios.get('/api/academic');
+    const response = await axios.get(getFullUrl('/api/academic'));
     const raw = response.data?.data || response.data || [];
     const yearsList = Array.isArray(raw) ? raw : [];
     setAcademicYears(yearsList);
@@ -163,8 +165,7 @@ const fetchAcademicYears = async () => {
   const fetchClasses = async (academicYearId: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/class?academicYearId=${academicYearId}`
+      const response = await axios.get(getFullUrl(`/api/class?academicYearId=${academicYearId}`)
       );
       const rawClasses = response.data?.data || response.data || [];
       setClasses(Array.isArray(rawClasses) ? rawClasses : []);
@@ -184,7 +185,7 @@ const fetchAcademicYears = async () => {
   const fetchSections = async (classId: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/section?classId=${classId}`);
+      const response = await axios.get(getFullUrl(`/api/section?classId=${classId}`));
       const rawSections = response.data?.data || response.data || [];
       setSections(Array.isArray(rawSections) ? rawSections : []);
       setSelectedSection(null);
@@ -205,8 +206,7 @@ const fetchAcademicYears = async () => {
   ) => {
     try {
       setLoading(true);
-      const response = await axios.get(
-        `/api/students?classId=${classId}&sectionId=${sectionId}&academicYearId=${academicYearId}`
+      const response = await axios.get(getFullUrl(`/api/students?classId=${classId}&sectionId=${sectionId}&academicYearId=${academicYearId}`)
       );
       const raw = response.data?.data?.students || response.data?.data || response.data?.students || response.data || [];
       setStudents(Array.isArray(raw) ? raw : []);

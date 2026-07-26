@@ -111,6 +111,7 @@ export default function AdminStudentDashboard() {
     } catch (err: any) {
       // Fallback: fetch individual endpoints if /full doesn't exist yet
       try {
+        console.error("[StudentDashboard] /full failed, trying fallback:", err.message);
         const [statsRes, classRes, catRes, recentRes] = await Promise.all([
           api.get("/students/stats", { params: { academicYearId } }),
           api.get("/students/class-strength", { params: { academicYearId } }),
@@ -197,6 +198,17 @@ export default function AdminStudentDashboard() {
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
           ))}
+        </div>
+      )}
+
+      {/* Error/Empty state */}
+      {!loading && !data && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-sm text-red-500 font-medium">Dashboard data load nahi hua</p>
+          <p className="text-xs text-slate-400 mt-1">Backend server restart karo (Ctrl+C then npm run dev)</p>
+          <button onClick={fetchDashboard} className="mt-3 px-4 py-2 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700">
+            Retry
+          </button>
         </div>
       )}
 

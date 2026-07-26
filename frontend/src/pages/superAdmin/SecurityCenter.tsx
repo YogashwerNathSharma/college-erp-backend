@@ -17,6 +17,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -155,7 +157,7 @@ export default function SecurityCenter() {
 
   const fetchOverview = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/overview", { headers });
+      const res = await axios.get(getFullUrl("/api/security/overview"), { headers });
       setStats(res.data.data.stats);
       setSecurityChecks(res.data.data.securityChecks);
       setConfig(res.data.data.config);
@@ -166,21 +168,21 @@ export default function SecurityCenter() {
 
   const fetchFirewall = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/firewall", { headers });
+      const res = await axios.get(getFullUrl("/api/security/firewall"), { headers });
       setFirewallRules(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchRateLimits = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/rate-limits", { headers });
+      const res = await axios.get(getFullUrl("/api/security/rate-limits"), { headers });
       setRateLimits(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchIPs = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/ip", { headers });
+      const res = await axios.get(getFullUrl("/api/security/ip"), { headers });
       setBlockedIPs(res.data.data.blocked);
       setWhitelistedIPs(res.data.data.whitelisted);
     } catch (err) { console.error(err); }
@@ -188,21 +190,21 @@ export default function SecurityCenter() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/sessions", { headers });
+      const res = await axios.get(getFullUrl("/api/security/sessions"), { headers });
       setSessions(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchAuditLogs = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/audit-logs", { headers });
+      const res = await axios.get(getFullUrl("/api/security/audit-logs"), { headers });
       setAuditLogs(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchDevices = useCallback(async () => {
     try {
-      const res = await axios.get("/api/security/devices", { headers });
+      const res = await axios.get(getFullUrl("/api/security/devices"), { headers });
       setDevices(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
@@ -221,7 +223,7 @@ export default function SecurityCenter() {
   const handleBlockIP = async () => {
     if (!newIP) return;
     try {
-      await axios.post("/api/security/ip/block", { ip: newIP, reason: newIPReason || "Manual block" }, { headers });
+      await axios.post(getFullUrl("/api/security/ip/block"), { ip: newIP, reason: newIPReason || "Manual block" }, { headers });
       toast.success(`Blocked IP: ${newIP}`);
       setNewIP("");
       setNewIPReason("");
@@ -232,7 +234,7 @@ export default function SecurityCenter() {
 
   const handleUnblockIP = async (ip: string) => {
     try {
-      await axios.delete(`/api/security/ip/block/${encodeURIComponent(ip)}`, { headers });
+      await axios.delete(getFullUrl(`/api/security/ip/block/${encodeURIComponent(ip)}`), { headers });
       toast.success(`Unblocked IP: ${ip}`);
       fetchIPs();
     } catch (err) { toast.error("Failed to unblock IP"); }
@@ -241,7 +243,7 @@ export default function SecurityCenter() {
   const handleAddWhitelist = async () => {
     if (!newWhitelistIP) return;
     try {
-      await axios.post("/api/security/ip/whitelist", { ip: newWhitelistIP, label: newWhitelistLabel }, { headers });
+      await axios.post(getFullUrl("/api/security/ip/whitelist"), { ip: newWhitelistIP, label: newWhitelistLabel }, { headers });
       toast.success(`Whitelisted: ${newWhitelistIP}`);
       setNewWhitelistIP("");
       setNewWhitelistLabel("");
@@ -253,7 +255,7 @@ export default function SecurityCenter() {
   const handleAddFirewallRule = async () => {
     if (!newRule.name || !newRule.source) return;
     try {
-      await axios.post("/api/security/firewall", newRule, { headers });
+      await axios.post(getFullUrl("/api/security/firewall"), newRule, { headers });
       toast.success("Firewall rule added");
       setNewRule({ name: "", type: "DENY", source: "", destination: "", port: "443", protocol: "HTTPS", enabled: true });
       setShowFirewallModal(false);
@@ -263,14 +265,14 @@ export default function SecurityCenter() {
 
   const handleToggleFirewallRule = async (id: string, enabled: boolean) => {
     try {
-      await axios.patch(`/api/security/firewall/${id}`, { enabled: !enabled }, { headers });
+      await axios.patch(getFullUrl(`/api/security/firewall/${id}`), { enabled: !enabled }, { headers });
       fetchFirewall();
     } catch (err) { toast.error("Failed to update rule"); }
   };
 
   const handleDeleteFirewallRule = async (id: string) => {
     try {
-      await axios.delete(`/api/security/firewall/${id}`, { headers });
+      await axios.delete(getFullUrl(`/api/security/firewall/${id}`), { headers });
       toast.success("Rule deleted");
       fetchFirewall();
     } catch (err) { toast.error("Failed to delete rule"); }
@@ -278,7 +280,7 @@ export default function SecurityCenter() {
 
   const handleTerminateSession = async (sessionId: string) => {
     try {
-      await axios.delete(`/api/security/sessions/${sessionId}`, { headers });
+      await axios.delete(getFullUrl(`/api/security/sessions/${sessionId}`), { headers });
       toast.success("Session terminated");
       fetchSessions();
     } catch (err) { toast.error("Failed to terminate session"); }
@@ -286,7 +288,7 @@ export default function SecurityCenter() {
 
   const handleTerminateAll = async () => {
     try {
-      await axios.delete("/api/security/sessions", { headers });
+      await axios.delete(getFullUrl("/api/security/sessions"), { headers });
       toast.success("All sessions terminated");
       fetchSessions();
     } catch (err) { toast.error("Failed to terminate sessions"); }
@@ -294,7 +296,7 @@ export default function SecurityCenter() {
 
   const handleUpdateConfig = async (updates: Partial<SecurityConfig>) => {
     try {
-      const res = await axios.patch("/api/security/config", updates, { headers });
+      const res = await axios.patch(getFullUrl("/api/security/config"), updates, { headers });
       setConfig(res.data.data);
       toast.success("Configuration updated");
     } catch (err) { toast.error("Failed to update config"); }

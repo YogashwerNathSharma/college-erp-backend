@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 interface FeeHead {
   id: string;
   name: string;
@@ -41,7 +43,7 @@ const FeeDiscountPage: React.FC = () => {
 
   const fetchDiscounts = async () => {
     try {
-      const res = await axios.get("/api/fees/discounts");
+      const res = await axios.get(getFullUrl("/api/fees/discounts"));
       setDiscounts(res.data.data);
     } catch (error) {
       toast.error("Failed to fetch discounts");
@@ -52,7 +54,7 @@ const FeeDiscountPage: React.FC = () => {
 
   const fetchFeeHeads = async () => {
     try {
-      const res = await axios.get("/api/fees/heads");
+      const res = await axios.get(getFullUrl("/api/fees/heads"));
             const data = res.data.data || res.data;
       setFeeHeads(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -102,10 +104,10 @@ const FeeDiscountPage: React.FC = () => {
 
     try {
       if (editingDiscount) {
-        await axios.put(`/api/fees/discounts/${editingDiscount.id}`, payload);
+        await axios.put(getFullUrl(`/api/fees/discounts/${editingDiscount.id}`), payload);
         toast.success("Discount updated successfully");
       } else {
-        await axios.post("/api/fees/discounts", payload);
+        await axios.post(getFullUrl("/api/fees/discounts"), payload);
         toast.success("Discount created successfully");
       }
       setShowModal(false);
@@ -119,7 +121,7 @@ const FeeDiscountPage: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this discount?")) return;
 
     try {
-      await axios.delete(`/api/fees/discounts/${id}`);
+      await axios.delete(getFullUrl(`/api/fees/discounts/${id}`));
       toast.success("Discount deleted successfully");
       fetchDiscounts();
     } catch (error) {
@@ -129,7 +131,7 @@ const FeeDiscountPage: React.FC = () => {
 
   const toggleActive = async (discount: FeeDiscount) => {
     try {
-      await axios.put(`/api/fees/discounts/${discount.id}`, {
+      await axios.put(getFullUrl(`/api/fees/discounts/${discount.id}`), {
         isActive: !discount.isActive,
       });
       toast.success(`Discount ${discount.isActive ? "deactivated" : "activated"}`);

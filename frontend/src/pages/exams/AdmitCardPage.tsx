@@ -147,7 +147,7 @@ const AdmitCardPage: React.FC = () => {
 
   const fetchTenant = async () => {
     try {
-      const res = await axios.get("/api/settings", { headers });
+      const res = await axios.get(getFullUrl("/api/settings"), { headers });
       setTenant(res.data?.data?.tenant || JSON.parse(localStorage.getItem("tenant") || "{}"));
     } catch {
       setTenant(JSON.parse(localStorage.getItem("tenant") || "{}"));
@@ -156,7 +156,7 @@ const AdmitCardPage: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       const raw = res.data?.data || res.data || [];
       setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch {
@@ -166,7 +166,7 @@ const AdmitCardPage: React.FC = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get("/api/class", { headers });
+      const res = await axios.get(getFullUrl("/api/class"), { headers });
       setClasses(res.data?.data || res.data || []);
     } catch {
       // silently fail
@@ -176,7 +176,7 @@ const AdmitCardPage: React.FC = () => {
   const fetchAdmitCards = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/exam/${selectedExam}/admit-cards`, { headers });
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-cards`), { headers });
       setAdmitCards(res.data?.data || res.data || []);
     } catch {
       toast.error("Failed to load admit cards");
@@ -192,7 +192,7 @@ const AdmitCardPage: React.FC = () => {
     }
     setGenerating(true);
     try {
-      await axios.post("/api/exam/admit-cards/generate", { examId: selectedExam }, { headers });
+      await axios.post(getFullUrl("/api/exam/admit-cards/generate"), { examId: selectedExam }, { headers });
       toast.success("Admit cards generated successfully");
       fetchAdmitCards();
     } catch (error: any) {
@@ -224,7 +224,7 @@ const AdmitCardPage: React.FC = () => {
   const handleView = async (studentId: string) => {
     setViewLoading(true);
     try {
-      const res = await axios.get(`/api/exam/${selectedExam}/admit-card/${studentId}`, { headers });
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${studentId}`), { headers });
       setViewingCard(res.data?.data || res.data);
     } catch {
       toast.error("Failed to load admit card details");
@@ -358,7 +358,7 @@ const AdmitCardPage: React.FC = () => {
       const allCards: AdmitCardDetail[] = [];
       for (const card of filteredAdmitCards) {
         const sid = card.student?.id || card.studentId;
-        const res = await axios.get(`/api/exam/${selectedExam}/admit-card/${sid}`, { headers });
+        const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${sid}`), { headers });
         allCards.push(res.data?.data || res.data);
       }
 
@@ -500,7 +500,7 @@ const AdmitCardPage: React.FC = () => {
       for (const card of filteredAdmitCards) {
         try {
         const sid = card.student?.id || card.studentId;
-        const res = await axios.get(`/api/exam/${selectedExam}/admit-card/${sid}`, { headers });
+        const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${sid}`), { headers });
         const data: AdmitCardDetail = res.data?.data || res.data;
 
         // Client-side placeholder replacement

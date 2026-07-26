@@ -40,6 +40,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -368,7 +370,7 @@ export default function ModuleManagement() {
   const fetchModules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/super-admin/modules", {
+      const res = await axios.get(getFullUrl("/api/super-admin/modules"), {
         params: {
           category: categoryFilter !== "all" ? categoryFilter : undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
@@ -389,7 +391,7 @@ export default function ModuleManagement() {
 
   const fetchMarketplace = useCallback(async () => {
     try {
-      const res = await axios.get("/api/super-admin/modules/marketplace");
+      const res = await axios.get(getFullUrl("/api/super-admin/modules/marketplace"));
       if (res.data.success) {
         setMarketplace(res.data.data);
       }
@@ -417,7 +419,7 @@ export default function ModuleManagement() {
   // ─── ACTIONS ─────────────────────────────────────────
   const handleToggleStatus = async (module: Module) => {
     try {
-      await axios.patch(`/api/super-admin/modules/${module.id}/toggle-status`);
+      await axios.patch(getFullUrl(`/api/super-admin/modules/${module.id}/toggle-status`));
       toast.success(`${module.name} ${module.isEnabled ? "disabled" : "enabled"}`);
       fetchModules();
     } catch {
@@ -430,7 +432,7 @@ export default function ModuleManagement() {
 
   const handleInstall = async (module: Module) => {
     try {
-      await axios.patch(`/api/super-admin/modules/${module.id}/install`);
+      await axios.patch(getFullUrl(`/api/super-admin/modules/${module.id}/install`));
       toast.success(`${module.name} installed successfully`);
       fetchModules();
     } catch {
@@ -449,7 +451,7 @@ export default function ModuleManagement() {
       variant: "danger",
       onConfirm: async () => {
         try {
-          await axios.patch(`/api/super-admin/modules/${module.id}/uninstall`);
+          await axios.patch(getFullUrl(`/api/super-admin/modules/${module.id}/uninstall`));
           toast.success(`${module.name} uninstalled`);
           fetchModules();
         } catch {
@@ -466,7 +468,7 @@ export default function ModuleManagement() {
   const handleHealthCheck = async (module: Module) => {
     setHealthCheckLoading(module.id);
     try {
-      const res = await axios.get(`/api/super-admin/modules/${module.id}/health-check`);
+      const res = await axios.get(getFullUrl(`/api/super-admin/modules/${module.id}/health-check`));
       const status = res.data.data?.status || "healthy";
       setModules((prev) =>
         prev.map((m) => (m.id === module.id ? { ...m, healthStatus: status, lastHealthCheck: new Date().toISOString() } : m))

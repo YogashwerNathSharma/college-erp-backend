@@ -19,6 +19,7 @@ import {
   ConfirmDialog,
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -92,7 +93,7 @@ export default function DisciplinaryRecords() {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/students/${id}/disciplinary`, authHeaders);
+      const response = await axios.get(getFullUrl(`/api/students/${id}/disciplinary`), authHeaders);
       setRecords(response.data.records || response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load records");
@@ -134,16 +135,14 @@ export default function DisciplinaryRecords() {
     setSaving(true);
     try {
       if (editingId) {
-        const response = await axios.put(
-          `/api/students/${id}/disciplinary/${editingId}`,
+        const response = await axios.put(getFullUrl(`/api/students/${id}/disciplinary/${editingId}`),
           form,
           authHeaders
         );
         setRecords((prev) => prev.map((r) => (r._id === editingId ? response.data : r)));
         toast.success("Record updated");
       } else {
-        const response = await axios.post(
-          `/api/students/${id}/disciplinary`,
+        const response = await axios.post(getFullUrl(`/api/students/${id}/disciplinary`),
           form,
           authHeaders
         );
@@ -162,7 +161,7 @@ export default function DisciplinaryRecords() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await axios.delete(`/api/students/${id}/disciplinary/${deleteId}`, authHeaders);
+      await axios.delete(getFullUrl(`/api/students/${id}/disciplinary/${deleteId}`), authHeaders);
       setRecords((prev) => prev.filter((r) => r._id !== deleteId));
       toast.success("Record deleted");
       setDeleteId(null);
@@ -175,8 +174,7 @@ export default function DisciplinaryRecords() {
 
   const updateStatus = async (recordId: string, newStatus: "resolved" | "dismissed") => {
     try {
-      const response = await axios.put(
-        `/api/students/${id}/disciplinary/${recordId}`,
+      const response = await axios.put(getFullUrl(`/api/students/${id}/disciplinary/${recordId}`),
         { status: newStatus },
         authHeaders
       );

@@ -13,6 +13,8 @@ import {
 import { DataTable, PageHeader, StatsCard, StatusBadge, ChartCard } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════
@@ -91,7 +93,7 @@ export default function NotificationCenter() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("/api/super-admin/notification-center/notifications", {
+      const { data } = await axios.get(getFullUrl("/api/super-admin/notification-center/notifications"), {
         params: { channel: activeTab !== "broadcast" ? activeTab : undefined },
       });
       if (data.success) setNotifications(data.notifications);
@@ -104,7 +106,7 @@ export default function NotificationCenter() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/notification-center/stats");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/notification-center/stats"));
       if (data.success) setStats(data.stats);
     } catch {
       setStats({
@@ -117,7 +119,7 @@ export default function NotificationCenter() {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/notification-center/templates");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/notification-center/templates"));
       if (data.success) setTemplates(data.templates);
     } catch {
       setTemplates(generateMockTemplates());
@@ -126,7 +128,7 @@ export default function NotificationCenter() {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/notification-center/analytics");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/notification-center/analytics"));
       if (data.success) setAnalytics(data.analytics);
     } catch {
       setAnalytics({
@@ -323,7 +325,7 @@ export default function NotificationCenter() {
                 <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <button onClick={() => setShowSendModal(true)} className="flex-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center justify-center gap-1 py-1.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"><Send className="w-3 h-3" /> Use</button>
                   <button onClick={() => { setEditingTemplate(tmpl); setShowTemplateModal(true); }} className="flex-1 text-xs text-slate-600 hover:text-slate-700 dark:text-slate-400 font-medium flex items-center justify-center gap-1 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800"><Edit2 className="w-3 h-3" /> Edit</button>
-                  <button onClick={async () => { try { await axios.delete(`/api/super-admin/notification-center/templates/${tmpl.id}`); } catch {} toast.success("Template deleted"); setTemplates((t) => t.filter((x) => x.id !== tmpl.id)); }} className="text-xs text-red-500 hover:text-red-600 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={async () => { try { await axios.delete(getFullUrl(`/api/super-admin/notification-center/templates/${tmpl.id}`)); } catch {} toast.success("Template deleted"); setTemplates((t) => t.filter((x) => x.id !== tmpl.id)); }} className="text-xs text-red-500 hover:text-red-600 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
@@ -332,13 +334,13 @@ export default function NotificationCenter() {
       )}
 
       {/* Send Modal */}
-      {showSendModal && <SendNotificationModal channel={activeTab} templates={templates} onClose={() => setShowSendModal(false)} onSend={async (data: any) => { try { await axios.post("/api/super-admin/notification-center/send", data); } catch {} toast.success("Notification sent!"); setShowSendModal(false); fetchNotifications(); fetchStats(); }} />}
+      {showSendModal && <SendNotificationModal channel={activeTab} templates={templates} onClose={() => setShowSendModal(false)} onSend={async (data: any) => { try { await axios.post(getFullUrl("/api/super-admin/notification-center/send"), data); } catch {} toast.success("Notification sent!"); setShowSendModal(false); fetchNotifications(); fetchStats(); }} />}
 
       {/* Template Modal */}
-      {showTemplateModal && <TemplateModal template={editingTemplate} onClose={() => setShowTemplateModal(false)} onSave={async (data: any) => { try { if (editingTemplate) { await axios.put(`/api/super-admin/notification-center/templates/${editingTemplate.id}`, data); } else { await axios.post("/api/super-admin/notification-center/templates", data); } } catch {} toast.success(editingTemplate ? "Template updated" : "Template created"); setShowTemplateModal(false); fetchTemplates(); }} />}
+      {showTemplateModal && <TemplateModal template={editingTemplate} onClose={() => setShowTemplateModal(false)} onSave={async (data: any) => { try { if (editingTemplate) { await axios.put(getFullUrl(`/api/super-admin/notification-center/templates/${editingTemplate.id}`), data); } else { await axios.post(getFullUrl("/api/super-admin/notification-center/templates"), data); } } catch {} toast.success(editingTemplate ? "Template updated" : "Template created"); setShowTemplateModal(false); fetchTemplates(); }} />}
 
       {/* Broadcast Modal */}
-      {showBroadcastModal && <BroadcastModal onClose={() => setShowBroadcastModal(false)} onSend={async (data: any) => { try { await axios.post("/api/super-admin/notification-center/broadcast", data); } catch {} toast.success("Broadcast sent!"); setShowBroadcastModal(false); fetchNotifications(); }} />}
+      {showBroadcastModal && <BroadcastModal onClose={() => setShowBroadcastModal(false)} onSend={async (data: any) => { try { await axios.post(getFullUrl("/api/super-admin/notification-center/broadcast"), data); } catch {} toast.success("Broadcast sent!"); setShowBroadcastModal(false); fetchNotifications(); }} />}
     </div>
   );
 }

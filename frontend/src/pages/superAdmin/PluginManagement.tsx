@@ -45,6 +45,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -332,7 +334,7 @@ export default function PluginManagement() {
   const fetchPlugins = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/super-admin/plugins", {
+      const res = await axios.get(getFullUrl("/api/super-admin/plugins"), {
         params: { category: categoryFilter !== "all" ? categoryFilter : undefined },
       });
       if (res.data.success) {
@@ -349,7 +351,7 @@ export default function PluginManagement() {
 
   const fetchStore = useCallback(async () => {
     try {
-      const res = await axios.get("/api/super-admin/plugins/store");
+      const res = await axios.get(getFullUrl("/api/super-admin/plugins/store"));
       if (res.data.success) {
         setStore(res.data.data);
       }
@@ -378,7 +380,7 @@ export default function PluginManagement() {
   // ─── ACTIONS ─────────────────────────────────────────
   const handleToggleStatus = async (plugin: Plugin) => {
     try {
-      await axios.patch(`/api/super-admin/plugins/${plugin.id}/toggle-status`);
+      await axios.patch(getFullUrl(`/api/super-admin/plugins/${plugin.id}/toggle-status`));
       toast.success(`${plugin.name} ${plugin.isEnabled ? "disabled" : "enabled"}`);
       fetchPlugins();
     } catch {
@@ -396,7 +398,7 @@ export default function PluginManagement() {
       message: `Are you sure you want to uninstall "${plugin.name}"? This action cannot be undone and all plugin data will be lost.`,
       onConfirm: async () => {
         try {
-          await axios.delete(`/api/super-admin/plugins/${plugin.id}`);
+          await axios.delete(getFullUrl(`/api/super-admin/plugins/${plugin.id}`));
         } catch {
           setPlugins((prev) => prev.filter((p) => p.id !== plugin.id));
         }
@@ -409,7 +411,7 @@ export default function PluginManagement() {
 
   const handleApplyUpdate = async (plugin: Plugin) => {
     try {
-      await axios.patch(`/api/super-admin/plugins/${plugin.id}/apply-update`);
+      await axios.patch(getFullUrl(`/api/super-admin/plugins/${plugin.id}/apply-update`));
       toast.success(`${plugin.name} updated to ${plugin.latestVersion}`);
       fetchPlugins();
     } catch {
@@ -427,7 +429,7 @@ export default function PluginManagement() {
   const handleSaveConfig = async () => {
     if (!configModal) return;
     try {
-      await axios.patch(`/api/super-admin/plugins/${configModal.id}/config`, { config: configValues });
+      await axios.patch(getFullUrl(`/api/super-admin/plugins/${configModal.id}/config`), { config: configValues });
       toast.success("Configuration saved");
     } catch {
       setPlugins((prev) =>

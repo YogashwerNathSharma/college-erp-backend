@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   IndianRupee, Users, CreditCard, Clock,
   TrendingUp, Search,
 } from "lucide-react";
@@ -65,7 +67,7 @@ export default function ReportsPage() {
     const fetchReports = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("/api/reports", {
+        const res = await axios.get(getFullUrl("/api/reports"), {
           headers: { Authorization: `Bearer ${token}` },
         });
 

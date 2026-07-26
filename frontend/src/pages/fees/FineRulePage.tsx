@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 interface FineRule {
   id: string;
   name: string;
@@ -32,7 +34,7 @@ const FineRulePage: React.FC = () => {
 
   const fetchRules = async () => {
     try {
-      const res = await axios.get("/api/fees/fine-rules");
+      const res = await axios.get(getFullUrl("/api/fees/fine-rules"));
       setRules(res.data.data);
     } catch (error) {
       toast.error("Failed to fetch fine rules");
@@ -80,10 +82,10 @@ const FineRulePage: React.FC = () => {
 
     try {
       if (editingRule) {
-        await axios.put(`/api/fees/fine-rules/${editingRule.id}`, payload);
+        await axios.put(getFullUrl(`/api/fees/fine-rules/${editingRule.id}`), payload);
         toast.success("Fine rule updated successfully");
       } else {
-        await axios.post("/api/fees/fine-rules", payload);
+        await axios.post(getFullUrl("/api/fees/fine-rules"), payload);
         toast.success("Fine rule created successfully");
       }
       setShowModal(false);
@@ -97,7 +99,7 @@ const FineRulePage: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this fine rule?")) return;
 
     try {
-      await axios.delete(`/api/fees/fine-rules/${id}`);
+      await axios.delete(getFullUrl(`/api/fees/fine-rules/${id}`));
       toast.success("Fine rule deleted successfully");
       fetchRules();
     } catch (error) {
@@ -107,7 +109,7 @@ const FineRulePage: React.FC = () => {
 
   const toggleActive = async (rule: FineRule) => {
     try {
-      await axios.put(`/api/fees/fine-rules/${rule.id}`, {
+      await axios.put(getFullUrl(`/api/fees/fine-rules/${rule.id}`), {
         isActive: !rule.isActive,
       });
       toast.success(`Fine rule ${rule.isActive ? "deactivated" : "activated"}`);

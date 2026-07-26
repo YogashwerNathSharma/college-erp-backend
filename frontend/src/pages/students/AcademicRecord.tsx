@@ -21,6 +21,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
+import { getFullUrl } from "../../utils/url";
   PageHeader,
   LoadingSkeleton,
   EmptyState,
@@ -94,7 +95,7 @@ export default function AcademicRecord() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`/api/students/${id}/academic-record`, authHeaders);
+        const response = await axios.get(getFullUrl(`/api/students/${id}/academic-record`), authHeaders);
         setData(response.data);
       } catch (error: any) {
         toast.error(error.response?.data?.message || "Failed to load academic record");

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // TYPES
 //////////////////////////////////////////////////////
@@ -259,9 +261,7 @@ export default function CreatePlanModal({
 
       if (editingPlan) {
 
-        await axios.put(
-
-          `/api/subscriptions/plans/${editingPlan.id}`,
+        await axios.put(getFullUrl(`/api/subscriptions/plans/${editingPlan.id}`),
 
           payload,
 
@@ -286,9 +286,7 @@ export default function CreatePlanModal({
 
       else {
 
-        await axios.post(
-
-          "/api/subscriptions/plans",
+        await axios.post(getFullUrl("/api/subscriptions/plans"),
 
           payload,
 

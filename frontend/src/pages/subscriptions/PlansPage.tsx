@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../../utils/url";
+
 interface Plan {
   id: string;
   name: string;
@@ -15,8 +17,7 @@ export default function SubscriptionPlans() {
 
   const fetchPlans = async () => {
     try {
-      const res = await axios.get(
-        "/api/subscription-plans"
+      const res = await axios.get(getFullUrl("/api/subscription-plans")
       );
 
       setPlans(res.data);
@@ -31,8 +32,7 @@ export default function SubscriptionPlans() {
 
   const createPlan = async () => {
     try {
-      await axios.post(
-        "/api/subscription-plans",
+      await axios.post(getFullUrl("/api/subscription-plans"),
         {
           name: "Basic Plan",
           price: 999,

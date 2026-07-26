@@ -26,6 +26,7 @@ import {
   FiLogOut,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { getFullUrl } from "../../utils/url";
 
 // ─────────────────────────────────────────────────────────────────
 // Types
@@ -375,7 +376,7 @@ const StudentDashboard: React.FC = () => {
     const fetchDashboard = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/student-portal/dashboard');
+        const res = await axios.get(getFullUrl('/api/student-portal/dashboard'));
         setDashboardData(res.data.data);
       } catch (error) {
         console.error('Error fetching dashboard:', error);
@@ -399,21 +400,21 @@ const StudentDashboard: React.FC = () => {
         switch (activeNavItem) {
           case 'profile':
             if (!profile) {
-              const res = await axios.get('/api/student-portal/me');
+              const res = await axios.get(getFullUrl('/api/student-portal/me'));
               setProfile(res.data.data);
             }
             break;
 
           case 'timetable':
             if (!timetable) {
-              const res = await axios.get('/api/student-portal/timetable');
+              const res = await axios.get(getFullUrl('/api/student-portal/timetable'));
               setTimetable(res.data.data.timetable);
             }
             break;
 
           case 'attendance':
             if (!attendanceSummary) {
-              const res = await axios.get('/api/student-portal/attendance/summary');
+              const res = await axios.get(getFullUrl('/api/student-portal/attendance/summary'));
               setAttendanceSummary(res.data.data);
             }
             break;
@@ -421,8 +422,8 @@ const StudentDashboard: React.FC = () => {
           case 'fees':
             if (!feeSummary) {
               const [summaryRes, detailsRes] = await Promise.all([
-                axios.get('/api/student-portal/fees/summary'),
-                axios.get('/api/student-portal/fees/details'),
+                axios.get(getFullUrl('/api/student-portal/fees/summary')),
+                axios.get(getFullUrl('/api/student-portal/fees/details')),
               ]);
               setFeeSummary(summaryRes.data.data);
               setFeeDetails(detailsRes.data.data);
@@ -431,28 +432,28 @@ const StudentDashboard: React.FC = () => {
 
           case 'exams':
             if (exams.length === 0) {
-              const res = await axios.get('/api/student-portal/exams');
+              const res = await axios.get(getFullUrl('/api/student-portal/exams'));
               setExams(res.data.data);
             }
             break;
 
           case 'marks':
             if (marks.length === 0) {
-              const res = await axios.get('/api/student-portal/marks');
+              const res = await axios.get(getFullUrl('/api/student-portal/marks'));
               setMarks(res.data.data);
             }
             break;
 
           case 'subjects':
             if (subjects.length === 0) {
-              const res = await axios.get('/api/student-portal/subjects');
+              const res = await axios.get(getFullUrl('/api/student-portal/subjects'));
               setSubjects(res.data.data);
             }
             break;
 
           case 'library':
             if (!library) {
-              const res = await axios.get('/api/student-portal/library');
+              const res = await axios.get(getFullUrl('/api/student-portal/library'));
               setLibrary(res.data.data);
             }
             break;

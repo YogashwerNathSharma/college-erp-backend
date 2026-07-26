@@ -105,8 +105,7 @@ const ReportCard: React.FC = () => {
   const fetchReportCard = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${examId}/report-card/${studentId}`,
+      const res = await axios.get(getFullUrl(`/api/exam/${examId}/report-card/${studentId}`),
         { headers }
       );
       const raw = res.data?.data || res.data;

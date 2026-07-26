@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   IndianRupee, Receipt, AlertTriangle, Users, Search, Download,
   Home, ChevronRight, Loader2, X, AlertCircle, FileText, Filter
 } from "lucide-react";
@@ -52,7 +54,7 @@ export default function HostelFees() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hostel/fees", { headers });
+      const res = await axios.get(getFullUrl("/api/hostel/fees"), { headers });
       const data = res.data.data || {};
       setFeeStructures(data.structures || []);
       setPayments(data.payments || []);
@@ -66,7 +68,7 @@ export default function HostelFees() {
   const handleCollectFee = async () => {
     if (!selectedStudent || !collectAmount) return;
     try {
-      await axios.post("/api/hostel/fees/collect", {
+      await axios.post(getFullUrl("/api/hostel/fees/collect"), {
         studentId: selectedStudent.id,
         amount: parseFloat(collectAmount),
       }, { headers });
@@ -81,7 +83,7 @@ export default function HostelFees() {
 
   const generateReceipt = async (paymentId: string) => {
     try {
-      const res = await axios.get(`/api/hostel/fees/receipt/${paymentId}`, { headers, responseType: "blob" });
+      const res = await axios.get(getFullUrl(`/api/hostel/fees/receipt/${paymentId}`), { headers, responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;

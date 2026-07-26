@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Save, Loader2, Settings } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface GradeRow {
   _id?: string;
   grade: string;
@@ -41,7 +43,7 @@ const GradeSettings: React.FC = () => {
   const fetchGrades = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/grade", {
+      const res = await axios.get(getFullUrl("/api/grade"), {
         headers,
       });
       const existingGrades = res.data?.data || res.data || [];
@@ -134,7 +136,7 @@ const GradeSettings: React.FC = () => {
         })),
       };
 
-      await axios.post("/api/grade/bulk", payload, {
+      await axios.post(getFullUrl("/api/grade/bulk"), payload, {
         headers,
       });
       toast.success("Grade settings saved successfully");

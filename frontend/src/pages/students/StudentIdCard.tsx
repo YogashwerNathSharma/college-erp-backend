@@ -1754,14 +1754,14 @@ const StudentIdCardPage: React.FC = () => {
 
   const fetchClasses = async () => {
     try {
-      const res = await axios.get("/api/class");
+      const res = await axios.get(getFullUrl("/api/class"));
       setClasses(res.data.data || []);
     } catch (err) { console.error("Failed to fetch classes", err); }
   };
 
   const fetchSections = async (classId: string) => {
     try {
-      const res = await axios.get(`/api/section?classId=${classId}`);
+      const res = await axios.get(getFullUrl(`/api/section?classId=${classId}`));
       setSections(res.data.data || []);
     } catch (err) { console.error("Failed to fetch sections", err); }
   };
@@ -1785,7 +1785,7 @@ const StudentIdCardPage: React.FC = () => {
   const fetchStudentsByClass = async (classId: string, sectionId: string) => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/students?classId=${classId}&sectionId=${sectionId}&academicYearId=${activeAcademicYearId}&limit=100`);
+      const res = await axios.get(getFullUrl(`/api/students?classId=${classId}&sectionId=${sectionId}&academicYearId=${activeAcademicYearId}&limit=100`));
       const raw = res.data?.data?.students || res.data?.data || [];
       setStudents(raw.map((s: any) => mapStudentData(s)));
     } catch (err) { console.error("Failed to fetch students", err); }
@@ -1795,7 +1795,7 @@ const StudentIdCardPage: React.FC = () => {
   const fetchSingleStudent = async (studentId: string) => {
     try {
       setLoading(true);
-      const res = await axios.get(`/api/students/${studentId}`);
+      const res = await axios.get(getFullUrl(`/api/students/${studentId}`));
       setSelectedStudent(mapStudentData(res.data?.data || res.data));
       setShowCards(true);
     } catch (err) { console.error("Failed to fetch student", err); }
@@ -1804,7 +1804,7 @@ const StudentIdCardPage: React.FC = () => {
 
   const fetchAcademicYears = async () => {
     try {
-      const res = await axios.get("/api/academic");
+      const res = await axios.get(getFullUrl("/api/academic"));
       const years = res.data.data || [];
       const active = years.find((y: any) => y.isActive);
       if (active?.name) setActiveAcademicYear(active.name);

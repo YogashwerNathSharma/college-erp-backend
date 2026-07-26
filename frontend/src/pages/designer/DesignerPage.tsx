@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Save,
   Loader2,
@@ -149,7 +151,7 @@ export default function DesignerPage() {
         const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
         setTenantName(tenant?.name || "School Name");
 
-        const res = await axios.get(`/api/settings/designer?type=${designerType}`, {
+        const res = await axios.get(getFullUrl(`/api/settings/designer?type=${designerType}`), {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.data?.data) {
@@ -169,8 +171,7 @@ export default function DesignerPage() {
     try {
       setSaving(true);
       const token = localStorage.getItem("token");
-      await axios.put(
-        "/api/settings/designer",
+      await axios.put(getFullUrl("/api/settings/designer"),
         { type: designerType, settings },
         { headers: { Authorization: `Bearer ${token}` } }
       );

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 📄 ADMISSION DETAIL PAGE
 //////////////////////////////////////////////////////
@@ -37,7 +39,7 @@ export default function AdmissionDetail() {
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        const res = await axios.get(`/api/admissions/${id}`);
+        const res = await axios.get(getFullUrl(`/api/admissions/${id}`));
         setAdmission(res.data.data);
       } catch (error) {
         console.error("Error fetching admission:", error);
@@ -50,7 +52,7 @@ export default function AdmissionDetail() {
 
   const handleStatusChange = async (status: string) => {
     try {
-      await axios.patch(`/api/admissions/${id}`, { status });
+      await axios.patch(getFullUrl(`/api/admissions/${id}`), { status });
       setAdmission((prev) => prev ? { ...prev, status: status as any } : null);
     } catch (error) {
       console.error("Error updating status:", error);

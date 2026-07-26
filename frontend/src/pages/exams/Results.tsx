@@ -3,6 +3,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Loader2,
   BarChart3,
@@ -92,16 +94,14 @@ const fetchResults = async () => {
   setLoading(true);
   try {
     // First fetch exam details
-    const examRes = await axios.get(
-      `/api/exam/${id}`,
+    const examRes = await axios.get(getFullUrl(`/api/exam/${id}`),
       { headers }
     );
     const examData = examRes.data?.data || examRes.data;
     setExam(examData);
 
     // Then fetch results
-    const res = await axios.get(
-      `/api/exam/${id}/results`,
+    const res = await axios.get(getFullUrl(`/api/exam/${id}/results`),
       { headers }
     );
     // ✅ Backend returns array directly OR { data: [...] }
@@ -119,8 +119,7 @@ const fetchResults = async () => {
   const generateResults = async () => {
   setGenerating(true);
   try {
-    const res = await axios.post(
-      `/api/exam/${id}/generate-results`,
+    const res = await axios.post(getFullUrl(`/api/exam/${id}/generate-results`),
       {},
       { headers }
     );

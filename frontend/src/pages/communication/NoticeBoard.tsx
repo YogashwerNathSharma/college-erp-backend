@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Bell,
   Plus,
   Filter,
@@ -124,7 +126,7 @@ export default function NoticeBoard() {
       if (filterAudience) params.targetAudience = filterAudience;
       if (searchQuery) params.search = searchQuery;
 
-      const res = await axios.get("/api/communication-new/notices", { headers, params });
+      const res = await axios.get(getFullUrl("/api/communication-new/notices"), { headers, params });
       const data = res.data?.data;
       const list = Array.isArray(data) ? data : (Array.isArray(data?.notices) ? data.notices : []);
       setNotices(list);
@@ -142,7 +144,7 @@ export default function NoticeBoard() {
   // ─── Delete Notice ─────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`/api/communication-new/notices/${id}`, { headers });
+      await axios.delete(getFullUrl(`/api/communication-new/notices/${id}`), { headers });
       setNotices((prev) => prev.filter((n) => n.id !== id));
       setToast({ message: "Notice deleted successfully", type: "success" });
     } catch {
@@ -402,11 +404,11 @@ function NoticeFormModal({
       if (file) formData.append("attachment", file);
 
       if (notice) {
-        await axios.put(`/api/communication-new/notices/${notice.id}`, formData, {
+        await axios.put(getFullUrl(`/api/communication-new/notices/${notice.id}`), formData, {
           headers: { ...headers, "Content-Type": "multipart/form-data" },
         });
       } else {
-        await axios.post("/api/communication-new/notices", formData, {
+        await axios.post(getFullUrl("/api/communication-new/notices"), formData, {
           headers: { ...headers, "Content-Type": "multipart/form-data" },
         });
       }

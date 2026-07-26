@@ -11,6 +11,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -140,7 +141,7 @@ export default function StudentIdentification() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`/api/students/${id}`, authHeaders);
+        const response = await axios.get(getFullUrl(`/api/students/${id}`), authHeaders);
         const student = response.data.student || response.data;
         setData({
           rfidCardNumber: student.rfidCardNumber || "",
@@ -169,7 +170,7 @@ export default function StudentIdentification() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put(`/api/students/${id}/identification`, data, authHeaders);
+      await axios.put(getFullUrl(`/api/students/${id}/identification`), data, authHeaders);
       toast.success("Identification data saved successfully");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to save");

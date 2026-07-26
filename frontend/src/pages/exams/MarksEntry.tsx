@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Loader2, ClipboardList } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface SubjectInfo {
   _id: string;
   subjectId: string;
@@ -52,8 +54,7 @@ const MarksEntry: React.FC = () => {
   const fetchMarksData = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${id}/marks`,
+      const res = await axios.get(getFullUrl(`/api/exam/${id}/marks`),
         { headers }
       );
       const data = res.data?.data || res.data;
@@ -158,7 +159,7 @@ const MarksEntry: React.FC = () => {
 
     const payload = { examId: id, marks };
 
-    const res = await axios.post("/api/exam/marks", payload, {
+    const res = await axios.post(getFullUrl("/api/exam/marks"), payload, {
       headers,
     });
     

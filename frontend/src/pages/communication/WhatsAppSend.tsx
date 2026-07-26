@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   MessageCircle,
   Send,
   Users,
@@ -132,7 +134,7 @@ export default function WhatsAppSend() {
   const fetchLog = useCallback(async () => {
     setLoadingLog(true);
     try {
-      const res = await axios.get("/api/communication-new/whatsapp/log", { headers, params: { limit: 20 } });
+      const res = await axios.get(getFullUrl("/api/communication-new/whatsapp/log"), { headers, params: { limit: 20 } });
       setWaLog(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       // silent
@@ -143,7 +145,7 @@ export default function WhatsAppSend() {
 
   const fetchClasses = useCallback(async () => {
     try {
-      const res = await axios.get("/api/communication-new/whatsapp/classes", { headers });
+      const res = await axios.get(getFullUrl("/api/communication-new/whatsapp/classes"), { headers });
       setClasses(Array.isArray(res.data?.data) ? res.data.data : []);
     } catch {
       setClasses([
@@ -182,7 +184,7 @@ export default function WhatsAppSend() {
     setShowConfirm(false);
     setSending(true);
     try {
-      await axios.post("/api/communication-new/whatsapp/send", {
+      await axios.post(getFullUrl("/api/communication-new/whatsapp/send"), {
         recipientMode,
         classId: recipientMode === "CLASS" ? selectedClass : undefined,
         section: recipientMode === "CLASS" ? selectedSection : undefined,

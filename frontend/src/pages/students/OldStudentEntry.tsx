@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { getFullUrl } from "../../utils/url";
 
 interface OldStudentRow {
   firstName: string; lastName: string; gender: string; dob: string;
@@ -30,17 +31,17 @@ export default function OldStudentEntry() {
   useEffect(() => { fetchAcademicYears(); fetchClasses(); }, []);
 
   const fetchAcademicYears = async () => {
-    try { const res = await axios.get("/api/academic"); setAcademicYears(res.data.data || []); } catch (err) { console.error(err); }
+    try { const res = await axios.get(getFullUrl("/api/academic")); setAcademicYears(res.data.data || []); } catch (err) { console.error(err); }
   };
 
   const fetchClasses = async () => {
-    try { const res = await axios.get("/api/class"); setClasses(res.data.data || []); } catch (err) { console.error(err); }
+    try { const res = await axios.get(getFullUrl("/api/class")); setClasses(res.data.data || []); } catch (err) { console.error(err); }
   };
 
   const fetchSections = async (classId: string) => {
     if (sectionsMap[classId]) return;
     try {
-      const res = await axios.get(`/api/section?classId=${classId}`);
+      const res = await axios.get(getFullUrl(`/api/section?classId=${classId}`));
       setSectionsMap((prev) => ({ ...prev, [classId]: res.data.data || [] }));
     } catch (err) { console.error(err); }
   };
@@ -70,7 +71,7 @@ export default function OldStudentEntry() {
 
     setLoading(true);
     try {
-      const res = await axios.post("/api/students/bulk-old-entry", { students, academicYearId });
+      const res = await axios.post(getFullUrl("/api/students/bulk-old-entry"), { students, academicYearId });
       const { success, failed } = res.data.data;
       if (failed.length === 0) {
         toast.success(`All ${success.length} students created successfully!`);

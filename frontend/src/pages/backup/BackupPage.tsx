@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Database,
   Download,
   Trash2,
@@ -161,7 +163,7 @@ export default function BackupPage() {
       const params: any = { page: pageNum, limit: 20 };
       if (type) params.type = type;
 
-      const res = await axios.get("/api/backup", { params });
+      const res = await axios.get(getFullUrl("/api/backup"), { params });
       const data: BackupListResponse = res.data.data;
 
       setBackups(data.backups);
@@ -180,7 +182,7 @@ export default function BackupPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await axios.get("/api/backup/settings");
+      const res = await axios.get(getFullUrl("/api/backup/settings"));
       setSettings(res.data.data);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to fetch settings");
@@ -190,7 +192,7 @@ export default function BackupPage() {
   const triggerBackup = async () => {
     try {
       setBackupInProgress(true);
-      await axios.post("/api/backup/create", { notes: notes || undefined });
+      await axios.post(getFullUrl("/api/backup/create"), { notes: notes || undefined });
       toast.success("Backup created successfully!");
       setNotes("");
       fetchBackups(page, filterType);
@@ -203,7 +205,7 @@ export default function BackupPage() {
 
   const downloadBackup = async (id: string, filename: string) => {
     try {
-      const res = await axios.get(`/api/backup/download/${id}`, {
+      const res = await axios.get(getFullUrl(`/api/backup/download/${id}`), {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -223,7 +225,7 @@ export default function BackupPage() {
   const deleteBackup = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this backup? This action cannot be undone.")) return;
     try {
-      await axios.delete(`/api/backup/${id}`);
+      await axios.delete(getFullUrl(`/api/backup/${id}`));
       toast.success("Backup deleted");
       fetchBackups(page, filterType);
     } catch (error: any) {
@@ -233,7 +235,7 @@ export default function BackupPage() {
 
   const updateSettings = async (updatedSettings: Partial<BackupSettings>) => {
     try {
-      const res = await axios.put("/api/backup/settings", updatedSettings);
+      const res = await axios.put(getFullUrl("/api/backup/settings"), updatedSettings);
       setSettings(res.data.data);
       toast.success("Settings updated successfully");
     } catch (error: any) {

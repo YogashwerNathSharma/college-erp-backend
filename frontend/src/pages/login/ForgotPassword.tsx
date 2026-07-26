@@ -1,6 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../../utils/url";
+
 export default function ForgotPassword() {
   const [step, setStep] = useState(1); // 1 = email, 2 = OTP + new password
   const [email, setEmail] = useState("");
@@ -17,7 +19,7 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      const res = await axios.post("/api/auth/forgot-password", {
+      const res = await axios.post(getFullUrl("/api/auth/forgot-password"), {
         email: email.toLowerCase().trim(),
       });
 
@@ -43,7 +45,7 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
 
-      await axios.post("/api/auth/reset-password", {
+      await axios.post(getFullUrl("/api/auth/reset-password"), {
         email: email.toLowerCase().trim(),
         otp: otp.trim(),
         newPassword: newPassword.trim(),

@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+import { getFullUrl } from "../../utils/url";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export default function LoginPage() {
   const handleLogin = async () => {
     try {
       setLoading(true);
-      const res = await axios.post("/api/auth/login", { email: email.toLowerCase().trim(), password }, { headers: { "X-Device-Fingerprint": getDeviceFingerprint() } });
+      const res = await axios.post(getFullUrl("/api/auth/login"), { email: email.toLowerCase().trim(), password }, { headers: { "X-Device-Fingerprint": getDeviceFingerprint() } });
       if (res.data?.subscriptionExpired) {
         localStorage.setItem("token", res.data?.token || "");
         localStorage.setItem("user", JSON.stringify(res.data?.data || {}));

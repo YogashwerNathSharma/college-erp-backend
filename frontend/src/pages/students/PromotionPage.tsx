@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 
 interface AcademicYear {
   id: string;
@@ -64,8 +65,8 @@ const PromotionPage = () => {
     const fetchData = async () => {
       try {
         const [yearRes, classRes] = await Promise.all([
-          axios.get("/api/academic"),
-          axios.get("/api/class"),
+          axios.get(getFullUrl("/api/academic")),
+          axios.get(getFullUrl("/api/class")),
         ]);
         setAcademicYears(yearRes.data.data || []);
         setClasses(classRes.data.data || []);
@@ -108,8 +109,7 @@ const PromotionPage = () => {
     }
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/students/promotion/eligible?classId=${fromClassId}&sectionId=${fromSectionId}&academicYearId=${fromYearId}`
+      const res = await axios.get(getFullUrl(`/api/students/promotion/eligible?classId=${fromClassId}&sectionId=${fromSectionId}&academicYearId=${fromYearId}`)
       );
       setEligibleStudents(res.data.data || []);
       setSelectedStudents([]);
@@ -154,7 +154,7 @@ const PromotionPage = () => {
 
     setPromoting(true);
     try {
-      const res = await axios.post("/api/students/promote/bulk", {
+      const res = await axios.post(getFullUrl("/api/students/promote/bulk"), {
         fromClassId,
         fromSectionId,
         fromYearId,
@@ -197,7 +197,7 @@ const PromotionPage = () => {
 
     setPromoting(true);
     try {
-      const res = await axios.post("/api/students/promote/bulk", {
+      const res = await axios.post(getFullUrl("/api/students/promote/bulk"), {
         fromClassId,
         fromSectionId,
         fromYearId,

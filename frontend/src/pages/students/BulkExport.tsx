@@ -12,6 +12,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & CONSTANTS
@@ -118,8 +119,7 @@ export default function BulkExport() {
     }
     setLoadingPreview(true);
     try {
-      const response = await axios.post(
-        "/api/students/bulk-export",
+      const response = await axios.post(getFullUrl("/api/students/bulk-export"),
         {
           fields: selectedFields,
           filters,
@@ -146,8 +146,7 @@ export default function BulkExport() {
     }
     setExporting(true);
     try {
-      const response = await axios.post(
-        "/api/students/bulk-export",
+      const response = await axios.post(getFullUrl("/api/students/bulk-export"),
         {
           fields: selectedFields,
           filters,

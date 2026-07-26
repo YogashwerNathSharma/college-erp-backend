@@ -14,6 +14,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton, EmptyState } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -251,8 +252,7 @@ export default function BulkAdmission() {
         setImportProgress((prev) => Math.min(prev + 10, 90));
       }, 500);
 
-      const response = await axios.post(
-        "/api/students/bulk-import",
+      const response = await axios.post(getFullUrl("/api/students/bulk-import"),
         { students: mappedStudents },
         authHeaders
       );

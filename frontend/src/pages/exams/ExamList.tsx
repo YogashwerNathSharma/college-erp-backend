@@ -3,6 +3,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Plus,
   Edit,
   Trash2,
@@ -66,8 +68,8 @@ const ExamList: React.FC = () => {
   const fetchDropdowns = async () => {
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("/api/class", { headers }),
-        axios.get("/api/academic", { headers }),
+        axios.get(getFullUrl("/api/class"), { headers }),
+        axios.get(getFullUrl("/api/academic"), { headers }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
@@ -83,7 +85,7 @@ const ExamList: React.FC = () => {
       if (selectedClass) params.classId = selectedClass;
       if (selectedYear) params.academicYearId = selectedYear;
 
-      const res = await axios.get("/api/exam", {
+      const res = await axios.get(getFullUrl("/api/exam"), {
         headers,
         params,
       });
@@ -100,7 +102,7 @@ const ExamList: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this exam?")) return;
     setDeleting(id);
     try {
-      await axios.delete(`/api/exam/${id}`, { headers });
+      await axios.delete(getFullUrl(`/api/exam/${id}`), { headers });
       toast.success("Exam deleted successfully");
       fetchExams();
     } catch (error) {

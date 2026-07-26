@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
+import { getFullUrl } from "../utils/url";
+
 //////////////////////////////////////////////////////
 // 🔐 AUTH HOOK
 //////////////////////////////////////////////////////
@@ -29,7 +31,7 @@ export function useAuth() {
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
     try {
-      const res = await axios.post("/api/auth/login", { email, password });
+      const res = await axios.post(getFullUrl("/api/auth/login"), { email, password });
       const { token: newToken, user: userData } = res.data.data;
       localStorage.setItem("token", newToken);
       localStorage.setItem("user", JSON.stringify(userData));

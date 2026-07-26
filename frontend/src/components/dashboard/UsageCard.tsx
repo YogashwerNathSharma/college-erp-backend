@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Users, GraduationCap, ShieldCheck, HardDrive } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface UsageData {
   students: { current: number; max: number };
   teachers: { current: number; max: number };
@@ -18,7 +20,7 @@ export default function UsageCard() {
     const fetchUsage = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("/api/tenant/usage", {
+        const res = await axios.get(getFullUrl("/api/tenant/usage"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUsage(res.data.data);

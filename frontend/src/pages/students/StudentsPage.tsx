@@ -512,7 +512,7 @@ export default function StudentsPage() {
 
       setLoading(true);
 
-      const res = await axios.get("/api/students?limit=500", authHeaders());
+      const res = await axios.get(getFullUrl("/api/students?limit=500"), authHeaders());
 
       const payload = res.data?.data;
 
@@ -540,7 +540,7 @@ export default function StudentsPage() {
 
     try {
 
-      const res = await axios.get("/api/class", authHeaders());
+      const res = await axios.get(getFullUrl("/api/class"), authHeaders());
 
       const raw = res.data?.data ?? res.data;
 
@@ -925,7 +925,7 @@ export default function StudentsPage() {
 
           setConfirmDialog((prev) => ({ ...prev, loading: true }));
 
-          await axios.delete(`/api/students/${id}`, authHeaders());
+          await axios.delete(getFullUrl(`/api/students/${id}`), authHeaders());
 
           toast.success("Student deleted successfully");
 
@@ -969,7 +969,7 @@ export default function StudentsPage() {
 
           setConfirmDialog((prev) => ({ ...prev, loading: true }));
 
-          await Promise.all(selectedIds.map((id) => axios.delete(`/api/students/${id}`, authHeaders())));
+          await Promise.all(selectedIds.map((id) => axios.delete(getFullUrl(`/api/students/${id}`), authHeaders())));
 
           toast.success(`${selectedIds.length} students deleted successfully`);
 

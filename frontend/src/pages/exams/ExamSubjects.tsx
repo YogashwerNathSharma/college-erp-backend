@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, Save, Loader2, BookOpen } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface Subject {
   id: string;
   name: string;
@@ -45,13 +47,12 @@ const ExamSubjects: React.FC = () => {
   setLoading(true);
   try {
     // 1. Exam fetch karo
-    const examRes = await axios.get(`/api/exam/${id}`, { headers });
+    const examRes = await axios.get(getFullUrl(`/api/exam/${id}`), { headers });
     const examData = examRes.data?.data || examRes.data;
     setExam(examData);
 
     // 2. Saare subjects fetch karo
-    const subjectRes = await axios.get(
-      `/api/subjects`,
+    const subjectRes = await axios.get(getFullUrl(`/api/subjects`),
       { headers }
     );
     const allSubjects = subjectRes.data?.data || subjectRes.data || [];
@@ -155,7 +156,7 @@ const ExamSubjects: React.FC = () => {
         })),
       };
 
-      await axios.post("/api/exam/subjects", payload, {
+      await axios.post(getFullUrl("/api/exam/subjects"), payload, {
         headers,
       });
       toast.success("Subjects saved successfully");

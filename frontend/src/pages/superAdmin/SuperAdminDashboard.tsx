@@ -16,6 +16,8 @@ import PageHeader from "../../components/enterprise/PageHeader";
 import LoadingSkeleton from "../../components/enterprise/LoadingSkeleton";
 import ActivityTimeline from "../../components/enterprise/ActivityTimeline";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════
@@ -57,7 +59,7 @@ export default function SuperAdminDashboard() {
   const fetchDashboard = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/dashboard", {
+      const res = await axios.get(getFullUrl("/api/super-admin/dashboard"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setData(res.data.data);

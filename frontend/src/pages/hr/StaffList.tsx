@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Users, UserPlus, Search, Download, Eye, Phone, Mail,
   Home, ChevronRight, Loader2, X, AlertCircle, Building2, Filter
 } from "lucide-react";
@@ -42,7 +44,7 @@ export default function StaffList() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get("/api/hr/staff", { headers });
+      const res = await axios.get(getFullUrl("/api/hr/staff"), { headers });
       const data = res.data?.data;
       setStaff(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -54,7 +56,7 @@ export default function StaffList() {
 
   const handleAddStaff = async () => {
     try {
-      await axios.post("/api/hr/staff", { ...form, salary: parseFloat(form.salary) }, { headers });
+      await axios.post(getFullUrl("/api/hr/staff"), { ...form, salary: parseFloat(form.salary) }, { headers });
       setShowAddModal(false);
       setForm({ name: "", email: "", phone: "", designation: "", department: "", joiningDate: "", salary: "" });
       fetchStaff();
@@ -65,7 +67,7 @@ export default function StaffList() {
 
   const handleExport = async () => {
     try {
-      const res = await axios.get("/api/hr/staff/export", { headers, responseType: "blob" });
+      const res = await axios.get(getFullUrl("/api/hr/staff/export"), { headers, responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
       link.href = url;

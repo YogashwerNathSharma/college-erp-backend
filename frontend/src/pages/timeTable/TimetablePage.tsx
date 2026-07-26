@@ -15,6 +15,8 @@ import {
 import TimetableForm from "./TimetableForm";
 import TimetablePrint from "./TimetablePrint";
 
+import { getFullUrl } from "../../utils/url";
+
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 const DAY_LABELS: Record<string, string> = {
   MON: "Mon", TUE: "Tue", WED: "Wed", THU: "Thu", FRI: "Fri", SAT: "Sat",
@@ -63,7 +65,7 @@ const TimetablePage = () => {
 
   // Fetch classes
   useEffect(() => {
-    axios.get("/api/class").then((res) => {
+    axios.get(getFullUrl("/api/class")).then((res) => {
       const data = res.data?.data || res.data?.classes || res.data;
       setClasses(Array.isArray(data) ? data : []);
     }).catch(() => toast.error("Failed to load classes"));
@@ -72,7 +74,7 @@ const TimetablePage = () => {
   // Fetch sections
   useEffect(() => {
     if (!selectedClass) { setSections([]); setSelectedSection(""); return; }
-    axios.get("/api/section", { params: { classId: selectedClass } }).then((res) => {
+    axios.get(getFullUrl("/api/section"), { params: { classId: selectedClass } }).then((res) => {
       const data = res.data?.data || res.data?.sections || res.data;
       setSections(Array.isArray(data) ? data : []);
     }).catch(() => toast.error("Failed to load sections"));
@@ -88,7 +90,7 @@ const TimetablePage = () => {
   const fetchTimetable = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/timetable", {
+      const res = await axios.get(getFullUrl("/api/timetable"), {
         params: { classId: selectedClass, sectionId: selectedSection },
       });
       setTimetable(res.data);
@@ -110,7 +112,7 @@ const TimetablePage = () => {
     e.stopPropagation();
     if (!confirm("Delete this entry?")) return;
     try {
-      await axios.delete(`/api/timetable/${id}`);
+      await axios.delete(getFullUrl(`/api/timetable/${id}`));
       toast.success("Deleted"); fetchTimetable();
     } catch { toast.error("Failed to delete"); }
   };
@@ -123,14 +125,14 @@ const TimetablePage = () => {
 
     if (timetable.length > 0) {
       if (!confirm("Existing timetable will be cleared. Continue?")) return;
-      try { setClearing(true); await axios.post("/api/timetable/clear", { classId: selectedClass, sectionId: selectedSection }); }
+      try { setClearing(true); await axios.post(getFullUrl("/api/timetable/clear"), { classId: selectedClass, sectionId: selectedSection }); }
       catch (err: any) { toast.error(err?.response?.data?.message || "Failed to clear"); setClearing(false); return; }
       setClearing(false);
     }
 
     setGenerating(true);
     try {
-      const res = await axios.post("/api/timetable/auto-generate", { classId: selectedClass, sectionId: selectedSection });
+      const res = await axios.post(getFullUrl("/api/timetable/auto-generate"), { classId: selectedClass, sectionId: selectedSection });
       toast.success(`✅ ${res.data.filledSlots}/${res.data.totalSlots} slots filled!`);
       if (res.data.emptySlots > 0) toast(`⚠️ ${res.data.emptySlots} empty (teacher conflicts)`, { icon: "ℹ️", duration: 5000 });
       fetchTimetable();
@@ -143,7 +145,7 @@ const TimetablePage = () => {
     if (bulkSelectedClasses.length === 0) { toast.error("Select at least one class"); return; }
     setBulkGenerating(true);
     try {
-      const res = await axios.post("/api/timetable/bulk-generate", { classIds: bulkSelectedClasses });
+      const res = await axios.post(getFullUrl("/api/timetable/bulk-generate"), { classIds: bulkSelectedClasses });
       const { summary } = res.data;
       toast.success(`✅ ${summary.success} done, ${summary.skipped} skipped, ${summary.errors} errors`);
       if (selectedClass && selectedSection) fetchTimetable();
@@ -166,14 +168,14 @@ const TimetablePage = () => {
 
     try {
       // Fetch sections for selected classes
-      const sectionsRes = await axios.get("/api/section", { params: { classIds: bulkSelectedClasses.join(",") } });
+      const sectionsRes = await axios.get(getFullUrl("/api/section"), { params: { classIds: bulkSelectedClasses.join(",") } });
       let allSections = sectionsRes.data?.data || sectionsRes.data || [];
       if (!Array.isArray(allSections)) allSections = [];
 
       // If section API doesn't support classIds param, fetch individually
       if (allSections.length === 0) {
         const sectionPromises = bulkSelectedClasses.map((cid) =>
-          axios.get("/api/section", { params: { classId: cid } }).then((r) => r.data?.data || r.data || [])
+          axios.get(getFullUrl("/api/section"), { params: { classId: cid } }).then((r) => r.data?.data || r.data || [])
         );
         const results = await Promise.all(sectionPromises);
         allSections = results.flat();
@@ -181,7 +183,7 @@ const TimetablePage = () => {
 
       // Fetch timetable for each section
       const timetablePromises = allSections.map((sec: any) =>
-        axios.get("/api/timetable", { params: { classId: sec.classId || sec.class?.id, sectionId: sec.id } })
+        axios.get(getFullUrl("/api/timetable"), { params: { classId: sec.classId || sec.class?.id, sectionId: sec.id } })
           .then((r) => ({
             className: classes.find((c) => c.id === (sec.classId || sec.class?.id))?.name || "Class",
             sectionName: sec.name,
@@ -262,7 +264,7 @@ const TimetablePage = () => {
     if (!confirm("Delete ALL entries for this class/section?")) return;
     setClearing(true);
     try {
-      await axios.post("/api/timetable/clear", { classId: selectedClass, sectionId: selectedSection });
+      await axios.post(getFullUrl("/api/timetable/clear"), { classId: selectedClass, sectionId: selectedSection });
       toast.success("Cleared"); fetchTimetable();
     } catch (err: any) { toast.error(err?.response?.data?.message || "Failed"); }
     finally { setClearing(false); }

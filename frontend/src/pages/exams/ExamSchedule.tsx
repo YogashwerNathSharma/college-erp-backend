@@ -5,6 +5,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Plus,
   Edit,
@@ -84,7 +86,7 @@ const ExamSchedule: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -93,7 +95,7 @@ const ExamSchedule: React.FC = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("/api/room", { headers });
+      const res = await axios.get(getFullUrl("/api/room"), { headers });
       setRooms(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load rooms");
@@ -102,8 +104,7 @@ const ExamSchedule: React.FC = () => {
 
   const fetchSubjects = async () => {
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/subjects`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/subjects`),
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -121,8 +122,7 @@ const ExamSchedule: React.FC = () => {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/schedule`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/schedule`),
         { headers }
       );
       setSchedules(res.data?.data || res.data || []);
@@ -162,14 +162,13 @@ const ExamSchedule: React.FC = () => {
       const payload = { ...form, examId: selectedExam };
 
       if (editingId) {
-        await axios.put(
-          `/api/exam/schedule/${editingId}`,
+        await axios.put(getFullUrl(`/api/exam/schedule/${editingId}`),
           payload,
           { headers }
         );
         toast.success("Schedule updated successfully");
       } else {
-        await axios.post("/api/exam/schedule", payload, {
+        await axios.post(getFullUrl("/api/exam/schedule"), payload, {
           headers,
         });
         toast.success("Schedule added successfully");
@@ -188,8 +187,7 @@ const ExamSchedule: React.FC = () => {
     if (!window.confirm("Are you sure you want to delete this schedule?")) return;
     setDeleting(scheduleId);
     try {
-      await axios.delete(
-        `/api/exam/schedule/${scheduleId}`,
+      await axios.delete(getFullUrl(`/api/exam/schedule/${scheduleId}`),
         { headers }
       );
       toast.success("Schedule deleted successfully");

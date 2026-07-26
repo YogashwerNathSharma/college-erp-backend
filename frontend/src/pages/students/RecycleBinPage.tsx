@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { getFullUrl } from "../../utils/url";
 
 export default function RecycleBinPage() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function RecycleBinPage() {
   const fetchDeletedStudents = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/students/recycle-bin");
+      const res = await axios.get(getFullUrl("/api/students/recycle-bin"));
       setStudents(res.data.data || []);
     } catch (err) {
       console.error(err);
@@ -26,7 +27,7 @@ export default function RecycleBinPage() {
   const handleRestore = async (id: string) => {
     if (!window.confirm("Restore this student?")) return;
     try {
-      await axios.patch(`/api/students/${id}/restore`);
+      await axios.patch(getFullUrl(`/api/students/${id}/restore`));
       toast.success("Student restored!");
       fetchDeletedStudents();
     } catch (err: any) {

@@ -4,6 +4,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Plus,
   Trash2,
@@ -85,7 +87,7 @@ const InvigilatorAssignment: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -94,7 +96,7 @@ const InvigilatorAssignment: React.FC = () => {
 
   const fetchTeachers = async () => {
     try {
-      const res = await axios.get("/api/teacher", {
+      const res = await axios.get(getFullUrl("/api/teacher"), {
         headers,
       });
       setTeachers(res.data?.data || res.data || []);
@@ -106,8 +108,7 @@ const InvigilatorAssignment: React.FC = () => {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/schedule`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/schedule`),
         { headers }
       );
       const schedulesData = res.data?.data || res.data || [];
@@ -117,8 +118,7 @@ const InvigilatorAssignment: React.FC = () => {
       const allInvigilators: InvigilatorItem[] = [];
       for (const sch of schedulesData) {
         try {
-          const invRes = await axios.get(
-            `/api/exam/invigilators/${sch.id}`,
+          const invRes = await axios.get(getFullUrl(`/api/exam/invigilators/${sch.id}`),
             { headers }
           );
           const invData = invRes.data?.data || invRes.data || [];
@@ -148,7 +148,7 @@ const InvigilatorAssignment: React.FC = () => {
 
     setSaving(true);
     try {
-      await axios.post("/api/exam/invigilators", form, {
+      await axios.post(getFullUrl("/api/exam/invigilators"), form, {
         headers,
       });
       toast.success("Invigilator assigned successfully");
@@ -167,8 +167,7 @@ const InvigilatorAssignment: React.FC = () => {
     if (!window.confirm("Remove this invigilator assignment?")) return;
     setDeleting(assignmentId);
     try {
-      await axios.delete(
-        `/api/exam/invigilators/${assignmentId}`,
+      await axios.delete(getFullUrl(`/api/exam/invigilators/${assignmentId}`),
         { headers }
       );
       toast.success("Invigilator removed successfully");

@@ -13,6 +13,8 @@ import {
 } from "../../components/enterprise";
 import type { Column, BulkAction } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════
@@ -239,8 +241,8 @@ export default function UserManagement() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       const [usersRes, statsRes] = await Promise.all([
-        axios.get("/api/super-admin/users", { headers, params: { role: activeTab !== "all" ? activeTab : undefined } }),
-        axios.get("/api/super-admin/users/stats", { headers }),
+        axios.get(getFullUrl("/api/super-admin/users"), { headers, params: { role: activeTab !== "all" ? activeTab : undefined } }),
+        axios.get(getFullUrl("/api/super-admin/users/stats"), { headers }),
       ]);
       if (usersRes.data.success) setUsers(usersRes.data.data.users || usersRes.data.data);
       if (statsRes.data.success) setStats(statsRes.data.data);
@@ -264,7 +266,7 @@ export default function UserManagement() {
 
   const handleCreate = async () => {
     try {
-      await axios.post("/api/super-admin/users", formData);
+      await axios.post(getFullUrl("/api/super-admin/users"), formData);
       toast.success("User created successfully");
       setCreateOpen(false);
       resetForm();
@@ -296,7 +298,7 @@ export default function UserManagement() {
   const handleEdit = async () => {
     if (!selectedUser) return;
     try {
-      await axios.put(`/api/super-admin/users/${selectedUser.id}`, formData);
+      await axios.put(getFullUrl(`/api/super-admin/users/${selectedUser.id}`), formData);
       toast.success("User updated successfully");
       setEditOpen(false);
       fetchData();
@@ -309,7 +311,7 @@ export default function UserManagement() {
 
   const handleResetPassword = async (userId: string) => {
     try {
-      await axios.post(`/api/super-admin/users/${userId}/reset-password`);
+      await axios.post(getFullUrl(`/api/super-admin/users/${userId}/reset-password`));
       toast.success("Password reset email sent");
     } catch {
       toast.success("Password reset email sent");
@@ -318,7 +320,7 @@ export default function UserManagement() {
 
   const handleToggle2FA = async (user: AdminUser) => {
     try {
-      await axios.post(`/api/super-admin/users/${user.id}/toggle-2fa`);
+      await axios.post(getFullUrl(`/api/super-admin/users/${user.id}/toggle-2fa`));
       setUsers((prev) => prev.map((u) => u.id === user.id ? { ...u, twoFactorEnabled: !u.twoFactorEnabled } : u));
       toast.success(`2FA ${user.twoFactorEnabled ? "disabled" : "enabled"} for ${user.name}`);
     } catch {
@@ -329,7 +331,7 @@ export default function UserManagement() {
 
   const handleRevokeSession = async (userId: string, sessionId: string) => {
     try {
-      await axios.delete(`/api/super-admin/users/${userId}/sessions/${sessionId}`);
+      await axios.delete(getFullUrl(`/api/super-admin/users/${userId}/sessions/${sessionId}`));
       toast.success("Session revoked");
     } catch {
       toast.success("Session revoked");
@@ -343,9 +345,9 @@ export default function UserManagement() {
       onConfirm: async () => {
         try {
           if (action === "Delete") {
-            await axios.post("/api/super-admin/users/bulk/delete", { ids });
+            await axios.post(getFullUrl("/api/super-admin/users/bulk/delete"), { ids });
           } else {
-            await axios.post("/api/super-admin/users/bulk/status", { ids, status: action === "Activate" ? "active" : "inactive" });
+            await axios.post(getFullUrl("/api/super-admin/users/bulk/status"), { ids, status: action === "Activate" ? "active" : "inactive" });
           }
         } catch {
           // mock
@@ -369,7 +371,7 @@ export default function UserManagement() {
       message: `Are you sure you want to delete "${user.name}"? This will permanently remove their account and all associated data.`,
       onConfirm: async () => {
         try {
-          await axios.delete(`/api/super-admin/users/${user.id}`);
+          await axios.delete(getFullUrl(`/api/super-admin/users/${user.id}`));
         } catch {}
         setUsers((prev) => prev.filter((u) => u.id !== user.id));
         setStats((prev) => ({ ...prev, totalUsers: prev.totalUsers - 1 }));

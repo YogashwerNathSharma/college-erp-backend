@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getPrintSignatureHTML } from "../../components/PrintSignature";
+import { getFullUrl } from "../../utils/url";
 
 interface AcademicYear { id: string; name: string; }
 interface ClassItem { id: string; name: string; }
@@ -59,8 +60,8 @@ const PrintStudents = () => {
     const fetchData = async () => {
       try {
         const [yearRes, classRes] = await Promise.all([
-          axios.get("/api/academic"),
-          axios.get("/api/class"),
+          axios.get(getFullUrl("/api/academic")),
+          axios.get(getFullUrl("/api/class")),
         ]);
         const years = yearRes.data?.data || yearRes.data || [];
         const cls = classRes.data?.data || classRes.data || [];
@@ -76,7 +77,7 @@ const PrintStudents = () => {
   // Fetch sections
   useEffect(() => {
     if (!classId) { setSections([]); return; }
-    axios.get(`/api/section?classId=${classId}`)
+    axios.get(getFullUrl(`/api/section?classId=${classId}`))
       .then((res) => {
         const data = res.data?.data || res.data || [];
         setSections(Array.isArray(data) ? data : []);
@@ -177,7 +178,7 @@ const PrintStudents = () => {
       if (classId) params.classId = classId;
       if (sectionId) params.sectionId = sectionId;
 
-      const res = await axios.get("/api/students", { params });
+      const res = await axios.get(getFullUrl("/api/students"), { params });
       const result = res.data?.data;
       const studentList = result?.students || [];
       setStudents(studentList);

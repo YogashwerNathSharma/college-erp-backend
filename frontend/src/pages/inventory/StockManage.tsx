@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   BarChart3,
   Plus,
   Search,
@@ -124,7 +126,7 @@ export default function StockManage() {
       if (filterCategory) params.category = filterCategory;
       if (filterStatus) params.status = filterStatus;
 
-      const res = await axios.get("/api/inventory/stock", { headers, params });
+      const res = await axios.get(getFullUrl("/api/inventory/stock"), { headers, params });
       const raw = res.data?.data;
       const data: StockItem[] = Array.isArray(raw) ? raw : [];
       setStock(data);
@@ -148,7 +150,7 @@ export default function StockManage() {
   // ─── Restock ───────────────────────────────────────────────────────────────
   const handleRestock = async (itemId: string, quantity: number) => {
     try {
-      await axios.put(`/api/inventory/stock/${itemId}/restock`, { quantity }, { headers });
+      await axios.put(getFullUrl(`/api/inventory/stock/${itemId}/restock`), { quantity }, { headers });
       setToast({ message: `Restocked ${quantity} units successfully`, type: "success" });
       setShowRestockModal(null);
       fetchStock();
@@ -495,9 +497,9 @@ function StockFormModal({
       };
 
       if (item) {
-        await axios.put(`/api/inventory/stock/${item.id}`, payload, { headers });
+        await axios.put(getFullUrl(`/api/inventory/stock/${item.id}`), payload, { headers });
       } else {
-        await axios.post("/api/inventory/stock", payload, { headers });
+        await axios.post(getFullUrl("/api/inventory/stock"), payload, { headers });
       }
       onSuccess();
     } catch {

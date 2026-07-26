@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, CreditCard, CheckCircle, Clock, Crown, Ban } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 declare global {
   interface Window {
     Razorpay: any;
@@ -97,8 +99,7 @@ export default function SubscriptionExpired() {
     try {
       if (!tenant?.id) return; // No tenant data yet — skip check
 
-      const res = await axios.get(
-        `/api/subscriptions/tenant/${tenant.id}`,
+      const res = await axios.get(getFullUrl(`/api/subscriptions/tenant/${tenant.id}`),
         { headers: getHeaders() }
       );
       const subscription = res.data?.data;
@@ -120,8 +121,7 @@ export default function SubscriptionExpired() {
   // 🔥 FIX: Token included in fetchPlans
   const fetchPlans = async () => {
     try {
-      const res = await axios.get(
-        "/api/subscriptions/plans",
+      const res = await axios.get(getFullUrl("/api/subscriptions/plans"),
         { headers: getHeaders() }
       );
       setPlans(res.data?.data || []);
@@ -153,8 +153,7 @@ export default function SubscriptionExpired() {
         // Backend will do STRICT fraud check (email, phone, IP, device, name+address)
         //////////////////////////////////////////////////
 
-        const res = await axios.post(
-          "/api/tenant/self-subscribe",
+        const res = await axios.post(getFullUrl("/api/tenant/self-subscribe"),
           {
             planId,
             deviceFingerprint: getDeviceFingerprint(),
@@ -176,8 +175,7 @@ export default function SubscriptionExpired() {
         // 💰 PAID PLAN — Razorpay flow via self-subscribe
         //////////////////////////////////////////////////
 
-        const res = await axios.post(
-          "/api/tenant/self-subscribe",
+        const res = await axios.post(getFullUrl("/api/tenant/self-subscribe"),
           { planId },
           { headers: getHeaders() }
         );
@@ -199,8 +197,7 @@ export default function SubscriptionExpired() {
           order_id: order.id,
           handler: async (response: any) => {
             try {
-              await axios.post(
-                "/api/subscription-payments/verify",
+              await axios.post(getFullUrl("/api/subscription-payments/verify"),
                 {
                   subscriptionId,
                   razorpay_order_id: response.razorpay_order_id,

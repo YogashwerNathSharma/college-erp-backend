@@ -17,6 +17,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton, EmptyState } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -77,7 +78,7 @@ export default function StudentTimeline() {
   const fetchTimeline = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/students/${id}/timeline`, authHeaders);
+      const response = await axios.get(getFullUrl(`/api/students/${id}/timeline`), authHeaders);
       setEntries(response.data.timeline || response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load timeline");
@@ -108,8 +109,7 @@ export default function StudentTimeline() {
     }
     setSaving(true);
     try {
-      const response = await axios.post(
-        `/api/students/${id}/timeline`,
+      const response = await axios.post(getFullUrl(`/api/students/${id}/timeline`),
         form,
         authHeaders
       );

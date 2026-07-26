@@ -4,6 +4,8 @@ import axios from "axios";
 import { X, Building2, Save, Loader2, Upload, Image } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 🚀 TYPES
 //////////////////////////////////////////////////////
@@ -117,8 +119,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
         data.append("background", bgFile);
       }
 
-      await axios.post(
-        "/api/super-admin/tenants",
+      await axios.post(getFullUrl("/api/super-admin/tenants"),
         data,
         {
           headers: {

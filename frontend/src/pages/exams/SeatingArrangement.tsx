@@ -5,6 +5,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Loader2,
   Grid3X3,
@@ -86,7 +88,7 @@ const SeatingArrangement: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -95,7 +97,7 @@ const SeatingArrangement: React.FC = () => {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("/api/room", { headers });
+      const res = await axios.get(getFullUrl("/api/room"), { headers });
       setRooms(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load rooms");
@@ -104,8 +106,7 @@ const SeatingArrangement: React.FC = () => {
 
   const fetchSchedules = async () => {
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/schedule`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/schedule`),
         { headers }
       );
       setSchedules(res.data?.data || res.data || []);
@@ -117,8 +118,7 @@ const SeatingArrangement: React.FC = () => {
   const fetchSeating = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/seating/${selectedSchedule}`,
+      const res = await axios.get(getFullUrl(`/api/exam/seating/${selectedSchedule}`),
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -151,8 +151,7 @@ const SeatingArrangement: React.FC = () => {
 
     setGenerating(true);
     try {
-      await axios.post(
-        "/api/exam/seating/generate",
+      await axios.post(getFullUrl("/api/exam/seating/generate"),
         { examScheduleId: selectedSchedule, roomId: selectedRoom },
         { headers }
       );

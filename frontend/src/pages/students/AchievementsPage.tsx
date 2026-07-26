@@ -17,6 +17,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton, EmptyState, ConfirmDialog, StatusBadge } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -82,7 +83,7 @@ export default function AchievementsPage() {
   const fetchAchievements = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`/api/students/${id}/achievements`, authHeaders);
+      const response = await axios.get(getFullUrl(`/api/students/${id}/achievements`), authHeaders);
       setAchievements(response.data.achievements || response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load achievements");
@@ -135,8 +136,7 @@ export default function AchievementsPage() {
       }
 
       if (editingId) {
-        const response = await axios.put(
-          `/api/students/${id}/achievements/${editingId}`,
+        const response = await axios.put(getFullUrl(`/api/students/${id}/achievements/${editingId}`),
           formData,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Content-Type": "multipart/form-data" } }
         );
@@ -145,8 +145,7 @@ export default function AchievementsPage() {
         );
         toast.success("Achievement updated");
       } else {
-        const response = await axios.post(
-          `/api/students/${id}/achievements`,
+        const response = await axios.post(getFullUrl(`/api/students/${id}/achievements`),
           formData,
           { headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "Content-Type": "multipart/form-data" } }
         );
@@ -165,7 +164,7 @@ export default function AchievementsPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await axios.delete(`/api/students/${id}/achievements/${deleteId}`, authHeaders);
+      await axios.delete(getFullUrl(`/api/students/${id}/achievements/${deleteId}`), authHeaders);
       setAchievements((prev) => prev.filter((a) => a._id !== deleteId));
       toast.success("Achievement deleted");
       setDeleteId(null);

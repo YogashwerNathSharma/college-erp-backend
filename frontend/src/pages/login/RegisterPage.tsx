@@ -2,6 +2,8 @@
 import { useState } from "react";
 import axios from "axios";
 
+import { getFullUrl } from "../../utils/url";
+
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     schoolName: "",
@@ -34,8 +36,7 @@ export default function RegisterPage() {
     try {
       setLoading(true);
 
-      const res = await axios.post(
-        "/api/auth/register-tenant",
+      const res = await axios.post(getFullUrl("/api/auth/register-tenant"),
         {
           schoolName: formData.schoolName.trim(),
           name: formData.name.trim(),

@@ -1,6 +1,8 @@
 import { useState, useEffect, Fragment } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Building2, BedDouble, Users, Plus, Search, Filter, X, Home,
   ChevronRight, Loader2, AlertCircle, Edit2, UserPlus
 } from "lucide-react";
@@ -63,19 +65,19 @@ export default function RoomAllocation() {
     setError("");
     try {
       if (activeTab === "hostels") {
-        const res = await axios.get("/api/hostel/hostels", { headers });
+        const res = await axios.get(getFullUrl("/api/hostel/hostels"), { headers });
         setHostels(res.data.data || []);
       } else if (activeTab === "rooms") {
         const params: any = {};
         if (selectedHostel) params.hostelId = selectedHostel;
         if (floorFilter) params.floor = floorFilter;
-        const res = await axios.get("/api/hostel/rooms", { headers, params });
+        const res = await axios.get(getFullUrl("/api/hostel/rooms"), { headers, params });
         setRooms(res.data.data || []);
       } else {
         const params: any = {};
         if (selectedHostel) params.hostelId = selectedHostel;
         if (floorFilter) params.floor = floorFilter;
-        const res = await axios.get("/api/hostel/allocations", { headers, params });
+        const res = await axios.get(getFullUrl("/api/hostel/allocations"), { headers, params });
         setAllocations(res.data.data || []);
       }
     } catch (err: any) {
@@ -87,7 +89,7 @@ export default function RoomAllocation() {
 
   const handleAddHostel = async () => {
     try {
-      await axios.post("/api/hostel/hostels", hostelForm, { headers });
+      await axios.post(getFullUrl("/api/hostel/hostels"), hostelForm, { headers });
       setShowAddHostelModal(false);
       setHostelForm({ name: "", type: "BOYS", warden: "", wardenPhone: "" });
       fetchData();
@@ -98,7 +100,7 @@ export default function RoomAllocation() {
 
   const handleAllocate = async () => {
     try {
-      await axios.post("/api/hostel/allocations", allocateForm, { headers });
+      await axios.post(getFullUrl("/api/hostel/allocations"), allocateForm, { headers });
       setShowAllocateModal(false);
       setAllocateForm({ studentId: "", roomId: "" });
       fetchData();

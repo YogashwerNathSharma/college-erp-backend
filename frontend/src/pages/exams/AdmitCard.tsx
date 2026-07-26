@@ -110,7 +110,7 @@ const AdmitCard: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       const raw = res.data?.data || res.data || [];
       setExams(Array.isArray(raw) ? raw : raw.exams || []);
     } catch (error) {
@@ -121,8 +121,7 @@ const AdmitCard: React.FC = () => {
   const fetchAdmitCards = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/admit-cards`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-cards`),
         { headers }
       );
       setAdmitCards(res.data?.data || res.data || []);
@@ -140,8 +139,7 @@ const AdmitCard: React.FC = () => {
     }
     setGenerating(true);
     try {
-      await axios.post(
-        "/api/exam/admit-cards/generate",
+      await axios.post(getFullUrl("/api/exam/admit-cards/generate"),
         { examId: selectedExam },
         { headers }
       );
@@ -158,8 +156,7 @@ const AdmitCard: React.FC = () => {
   const handleView = async (studentId: string) => {
     setViewLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/admit-card/${studentId}`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${studentId}`),
         { headers }
       );
       setViewingCard(res.data?.data || res.data);
@@ -181,8 +178,7 @@ const AdmitCard: React.FC = () => {
       const allCards: AdmitCardDetail[] = [];
       for (const card of admitCards) {
         const sid = card.student?.id || card.studentId;
-        const res = await axios.get(
-          `/api/exam/${selectedExam}/admit-card/${sid}`,
+        const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${sid}`),
           { headers }
         );
         allCards.push(res.data?.data || res.data);

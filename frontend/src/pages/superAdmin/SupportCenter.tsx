@@ -31,6 +31,8 @@ import axios from "axios";
 import { DataTable, PageHeader, StatsCard, StatusBadge } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ═══════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════
@@ -134,7 +136,7 @@ export default function SupportCenter() {
   const fetchTickets = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/tickets");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/tickets"));
       if (data.success) setTickets(data.tickets);
     } catch {
       setTickets(generateMockTickets());
@@ -145,7 +147,7 @@ export default function SupportCenter() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/tickets/stats");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/tickets/stats"));
       if (data.success) setStats(data.stats);
     } catch {
       setStats({ total: 67, open: 12, inProgress: 8, resolved: 35, closed: 12, avgResolutionHours: 18, byPriority: { low: 15, medium: 30, high: 17, critical: 5 } });
@@ -154,7 +156,7 @@ export default function SupportCenter() {
 
   const fetchArticles = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/kb");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/kb"));
       if (data.success) setArticles(data.articles);
     } catch {
       setArticles(generateMockArticles());
@@ -163,7 +165,7 @@ export default function SupportCenter() {
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/announcements");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/announcements"));
       if (data.success) setAnnouncements(data.announcements);
     } catch {
       setAnnouncements(generateMockAnnouncements());
@@ -172,7 +174,7 @@ export default function SupportCenter() {
 
   const fetchMaintenance = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/maintenance");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/maintenance"));
       if (data.success) setMaintenanceStatus(data);
     } catch {
       setMaintenanceStatus({ enabled: false, message: "System is under maintenance", scheduledEnd: "" });
@@ -181,7 +183,7 @@ export default function SupportCenter() {
 
   const fetchSystemStatus = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/super-admin/support-center/system-status");
+      const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/system-status"));
       if (data.success) setSystemStatus(data);
     } catch {
       setSystemStatus({
@@ -368,7 +370,7 @@ export default function SupportCenter() {
               articles={articles}
               onEdit={(article) => { setEditingArticle(article); setShowArticleModal(true); }}
               onDelete={async (id) => {
-                try { await axios.delete(`/api/super-admin/support-center/kb/${id}`); } catch {}
+                try { await axios.delete(getFullUrl(`/api/super-admin/support-center/kb/${id}`)); } catch {}
                 toast.success("Article deleted");
                 setArticles((a) => a.filter((x) => x.id !== id));
               }}
@@ -380,7 +382,7 @@ export default function SupportCenter() {
               announcements={announcements}
               onEdit={(ann) => { setEditingAnnouncement(ann); setShowAnnouncementModal(true); }}
               onDelete={async (id) => {
-                try { await axios.delete(`/api/super-admin/support-center/announcements/${id}`); } catch {}
+                try { await axios.delete(getFullUrl(`/api/super-admin/support-center/announcements/${id}`)); } catch {}
                 toast.success("Announcement deleted");
                 setAnnouncements((a) => a.filter((x) => x.id !== id));
               }}
@@ -392,7 +394,7 @@ export default function SupportCenter() {
               status={maintenanceStatus}
               onToggle={async (enabled, message, scheduledEnd) => {
                 try {
-                  await axios.post("/api/super-admin/support-center/maintenance", { enabled, message, scheduledEnd });
+                  await axios.post(getFullUrl("/api/super-admin/support-center/maintenance"), { enabled, message, scheduledEnd });
                 } catch {}
                 setMaintenanceStatus({ enabled, message, scheduledEnd });
                 toast.success(`Maintenance mode ${enabled ? "enabled" : "disabled"}`);
@@ -409,7 +411,7 @@ export default function SupportCenter() {
         <TicketModal
           onClose={() => setShowTicketModal(false)}
           onSave={async (data) => {
-            try { await axios.post("/api/super-admin/support-center/tickets", data); } catch {}
+            try { await axios.post(getFullUrl("/api/super-admin/support-center/tickets"), data); } catch {}
             toast.success("Ticket created");
             setShowTicketModal(false);
             fetchTickets();
@@ -423,19 +425,19 @@ export default function SupportCenter() {
           ticket={selectedTicket}
           onClose={() => setShowTicketDetail(false)}
           onAssign={async (assigneeId) => {
-            try { await axios.patch(`/api/super-admin/support-center/tickets/${selectedTicket.id}/assign`, { assigneeId }); } catch {}
+            try { await axios.patch(getFullUrl(`/api/super-admin/support-center/tickets/${selectedTicket.id}/assign`), { assigneeId }); } catch {}
             toast.success("Ticket assigned");
             fetchTickets();
           }}
           onResolve={async (resolution) => {
-            try { await axios.patch(`/api/super-admin/support-center/tickets/${selectedTicket.id}/resolve`, { resolution }); } catch {}
+            try { await axios.patch(getFullUrl(`/api/super-admin/support-center/tickets/${selectedTicket.id}/resolve`), { resolution }); } catch {}
             toast.success("Ticket resolved");
             setShowTicketDetail(false);
             fetchTickets();
             fetchStats();
           }}
           onComment={async (content) => {
-            try { await axios.post(`/api/super-admin/support-center/tickets/${selectedTicket.id}/comments`, { content }); } catch {}
+            try { await axios.post(getFullUrl(`/api/super-admin/support-center/tickets/${selectedTicket.id}/comments`), { content }); } catch {}
             toast.success("Comment added");
           }}
         />
@@ -448,9 +450,9 @@ export default function SupportCenter() {
           onSave={async (data) => {
             try {
               if (editingArticle) {
-                await axios.put(`/api/super-admin/support-center/kb/${editingArticle.id}`, data);
+                await axios.put(getFullUrl(`/api/super-admin/support-center/kb/${editingArticle.id}`), data);
               } else {
-                await axios.post("/api/super-admin/support-center/kb", data);
+                await axios.post(getFullUrl("/api/super-admin/support-center/kb"), data);
               }
             } catch {}
             toast.success(editingArticle ? "Article updated" : "Article created");
@@ -467,9 +469,9 @@ export default function SupportCenter() {
           onSave={async (data) => {
             try {
               if (editingAnnouncement) {
-                await axios.put(`/api/super-admin/support-center/announcements/${editingAnnouncement.id}`, data);
+                await axios.put(getFullUrl(`/api/super-admin/support-center/announcements/${editingAnnouncement.id}`), data);
               } else {
-                await axios.post("/api/super-admin/support-center/announcements", data);
+                await axios.post(getFullUrl("/api/super-admin/support-center/announcements"), data);
               }
             } catch {}
             toast.success(editingAnnouncement ? "Announcement updated" : "Announcement created");

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 📋 ADMISSION LIST PAGE
 //////////////////////////////////////////////////////
@@ -26,7 +28,7 @@ export default function AdmissionList() {
   useEffect(() => {
     const fetchAdmissions = async () => {
       try {
-        const res = await axios.get("/api/admissions", { params: { status: statusFilter } });
+        const res = await axios.get(getFullUrl("/api/admissions"), { params: { status: statusFilter } });
         setAdmissions(res.data.data || []);
       } catch (error) {
         console.error("Error fetching admissions:", error);

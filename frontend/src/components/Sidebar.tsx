@@ -415,7 +415,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
     if (cached) {
       try { setDevProfile(JSON.parse(cached)); } catch {}
     }
-    axios.get("/api/developer-profile").then((res) => {
+    axios.get(getFullUrl("/api/developer-profile")).then((res) => {
       const data = res.data?.data;
       if (data) {
         setDevProfile(data);

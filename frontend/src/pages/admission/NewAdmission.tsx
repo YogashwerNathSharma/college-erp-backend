@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // 📝 NEW ADMISSION PAGE
 //////////////////////////////////////////////////////
@@ -35,15 +37,15 @@ export default function NewAdmission() {
 
   // Fetch classes, sections, and academic years
   useEffect(() => {
-    axios.get("/api/class").then((res) => {
+    axios.get(getFullUrl("/api/class")).then((res) => {
       setClasses(res.data?.data || res.data || []);
     }).catch(() => {});
 
-    axios.get("/api/section").then((res) => {
+    axios.get(getFullUrl("/api/section")).then((res) => {
       setSections(res.data?.data || res.data || []);
     }).catch(() => {});
 
-    axios.get("/api/academic").then((res) => {
+    axios.get(getFullUrl("/api/academic")).then((res) => {
       const years = res.data?.data || res.data || [];
       setAcademicYears(years);
       // Auto-select active academic year
@@ -100,7 +102,7 @@ export default function NewAdmission() {
         feeStructureId: undefined,
       };
 
-      await axios.post("/api/admission", payload);
+      await axios.post(getFullUrl("/api/admission"), payload);
       alert("✅ Student Created Successfully!");
       navigate("/admissions");
     } catch (error: any) {

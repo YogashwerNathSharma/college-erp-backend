@@ -94,7 +94,7 @@ export default function EditStudentPage() {
   const fetchStudent = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`/api/students/${id}`);
+      const res = await axios.get(getFullUrl(`/api/students/${id}`));
       const s = res.data.data;
       setFormData({
         firstName: s.firstName || "",
@@ -134,7 +134,7 @@ export default function EditStudentPage() {
 
   const fetchDocuments = async () => {
     try {
-      const res = await axios.get(`/api/students/${id}/documents`);
+      const res = await axios.get(getFullUrl(`/api/students/${id}/documents`));
       setDocuments(res.data.data || []);
     } catch (err) {
       console.error("Documents fetch failed:", err);
@@ -150,7 +150,7 @@ export default function EditStudentPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put(`/api/students/${id}`, formData);
+      await axios.put(getFullUrl(`/api/students/${id}`), formData);
       toast.success("Student updated successfully!");
       navigate("/students");
     } catch (err: any) {
@@ -177,7 +177,7 @@ export default function EditStudentPage() {
     fd.append("photo", file);
     setUploading(true);
     try {
-      const res = await axios.post(`/api/students/${id}/photo`, fd, {
+      const res = await axios.post(getFullUrl(`/api/students/${id}/photo`), fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setPhotoPreview(res.data.data.photoUrl.startsWith("http") ? res.data.data.photoUrl : `${axios.defaults.baseURL || ""}${res.data.data.photoUrl}`);
@@ -193,7 +193,7 @@ export default function EditStudentPage() {
   const handleDeletePhoto = async () => {
     if (!window.confirm("Remove student photo?")) return;
     try {
-      await axios.delete(`/api/students/${id}/photo`);
+      await axios.delete(getFullUrl(`/api/students/${id}/photo`));
       setPhotoPreview(null);
       toast.success("Photo removed");
     } catch (err: any) {
@@ -216,7 +216,7 @@ export default function EditStudentPage() {
     fd.append("name", file.name);
     setUploading(true);
     try {
-      await axios.post(`/api/students/${id}/documents`, fd, {
+      await axios.post(getFullUrl(`/api/students/${id}/documents`), fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("Document uploaded!");
@@ -233,7 +233,7 @@ export default function EditStudentPage() {
   const handleDeleteDoc = async (docId: string) => {
     if (!window.confirm("Delete this document?")) return;
     try {
-      await axios.delete(`/api/students/documents/${docId}`);
+      await axios.delete(getFullUrl(`/api/students/documents/${docId}`));
       toast.success("Document deleted");
       fetchDocuments();
     } catch (err: any) {

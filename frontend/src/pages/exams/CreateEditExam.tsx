@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface ClassItem {
   id: string;
   name: string;
@@ -75,8 +77,8 @@ const CreateEditExam: React.FC = () => {
     setLoading(true);
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get("/api/class", { headers }),
-        axios.get("/api/academic", { headers }),
+        axios.get(getFullUrl("/api/class"), { headers }),
+        axios.get(getFullUrl("/api/academic"), { headers }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
@@ -89,8 +91,7 @@ const CreateEditExam: React.FC = () => {
 
   const fetchSections = async (classId: string) => {
     try {
-      const res = await axios.get(
-        `/api/section?classId=${classId}`,
+      const res = await axios.get(getFullUrl(`/api/section?classId=${classId}`),
         { headers }
       );
       setSections(res.data?.data || res.data || []);
@@ -102,7 +103,7 @@ const CreateEditExam: React.FC = () => {
   const fetchExam = async () => {
     setFetchingExam(true);
     try {
-      const res = await axios.get(`/api/exam/${id}`, {
+      const res = await axios.get(getFullUrl(`/api/exam/${id}`), {
         headers,
       });
       const exam = res.data?.data || res.data;
@@ -162,12 +163,12 @@ const CreateEditExam: React.FC = () => {
       };
 
       if (isEditMode) {
-        await axios.put(`/api/exam/${id}`, payload, {
+        await axios.put(getFullUrl(`/api/exam/${id}`), payload, {
           headers,
         });
         toast.success("Exam updated successfully");
       } else {
-        await axios.post("/api/exam", payload, { headers });
+        await axios.post(getFullUrl("/api/exam"), payload, { headers });
         toast.success("Exam created successfully");
       }
       navigate("/exams");

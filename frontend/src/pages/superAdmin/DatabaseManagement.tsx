@@ -16,6 +16,8 @@ import {
 } from "../../components/enterprise";
 import type { Column } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════
@@ -159,49 +161,49 @@ export default function DatabaseManagement() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/health", { headers });
+      const res = await axios.get(getFullUrl("/api/database/health"), { headers });
       setHealth(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchSlowQueries = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/slow-queries", { headers });
+      const res = await axios.get(getFullUrl("/api/database/slow-queries"), { headers });
       setSlowQueries(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchIndexes = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/indexes", { headers });
+      const res = await axios.get(getFullUrl("/api/database/indexes"), { headers });
       setIndexes(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchOptimizations = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/optimizations", { headers });
+      const res = await axios.get(getFullUrl("/api/database/optimizations"), { headers });
       setOptimizations(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchBackups = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/backups", { headers });
+      const res = await axios.get(getFullUrl("/api/database/backups"), { headers });
       setBackups(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchMigrations = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/migrations", { headers });
+      const res = await axios.get(getFullUrl("/api/database/migrations"), { headers });
       setMigrations(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
 
   const fetchQueryStats = useCallback(async () => {
     try {
-      const res = await axios.get("/api/database/query-stats", { headers });
+      const res = await axios.get(getFullUrl("/api/database/query-stats"), { headers });
       setQueryStats(res.data.data);
     } catch (err) { console.error(err); }
   }, []);
@@ -222,7 +224,7 @@ export default function DatabaseManagement() {
 
   const handleCreateBackup = async () => {
     try {
-      await axios.post("/api/database/backups", { type: "full", name: `Manual Backup - ${new Date().toLocaleString()}` }, { headers });
+      await axios.post(getFullUrl("/api/database/backups"), { type: "full", name: `Manual Backup - ${new Date().toLocaleString()}` }, { headers });
       toast.success("Backup started");
       fetchBackups();
     } catch (err) { toast.error("Failed to create backup"); }

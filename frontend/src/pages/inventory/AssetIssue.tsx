@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ClipboardList,
   Plus,
   Search,
@@ -100,7 +102,7 @@ export default function AssetIssue() {
       if (filterStatus) params.status = filterStatus;
       if (searchQuery) params.search = searchQuery;
 
-      const res = await axios.get("/api/inventory/issues", { headers, params });
+      const res = await axios.get(getFullUrl("/api/inventory/issues"), { headers, params });
       setIssues(res.data.data || []);
     } catch {
       setToast({ message: "Failed to load issued assets", type: "error" });
@@ -116,7 +118,7 @@ export default function AssetIssue() {
   // ─── Return Asset ──────────────────────────────────────────────────────────
   const handleReturn = async (issueId: string) => {
     try {
-      await axios.put(`/api/inventory/issues/${issueId}/return`, {
+      await axios.put(getFullUrl(`/api/inventory/issues/${issueId}/return`), {
         returnDate: new Date().toISOString(),
       }, { headers });
       setToast({ message: "Asset returned successfully", type: "success" });
@@ -378,7 +380,7 @@ function IssueFormModal({
   useEffect(() => {
     const fetchAvailable = async () => {
       try {
-        const res = await axios.get("/api/inventory/assets", { headers, params: { status: "AVAILABLE" } });
+        const res = await axios.get(getFullUrl("/api/inventory/assets"), { headers, params: { status: "AVAILABLE" } });
         setAssets(res.data.data || []);
       } catch {
         // silent
@@ -398,7 +400,7 @@ function IssueFormModal({
 
     setSaving(true);
     try {
-      await axios.post("/api/inventory/issues", form, { headers });
+      await axios.post(getFullUrl("/api/inventory/issues"), form, { headers });
       onSuccess();
     } catch {
       onError("Failed to issue asset");

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowRightLeft,
   Search,
   Printer,
@@ -93,7 +95,7 @@ export default function MigrationCert() {
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res = await axios.get("/api/certificate/migration", { headers });
+      const res = await axios.get(getFullUrl("/api/certificate/migration"), { headers });
       setHistory(res.data.data || []);
     } catch {
       // silent
@@ -111,7 +113,7 @@ export default function MigrationCert() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await axios.get("/api/certificate/migration/search-students", {
+      const res = await axios.get(getFullUrl("/api/certificate/migration/search-students"), {
         headers,
         params: { q: searchQuery },
       });
@@ -142,7 +144,7 @@ export default function MigrationCert() {
 
     setGenerating(true);
     try {
-      await axios.post("/api/certificate/migration", {
+      await axios.post(getFullUrl("/api/certificate/migration"), {
         studentId: selectedStudent.id,
         ...form,
       }, { headers });

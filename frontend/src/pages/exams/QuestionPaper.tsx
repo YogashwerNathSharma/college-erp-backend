@@ -5,6 +5,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import {
+import { getFullUrl } from "../../utils/url";
+
   ArrowLeft,
   Plus,
   Trash2,
@@ -73,7 +75,7 @@ const QuestionPaper: React.FC = () => {
 
   const fetchExams = async () => {
     try {
-      const res = await axios.get("/api/exam", { headers });
+      const res = await axios.get(getFullUrl("/api/exam"), { headers });
       setExams(res.data?.data || res.data || []);
     } catch (error) {
       toast.error("Failed to load exams");
@@ -82,8 +84,7 @@ const QuestionPaper: React.FC = () => {
 
   const fetchSubjects = async () => {
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/subjects`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/subjects`),
         { headers }
       );
       const data = res.data?.data || res.data || [];
@@ -101,8 +102,7 @@ const QuestionPaper: React.FC = () => {
   const fetchPapers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `/api/exam/${selectedExam}/question-papers`,
+      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/question-papers`),
         { headers }
       );
       setPapers(res.data?.data || res.data || []);
@@ -126,8 +126,7 @@ const QuestionPaper: React.FC = () => {
 
     setSaving(true);
     try {
-      await axios.post(
-        "/api/exam/question-papers",
+      await axios.post(getFullUrl("/api/exam/question-papers"),
         { ...form, examId: selectedExam },
         { headers }
       );
@@ -148,8 +147,7 @@ const QuestionPaper: React.FC = () => {
       return;
     setDeleting(paperId);
     try {
-      await axios.delete(
-        `/api/exam/question-papers/${paperId}`,
+      await axios.delete(getFullUrl(`/api/exam/question-papers/${paperId}`),
         { headers }
       );
       toast.success("Question paper deleted successfully");

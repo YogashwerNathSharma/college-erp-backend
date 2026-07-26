@@ -3,6 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
+import { getFullUrl } from "../../utils/url";
+
   FiPlus,
   FiEdit2,
   FiTrash2,
@@ -112,7 +114,7 @@ const FeeHeadPage: React.FC = () => {
   const fetchFeeHeads = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/fees/heads");
+      const response = await axios.get(getFullUrl("/api/fees/heads"));
       setFeeHeads(response.data);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to fetch fee heads");
@@ -192,10 +194,10 @@ const FeeHeadPage: React.FC = () => {
       setSubmitting(true);
 
       if (editingId) {
-        await axios.put(`/api/fees/heads/${editingId}`, formData);
+        await axios.put(getFullUrl(`/api/fees/heads/${editingId}`), formData);
         toast.success("Fee head updated successfully");
       } else {
-        await axios.post("/api/fees/heads", formData);
+        await axios.post(getFullUrl("/api/fees/heads"), formData);
         toast.success("Fee head created successfully");
       }
 
@@ -215,7 +217,7 @@ const FeeHeadPage: React.FC = () => {
     if (!deletingId) return;
 
     try {
-      await axios.delete(`/api/fees/heads/${deletingId}`);
+      await axios.delete(getFullUrl(`/api/fees/heads/${deletingId}`));
       toast.success("Fee head deleted successfully");
       setIsDeleteModalOpen(false);
       setDeletingId(null);
@@ -228,7 +230,7 @@ const FeeHeadPage: React.FC = () => {
   // Toggle active/inactive
   const handleToggleActive = async (feeHead: FeeHead) => {
     try {
-      await axios.put(`/api/fees/heads/${feeHead.id}`, {
+      await axios.put(getFullUrl(`/api/fees/heads/${feeHead.id}`), {
         isActive: !feeHead.isActive,
       });
       toast.success(

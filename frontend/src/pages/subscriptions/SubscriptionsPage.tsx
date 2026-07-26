@@ -4,6 +4,8 @@ import axios from "axios";
 
 import CreatePlanModal from "./CreatePlanModal";
 
+import { getFullUrl } from "../../utils/url";
+
 //////////////////////////////////////////////////////
 // TYPES
 //////////////////////////////////////////////////////
@@ -94,9 +96,7 @@ export default function SubscriptionsPage() {
         localStorage.getItem("token");
 
       const response =
-        await axios.get(
-
-          "/api/subscriptions/plans",
+        await axios.get(getFullUrl("/api/subscriptions/plans"),
 
           {
 
@@ -142,9 +142,7 @@ export default function SubscriptionsPage() {
         localStorage.getItem("token");
 
       const res =
-        await axios.get(
-
-          "/api/tenant",
+        await axios.get(getFullUrl("/api/tenant"),
 
           {
 
@@ -213,9 +211,7 @@ export default function SubscriptionsPage() {
       const token =
         localStorage.getItem("token");
 
-      await axios.delete(
-
-        `/api/subscriptions/plans/${id}`,
+      await axios.delete(getFullUrl(`/api/subscriptions/plans/${id}`),
 
         {
 
@@ -262,8 +258,7 @@ export default function SubscriptionsPage() {
       const token = localStorage.getItem("token");
 
       // Create custom order via backend
-      const res = await axios.post(
-        "/api/subscription-payments/custom-order",
+      const res = await axios.post(getFullUrl("/api/subscription-payments/custom-order"),
         { tenantId: customTenant, amount },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -285,8 +280,7 @@ export default function SubscriptionsPage() {
         theme: { color: "#4f46e5" },
         handler: async (response: any) => {
           try {
-            await axios.post(
-              "/api/subscription-payments/verify",
+            await axios.post(getFullUrl("/api/subscription-payments/verify"),
               {
                 subscriptionId,
                 razorpay_order_id: response.razorpay_order_id,
@@ -350,9 +344,7 @@ export default function SubscriptionsPage() {
       //////////////////////////////////////////////////
 
       const subscriptionResponse =
-        await axios.post(
-
-          "/api/subscriptions/assign",
+        await axios.post(getFullUrl("/api/subscriptions/assign"),
 
           {
 
@@ -388,9 +380,7 @@ export default function SubscriptionsPage() {
       //////////////////////////////////////////////////
 
       const orderResponse =
-        await axios.post(
-
-          "/api/subscription-payments/create-order",
+        await axios.post(getFullUrl("/api/subscription-payments/create-order"),
 
           {
 
@@ -534,9 +524,7 @@ export default function SubscriptionsPage() {
               //////////////////////////////////////////////////
 
               const verifyResponse =
-                await axios.post(
-
-                  "/api/subscription-payments/verify",
+                await axios.post(getFullUrl("/api/subscription-payments/verify"),
 
                   {
 

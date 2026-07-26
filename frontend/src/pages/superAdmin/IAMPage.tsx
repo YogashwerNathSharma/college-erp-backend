@@ -13,6 +13,8 @@ import {
 } from "../../components/enterprise";
 import type { Column, BulkAction } from "../../components/enterprise";
 
+import { getFullUrl } from "../../utils/url";
+
 // ══════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════
@@ -298,8 +300,8 @@ export default function IAMPage() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       const [rolesRes, statsRes] = await Promise.all([
-        axios.get("/api/super-admin/iam/roles", { headers }),
-        axios.get("/api/super-admin/iam/stats", { headers }),
+        axios.get(getFullUrl("/api/super-admin/iam/roles"), { headers }),
+        axios.get(getFullUrl("/api/super-admin/iam/stats"), { headers }),
       ]);
       if (rolesRes.data.success) setRoles(rolesRes.data.data);
       if (statsRes.data.success) setStats(statsRes.data.data);
@@ -352,7 +354,7 @@ export default function IAMPage() {
       return { ...r, permissions: perms };
     }));
     // Call API
-    axios.put("/api/super-admin/iam/matrix", { roleName, permissionKey: permKey, granted: !matrix[roleName]?.[permKey] }).catch(() => {});
+    axios.put(getFullUrl("/api/super-admin/iam/matrix"), { roleName, permissionKey: permKey, granted: !matrix[roleName]?.[permKey] }).catch(() => {});
   };
 
   const toggleModule = (mod: string) => {
@@ -363,7 +365,7 @@ export default function IAMPage() {
 
   const handleCreateRole = async () => {
     try {
-      const res = await axios.post("/api/super-admin/iam/roles", { ...roleForm, name: roleForm.name.toUpperCase().replace(/\s/g, "_") });
+      const res = await axios.post(getFullUrl("/api/super-admin/iam/roles"), { ...roleForm, name: roleForm.name.toUpperCase().replace(/\s/g, "_") });
       if (res.data.success) setRoles((prev) => [...prev, res.data.data]);
     } catch {
       const newRole: Role = {

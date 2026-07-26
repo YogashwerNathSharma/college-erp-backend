@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { AlertCircle, Search, ChevronDown, ChevronRight, Users, IndianRupee, X, Printer } from "lucide-react";
 
+import { getFullUrl } from "../../utils/url";
+
 interface DueFeeStudent {
   studentId: string;
   studentName: string;
@@ -40,7 +42,7 @@ export default function DueFeesPage() {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get("/api/fees/due-summary", { headers });
+      const res = await axios.get(getFullUrl("/api/fees/due-summary"), { headers });
       setClassData(res.data?.data || []);
     } catch (err) {
       console.error("Error fetching due fees:", err);
@@ -53,7 +55,7 @@ export default function DueFeesPage() {
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`/api/fees/collection/search?studentId=${studentId}`, { headers });
+      const res = await axios.get(getFullUrl(`/api/fees/collection/search?studentId=${studentId}`), { headers });
       const fees = res.data?.data?.fees || res.data?.data || [];
       setStudentFees(fees);
       setSelectedStudent(studentInfo);

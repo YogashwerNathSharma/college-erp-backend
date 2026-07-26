@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getPrintSignatureHTML } from "../../components/PrintSignature";
 import {
+import { getFullUrl } from "../../utils/url";
   Users, UserCheck, UserX, UserPlus, GraduationCap, ClipboardList,
   BarChart3, Hash, BookOpen, Search, Printer, Download, Eye,
   Calendar, CalendarDays, Cake, Heart, Phone, Briefcase, Building2,
@@ -259,8 +260,8 @@ export default function StudentReportsPage() {
     const fetchData = async () => {
       try {
         const [yearRes, classRes] = await Promise.all([
-          axios.get("/api/academic"),
-          axios.get("/api/class"),
+          axios.get(getFullUrl("/api/academic")),
+          axios.get(getFullUrl("/api/class")),
         ]);
         const years = yearRes.data?.data || [];
         const cls = classRes.data?.data || [];
@@ -279,7 +280,7 @@ export default function StudentReportsPage() {
   useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const res = await axios.get("/api/students/stats");
+        const res = await axios.get(getFullUrl("/api/students/stats"));
         const d = res.data?.data || {};
         setSummaryData({
           total: d.totalStudents || d.total || 0,
@@ -299,7 +300,7 @@ export default function StudentReportsPage() {
   // ─── Fetch Sections on Class Change ────────────────────────
   useEffect(() => {
     if (!classId) { setSections([]); return; }
-    axios.get(`/api/section?classId=${classId}`)
+    axios.get(getFullUrl(`/api/section?classId=${classId}`))
       .then((res) => setSections(res.data?.data || []))
       .catch(() => setSections([]));
   }, [classId]);
@@ -386,7 +387,7 @@ export default function StudentReportsPage() {
         params.status = "all";
       }
 
-      const res = await axios.get("/api/students", { params });
+      const res = await axios.get(getFullUrl("/api/students"), { params });
       const result = res.data?.data;
       let studentList: StudentData[] = result?.students || [];
 

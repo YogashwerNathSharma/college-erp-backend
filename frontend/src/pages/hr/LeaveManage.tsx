@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Calendar, CheckCircle2, XCircle, Clock, MessageSquare,
   Home, ChevronRight, Loader2, X, AlertCircle, Users, Filter
 } from "lucide-react";
@@ -52,8 +54,8 @@ export default function LeaveManage() {
     setError("");
     try {
       const [leavesRes, balancesRes] = await Promise.all([
-        axios.get("/api/hr/leave", { headers }),
-        axios.get("/api/hr/leave/balances", { headers }).catch(() => ({ data: { data: [] } })),
+        axios.get(getFullUrl("/api/hr/leave"), { headers }),
+        axios.get(getFullUrl("/api/hr/leave/balances"), { headers }).catch(() => ({ data: { data: [] } })),
       ]);
       setLeaves(leavesRes.data.data || []);
       setBalances(balancesRes.data.data || []);
@@ -67,7 +69,7 @@ export default function LeaveManage() {
   const handleAction = async () => {
     if (!actionTarget) return;
     try {
-      await axios.patch(`/api/hr/leave/${actionTarget.id}`, {
+      await axios.patch(getFullUrl(`/api/hr/leave/${actionTarget.id}`), {
         status: actionTarget.action,
         comment,
       }, { headers });

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
+import { getFullUrl } from "../../utils/url";
+
   Award,
   Search,
   Printer,
@@ -94,7 +96,7 @@ export default function CharacterCert() {
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res = await axios.get("/api/certificate/character", { headers });
+      const res = await axios.get(getFullUrl("/api/certificate/character"), { headers });
       setHistory(res.data.data || []);
     } catch {
       // silent
@@ -112,7 +114,7 @@ export default function CharacterCert() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await axios.get("/api/certificate/character/search-students", {
+      const res = await axios.get(getFullUrl("/api/certificate/character/search-students"), {
         headers,
         params: { q: searchQuery },
       });
@@ -141,7 +143,7 @@ export default function CharacterCert() {
     if (!selectedStudent) return;
     setGenerating(true);
     try {
-      await axios.post("/api/certificate/character", {
+      await axios.post(getFullUrl("/api/certificate/character"), {
         studentId: selectedStudent.id,
         ...form,
       }, { headers });

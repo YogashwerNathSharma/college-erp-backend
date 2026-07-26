@@ -4,6 +4,8 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { FiX, FiAlertTriangle } from "react-icons/fi";
 
+import { getFullUrl } from "../../utils/url";
+
 const DAYS = [
   { value: "MON", label: "Monday" },
   { value: "TUE", label: "Tuesday" },
@@ -134,8 +136,8 @@ const TimetableForm = ({
 
     try {
       if (editEntry) {
-        await axios.delete(`/api/timetable/${editEntry.id}`);
-        await axios.post("/api/timetable", {
+        await axios.delete(getFullUrl(`/api/timetable/${editEntry.id}`));
+        await axios.post(getFullUrl("/api/timetable"), {
           classId,
           sectionId,
           subjectId,
@@ -145,7 +147,7 @@ const TimetableForm = ({
         });
         toast.success("Timetable entry updated");
       } else {
-        await axios.post("/api/timetable", {
+        await axios.post(getFullUrl("/api/timetable"), {
           classId,
           sectionId,
           subjectId,

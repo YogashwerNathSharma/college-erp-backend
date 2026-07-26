@@ -168,12 +168,12 @@ function TenantFormModal({
       if (backgroundFile) formData.append("background", backgroundFile);
 
       if (editingTenant) {
-        await axios.put(`/api/super-admin/tenants/${editingTenant.id}`, formData, {
+        await axios.put(getFullUrl(`/api/super-admin/tenants/${editingTenant.id}`), formData, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
         });
         toast.success("Tenant updated successfully");
       } else {
-        const res = await axios.post("/api/super-admin/tenants", formData, {
+        const res = await axios.post(getFullUrl("/api/super-admin/tenants"), formData, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
         });
         const admin = res.data.admin;
@@ -658,7 +658,7 @@ function ActivityLogModal({
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`/api/super-admin/tenants/${tenantId}/activity`, {
+      const res = await axios.get(getFullUrl(`/api/super-admin/tenants/${tenantId}/activity`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const rawActivities = res.data.data?.activities || [];
@@ -735,8 +735,7 @@ function CloneDialog({
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `/api/super-admin/tenants/${tenant.id}/clone`,
+      const res = await axios.post(getFullUrl(`/api/super-admin/tenants/${tenant.id}/clone`),
         { name: name.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -843,7 +842,7 @@ export default function TenantsPage() {
   const fetchTenants = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("/api/super-admin/tenants", {
+      const res = await axios.get(getFullUrl("/api/super-admin/tenants"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTenants(res.data.data || []);
@@ -904,7 +903,7 @@ export default function TenantsPage() {
         setConfirmLoading(true);
         try {
           const token = localStorage.getItem("token");
-          await axios.patch(`/api/super-admin/tenants/${tenant.id}/toggle-status`, {}, {
+          await axios.patch(getFullUrl(`/api/super-admin/tenants/${tenant.id}/toggle-status`), {}, {
             headers: { Authorization: `Bearer ${token}` },
           });
           toast.success(`Tenant ${tenant.isActive ? "suspended" : "activated"}`);
@@ -930,7 +929,7 @@ export default function TenantsPage() {
         setConfirmLoading(true);
         try {
           const token = localStorage.getItem("token");
-          await axios.delete(`/api/super-admin/tenants/${tenant.id}`, {
+          await axios.delete(getFullUrl(`/api/super-admin/tenants/${tenant.id}`), {
             headers: { Authorization: `Bearer ${token}` },
           });
           toast.success("Tenant deleted");
@@ -956,7 +955,7 @@ export default function TenantsPage() {
         setConfirmLoading(true);
         try {
           const token = localStorage.getItem("token");
-          await axios.post(`/api/super-admin/tenants/${tenant.id}/restore`, {}, {
+          await axios.post(getFullUrl(`/api/super-admin/tenants/${tenant.id}/restore`), {}, {
             headers: { Authorization: `Bearer ${token}` },
           });
           toast.success("Tenant restored");
@@ -974,7 +973,7 @@ export default function TenantsPage() {
   const handleImpersonate = async (tenantId: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(`/api/super-admin/tenants/${tenantId}/impersonate`, {}, {
+      const res = await axios.post(getFullUrl(`/api/super-admin/tenants/${tenantId}/impersonate`), {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = res.data.data;
@@ -1000,7 +999,7 @@ export default function TenantsPage() {
           const token = localStorage.getItem("token");
           await Promise.all(
             selectedIds.map((id) =>
-              axios.delete(`/api/super-admin/tenants/${id}`, {
+              axios.delete(getFullUrl(`/api/super-admin/tenants/${id}`), {
                 headers: { Authorization: `Bearer ${token}` },
               })
             )

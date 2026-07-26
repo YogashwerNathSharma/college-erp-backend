@@ -15,6 +15,7 @@ import {
 import axios from "axios";
 import toast from "react-hot-toast";
 import { PageHeader, LoadingSkeleton } from "../../components/enterprise";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -168,7 +169,7 @@ export default function MedicalHistory() {
     const fetchMedical = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`/api/students/${id}/medical`, authHeaders);
+        const response = await axios.get(getFullUrl(`/api/students/${id}/medical`), authHeaders);
         setData({ ...EMPTY_MEDICAL, ...(response.data.medical || response.data) });
       } catch (error: any) {
         if (error.response?.status !== 404) {
@@ -186,7 +187,7 @@ export default function MedicalHistory() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put(`/api/students/${id}/medical`, data, authHeaders);
+      await axios.put(getFullUrl(`/api/students/${id}/medical`), data, authHeaders);
       toast.success("Medical information saved successfully");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to save");

@@ -17,7 +17,7 @@ app.listen(PORT, async () => {
     console.warn("⚠️ MongoDB warmup failed:", (err as any)?.message);
   }
 
-  // Initialize backup cron jobs for all tenants (non-blocking)
+ // Initialize backup cron jobs for all tenants (non-blocking)
   try {
     await initializeBackupSchedules();
   } catch (error) {

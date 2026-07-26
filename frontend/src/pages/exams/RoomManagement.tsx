@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import {
 import { getFullUrl } from "../../utils/url";
-
+import {
   Plus,
   Edit,
   Trash2,

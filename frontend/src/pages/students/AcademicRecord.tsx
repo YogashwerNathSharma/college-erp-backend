@@ -20,8 +20,8 @@ import {
 } from "recharts";
 import axios from "axios";
 import toast from "react-hot-toast";
-import {
 import { getFullUrl } from "../../utils/url";
+import {
   PageHeader,
   LoadingSkeleton,
   EmptyState,

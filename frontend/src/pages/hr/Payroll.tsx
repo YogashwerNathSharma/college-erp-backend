@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import {
 import { getFullUrl } from "../../utils/url";
-
+import {
   IndianRupee, Download, CheckCircle2, Clock, Calculator,
   Home, ChevronRight, Loader2, X, AlertCircle, FileDown, Check
 } from "lucide-react";

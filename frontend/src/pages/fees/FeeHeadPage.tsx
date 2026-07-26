@@ -2,9 +2,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import {
 import { getFullUrl } from "../../utils/url";
-
+import {
   FiPlus,
   FiEdit2,
   FiTrash2,

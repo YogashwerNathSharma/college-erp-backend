@@ -1,8 +1,7 @@
 import { useState, useEffect, Fragment } from "react";
 import axios from "axios";
-import {
 import { getFullUrl } from "../../utils/url";
-
+import {
   Building2, BedDouble, Users, Plus, Search, Filter, X, Home,
   ChevronRight, Loader2, AlertCircle, Edit2, UserPlus
 } from "lucide-react";

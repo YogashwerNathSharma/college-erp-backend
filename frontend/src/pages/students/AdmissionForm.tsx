@@ -238,6 +238,10 @@ export default function AdmissionForm() {
   const [hostels, setHostels] = useState<DropdownItem[]>([]);
 
   // Tag inputs
+  // Optional section toggles
+  const [showTransport, setShowTransport] = useState(false);
+  const [showHostel, setShowHostel] = useState(false);
+
   const [conditionInput, setConditionInput] = useState("");
   const [allergyInput, setAllergyInput] = useState("");
 
@@ -483,30 +487,36 @@ export default function AdmissionForm() {
       return;
     }
 
+    // Extra safety: ensure critical IDs are present
+    if (!formData.classId || !formData.academicYearId) {
+      toast.error("Class and Academic Year are required");
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Step 1: Create student with JSON payload
       const jsonPayload = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        gender: formData.gender,
+        gender: formData.gender || "Male",
         dob: formData.dob,
-        email: formData.email || undefined,
-        phone: formData.mobile || undefined,
-        address: formData.permanentAddress || undefined,
-        admissionNo: formData.admissionNo || undefined,
-        bloodGroup: formData.bloodGroup || undefined,
-        religion: formData.religion || undefined,
-        caste: formData.category || undefined,
-        category: formData.category || undefined,
-        nationality: formData.nationality || undefined,
-        aadharNo: formData.aadhaarNumber || undefined,
-        fatherName: formData.fatherName || undefined,
-        fatherPhone: formData.fatherPhone || undefined,
-        fatherOccupation: formData.fatherOccupation || undefined,
-        motherName: formData.motherName || undefined,
-        motherPhone: formData.motherPhone || undefined,
-        motherOccupation: formData.motherOccupation || undefined,
+        email: formData.email || "",
+        phone: formData.mobile || "",
+        address: formData.permanentAddress || "N/A",
+        admissionNo: formData.admissionNo || "",
+        bloodGroup: formData.bloodGroup || "",
+        religion: formData.religion || "",
+        caste: formData.category || "",
+        category: formData.category || "",
+        nationality: formData.nationality || "Indian",
+        aadharNo: formData.aadhaarNumber || "",
+        fatherName: formData.fatherName || "N/A",
+        fatherPhone: formData.fatherPhone || "",
+        fatherOccupation: formData.fatherOccupation || "",
+        motherName: formData.motherName || "N/A",
+        motherPhone: formData.motherPhone || "",
+        motherOccupation: formData.motherOccupation || "",
         guardianName: formData.guardianName || undefined,
         guardianPhone: formData.guardianPhone || undefined,
         guardianRelation: formData.guardianRelation || undefined,
@@ -1036,26 +1046,52 @@ export default function AdmissionForm() {
     <div className="space-y-6">
       {/* Transport */}
       <div className={sectionClasses}>
-        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showTransport}
+            onChange={(e) => {
+              setShowTransport(e.target.checked);
+              if (!e.target.checked) {
+                setFormData((prev) => ({ ...prev, transportRoute: "", transportPickupPoint: "" }));
+              }
+            }}
+            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
           <Bus className="w-4 h-4 text-indigo-500" />
-          Transport
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Transport (Optional)</span>
+        </label>
+        {showTransport && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {renderSelect("Route", "transportRoute", routes)}
           {renderSelect("Pickup Point", "transportPickupPoint", pickupPoints)}
         </div>
+        )}
       </div>
 
       {/* Hostel */}
       <div className={sectionClasses}>
-        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showHostel}
+            onChange={(e) => {
+              setShowHostel(e.target.checked);
+              if (!e.target.checked) {
+                setFormData((prev) => ({ ...prev, hostelName: "", hostelRoom: "" }));
+              }
+            }}
+            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
           <Home className="w-4 h-4 text-indigo-500" />
-          Hostel
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Hostel (Optional)</span>
+        </label>
+        {showHostel && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {renderSelect("Hostel Name", "hostelName", hostels)}
           {renderInput("Room", "hostelRoom", { placeholder: "Room number" })}
         </div>
+        )}
       </div>
 
       {/* Medical */}

@@ -403,7 +403,7 @@ export default function AdminStudentDashboard() {
 
           {/* ═══ QUICK ACTIONS ═══ */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 animate-fade-in-up stagger-7">
-            <QuickAction label="Add Student" onClick={() => navigate("/students/admission")} color="indigo" />
+            <QuickAction label="Add Student" onClick={() => navigate("/students/new-admission")} color="indigo" />
             <QuickAction label="Bulk Import" onClick={() => navigate("/students/bulk-admission")} color="green" />
             <QuickAction label="Print List" onClick={() => navigate("/students/print")} color="blue" />
             <QuickAction label="Export Excel" onClick={() => navigate("/students/bulk-export")} color="amber" />

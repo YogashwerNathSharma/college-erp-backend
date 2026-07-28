@@ -1277,7 +1277,7 @@ export default function StudentsPage() {
 
           <button
 
-            onClick={() => navigate("/students/admission")}
+            onClick={() => navigate("/students/new-admission")}
 
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-indigo-200 dark:shadow-none transition-colors"
 
@@ -1659,7 +1659,7 @@ export default function StudentsPage() {
 
             ) : (
 
-              <button onClick={() => navigate("/students/admission")} className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+              <button onClick={() => navigate("/students/new-admission")} className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
 
                 Add First Student
 

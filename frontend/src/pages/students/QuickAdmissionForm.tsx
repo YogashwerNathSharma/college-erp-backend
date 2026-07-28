@@ -310,7 +310,7 @@ export default function QuickAdmissionForm() {
         icon={<Zap className="w-6 h-6" />}
         actions={
           <button
-            onClick={() => navigate("/students/admission")}
+            onClick={() => navigate("/students/new-admission")}
             className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

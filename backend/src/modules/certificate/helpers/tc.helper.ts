@@ -1,4 +1,4 @@
-import prisma from "../../../config/prisma";
+import prisma from "../../../utils/prisma";
 
 interface TCGeneratedData {
   studentName: string;

@@ -14,14 +14,16 @@ import {
   CheckCircle,
   X,
   Download,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { API_BASE_URL } from "../../config/api";
 import { PageHeader, ConfirmDialog, LoadingSkeleton } from "../../components/enterprise";
 import { getFullUrl } from "../../utils/url";
 
-// ═══════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════════════
 // TYPES
-// ═══════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════════════
 
 interface StudentSearchResult {
   id: string;
@@ -38,6 +40,19 @@ interface StudentSearchResult {
   }[];
 }
 
+interface TransferredStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  admissionNo: string;
+  className: string;
+  sectionName: string;
+  destinationSchool: string;
+  transferDate: string;
+  reason: string;
+  transferCertificateNo?: string;
+}
+
 interface TransferFormData {
   reason: string;
   destinationSchool: string;
@@ -50,9 +65,15 @@ interface TransferFormData {
   libraryClearance: boolean;
 }
 
-// ═══════════════════════════════════════════════════════════════
+interface ClassWiseTransferStats {
+  className: string;
+  totalTransferred: number;
+  students: TransferredStudent[];
+}
+
+// ════════════════════════════════════════════════════════════════════════════════════════
 // COMPONENT
-// ═══════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════════════
 
 function authHeaders() {
   return { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } };
@@ -71,6 +92,9 @@ export default function StudentTransfer() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [transferSuccess, setTransferSuccess] = useState<{ tcUrl?: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<"transfer" | "transferred-list">("transfer");
+  const [transferredStudents, setTransferredStudents] = useState<TransferredStudent[]>([]);
+  const [loadingTransferred, setLoadingTransferred] = useState(false);
 
   const [formData, setFormData] = useState<TransferFormData>({
     reason: "",
@@ -84,7 +108,7 @@ export default function StudentTransfer() {
     libraryClearance: false,
   });
 
-  // ─── Pre-select student from URL params ────────────────────
+  // ──── Pre-select student from URL params ────────────────────────────────────────────
   useEffect(() => {
     if (preselectedId) {
       const fetchStudent = async () => {
@@ -99,7 +123,64 @@ export default function StudentTransfer() {
     }
   }, [preselectedId]);
 
-  // ─── Search Students ───────────────────────────────────────
+  // ──── Load transferred students ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === "transferred-list") {
+      fetchTransferredStudents();
+    }
+  }, [activeTab]);
+
+  const fetchTransferredStudents = async () => {
+    setLoadingTransferred(true);
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/students?status=transferred&limit=500`,
+        authHeaders()
+      );
+      
+      if (res.data.success) {
+        const students = res.data.data?.students || [];
+        setTransferredStudents(
+          students.map((s: any) => ({
+            id: s.id,
+            firstName: s.firstName,
+            lastName: s.lastName,
+            admissionNo: s.admissionNo,
+            className: s.enrollments?.[0]?.class?.name || "—",
+            sectionName: s.enrollments?.[0]?.section?.name || "—",
+            destinationSchool: s.statusReason || "—",
+            transferDate: s.statusChangedAt ? new Date(s.statusChangedAt).toLocaleDateString() : "—",
+            reason: s.statusReason || "—",
+            transferCertificateNo: s.id, // Placeholder; fetch actual TC number if available
+          }))
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to load transferred students");
+    } finally {
+      setLoadingTransferred(false);
+    }
+  };
+
+  // ──── Compute class-wise stats ────────────────────────────────────────────────────
+  const classWiseStats = (): ClassWiseTransferStats[] => {
+    const grouped: { [key: string]: TransferredStudent[] } = {};
+    
+    transferredStudents.forEach((student) => {
+      if (!grouped[student.className]) {
+        grouped[student.className] = [];
+      }
+      grouped[student.className].push(student);
+    });
+
+    return Object.entries(grouped).map(([className, students]) => ({
+      className,
+      totalTransferred: students.length,
+      students: students.sort((a, b) => a.lastName.localeCompare(b.lastName)),
+    }));
+  };
+
+  // ──── Search Students ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       setSearchResults([]);
@@ -122,7 +203,7 @@ export default function StudentTransfer() {
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
-  // ─── Handle Transfer ───────────────────────────────────────
+  // ──── Handle Transfer ──────────────────────────────────────────────────────────────
   const handleTransfer = async () => {
     if (!selectedStudent) return;
     setConfirmOpen(false);
@@ -161,14 +242,14 @@ export default function StudentTransfer() {
     }
   };
 
-  // ─── Validation ─────────────────────────────────────────────
+  // ──── Validation ────────────────────────────────────────────────────────────────────
   const canSubmit =
     selectedStudent &&
     formData.reason.trim() &&
     formData.destinationSchool.trim() &&
     formData.effectiveDate;
 
-  // ─── Success View ──────────────────────────────────────────
+  // ──── Success View ────────────────────────────────────────────────────────────────
   if (transferSuccess) {
     return (
       <div className="p-6 max-w-xl mx-auto">
@@ -227,251 +308,379 @@ export default function StudentTransfer() {
     );
   }
 
-  // ─── Main Form ─────────────────────────────────────────────
+  // ──── Main Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <PageHeader
         title="Student Transfer"
         subtitle="Transfer a student to another school with Transfer Certificate"
         icon={<ArrowRightCircle className="w-6 h-6" />}
       />
 
-      <div className="mt-6 space-y-6">
-        {/* Student Selection */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-            <User className="w-5 h-5 text-indigo-500" />
-            Select Student
-          </h3>
+      {/* Tabs */}
+      <div className="mt-6 flex gap-2 border-b border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveTab("transfer")}
+          className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+            activeTab === "transfer"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <ArrowRightCircle className="w-4 h-4" />
+            Transfer Student
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab("transferred-list")}
+          className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+            activeTab === "transferred-list"
+              ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Transferred Students List
+          </div>
+        </button>
+      </div>
 
-          {selectedStudent ? (
-            <div className="flex items-center gap-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-slate-900 dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Adm: {selectedStudent.admissionNo} | Class: {selectedStudent.enrollments?.[0]?.class?.name || "—"} - {selectedStudent.enrollments?.[0]?.section?.name || "—"}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedStudent(null)}
-                className="p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
-              >
-                <X className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-          ) : (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by student name or admission number..."
-                className="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-              />
-              {searching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
-              )}
+      {/* Transfer Student Tab */}
+      {activeTab === "transfer" && (
+        <div className="mt-6 space-y-6">
+          {/* Student Selection */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+              <User className="w-5 h-5 text-indigo-500" />
+              Select Student
+            </h3>
 
-              {/* Search Dropdown */}
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
-                  {searchResults.map((student) => (
-                    <button
-                      key={student.id}
-                      onClick={() => {
-                        setSelectedStudent(student);
-                        setSearchQuery("");
-                        setSearchResults([]);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left border-b last:border-b-0 border-slate-100 dark:border-slate-700"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white">
-                        {student.firstName[0]}{student.lastName[0]}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">{student.firstName} {student.lastName}</p>
-                        <p className="text-xs text-slate-500">{student.admissionNo} | {student.enrollments?.[0]?.class?.name || ""}</p>
-                      </div>
-                    </button>
-                  ))}
+            {selectedStudent ? (
+              <div className="flex items-center gap-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                  {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
                 </div>
-              )}
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Adm: {selectedStudent.admissionNo} | Class: {selectedStudent.enrollments?.[0]?.class?.name || "—"} - {selectedStudent.enrollments?.[0]?.section?.name || "—"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedStudent(null)}
+                  className="p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by student name or admission number..."
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+                )}
+
+                {/* Search Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
+                    {searchResults.map((student) => (
+                      <button
+                        key={student.id}
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          setSearchQuery("");
+                          setSearchResults([]);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left border-b last:border-b-0 border-slate-100 dark:border-slate-700"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white">
+                          {student.firstName[0]}{student.lastName[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{student.firstName} {student.lastName}</p>
+                          <p className="text-xs text-slate-500">{student.admissionNo} | {student.enrollments?.[0]?.class?.name || ""}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Transfer Details */}
+          {selectedStudent && (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                <Building2 className="w-5 h-5 text-indigo-500" />
+                Transfer Details
+              </h3>
+
+              <div className="space-y-4">
+                {/* Reason */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    Reason for Transfer <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.reason}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
+                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Reason</option>
+                    <option value="Parent Transfer">Parent Transfer (Job relocation)</option>
+                    <option value="Better Opportunity">Better Opportunity</option>
+                    <option value="Relocation">Family Relocation</option>
+                    <option value="Financial">Financial Reasons</option>
+                    <option value="Health">Health Reasons</option>
+                    <option value="Discipline">Disciplinary Action</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Destination School */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Destination School <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.destinationSchool}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, destinationSchool: e.target.value }))}
+                      placeholder="Name of the receiving school"
+                      className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      School Address
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.destinationAddress}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, destinationAddress: e.target.value }))}
+                      placeholder="City / State"
+                      className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Effective Date & Conduct */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Effective Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.effectiveDate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))}
+                      className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Conduct & Character
+                    </label>
+                    <select
+                      value={formData.conductCertificate}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, conductCertificate: e.target.value }))}
+                      className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="excellent">Excellent</option>
+                      <option value="very good">Very Good</option>
+                      <option value="good">Good</option>
+                      <option value="satisfactory">Satisfactory</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Clearances */}
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.feesClearance}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, feesClearance: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Fees Cleared</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.libraryClearance}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, libraryClearance: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Library Books Returned</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.generateTC}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, generateTC: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Generate Transfer Certificate</span>
+                  </label>
+                </div>
+
+                {/* Remarks */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Remarks</label>
+                  <textarea
+                    value={formData.remarks}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, remarks: e.target.value }))}
+                    placeholder="Additional notes about the transfer..."
+                    rows={3}
+                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
+                  />
+                </div>
+
+                {/* Warning */}
+                {!formData.feesClearance && (
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Fees Not Cleared</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                        Student has pending fee balance. Transfer can still proceed but will be noted in records.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={!canSubmit || submitting}
+                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold rounded-xl px-6 py-3.5 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing Transfer...
+                      </>
+                    ) : (
+                      <>
+                        <ArrowRightCircle className="w-5 h-5" />
+                        Transfer Student
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
+      )}
 
-        {/* Transfer Details */}
-        {selectedStudent && (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-              <Building2 className="w-5 h-5 text-indigo-500" />
-              Transfer Details
-            </h3>
-
-            <div className="space-y-4">
-              {/* Reason */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Reason for Transfer <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formData.reason}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
-                  className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select Reason</option>
-                  <option value="Parent Transfer">Parent Transfer (Job relocation)</option>
-                  <option value="Better Opportunity">Better Opportunity</option>
-                  <option value="Relocation">Family Relocation</option>
-                  <option value="Financial">Financial Reasons</option>
-                  <option value="Health">Health Reasons</option>
-                  <option value="Discipline">Disciplinary Action</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              {/* Destination School */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    Destination School <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.destinationSchool}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, destinationSchool: e.target.value }))}
-                    placeholder="Name of the receiving school"
-                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  />
+      {/* Transferred Students List Tab */}
+      {activeTab === "transferred-list" && (
+        <div className="mt-6">
+          {loadingTransferred ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+            </div>
+          ) : transferredStudents.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+              <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-500 dark:text-slate-400">No transferred students found</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Total Transferred</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{transferredStudents.length}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    School Address
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.destinationAddress}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, destinationAddress: e.target.value }))}
-                    placeholder="City / State"
-                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  />
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Classes Affected</p>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{classWiseStats().length}</p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Last Transfer</p>
+                  <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                    {transferredStudents.length > 0
+                      ? new Date(transferredStudents[0].transferDate).toLocaleDateString()
+                      : "—"}
+                  </p>
                 </div>
               </div>
 
-              {/* Effective Date & Conduct */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    Effective Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.effectiveDate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, effectiveDate: e.target.value }))}
-                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    Conduct & Character
-                  </label>
-                  <select
-                    value={formData.conductCertificate}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, conductCertificate: e.target.value }))}
-                    className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+              {/* Class-wise Breakdown */}
+              <div className="space-y-4">
+                {classWiseStats().map((classData) => (
+                  <div
+                    key={classData.className}
+                    className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                   >
-                    <option value="excellent">Excellent</option>
-                    <option value="very good">Very Good</option>
-                    <option value="good">Good</option>
-                    <option value="satisfactory">Satisfactory</option>
-                  </select>
-                </div>
-              </div>
+                    {/* Class Header */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{classData.className}</h4>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {classData.totalTransferred} student{classData.totalTransferred !== 1 ? "s" : ""} transferred
+                          </p>
+                        </div>
+                        <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{classData.totalTransferred}</div>
+                      </div>
+                    </div>
 
-              {/* Clearances */}
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.feesClearance}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, feesClearance: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-slate-700 dark:text-slate-300">Fees Cleared</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.libraryClearance}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, libraryClearance: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-slate-700 dark:text-slate-300">Library Books Returned</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.generateTC}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, generateTC: e.target.checked }))}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-slate-700 dark:text-slate-300">Generate Transfer Certificate</span>
-                </label>
-              </div>
-
-              {/* Remarks */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Remarks</label>
-                <textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, remarks: e.target.value }))}
-                  placeholder="Additional notes about the transfer..."
-                  rows={3}
-                  className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none"
-                />
-              </div>
-
-              {/* Warning */}
-              {!formData.feesClearance && (
-                <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Fees Not Cleared</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
-                      Student has pending fee balance. Transfer can still proceed but will be noted in records.
-                    </p>
+                    {/* Students Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Admission No.</th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Student Name</th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Section</th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Destination School</th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Transfer Date</th>
+                            <th className="text-left px-6 py-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                          {classData.students.map((student) => (
+                            <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                              <td className="px-6 py-3 text-sm font-medium text-slate-900 dark:text-white">{student.admissionNo}</td>
+                              <td className="px-6 py-3 text-sm text-slate-700 dark:text-slate-300">
+                                {student.firstName} {student.lastName}
+                              </td>
+                              <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400">{student.sectionName}</td>
+                              <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400">{student.destinationSchool}</td>
+                              <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400">{student.transferDate}</td>
+                              <td className="px-6 py-3 text-sm">
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                  {student.reason}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Submit */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                <button
-                  onClick={() => setConfirmOpen(true)}
-                  disabled={!canSubmit || submitting}
-                  className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold rounded-xl px-6 py-3.5 transition-all shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Processing Transfer...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRightCircle className="w-5 h-5" />
-                      Transfer Student
-                    </>
-                  )}
-                </button>
+                ))}
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Confirmation Dialog */}
       {confirmOpen && (

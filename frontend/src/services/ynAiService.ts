@@ -223,7 +223,7 @@ const INTENTS: Intent[] = [
 
   // ═══════ NAVIGATE: ADMISSION ═══════
   { id: "nav_admission", type: "navigate", keywords: ["admission", "new admission", "admission form", "dakhila", "admission kholo"],
-    handler: () => ({ message: "✅ Admission form open kar raha hoon...", action: { type: "navigate", payload: { path: "/students/admission" } } }) },
+    handler: () => ({ message: "✅ Admission form open kar raha hoon...", action: { type: "navigate", payload: { path: "/students/new-admission" } } }) },
 
   // ═══════ NAVIGATE: ID CARD ═══════
   { id: "nav_idcard", type: "navigate", keywords: ["id card", "identity card", "pehchan patra", "student id"],

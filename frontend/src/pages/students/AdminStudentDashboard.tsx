@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { getFullUrl } from "../../utils/url";
 import {
   Users, UserCheck, UserX, UserPlus, UserMinus,
   GraduationCap, Bus, Building, Award, CreditCard,
@@ -18,8 +19,6 @@ import {
   PieChart as RechartsPie, Pie, Cell, ResponsiveContainer,
   LineChart, Line, AreaChart, Area,
 } from "recharts";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -95,16 +94,15 @@ export default function AdminStudentDashboard() {
   const [academicYears, setAcademicYears] = useState<Array<{ id: string; name: string }>>([]);
 
   const token = localStorage.getItem("token");
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const authHeaders = () => ({ headers: { Authorization: `Bearer ${token}` } });
 
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
       const params = academicYearId ? { academicYearId } : {};
-      const res = await api.get("/students/dashboard/full", { params });
+      const res = await axios.get(getFullUrl("/api/students/dashboard/full"), {
+        params, ...authHeaders(),
+      });
       if (res.data.success) {
         setData(res.data.data);
       }
@@ -113,10 +111,10 @@ export default function AdminStudentDashboard() {
       try {
         console.error("[StudentDashboard] /full failed, trying fallback:", err.message);
         const [statsRes, classRes, catRes, recentRes] = await Promise.all([
-          api.get("/students/stats", { params: { academicYearId } }),
-          api.get("/students/class-strength", { params: { academicYearId } }),
-          api.get("/students/category-distribution", { params: { academicYearId } }),
-          api.get("/students/recent-admissions", { params: { limit: 10 } }),
+          axios.get(getFullUrl("/api/students/stats"), { params: { academicYearId }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/class-strength"), { params: { academicYearId }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/category-distribution"), { params: { academicYearId }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/recent-admissions"), { params: { limit: 10 }, ...authHeaders() }),
         ]);
 
         setData({
@@ -141,8 +139,8 @@ export default function AdminStudentDashboard() {
 
   const fetchAcademicYears = async () => {
     try {
-      const res = await api.get("/academic");
-      if (res.data.success) setAcademicYears(res.data.data || []);
+      const res = await axios.get(getFullUrl("/api/academic"), authHeaders());
+      if (res.data?.success) setAcademicYears(res.data.data || []);
     } catch { /* silent */ }
   };
 
@@ -268,7 +266,7 @@ export default function AdminStudentDashboard() {
                     ].filter(d => d.value > 0)}
                     cx="50%" cy="50%" innerRadius={55} outerRadius={90}
                     paddingAngle={3} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   >
                     {GENDER_COLORS.map((c, i) => <Cell key={i} fill={c} />)}
                   </Pie>
@@ -299,7 +297,7 @@ export default function AdminStudentDashboard() {
                     data={data.categoryDistribution}
                     cx="50%" cy="50%" outerRadius={90}
                     dataKey="count" nameKey="category"
-                    label={({ category, percentage }) => `${category} (${percentage}%)`}
+                    label={({ name, percent }: any) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
                   >
                     {data.categoryDistribution.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />

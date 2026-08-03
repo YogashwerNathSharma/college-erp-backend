@@ -642,16 +642,31 @@ export const getPromotionReportHandler = async (req: any, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
+    // Fetch class/section names for display
+    const classIds = [...new Set(promotions.flatMap((p: any) => [p.fromClassId, p.toClassId]))];
+    const sectionIds = [...new Set(promotions.flatMap((p: any) => [p.fromSectionId, p.toSectionId]))];
+    const yearIds = [...new Set(promotions.map((p: any) => p.toAcademicYearId))];
+
+    const [classes, sections, years] = await Promise.all([
+      prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } }),
+      prisma.section.findMany({ where: { id: { in: sectionIds } }, select: { id: true, name: true } }),
+      prisma.academicYear.findMany({ where: { id: { in: yearIds } }, select: { id: true, name: true } }),
+    ]);
+
+    const classMap = new Map(classes.map((c: any) => [c.id, c.name]));
+    const sectionMap = new Map(sections.map((s: any) => [s.id, s.name]));
+    const yearMap = new Map(years.map((y: any) => [y.id, y.name]));
+
     const report = promotions.map((p: any) => ({
       studentName: p.student?.fullName || `${p.student?.firstName} ${p.student?.lastName}`,
       admissionNo: p.student?.admissionNo,
-      fromClass: p.fromClass?.name || "-",
-      fromSection: p.fromSection?.name || "-",
-      toClass: p.toClass?.name || "-",
-      toSection: p.toSection?.name || "-",
-      academicYear: p.academicYear?.name || "-",
+      fromClass: classMap.get(p.fromClassId) || "-",
+      fromSection: sectionMap.get(p.fromSectionId) || "-",
+      toClass: classMap.get(p.toClassId) || "-",
+      toSection: sectionMap.get(p.toSectionId) || "-",
+      academicYear: yearMap.get(p.toAcademicYearId) || "-",
       promotionType: p.type || "promotion",
-      date: p.createdAt,
+      date: p.promotedAt || p.createdAt,
     }));
 
     res.json({ success: true, data: { report, total: report.length } });

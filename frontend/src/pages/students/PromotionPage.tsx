@@ -243,14 +243,14 @@ const PromotionPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">🎓 Student Promotion</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">🎓 Student Promotion</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Promote students from one class/year to another
           </p>
         </div>
         <button
           onClick={() => navigate("/students")}
-          className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 dark:bg-[var(--surface-overlay)] dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
         >
           ← Back to Students
         </button>
@@ -259,13 +259,13 @@ const PromotionPage = () => {
       {/* FROM and TO Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* FROM */}
-        <div className="bg-white p-5 rounded-xl shadow border border-orange-200">
-          <h2 className="text-lg font-semibold text-orange-700 mb-4">📤 FROM (Current)</h2>
+        <div className="bg-white dark:bg-[var(--surface-raised)] p-5 rounded-xl shadow border border-orange-200 dark:border-orange-800">
+          <h2 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-4">📤 FROM (Current)</h2>
           <div className="space-y-3">
             <select
               value={fromYearId}
               onChange={(e) => setFromYearId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-orange-300"
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((y) => (
@@ -275,7 +275,7 @@ const PromotionPage = () => {
             <select
               value={fromClassId}
               onChange={(e) => { setFromClassId(e.target.value); setFromSectionId(""); }}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-orange-300"
             >
               <option value="">Select Class</option>
               {classes.map((c) => (
@@ -285,7 +285,7 @@ const PromotionPage = () => {
             <select
               value={fromSectionId}
               onChange={(e) => setFromSectionId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-orange-300"
             >
               <option value="">Select Section</option>
               {fromSections.map((s) => (
@@ -296,20 +296,20 @@ const PromotionPage = () => {
           <button
             onClick={fetchEligible}
             disabled={loading}
-            className="mt-4 w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+            className="mt-4 w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 disabled:opacity-50"
           >
             {loading ? "Loading..." : "🔍 Find Eligible Students"}
           </button>
         </div>
 
         {/* TO */}
-        <div className="bg-white p-5 rounded-xl shadow border border-green-200">
-          <h2 className="text-lg font-semibold text-green-700 mb-4">📥 TO (Promote To)</h2>
+        <div className="bg-white dark:bg-[var(--surface-raised)] p-5 rounded-xl shadow border border-green-200 dark:border-green-800">
+          <h2 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-4">📥 TO (Promote To)</h2>
           <div className="space-y-3">
             <select
               value={toYearId}
               onChange={(e) => setToYearId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-300"
             >
               <option value="">Select Academic Year</option>
               {academicYears.map((y) => (
@@ -319,7 +319,7 @@ const PromotionPage = () => {
             <select
               value={toClassId}
               onChange={(e) => { setToClassId(e.target.value); setToSectionId(""); }}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-300"
             >
               <option value="">Select Class</option>
               {classes.map((c) => (
@@ -329,7 +329,7 @@ const PromotionPage = () => {
             <select
               value={toSectionId}
               onChange={(e) => setToSectionId(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-300"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-300"
             >
               <option value="">Select Section</option>
               {toSections.map((s) => (
@@ -340,11 +340,11 @@ const PromotionPage = () => {
 
           {/* Promotion Type */}
           <div className="mt-4">
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Promotion Type:</label>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1 block">Promotion Type:</label>
             <select
               value={promotionType}
               onChange={(e) => setPromotionType(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-lg"
             >
               <option value="promotion">Normal Promotion (Next Class)</option>
               <option value="jump">Jump/Skip Class</option>
@@ -356,8 +356,8 @@ const PromotionPage = () => {
 
       {/* Eligible Students Table */}
       {eligibleStudents.length > 0 && (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
-          <div className="p-4 border-b flex items-center justify-between bg-gray-50">
+        <div className="bg-white dark:bg-[var(--surface-raised)] rounded-xl shadow dark:shadow-none dark:border dark:border-[var(--border)] overflow-hidden">
+          <div className="p-4 border-b dark:border-[var(--border)] flex items-center justify-between bg-gray-50 dark:bg-[var(--surface-overlay)]">
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -366,7 +366,7 @@ const PromotionPage = () => {
                   onChange={toggleSelectAll}
                   className="w-4 h-4"
                 />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium dark:text-gray-200">
                   Select All ({eligibleStudents.length} students)
                 </span>
               </label>
@@ -395,23 +395,23 @@ const PromotionPage = () => {
           </div>
 
           <table className="w-full text-sm">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-100 dark:bg-[var(--surface-overlay)]">
               <tr>
-                <th className="p-3 text-left w-10"></th>
-                <th className="p-3 text-left">#</th>
-                <th className="p-3 text-left">Admission No</th>
-                <th className="p-3 text-left">Student Name</th>
-                <th className="p-3 text-left">Father Name</th>
-                <th className="p-3 text-left">Gender</th>
-                <th className="p-3 text-left">SR No</th>
+                <th className="p-3 text-left w-10 dark:text-gray-300"></th>
+                <th className="p-3 text-left dark:text-gray-300">#</th>
+                <th className="p-3 text-left dark:text-gray-300">Admission No</th>
+                <th className="p-3 text-left dark:text-gray-300">Student Name</th>
+                <th className="p-3 text-left dark:text-gray-300">Father Name</th>
+                <th className="p-3 text-left dark:text-gray-300">Gender</th>
+                <th className="p-3 text-left dark:text-gray-300">SR No</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="dark:text-gray-300">
               {eligibleStudents.map((e, idx) => (
                 <tr
                   key={e.id}
-                  className={`border-b hover:bg-gray-50 ${
-                    selectedStudents.includes(e.student.id) ? "bg-primary-50" : ""
+                  className={`border-b dark:border-[var(--border)] hover:bg-gray-50 dark:hover:bg-[var(--surface-overlay)] ${
+                    selectedStudents.includes(e.student.id) ? "bg-primary-50 dark:bg-primary-900/20" : ""
                   }`}
                 >
                   <td className="p-3">
@@ -439,9 +439,9 @@ const PromotionPage = () => {
 
       {/* Empty state */}
       {eligibleStudents.length === 0 && !loading && (
-        <div className="bg-white rounded-xl shadow p-12 text-center text-gray-500">
+        <div className="bg-white dark:bg-[var(--surface-raised)] rounded-xl shadow dark:shadow-none dark:border dark:border-[var(--border)] p-12 text-center text-gray-500 dark:text-gray-400">
           <p className="text-4xl mb-3">📋</p>
-          <p className="text-lg font-medium">Select FROM Year, Class & Section</p>
+          <p className="text-lg font-medium dark:text-gray-300">Select FROM Year, Class & Section</p>
           <p className="text-sm mt-1">Then click "Find Eligible Students" to see who can be promoted</p>
         </div>
       )}

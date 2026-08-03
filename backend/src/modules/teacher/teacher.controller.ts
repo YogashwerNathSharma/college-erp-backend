@@ -230,3 +230,95 @@ export const remove = async (req: any, res: Response) => {
   }
 };
 
+
+
+//////////////////////////////////////////////////////
+// DASHBOARD
+//////////////////////////////////////////////////////
+export const dashboard = async (req: any, res: any) => {
+  try {
+    const tenantId = req.tenantId;
+    const prisma = (await import("../../utils/prisma")).default;
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Base counts
+    const [total, active, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }), // all non-deleted are active
+      prisma.leave.count({ where: { tenantId, status: "Approved", toDate: { gte: now }, fromDate: { lte: now } } }).catch(() => 0),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
+    ]);
+
+    // Department distribution
+    const teachers = await prisma.teacher.findMany({
+      where: { tenantId, isDeleted: false },
+      select: { departmentId: true, createdAt: true, dob: true },
+    });
+
+    // Get department names
+    const deptIds = [...new Set(teachers.map(t => t.departmentId).filter(Boolean))];
+    let deptMap = new Map<string, string>();
+    if (deptIds.length > 0) {
+      try {
+        const depts = await (prisma as any).department?.findMany?.({
+          where: { id: { in: deptIds } },
+          select: { id: true, name: true },
+        });
+        if (depts) deptMap = new Map(depts.map((d: any) => [d.id, d.name]));
+      } catch {}
+    }
+
+    const deptCount: Record<string, number> = {};
+    teachers.forEach(t => {
+      const deptName = t.departmentId ? (deptMap.get(t.departmentId) || "Other") : "Not Assigned";
+      deptCount[deptName] = (deptCount[deptName] || 0) + 1;
+    });
+    const departmentDistribution = Object.entries(deptCount)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    // Experience distribution (based on createdAt as join date)
+    const expBuckets = { "0-5 yrs": 0, "5-10 yrs": 0, "10-15 yrs": 0, "15+ yrs": 0 };
+    teachers.forEach(t => {
+      const years = (now.getTime() - new Date(t.createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      if (years < 5) expBuckets["0-5 yrs"]++;
+      else if (years < 10) expBuckets["5-10 yrs"]++;
+      else if (years < 15) expBuckets["10-15 yrs"]++;
+      else expBuckets["15+ yrs"]++;
+    });
+    const experienceDistribution = Object.entries(expBuckets).map(([range, count]) => ({ range, count }));
+
+    // Unique departments count
+    const departmentsCount = new Set(teachers.map(t => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
+
+    const stats = {
+      totalTeachers: total,
+      activeTeachers: active - onLeaveCount,
+      onLeave: onLeaveCount,
+      newJoinings,
+      departments: departmentsCount,
+      maleTeachers: maleCount,
+      femaleTeachers: femaleCount,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        stats,
+        departmentDistribution,
+        experienceDistribution,
+        attendanceTrend: [],
+        qualificationDistribution: [],
+        teachersOnLeave: [],
+        upcomingSalary: [],
+      },
+    });
+  } catch (err: any) {
+    console.error("Teacher dashboard error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

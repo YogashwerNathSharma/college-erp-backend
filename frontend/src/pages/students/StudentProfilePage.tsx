@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ChevronDown,
@@ -61,6 +62,8 @@ interface TenantInfo {
 }
 
 const StudentProfilePage: React.FC = () => {
+  const { id: urlStudentId } = useParams();
+  const navigate = useNavigate();
   const [academicYears, setAcademicYears] = useState<any>([]);
   const [classes, setClasses] = useState<any>([]);
   const [sections, setSections] = useState<any>([]);
@@ -73,7 +76,7 @@ const StudentProfilePage: React.FC = () => {
 
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fetchingProfile, setFetchingProfile] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(!!urlStudentId);
 
   const tenantInfo: TenantInfo = JSON.parse(localStorage.getItem('tenant') || '{}');
   const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
@@ -81,6 +84,44 @@ const StudentProfilePage: React.FC = () => {
   const logoUrl = tenantInfo.logoUrl?.startsWith('http')
     ? tenantInfo.logoUrl
     : `${tenantInfo.logoUrl || ''}`;
+
+  // Helper: map raw API data to profile display fields
+  const mapStudentData = (data: any) => {
+    const enrollment = data.enrollments?.[0];
+    return {
+      ...data,
+      profilePhoto: data.photoUrl || '',
+      className: enrollment?.class?.name || '',
+      sectionName: enrollment?.section?.name || '',
+      rollNo: enrollment?.rollNumber || data.rollNumber || '',
+      dateOfBirth: data.dob || '',
+      fathersName: data.fatherName || '',
+      mothersName: data.motherName || '',
+      currentAddress: data.address || '',
+      permanentAddress: data.address || '',
+    };
+  };
+
+  // If URL has student ID (e.g. /students/:id/profile), load directly
+  useEffect(() => {
+    if (!urlStudentId) return;
+    const fetchDirectStudent = async () => {
+      try {
+        setFetchingProfile(true);
+        const response = await axios.get(getFullUrl(`/api/students/${urlStudentId}`));
+        const data = response.data.data || response.data;
+        if (!data || !data.id) throw new Error('Student data not found in response');
+        setStudentProfile(mapStudentData(data));
+        setSelectedStudent(data);
+      } catch (error) {
+        console.error('Failed to fetch student profile:', error);
+        toast.error('Failed to fetch student profile');
+      } finally {
+        setFetchingProfile(false);
+      }
+    };
+    fetchDirectStudent();
+  }, [urlStudentId]);
 
   // Fetch Academic Years
   useEffect(() => {
@@ -123,8 +164,10 @@ const StudentProfilePage: React.FC = () => {
         setSections([]);
         setSelectedSection(null);
         setStudents([]);
-        setSelectedStudent(null);
-        setStudentProfile(null);
+        if (!urlStudentId) {
+          setSelectedStudent(null);
+          setStudentProfile(null);
+        }
       } catch (error) {
         toast.error('Failed to fetch classes');
         console.error(error);
@@ -150,8 +193,10 @@ const StudentProfilePage: React.FC = () => {
         setSections(sectionData);
         setSelectedSection(sectionData[0] || null);
         setStudents([]);
-        setSelectedStudent(null);
-        setStudentProfile(null);
+        if (!urlStudentId) {
+          setSelectedStudent(null);
+          setStudentProfile(null);
+        }
       } catch (error) {
         toast.error('Failed to fetch sections');
         console.error(error);
@@ -176,8 +221,10 @@ const StudentProfilePage: React.FC = () => {
         const rawStudents = response.data?.data?.students || response.data?.data || response.data?.students || response.data || [];
         const studentData = Array.isArray(rawStudents) ? rawStudents : [];
         setStudents(studentData);
-        setSelectedStudent(null);
-        setStudentProfile(null);
+        if (!urlStudentId) {
+          setSelectedStudent(null);
+          setStudentProfile(null);
+        }
       } catch (error) {
         toast.error('Failed to fetch students');
         console.error(error);
@@ -192,13 +239,13 @@ const StudentProfilePage: React.FC = () => {
 
   // Fetch Student Profile when Student selected
   useEffect(() => {
-    if (!selectedStudent?.id) return;
+    if (!selectedStudent?.id || urlStudentId) return;
 
     const fetchStudentProfile = async () => {
       try {
         setFetchingProfile(true);
         const response = await axios.get(getFullUrl(`/api/students/${selectedStudent.id}`));
-        setStudentProfile(response.data.data || null);
+        setStudentProfile(mapStudentData(response.data.data || response.data));
         toast.success('Student profile loaded');
       } catch (error) {
         toast.error('Failed to fetch student profile');
@@ -216,18 +263,30 @@ const StudentProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900 p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center justify-between">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text text-transparent mb-2">
             Student Profile
           </h1>
+          {urlStudentId && (
+            <div className="flex gap-2">
+              <button onClick={() => navigate('/students')} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                ← Back to List
+              </button>
+              <button onClick={() => navigate(`/students/${urlStudentId}/edit`)} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+                Edit Student
+              </button>
+            </div>
+          )}
+          </div>
           <p className="text-gray-600">View and manage student information</p>
         </div>
 
         {/* Filters Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6 mb-6">
+        {!urlStudentId && <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Academic Year Dropdown */}
             <div>
@@ -314,7 +373,7 @@ const StudentProfilePage: React.FC = () => {
               </select>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Loading State */}
         {(loading || fetchingProfile) && (
@@ -327,10 +386,25 @@ const StudentProfilePage: React.FC = () => {
         )}
 
         {/* No Student Selected */}
-        {!studentProfile && !loading && !fetchingProfile && (
-          <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-12 text-center">
+        {!studentProfile && !loading && !fetchingProfile && !urlStudentId && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-12 text-center">
             <Users className="w-16 h-16 text-indigo-300 mx-auto mb-4" />
-            <p className="text-lg text-gray-500">Select a student to view their profile</p>
+            <p className="text-lg text-gray-500 dark:text-gray-400">Select a student to view their profile</p>
+          </div>
+        )}
+
+        {/* Error state: URL has student ID but profile failed to load */}
+        {!studentProfile && !loading && !fetchingProfile && urlStudentId && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-100 dark:border-red-900 p-12 text-center">
+            <AlertCircle className="w-16 h-16 text-red-300 mx-auto mb-4" />
+            <p className="text-lg text-gray-500 dark:text-gray-400">Failed to load student profile</p>
+            <p className="text-sm text-gray-400 mt-2">Student ID: {urlStudentId}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -349,11 +423,11 @@ const StudentProfilePage: React.FC = () => {
             </div>
 
             {/* Profile Header Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-8">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
                 {/* Photo */}
                 <div className="flex flex-col items-center">
-                  <div className="w-32 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center overflow-hidden shadow-md">
+                  <div className="w-32 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden shadow-md">
                     {studentProfile.profilePhoto ? (
                       <img
                         src={studentProfile.profilePhoto}
@@ -364,13 +438,13 @@ const StudentProfilePage: React.FC = () => {
                       <User className="w-16 h-16 text-indigo-400" />
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-gray-600">Profile Photo</p>
+                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 dark:text-gray-400">Profile Photo</p>
                 </div>
 
                 {/* Basic Info */}
                 <div className="md:col-span-3">
                   <div className="mb-4">
-                    <h2 className="text-3xl font-bold text-gray-800">
+                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
                       {studentProfile.firstName} {studentProfile.lastName}
                     </h2>
                     <p className="text-primary-600 font-semibold">Status: {studentProfile.status}</p>
@@ -378,26 +452,26 @@ const StudentProfilePage: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Admission No</p>
-                      <p className="text-lg font-semibold text-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Admission No</p>
+                      <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                         {studentProfile.admissionNo}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Roll No</p>
-                      <p className="text-lg font-semibold text-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Roll No</p>
+                      <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                         {studentProfile.rollNo}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Class</p>
-                      <p className="text-lg font-semibold text-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Class</p>
+                      <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                         {studentProfile.className}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Section</p>
-                      <p className="text-lg font-semibold text-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Section</p>
+                      <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                         {studentProfile.sectionName}
                       </p>
                     </div>
@@ -407,27 +481,27 @@ const StudentProfilePage: React.FC = () => {
             </div>
 
             {/* Family Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <Heart className="w-5 h-5 text-primary-600" />
                 Family Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-4 bg-primary-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Father's Name</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="p-4 bg-primary-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Father's Name</p>
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.fathersName || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Mother's Name</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="p-4 bg-purple-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Mother's Name</p>
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.mothersName || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-pink-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Guardian Name</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="p-4 bg-pink-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Guardian Name</p>
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.guardianName || 'N/A'}
                   </p>
                 </div>
@@ -435,75 +509,75 @@ const StudentProfilePage: React.FC = () => {
             </div>
 
             {/* Personal Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary-600" />
                 Personal Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Date of Birth</p>
-                  <p className="text-gray-800 font-semibold">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Date of Birth</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">
                     {studentProfile.dateOfBirth
                       ? new Date(studentProfile.dateOfBirth).toLocaleDateString()
                       : 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Gender</p>
-                  <p className="text-gray-800 font-semibold">{studentProfile.gender || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Gender</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">{studentProfile.gender || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Blood Group</p>
-                  <p className="text-gray-800 font-semibold">{studentProfile.bloodGroup || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Blood Group</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">{studentProfile.bloodGroup || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Religion</p>
-                  <p className="text-gray-800 font-semibold">{studentProfile.religion || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Religion</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">{studentProfile.religion || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Caste</p>
-                  <p className="text-gray-800 font-semibold">{studentProfile.caste || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Caste</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">{studentProfile.caste || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Category</p>
-                  <p className="text-gray-800 font-semibold">{studentProfile.category || 'N/A'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">{studentProfile.category || 'N/A'}</p>
                 </div>
               </div>
             </div>
 
             {/* Contact Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <Phone className="w-5 h-5 text-primary-600" />
                 Contact Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 bg-primary-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Phone</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="p-4 bg-primary-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Phone</p>
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.phone || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Email</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="p-4 bg-purple-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.email || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-pink-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">
+                <div className="p-4 bg-pink-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
                     Emergency Contact
                   </p>
-                  <p className="text-lg font-semibold text-gray-800">
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.emergencyContact || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-orange-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">
+                <div className="p-4 bg-orange-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
                     Emergency Phone
                   </p>
-                  <p className="text-lg font-semibold text-gray-800">
+                  <p className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                     {studentProfile.emergencyPhone || 'N/A'}
                   </p>
                 </div>
@@ -511,21 +585,21 @@ const StudentProfilePage: React.FC = () => {
             </div>
 
             {/* Address Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary-600" />
                 Address Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 bg-primary-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Current Address</p>
-                  <p className="text-gray-800 leading-relaxed">
+                <div className="p-4 bg-primary-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Current Address</p>
+                  <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
                     {studentProfile.currentAddress || 'N/A'}
                   </p>
                 </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Permanent Address</p>
-                  <p className="text-gray-800 leading-relaxed">
+                <div className="p-4 bg-purple-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Permanent Address</p>
+                  <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
                     {studentProfile.permanentAddress || 'N/A'}
                   </p>
                 </div>
@@ -533,23 +607,23 @@ const StudentProfilePage: React.FC = () => {
             </div>
 
             {/* Admission Information */}
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-100 p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-indigo-100 dark:border-gray-700 p-6">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary-600" />
                 Admission Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Admission Date</p>
-                  <p className="text-gray-800 font-semibold">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Admission Date</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">
                     {studentProfile.admissionDate
                       ? new Date(studentProfile.admissionDate).toLocaleDateString()
                       : 'N/A'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Previous School</p>
-                  <p className="text-gray-800 font-semibold">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Previous School</p>
+                  <p className="text-gray-800 dark:text-gray-200 font-semibold">
                     {studentProfile.previousSchool || 'N/A'}
                   </p>
                 </div>

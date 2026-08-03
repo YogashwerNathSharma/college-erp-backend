@@ -35,15 +35,83 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
     sectionId,
     academicYearId,
     rollNumber,
+    religionId,
+    casteId,
+    categoryId,
+    nationalityId,
   } = data;
 
   // Auto-generate admission number if not provided
   let finalAdmissionNo = admissionNo;
   if (!finalAdmissionNo) {
-    finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+    try {
+      finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+      console.log(`✅ Generated admission number: ${finalAdmissionNo}`);
+    } catch (err: any) {
+      console.error("❌ Failed to generate admission number:", err.message);
+      // Try sync counter and retry once
+      const { syncAdmissionCounter } = await import("./admission-number.service");
+      await syncAdmissionCounter(tenantId, academicYearId);
+      finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+      console.log(`✅ Generated after sync: ${finalAdmissionNo}`);
+    }
   }
 
   const srNo = await generateSrNumber(tenantId, finalAdmissionNo);
+
+  // Resolve master data: if string name provided (not ObjectId), find or create
+  const isObjectId = (val: string) => /^[a-f0-9]{24}$/i.test(val);
+
+  let resolvedReligionId = religionId || null;
+  if (!resolvedReligionId && religion) {
+    if (isObjectId(religion)) {
+      resolvedReligionId = religion;
+    } else {
+      const found = await prisma.religion.findFirst({ where: { tenantId, name: { equals: religion, mode: "insensitive" } } });
+      resolvedReligionId = found?.id || null;
+    }
+  }
+
+  let resolvedCategoryId = categoryId || null;
+  if (!resolvedCategoryId && category) {
+    if (isObjectId(category)) {
+      resolvedCategoryId = category;
+    } else {
+      const found = await prisma.category.findFirst({ where: { tenantId, name: { equals: category, mode: "insensitive" } } });
+      resolvedCategoryId = found?.id || null;
+    }
+  }
+
+  let resolvedNationalityId = nationalityId || null;
+  if (!resolvedNationalityId && nationality) {
+    if (isObjectId(nationality)) {
+      resolvedNationalityId = nationality;
+    } else {
+      const found = await prisma.nationality.findFirst({ where: { tenantId, name: { equals: nationality, mode: "insensitive" } } });
+      resolvedNationalityId = found?.id || null;
+    }
+  }
+
+  // Normalize gender to enum value
+  const normalizeGender = (g: string): string => {
+    if (!g) return "MALE";
+    const upper = g.toUpperCase();
+    if (upper === "MALE" || upper === "M") return "MALE";
+    if (upper === "FEMALE" || upper === "F") return "FEMALE";
+    return "OTHER";
+  };
+
+  // Normalize blood group to enum value
+  const normalizeBloodGroup = (bg: string): string | null => {
+    if (!bg) return null;
+    const map: Record<string, string> = {
+      "A+": "A_POSITIVE", "A-": "A_NEGATIVE",
+      "B+": "B_POSITIVE", "B-": "B_NEGATIVE",
+      "O+": "O_POSITIVE", "O-": "O_NEGATIVE",
+      "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE",
+    };
+    return map[bg] || map[bg.toUpperCase()] || null;
+  };
 
   // 1. Create Student (no transaction — avoids MongoDB replica set timeout)
   const student = await prisma.student.create({
@@ -51,18 +119,18 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
       firstName,
       lastName,
       fullName: `${firstName} ${lastName}`,
-      gender,
+      gender: normalizeGender(gender),
       dob: new Date(dob),
       email: email || null,
       phone: phone || null,
       address: address || "N/A",
       admissionNo: finalAdmissionNo,
       srNo,
-      bloodGroup: bloodGroup || null,
-      religion: religion || null,
-      caste: caste || null,
-      category: category || null,
-      nationality: nationality || "Indian",
+      bloodGroup: normalizeBloodGroup(bloodGroup) as any,
+      religionId: resolvedReligionId || null,
+      casteId: casteId || null,
+      categoryId: resolvedCategoryId || null,
+      nationalityId: resolvedNationalityId || null,
       aadharNo: aadharNo || null,
       fatherName: fatherName || "N/A",
       fatherPhone: fatherPhone || "N/A",
@@ -236,23 +304,83 @@ export const getStudentById = async (id: string, tenantId: string) => {
 // UPDATE STUDENT
 // ============================================
 export const updateStudent = async (id: string, data: any, tenantId: string) => {
+  // Only pass valid Student model fields to Prisma
+  const {
+    firstName, lastName, gender, dob, email, phone, address,
+    bloodGroup, aadharNo, fatherName, motherName,
+    fatherPhone, motherPhone, fatherOccupation, motherOccupation,
+    guardianName, guardianPhone, guardianRelation,
+    status, rollNumber, photoUrl,
+    religionId, casteId, categoryId, nationalityId,
+    religion, caste, category, nationality,
+  } = data;
+
+  // Normalize gender if provided
+  let normalizedGender = gender;
+  if (gender) {
+    const upper = gender.toUpperCase();
+    if (upper === "MALE" || upper === "M") normalizedGender = "MALE";
+    else if (upper === "FEMALE" || upper === "F") normalizedGender = "FEMALE";
+    else normalizedGender = "OTHER";
+  }
+
+  const updateData: any = {};
+  if (firstName !== undefined) updateData.firstName = firstName;
+  if (lastName !== undefined) updateData.lastName = lastName;
+  if (firstName && lastName) updateData.fullName = `${firstName} ${lastName}`;
+  if (normalizedGender) updateData.gender = normalizedGender;
+  if (dob) updateData.dob = new Date(dob);
+  if (email !== undefined) updateData.email = email || null;
+  if (phone !== undefined) updateData.phone = phone || null;
+  if (address !== undefined) updateData.address = address;
+  if (bloodGroup !== undefined) {
+    // Normalize blood group to enum
+    const bgMap: Record<string, string> = {
+      "A+": "A_POSITIVE", "A-": "A_NEGATIVE",
+      "B+": "B_POSITIVE", "B-": "B_NEGATIVE",
+      "O+": "O_POSITIVE", "O-": "O_NEGATIVE",
+      "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE",
+    };
+    const normalized = bloodGroup ? (bgMap[bloodGroup] || bloodGroup) : null;
+    updateData.bloodGroup = normalized;
+  }
+  if (aadharNo !== undefined) updateData.aadharNo = aadharNo || null;
+  if (fatherName !== undefined) updateData.fatherName = fatherName;
+  if (motherName !== undefined) updateData.motherName = motherName;
+  if (fatherPhone !== undefined) updateData.fatherPhone = fatherPhone;
+  if (motherPhone !== undefined) updateData.motherPhone = motherPhone || null;
+  if (fatherOccupation !== undefined) updateData.fatherOccupation = fatherOccupation || null;
+  if (motherOccupation !== undefined) updateData.motherOccupation = motherOccupation || null;
+  if (guardianName !== undefined) updateData.guardianName = guardianName || null;
+  if (guardianPhone !== undefined) updateData.guardianPhone = guardianPhone || null;
+  if (guardianRelation !== undefined) updateData.guardianRelation = guardianRelation || null;
+  if (status) updateData.status = status;
+  if (rollNumber !== undefined) updateData.rollNumber = rollNumber || null;
+  if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
+  // Handle religion/caste/category/nationality — accept both ID fields and name fields
+  const finalReligionId = religionId || religion || null;
+  const finalCasteId = casteId || caste || null;
+  const finalCategoryId = categoryId || category || null;
+  const finalNationalityId = nationalityId || nationality || null;
+  if (finalReligionId !== undefined) updateData.religionId = finalReligionId || null;
+  if (finalCasteId !== undefined) updateData.casteId = finalCasteId || null;
+  if (finalCategoryId !== undefined) updateData.categoryId = finalCategoryId || null;
+  if (finalNationalityId !== undefined) updateData.nationalityId = finalNationalityId || null;
+
   const student = await prisma.student.updateMany({
     where: { id, tenantId, isDeleted: false },
-    data: {
-      ...data,
-      dob: data.dob ? new Date(data.dob) : undefined,
-    },
+    data: updateData,
   });
 
   // If status changed, also update enrollment status so dashboard stats stay in sync
-  if (data.status && (data.status === "active" || data.status === "inactive")) {
+  if (status && (status === "active" || status === "inactive")) {
     await prisma.enrollment.updateMany({
       where: {
         studentId: id,
         tenantId,
         isDeleted: false,
       },
-      data: { status: data.status },
+      data: { status },
     });
   }
 

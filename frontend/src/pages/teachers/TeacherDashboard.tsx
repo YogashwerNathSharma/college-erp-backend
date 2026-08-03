@@ -98,104 +98,27 @@ export default function TeacherDashboard() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const res = await axios.get(getFullUrl("/api/teachers/dashboard"), { headers });
-      const data = res.data;
+      const res = await axios.get(getFullUrl("/api/teacher/dashboard"), { headers });
+      const data = res.data?.data || res.data;
 
       setStats(data.stats || {
-        totalTeachers: data.totalTeachers || 0,
-        activeTeachers: data.activeTeachers || 0,
-        onLeave: data.onLeave || 0,
-        newJoinings: data.newJoinings || 0,
-        departments: data.departments || 0,
-        maleTeachers: data.maleTeachers || 0,
-        femaleTeachers: data.femaleTeachers || 0,
+        totalTeachers: 0,
+        activeTeachers: 0,
+        onLeave: 0,
+        newJoinings: 0,
+        departments: 0,
+        maleTeachers: 0,
+        femaleTeachers: 0,
       });
 
-      setDepartmentData(data.departmentDistribution || [
-        { name: "Science", value: 12 },
-        { name: "Arts", value: 8 },
-        { name: "Commerce", value: 6 },
-        { name: "Computer", value: 5 },
-        { name: "Physical Ed", value: 3 },
-        { name: "Languages", value: 7 },
-      ]);
-
-      setExperienceData(data.experienceDistribution || [
-        { range: "0-5 yrs", count: 8 },
-        { range: "5-10 yrs", count: 14 },
-        { range: "10-15 yrs", count: 10 },
-        { range: "15+ yrs", count: 6 },
-      ]);
-
-      setAttendanceData(data.monthlyAttendance || [
-        { month: "Jan", percentage: 92 },
-        { month: "Feb", percentage: 88 },
-        { month: "Mar", percentage: 95 },
-        { month: "Apr", percentage: 91 },
-        { month: "May", percentage: 89 },
-        { month: "Jun", percentage: 94 },
-      ]);
-
-      setQualificationData(data.qualificationDistribution || [
-        { name: "PhD", value: 5 },
-        { name: "Masters", value: 22 },
-        { name: "Bachelors", value: 10 },
-        { name: "B.Ed", value: 4 },
-      ]);
-
+      setDepartmentData(data.departmentDistribution || []);
+      setExperienceData(data.experienceDistribution || []);
+      setAttendanceData(data.attendanceTrend || []);
+      setQualificationData(data.qualificationDistribution || []);
       setTeachersOnLeave(data.teachersOnLeave || []);
       setSalaryData(data.upcomingSalary || []);
     } catch (err) {
       console.error("Failed to fetch teacher dashboard:", err);
-      // Use fallback data for display
-      setStats({
-        totalTeachers: 41,
-        activeTeachers: 38,
-        onLeave: 3,
-        newJoinings: 2,
-        departments: 6,
-        maleTeachers: 22,
-        femaleTeachers: 19,
-      });
-      setDepartmentData([
-        { name: "Science", value: 12 },
-        { name: "Arts", value: 8 },
-        { name: "Commerce", value: 6 },
-        { name: "Computer", value: 5 },
-        { name: "Physical Ed", value: 3 },
-        { name: "Languages", value: 7 },
-      ]);
-      setExperienceData([
-        { range: "0-5 yrs", count: 8 },
-        { range: "5-10 yrs", count: 14 },
-        { range: "10-15 yrs", count: 10 },
-        { range: "15+ yrs", count: 6 },
-      ]);
-      setAttendanceData([
-        { month: "Jan", percentage: 92 },
-        { month: "Feb", percentage: 88 },
-        { month: "Mar", percentage: 95 },
-        { month: "Apr", percentage: 91 },
-        { month: "May", percentage: 89 },
-        { month: "Jun", percentage: 94 },
-      ]);
-      setQualificationData([
-        { name: "PhD", value: 5 },
-        { name: "Masters", value: 22 },
-        { name: "Bachelors", value: 10 },
-        { name: "B.Ed", value: 4 },
-      ]);
-      setTeachersOnLeave([
-        { id: "1", name: "Priya Sharma", department: "Science", leaveType: "Casual", fromDate: "2026-06-25", toDate: "2026-06-27", status: "Approved" },
-        { id: "2", name: "Amit Gupta", department: "Commerce", leaveType: "Sick", fromDate: "2026-06-26", toDate: "2026-06-28", status: "Approved" },
-        { id: "3", name: "Neha Singh", department: "Arts", leaveType: "Earned", fromDate: "2026-06-24", toDate: "2026-06-30", status: "Pending" },
-      ]);
-      setSalaryData([
-        { id: "1", name: "Rajesh Kumar", department: "Science", gross: 52000, deductions: 5200, net: 46800 },
-        { id: "2", name: "Sunita Devi", department: "Arts", gross: 48000, deductions: 4800, net: 43200 },
-        { id: "3", name: "Manoj Tiwari", department: "Commerce", gross: 55000, deductions: 5500, net: 49500 },
-        { id: "4", name: "Kavita Joshi", department: "Computer", gross: 60000, deductions: 6000, net: 54000 },
-      ]);
     } finally {
       setLoading(false);
     }

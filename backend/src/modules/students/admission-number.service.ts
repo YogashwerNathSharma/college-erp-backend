@@ -14,44 +14,43 @@ export const generateAdmissionNumber = async (
 
   let yearPart = new Date().getFullYear().toString();
   if (academicYear?.name) {
-    const match = academicYear.name.match(/(\d{4})/);
+    const match = academicYear.name.match(/(\\d{4})/);
     if (match) yearPart = match[1];
   }
 
-  const counter = await prisma.admissionCounter.findFirst({
-    where: { tenantId, academicYearId },
-  });
-
-  let nextSerial = 1;
-
-  if (counter) {
-    nextSerial = counter.lastNumber + 1;
-    await prisma.admissionCounter.update({
-      where: { id: counter.id },
-      data: { lastNumber: nextSerial },
+  // ✅ ATOMIC OPERATION: Use upsert with atomic increment to prevent race conditions
+  // This ensures only ONE request gets a unique number, even if multiple requests arrive simultaneously
+  try {
+    const counter = await prisma.admissionCounter.upsert({
+      where: {
+        tenantId_academicYearId: {
+          tenantId,
+          academicYearId,
+        },
+      },
+      update: {
+        lastNumber: {
+          increment: 1, // ✅ Atomic database-level increment - MongoDB $inc operator
+        },
+      },
+      create: {
+        prefix: "ADM",
+        lastNumber: 1,
+        tenant: {
+          connect: { id: tenantId },
+        },
+        academicYear: {
+          connect: { id: academicYearId },
+        },
+      },
     });
-  } else {
-    const existingCount = await prisma.student.count({
-      where: { tenantId, academicYearId },
-    });
-    nextSerial = existingCount + 1;
 
-    await prisma.admissionCounter.create({
-    data: {
-          tenant: {
-            connect: { id: tenantId }
-          },
-          academicYear: {
-            connect: { id: academicYearId }
-          },
-          prefix: "ADM",
-          lastNumber: nextSerial,
-          }
-    });
+    const serialPadded = String(counter.lastNumber).padStart(3, "0");
+    return `ADM/${yearPart}/${serialPadded}`;
+  } catch (err: any) {
+    console.error("❌ Error generating admission number:", err.message);
+    throw new Error(`Failed to generate admission number: ${err.message}`);
   }
-
-  const serialPadded = String(nextSerial).padStart(3, "0");
-  return `ADM/${yearPart}/${serialPadded}`;
 };
 
 // ============================================
@@ -62,7 +61,7 @@ export const generateSrNumber = async (tenantId: string, admissionNo?: string): 
   // ADM/2025/302 → SR/0302
   let nextSr = 1;
   if (admissionNo) {
-    const match = admissionNo.match(/(\d+)$/);
+    const match = admissionNo.match(/(\\d+)$/);
     if (match) {
       nextSr = parseInt(match[1]);
     }
@@ -86,12 +85,13 @@ export const syncAdmissionCounter = async (
   const students = await prisma.student.findMany({
     where: { tenantId, academicYearId },
     select: { admissionNo: true },
+    orderBy: { createdAt: "desc" },
   });
 
   let maxSerial = 0;
   for (const s of students) {
     if (s.admissionNo) {
-      const match = s.admissionNo.match(/(\d+)$/);
+      const match = s.admissionNo.match(/(\\d+)$/);
       if (match) {
         const num = parseInt(match[1]);
         if (num > maxSerial) maxSerial = num;
@@ -99,29 +99,30 @@ export const syncAdmissionCounter = async (
     }
   }
 
-  const existing = await prisma.admissionCounter.findFirst({
-    where: { tenantId, academicYearId },
-  });
-
-  if (existing) {
-    await prisma.admissionCounter.update({
-      where: { id: existing.id },
-      data: { lastNumber: maxSerial },
-    });
-  } else {
-    await prisma.admissionCounter.create({
-    data: {
-      tenant: {
-        connect: { id: tenantId }
+  // ✅ Use upsert for atomic sync operation
+  const counter = await prisma.admissionCounter.upsert({
+    where: {
+      tenantId_academicYearId: {
+        tenantId,
+        academicYearId,
       },
-      academicYear: {
-        connect: { id: academicYearId }
-      },
+    },
+    update: {
+      lastNumber: maxSerial,
+    },
+    create: {
+      tenantId,
+      academicYearId,
       prefix: "ADM",
       lastNumber: maxSerial,
-      }   
-    });
-  }
+      tenant: {
+        connect: { id: tenantId },
+      },
+      academicYear: {
+        connect: { id: academicYearId },
+      },
+    },
+  });
 
-  return { lastNumber: maxSerial };
+  return { lastNumber: counter.lastNumber };
 };

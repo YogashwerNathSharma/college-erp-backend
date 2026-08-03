@@ -556,15 +556,97 @@ export async function getDropdown(req: Request, res: Response) {
 
     const delegate = getPrismaDelegate(config.model);
 
-    const entries = await delegate.findMany({
-      where: { tenantId, isActive: true },
-      select: { id: true, name: true, code: true },
-      orderBy: { name: 'asc' },
-    });
+    // Not all models have 'code' field — try with code first, fall back without
+    let entries;
+    try {
+      entries = await delegate.findMany({
+        where: { tenantId, isActive: true },
+        select: { id: true, name: true, code: true },
+        orderBy: { name: 'asc' },
+      });
+    } catch {
+      entries = await delegate.findMany({
+        where: { tenantId, isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    }
 
     res.json({ success: true, data: entries });
   } catch (error: any) {
     console.error('Error fetching dropdown:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/masters/seed-defaults
+// Seeds common master data for a tenant (Categories, Religions, etc.)
+// ─────────────────────────────────────────────────────────────────
+export async function seedDefaults(req: Request, res: Response) {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const results: Record<string, number> = {};
+
+    // Categories
+    const categories = ["General", "OBC", "SC", "ST", "EWS"];
+    for (const name of categories) {
+      await (prisma as any).category.upsert({
+        where: { tenantId_code: { tenantId, code: name.toUpperCase() } },
+        update: {},
+        create: { tenantId, name, code: name.toUpperCase(), isActive: true },
+      });
+    }
+    results.categories = categories.length;
+
+    // Religions
+    const religions = ["Hindu", "Muslim", "Christian", "Sikh", "Buddhist", "Jain", "Other"];
+    for (const name of religions) {
+      const existing = await (prisma as any).religion.findFirst({ where: { tenantId, name } });
+      if (!existing) {
+        await (prisma as any).religion.create({ data: { tenantId, name, code: name.toUpperCase(), isActive: true } });
+      }
+    }
+    results.religions = religions.length;
+
+    // Blood Groups
+    const bloodGroups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
+    for (const name of bloodGroups) {
+      const code = name.replace("+", "_POSITIVE").replace("-", "_NEGATIVE");
+      const existing = await (prisma as any).bloodGroupLookup.findFirst({ where: { tenantId, name } });
+      if (!existing) {
+        await (prisma as any).bloodGroupLookup.create({ data: { tenantId, name, code, isActive: true } });
+      }
+    }
+    results.bloodGroups = bloodGroups.length;
+
+    // Nationalities
+    const nationalities = ["Indian", "Nepali", "Bhutanese", "Other"];
+    for (const name of nationalities) {
+      const existing = await (prisma as any).nationality.findFirst({ where: { tenantId, name } });
+      if (!existing) {
+        await (prisma as any).nationality.create({ data: { tenantId, name, code: name.toUpperCase(), isActive: true } });
+      }
+    }
+    results.nationalities = nationalities.length;
+
+    // Castes (common)
+    const castes = ["General", "OBC", "SC", "ST", "Other"];
+    // Castes need a categoryId - use "General" category
+    const generalCat = await (prisma as any).category.findFirst({ where: { tenantId, code: "GENERAL" } });
+    if (generalCat) {
+      for (const name of castes) {
+        const existing = await (prisma as any).caste.findFirst({ where: { tenantId, name } });
+        if (!existing) {
+          await (prisma as any).caste.create({ data: { tenantId, name, categoryId: generalCat.id, isActive: true } });
+        }
+      }
+      results.castes = castes.length;
+    }
+
+    res.json({ success: true, message: "Default master data seeded", data: results });
+  } catch (error: any) {
+    console.error("Seed defaults error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 }

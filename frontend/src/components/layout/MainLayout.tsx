@@ -140,7 +140,7 @@ export default function MainLayout() {
 
         {/* Page Content */}
         <main
-          className="flex-1 p-3 md:p-6 overflow-auto"
+          className="flex-1 p-3 md:p-6 overflow-auto bg-gray-50 dark:bg-slate-900"
           role="main"
           aria-label="Main content"
         >

@@ -433,14 +433,14 @@ export default function Dashboard() {
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
             <div className="flex sm:hidden items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">2026-27</b></span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">2025-26</b></span>
               <span className="flex items-center gap-1"><Building2 size={10} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
             </div>
           </div>
           <div className="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Session: <b className="text-slate-700 dark:text-slate-300">2026-27</b>
+              Session: <b className="text-slate-700 dark:text-slate-300">2025-26</b>
             </span>
             <span className="flex items-center gap-1">
               <Building2 size={11} /> Branch: <b className="text-slate-700 dark:text-slate-300">Main Campus</b>

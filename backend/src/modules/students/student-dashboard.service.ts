@@ -25,6 +25,9 @@ export const getFullDashboardData = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<DashboardFullData> => {
+  // Normalize empty string to undefined
+  if (!academicYearId) academicYearId = undefined;
+
   const safeCall = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
     try { return await fn(); } catch (e) { console.error("Dashboard sub-query failed:", e); return fallback; }
   };
@@ -96,10 +99,10 @@ export const getDashboardStats = async (
     prisma.student.count({ where: { ...baseWhere, status: "active" } }),
     prisma.student.count({ where: { ...baseWhere, status: { not: "active" } } }),
     prisma.student.count({
-      where: { ...baseWhere, gender: { in: ["Male", "male", "M", "MALE"] } },
+      where: { ...baseWhere, gender: "MALE" },
     }),
     prisma.student.count({
-      where: { ...baseWhere, gender: { in: ["Female", "female", "F", "FEMALE"] } },
+      where: { ...baseWhere, gender: "FEMALE" },
     }),
     getNewAdmissionsCount(tenantId, 30),
     getLeavingStudentsCount(tenantId, 30),
@@ -191,8 +194,11 @@ export const getClassStrength = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<ClassStrengthItem[]> => {
+  const classWhere: any = { tenantId, isDeleted: false };
+  if (academicYearId) classWhere.academicYearId = academicYearId;
+
   const classes = await prisma.class.findMany({
-    where: { tenantId, isDeleted: false },
+    where: classWhere,
     select: {
       id: true,
       name: true,
@@ -200,7 +206,6 @@ export const getClassStrength = async (
         where: {
           status: "active",
           isDeleted: false,
-          ...(academicYearId && { academicYearId }),
         },
         include: {
           student: { select: { gender: true } },
@@ -215,10 +220,10 @@ export const getClassStrength = async (
       (e: any) => e.student && !e.student.isDeleted
     );
     const boys = activeEnrollments.filter((e: any) =>
-      ["Male", "male", "M", "MALE"].includes(e.student.gender)
+      e.student.gender === "MALE"
     ).length;
     const girls = activeEnrollments.filter((e: any) =>
-      ["Female", "female", "F", "FEMALE"].includes(e.student.gender)
+      e.student.gender === "FEMALE"
     ).length;
 
     return {
@@ -317,8 +322,7 @@ export const getStudentGrowth = async (tenantId: string): Promise<StudentGrowthI
         where: {
           tenantId,
           isDeleted: false,
-          createdAt: { lte: endOfYear },
-          OR: [{ deletedAt: null }, { deletedAt: { gt: endOfYear } }],
+          admissionDate: { lte: endOfYear },
         },
       }),
       prisma.student.count({
@@ -406,13 +410,12 @@ export const getGenderRatio = async (
 
   const total = students.length;
   const maleCount = students.filter((s) =>
-    ["Male", "male", "M", "MALE"].includes(s.gender)
+    s.gender === "MALE"
   ).length;
   const femaleCount = students.filter((s) =>
-    ["Female", "female", "F", "FEMALE"].includes(s.gender)
+    s.gender === "FEMALE"
   ).length;
   const otherCount = total - maleCount - femaleCount;
-
   return {
     male: maleCount,
     female: femaleCount,
@@ -433,13 +436,20 @@ export const getCategoryDistribution = async (
 
   const students = await prisma.student.findMany({
     where,
-    select: { category: true },
+    select: { categoryId: true },
   });
+
+  // Fetch all categories for this tenant to map IDs to names
+  const categories = await prisma.category.findMany({
+    where: { tenantId },
+    select: { id: true, name: true },
+  });
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
   const total = students.length;
   const categoryCount: Record<string, number> = {};
   students.forEach((s) => {
-    const cat = s.category || "General";
+    const cat = s.categoryId ? (categoryMap.get(s.categoryId) || "Not Assigned") : "Not Assigned";
     categoryCount[cat] = (categoryCount[cat] || 0) + 1;
   });
 
@@ -449,6 +459,7 @@ export const getCategoryDistribution = async (
       count,
       percentage: total > 0 ? Math.round((count / total) * 100) : 0,
     }))
+    .filter((item) => item.count > 0)
     .sort((a, b) => b.count - a.count);
 };
 

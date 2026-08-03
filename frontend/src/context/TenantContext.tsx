@@ -12,6 +12,7 @@ interface Tenant {
   name: string;
   code: string;
   logo?: string;
+  logoUrl?: string;
   primaryColor?: string;
   address: any;
   contact: any;
@@ -43,7 +44,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const res = await axios.get(getFullUrl("/api/tenant/profile"));
-      const data = res.data.data;
+      const raw = res.data.data;
+      // Normalize: backend sends logoUrl, some components use logo
+      const data = {
+        ...raw,
+        logo: raw.logoUrl || raw.logo || "",
+        logoUrl: raw.logoUrl || raw.logo || "",
+        code: raw.code || raw.id || "",
+      };
       setTenant(data);
     } catch (error) {
       console.error("Tenant refresh error:", error);

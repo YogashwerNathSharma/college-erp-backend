@@ -63,6 +63,10 @@ export default function LoginPage() {
       }
       localStorage.setItem("token", res.data?.token || res.data?.data?.token || "");
       localStorage.setItem("user", JSON.stringify(res.data?.data || {}));
+      // Store tenant data (with logo) for TenantContext
+      if (res.data?.tenant) {
+        localStorage.setItem("tenant", JSON.stringify({ ...res.data.tenant, logo: res.data.tenant.logoUrl || "" }));
+      }
       localStorage.removeItem("subscriptionExpired");
       if (res.data?.forcePasswordChange) {
         navigate("/change-password");

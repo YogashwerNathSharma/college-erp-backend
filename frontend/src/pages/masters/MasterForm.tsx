@@ -1,10 +1,12 @@
-// ═══════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 // MASTER FORM - Dynamic Add/Edit form for any master model
-// Auto-generates form fields based on config
-// ═══════════════════════════════════════════════════════════════════
+// Auto-generates form fields based on config + FILE UPLOAD SUPPORT FOR LOGO/IMAGES
+// ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
-import { X, Save, Loader2 } from "lucide-react";
+import { X, Save, Loader2, Upload, Image as ImageIcon } from "lucide-react";
+import axios from "axios";
+import { getFullUrl } from "../../utils/url";
 
 interface FieldConfig {
   name: string;
@@ -32,6 +34,7 @@ export default function MasterForm({
 }: MasterFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   // Initialize form data safely
   useEffect(() => {
@@ -48,6 +51,50 @@ export default function MasterForm({
     setFormData(initial);
     setErrors({});
   }, [fields, initialData]);
+
+  // Handle file upload (for logo, images, etc.)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingField(fieldName);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('file', file);
+      
+      // Upload to Cloudinary via your backend
+      const response = await axios.post(getFullUrl('/api/upload/image'), formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data.success) {
+        // Set the full URL returned from upload
+        const uploadedUrl = response.data.url || response.data.data?.url;
+        if (uploadedUrl) {
+          handleChange(fieldName, uploadedUrl);
+        } else {
+          setErrors((prev) => ({
+            ...prev,
+            [fieldName]: 'Upload successful but URL not returned',
+          }));
+        }
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          [fieldName]: response.data.message || 'Upload failed',
+        }));
+      }
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setErrors((prev) => ({
+        ...prev,
+        [fieldName]: err.response?.data?.message || 'Upload failed. Check console.',
+      }));
+    } finally {
+      setUploadingField(null);
+      e.target.value = '';
+    }
+  };
 
   // Handle field change cleanly
   const handleChange = (name: string, value: any) => {
@@ -242,6 +289,68 @@ export default function MasterForm({
           />
         );
 
+      case "file":
+      case "image":
+        return (
+          <div className="space-y-2">
+            <label className="flex-1 relative group">
+              <input
+                type="file"
+                accept={field.type === "image" ? "image/*" : undefined}
+                onChange={(e) => handleFileUpload(e, field.name)}
+                disabled={uploadingField === field.name}
+                className="sr-only"
+              />
+              <div className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                uploadingField === field.name
+                  ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/20'
+                  : error
+                  ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
+                  : 'border-gray-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700'
+              }`}>
+                {uploadingField === field.name ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-sm font-medium">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} className="text-indigo-600" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload</span>
+                  </>
+                )}
+              </div>
+            </label>
+            {value && (
+              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                <div className="flex items-center gap-2 min-w-0">
+                  {field.type === "image" ? (
+                    <ImageIcon size={14} className="text-indigo-600 flex-shrink-0" />
+                  ) : (
+                    <Upload size={14} className="text-indigo-600 flex-shrink-0" />
+                  )}
+                  <a
+                    href={value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-indigo-600 hover:underline truncate"
+                    title={value}
+                  >
+                    View uploaded file
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleChange(field.name, '')}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium flex-shrink-0"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
       case "json":
         return (
           <textarea
@@ -294,7 +403,7 @@ export default function MasterForm({
         <form onSubmit={handleSubmit} id="masterDynamicForm" className="flex-1 overflow-y-auto p-6 [scrollbar-gutter:stable]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => {
-              const isFullWidth = ["textarea", "json"].includes(field.type);
+              const isFullWidth = ["textarea", "json", "file", "image"].includes(field.type);
               return (
                 <div key={field.name} className={isFullWidth ? "md:col-span-2" : ""}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">

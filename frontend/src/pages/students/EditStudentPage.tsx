@@ -30,10 +30,18 @@ export default function EditStudentPage() {
   const [masterReligions, setMasterReligions] = useState<{id:string,name:string}[]>([]);
   const [masterNationalities, setMasterNationalities] = useState<{id:string,name:string}[]>([]);
   const [masterCastes, setMasterCastes] = useState<{id:string,name:string}[]>([]);
+  const masterGenders = ["Male", "Female", "Other"];
 
   useEffect(() => {
     const fetchMasters = async () => {
       try {
+        // Auto-seed master data if empty
+        try {
+          await axios.post(getFullUrl("/api/masters/seed-defaults"));
+        } catch (e) {
+          // Ignore if already seeded or fails
+        }
+
         const [bg, cat, rel, nat, cas] = await Promise.all([
           axios.get(getFullUrl("/api/masters/blood-group-master/dropdown")).catch(() => ({data:{data:[]}})),
           axios.get(getFullUrl("/api/masters/category-master/dropdown")).catch(() => ({data:{data:[]}})),
@@ -96,16 +104,30 @@ export default function EditStudentPage() {
     try {
       const res = await axios.get(getFullUrl(`/api/students/${id}`));
       const s = res.data.data;
+
+      // Map gender enum to display value
+      const genderMap: Record<string, string> = { MALE: "Male", FEMALE: "Female", OTHER: "Other" };
+      const mappedGender = genderMap[s.gender] || s.gender || "";
+
+      // Map blood group enum to display value
+      const bgMap: Record<string, string> = {
+        A_POSITIVE: "A+", A_NEGATIVE: "A-",
+        B_POSITIVE: "B+", B_NEGATIVE: "B-",
+        O_POSITIVE: "O+", O_NEGATIVE: "O-",
+        AB_POSITIVE: "AB+", AB_NEGATIVE: "AB-",
+      };
+      const mappedBloodGroup = bgMap[s.bloodGroup] || s.bloodGroup || "";
+
       setFormData({
         firstName: s.firstName || "",
         lastName: s.lastName || "",
-        gender: s.gender || "",
+        gender: mappedGender,
         dob: s.dob ? new Date(s.dob).toISOString().split("T")[0] : "",
-        bloodGroup: s.bloodGroup || "",
-        religion: s.religion || "",
-        caste: s.caste || "",
-        category: s.category || "",
-        nationality: s.nationality || "Indian",
+        bloodGroup: mappedBloodGroup,
+        religion: s.religionId || "",
+        caste: s.casteId || "",
+        category: s.categoryId || "",
+        nationality: s.nationalityId || "",
         aadharNo: s.aadharNo || "",
         email: s.email || "",
         phone: s.phone || "",
@@ -143,7 +165,18 @@ export default function EditStudentPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Restrict phone fields to 10 digits, aadhar to 12 digits
+    const phoneFields = ["phone", "fatherPhone", "motherPhone", "guardianPhone"];
+    const aadharFields = ["aadharNo"];
+    
+    let finalValue = value;
+    if (phoneFields.includes(name)) {
+      finalValue = value.replace(/\D/g, "").slice(0, 10);
+    } else if (aadharFields.includes(name)) {
+      finalValue = value.replace(/\D/g, "").slice(0, 12);
+    }
+    
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -164,8 +197,8 @@ export default function EditStudentPage() {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size < 39 * 1024) {
-      toast.error("Photo size must be at least 39KB. Please use a better quality image.");
+    if (file.size < 10 * 1024) {
+      toast.error("Photo size must be at least 10KB. Please use a better quality image.");
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -177,9 +210,7 @@ export default function EditStudentPage() {
     fd.append("photo", file);
     setUploading(true);
     try {
-      const res = await axios.post(getFullUrl(`/api/students/${id}/photo`), fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post(getFullUrl(`/api/students/${id}/photo`), fd);
       setPhotoPreview(res.data.data.photoUrl.startsWith("http") ? res.data.data.photoUrl : `${axios.defaults.baseURL || ""}${res.data.data.photoUrl}`);
       toast.success("Photo updated!");
     } catch (err: any) {
@@ -314,7 +345,7 @@ export default function EditStudentPage() {
                 <button type="button" onClick={() => photoRef.current?.click()} className="text-xs text-primary-600 dark:text-primary-400 mt-1.5 hover:underline">
                   {photoPreview ? "Change Photo" : "Add Photo"}
                 </button>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">Min 39KB • Max 2MB</p>
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">Min 10KB • Max 2MB</p>
                 {photoPreview && (
                   <button type="button" onClick={handleDeletePhoto} className="text-[10px] text-red-500 mt-0.5 hover:underline">
                     Remove
@@ -338,9 +369,7 @@ export default function EditStudentPage() {
                 <label className={labelClasses}>Gender <span className="text-red-500">*</span></label>
                 <select name="gender" value={formData.gender} onChange={handleChange} required className={inputClasses}>
                   <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
+                  {masterGenders.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
               <div>
@@ -351,61 +380,28 @@ export default function EditStudentPage() {
                 <label className={labelClasses}>Blood Group</label>
                 <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className={inputClasses}>
                   <option value="">Select</option>
-                  {masterBloodGroups.length > 0 ? masterBloodGroups.map(bg => <option key={bg.id} value={bg.name}>{bg.name}</option>) : (
-                    <>
-                      <option value="A+">A+</option><option value="A-">A-</option>
-                      <option value="B+">B+</option><option value="B-">B-</option>
-                      <option value="O+">O+</option><option value="O-">O-</option>
-                      <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                    </>
-                  )}
+                  {masterBloodGroups.map(bg => <option key={bg.id} value={bg.name}>{bg.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelClasses}>Category</label>
                 <select name="category" value={formData.category} onChange={handleChange} className={inputClasses}>
                   <option value="">Select</option>
-                  {masterCategories.length > 0 ? masterCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>) : (
-                    <>
-                      <option value="General">General</option>
-                      <option value="OBC">OBC</option>
-                      <option value="SC">SC</option>
-                      <option value="ST">ST</option>
-                      <option value="EWS">EWS</option>
-                    </>
-                  )}
+                  {masterCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelClasses}>Religion</label>
                 <select name="religion" value={formData.religion} onChange={handleChange} className={inputClasses}>
                   <option value="">Select Religion</option>
-                  {masterReligions.length > 0 ? masterReligions.map(r => <option key={r.id} value={r.name}>{r.name}</option>) : (
-                    <>
-                      <option value="Hindu">Hindu</option>
-                      <option value="Muslim">Muslim</option>
-                      <option value="Christian">Christian</option>
-                      <option value="Sikh">Sikh</option>
-                      <option value="Buddhist">Buddhist</option>
-                      <option value="Jain">Jain</option>
-                      <option value="Other">Other</option>
-                    </>
-                  )}
+                  {masterReligions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelClasses}>Caste</label>
                 <select name="caste" value={formData.caste} onChange={handleChange} className={inputClasses}>
                   <option value="">Select Caste</option>
-                  {masterCastes.length > 0 ? masterCastes.map(c => <option key={c.id} value={c.name}>{c.name}</option>) : (
-                    <>
-                      <option value="General">General</option>
-                      <option value="OBC">OBC</option>
-                      <option value="SC">SC</option>
-                      <option value="ST">ST</option>
-                      <option value="Other">Other</option>
-                    </>
-                  )}
+                  {masterCastes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
@@ -415,8 +411,10 @@ export default function EditStudentPage() {
               <div>
                 <label className={labelClasses}>Nationality</label>
                 <select name="nationality" value={formData.nationality} onChange={handleChange} className={inputClasses}>
-                  <option value="Indian">Indian</option>
-                  {masterNationalities.map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+                  <option value="">Select</option>
+                  {masterNationalities.length > 0 ? masterNationalities.map(n => <option key={n.id} value={n.id}>{n.name}</option>) : (
+                    <option value="Indian">Indian</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -446,7 +444,7 @@ export default function EditStudentPage() {
               </div>
               <div>
                 <label className={labelClasses}>Phone</label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClasses} placeholder="Mobile number" />
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} maxLength={10} className={inputClasses} placeholder="10-digit mobile" />
               </div>
               <div className="md:col-span-3">
                 <label className={labelClasses}>Address</label>
@@ -470,7 +468,7 @@ export default function EditStudentPage() {
               </div>
               <div>
                 <label className={labelClasses}>Father's Phone <span className="text-red-500">*</span></label>
-                <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required className={inputClasses} />
+                <input type="tel" name="fatherPhone" value={formData.fatherPhone} onChange={handleChange} required maxLength={10} className={inputClasses} placeholder="10-digit phone" />
               </div>
               <div>
                 <label className={labelClasses}>Father's Occupation</label>
@@ -482,7 +480,7 @@ export default function EditStudentPage() {
               </div>
               <div>
                 <label className={labelClasses}>Mother's Phone</label>
-                <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} className={inputClasses} />
+                <input type="tel" name="motherPhone" value={formData.motherPhone} onChange={handleChange} maxLength={10} className={inputClasses} placeholder="10-digit phone" />
               </div>
               <div>
                 <label className={labelClasses}>Mother's Occupation</label>
@@ -494,7 +492,7 @@ export default function EditStudentPage() {
               </div>
               <div>
                 <label className={labelClasses}>Guardian Phone</label>
-                <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} className={inputClasses} />
+                <input type="tel" name="guardianPhone" value={formData.guardianPhone} onChange={handleChange} maxLength={10} className={inputClasses} placeholder="10-digit phone" />
               </div>
               <div>
                 <label className={labelClasses}>Relation to Student</label>

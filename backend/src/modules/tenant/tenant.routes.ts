@@ -4,6 +4,7 @@ import {
   getOne,
   create,
   update,
+  getTenantProfile,
   uploadTenantImages,
   getMySubscription,
   getAllPlans,
@@ -19,6 +20,14 @@ const router = Router();
 //////////////////////////////////////////////////
 // 📋 TENANT SELF-SERVICE (Login hone ke baad tenant apna data dekhe)
 // ⚠️ YE ROUTES "/:id" SE UPAR HONE CHAHIYE
+//////////////////////////////////////////////////
+
+//////////////////////////////////////////////////
+// 🏫 GET TENANT PROFILE (logged-in user ka tenant data + logo)
+//////////////////////////////////////////////////
+
+router.get("/profile", authMiddleware, getTenantProfile);
+
 //////////////////////////////////////////////////
 
 router.get(

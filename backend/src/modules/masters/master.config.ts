@@ -48,7 +48,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'school-master',
         label: 'School Master',
-        model: 'SchoolMaster',
+        model: 'School',
         icon: 'School',
         description: 'Manage school/institution details',
         requiredFields: ['name'],
@@ -63,7 +63,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
           { name: 'phone', label: 'Phone', type: 'phone' },
           { name: 'email', label: 'Email', type: 'email' },
           { name: 'website', label: 'Website', type: 'url' },
-          { name: 'logo', label: 'Logo URL', type: 'url' },
+          { name: 'logo', label: 'Logo', type: 'image' },
           { name: 'affiliation', label: 'Affiliation', type: 'text' },
           { name: 'establishedYear', label: 'Established Year', type: 'number', min: 1800, max: 2100 },
           { name: 'principalName', label: 'Principal Name', type: 'text' },
@@ -72,7 +72,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'branch-master',
         label: 'Branch Master',
-        model: 'BranchMaster',
+        model: 'Branch',
         icon: 'GitBranch',
         description: 'Manage school branches',
         requiredFields: ['name'],
@@ -92,7 +92,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'campus-master',
         label: 'Campus Master',
-        model: 'CampusMaster',
+        model: 'Campus',
         icon: 'MapPin',
         description: 'Manage campus locations',
         requiredFields: ['name'],
@@ -108,7 +108,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'shift-master',
         label: 'Shift Master',
-        model: 'ShiftMaster',
+        model: 'Shift',
         icon: 'Clock',
         description: 'Manage school shifts',
         requiredFields: ['name', 'startTime', 'endTime'],
@@ -122,7 +122,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'working-day-master',
         label: 'Working Day Master',
-        model: 'WorkingDayMaster',
+        model: 'WorkingDay',
         icon: 'CalendarDays',
         description: 'Configure working days',
         requiredFields: ['dayOfWeek'],
@@ -142,7 +142,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'holiday-master',
         label: 'Holiday Master',
-        model: 'HolidayMaster',
+        model: 'Holiday',
         icon: 'Palmtree',
         description: 'Manage holidays and vacations',
         requiredFields: ['name', 'date'],
@@ -161,7 +161,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'house-master',
         label: 'House Master',
-        model: 'HouseMaster',
+        model: 'House',
         icon: 'Flag',
         description: 'Manage school houses (for competitions)',
         requiredFields: ['name'],
@@ -177,7 +177,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'school-timing-master',
         label: 'School Timing Master',
-        model: 'SchoolTimingMaster',
+        model: 'SchoolTiming',
         icon: 'Timer',
         description: 'Define school timings',
         requiredFields: ['name'],
@@ -199,6 +199,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
   // ─────────────────────────────────────────────
   // 2. Academic Masters
   // ─────────────────────────────────────────────
+  // Academic Masters (Streams, Subjects, etc.)
   {
     id: 'academic',
     label: 'Academic Masters',
@@ -208,7 +209,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'stream-master',
         label: 'Stream Master',
-        model: 'StreamMaster',
+        model: 'Stream',
         icon: 'Workflow',
         description: 'Academic streams (Science, Commerce, Arts)',
         requiredFields: ['name'],
@@ -222,7 +223,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'subject-group-master',
         label: 'Subject Group Master',
-        model: 'SubjectGroupMaster',
+        model: 'SubjectGroup',
         icon: 'Layers',
         description: 'Group subjects together',
         requiredFields: ['name'],
@@ -237,7 +238,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'elective-subject-master',
         label: 'Elective Subject Master',
-        model: 'ElectiveSubjectMaster',
+        model: 'ElectiveSubject',
         icon: 'BookMarked',
         description: 'Manage elective subjects',
         requiredFields: ['subjectId', 'classId'],
@@ -252,7 +253,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'medium-master',
         label: 'Medium Master',
-        model: 'MediumMaster',
+        model: 'Medium',
         icon: 'Languages',
         description: 'Teaching medium (English, Hindi, etc.)',
         requiredFields: ['name'],
@@ -265,7 +266,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'board-master',
         label: 'Board Master',
-        model: 'BoardMaster',
+        model: 'Board',
         icon: 'Award',
         description: 'Education boards (CBSE, ICSE, State, IB)',
         requiredFields: ['name', 'code'],
@@ -283,7 +284,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'course-master',
         label: 'Course Master',
-        model: 'CourseMaster',
+        model: 'Course',
         icon: 'BookOpen',
         description: 'Manage courses / programs',
         requiredFields: ['name'],
@@ -301,7 +302,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'syllabus-master',
         label: 'Syllabus Master',
-        model: 'SyllabusMaster',
+        model: 'Syllabus',
         icon: 'FileText',
         description: 'Define syllabus per class/subject',
         requiredFields: ['name', 'classId', 'subjectId'],
@@ -317,7 +318,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'period-master',
         label: 'Period Master',
-        model: 'PeriodMaster',
+        model: 'Period',
         icon: 'Clock3',
         description: 'Define periods/slots in a day',
         requiredFields: ['name', 'number', 'startTime', 'endTime'],
@@ -337,7 +338,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'timetable-slot-master',
         label: 'Timetable Slot Master',
-        model: 'TimetableSlotMaster',
+        model: 'TimetableSlot',
         icon: 'LayoutGrid',
         description: 'Pre-defined timetable slots',
         requiredFields: ['dayOfWeek', 'periodId'],
@@ -370,7 +371,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'admission-type-master',
         label: 'Admission Type Master',
-        model: 'AdmissionTypeMaster',
+        model: 'AdmissionType',
         icon: 'UserPlus',
         description: 'Types of admission (New, Transfer, etc.)',
         requiredFields: ['name'],
@@ -384,7 +385,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'category-master',
         label: 'Category Master',
-        model: 'CategoryMaster',
+        model: 'Category',
         icon: 'Tag',
         description: 'Student categories (GEN, OBC, SC, ST, EWS)',
         requiredFields: ['name'],
@@ -401,7 +402,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'religion-master',
         label: 'Religion Master',
-        model: 'ReligionMaster',
+        model: 'Religion',
         icon: 'Heart',
         description: 'Religions list',
         requiredFields: ['name'],
@@ -414,7 +415,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'caste-master',
         label: 'Caste Master',
-        model: 'CasteMaster',
+        model: 'Caste',
         icon: 'List',
         description: 'Caste list linked to categories',
         requiredFields: ['name'],
@@ -427,7 +428,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'nationality-master',
         label: 'Nationality Master',
-        model: 'NationalityMaster',
+        model: 'Nationality',
         icon: 'Globe',
         description: 'Nationalities list',
         requiredFields: ['name'],
@@ -440,7 +441,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'blood-group-master',
         label: 'Blood Group Master',
-        model: 'BloodGroupMaster',
+        model: 'BloodGroupLookup',
         icon: 'Droplet',
         description: 'Blood groups',
         requiredFields: ['name'],
@@ -457,7 +458,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'mother-tongue-master',
         label: 'Mother Tongue Master',
-        model: 'MotherTongueMaster',
+        model: 'MotherTongue',
         icon: 'MessageCircle',
         description: 'Mother tongue languages',
         requiredFields: ['name'],
@@ -469,7 +470,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'student-status-master',
         label: 'Student Status Master',
-        model: 'StudentStatusMaster',
+        model: 'StudentStatus',
         icon: 'Activity',
         description: 'Student status values',
         requiredFields: ['name', 'code'],
@@ -487,7 +488,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'sibling-relation-master',
         label: 'Sibling Relation Master',
-        model: 'SiblingRelationMaster',
+        model: 'SiblingRelation',
         icon: 'UsersRound',
         description: 'Sibling relationship types',
         requiredFields: ['name'],
@@ -513,7 +514,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'department-master',
         label: 'Department Master',
-        model: 'DepartmentMaster',
+        model: 'Department',
         icon: 'Building',
         description: 'School departments',
         requiredFields: ['name'],
@@ -528,7 +529,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'designation-master',
         label: 'Designation Master',
-        model: 'DesignationMaster',
+        model: 'Designation',
         icon: 'BadgeCheck',
         description: 'Staff designations',
         requiredFields: ['name'],
@@ -543,7 +544,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'employment-type-master',
         label: 'Employment Type Master',
-        model: 'EmploymentTypeMaster',
+        model: 'EmploymentType',
         icon: 'Briefcase',
         description: 'Types of employment',
         requiredFields: ['name'],
@@ -559,7 +560,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'qualification-master',
         label: 'Qualification Master',
-        model: 'QualificationMaster',
+        model: 'Qualification',
         icon: 'GraduationCap',
         description: 'Educational qualifications',
         requiredFields: ['name'],
@@ -576,7 +577,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'leave-type-master',
         label: 'Leave Type Master',
-        model: 'LeaveTypeMaster',
+        model: 'LeaveType',
         icon: 'CalendarOff',
         description: 'Types of leave',
         requiredFields: ['name', 'code', 'maxDays'],
@@ -592,7 +593,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'staff-category-master',
         label: 'Staff Category Master',
-        model: 'StaffCategoryMaster',
+        model: 'StaffCategory',
         icon: 'Users2',
         description: 'Staff categories',
         requiredFields: ['name'],
@@ -607,7 +608,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'salary-grade-master',
         label: 'Salary Grade Master',
-        model: 'SalaryGradeMaster',
+        model: 'SalaryGrade',
         icon: 'IndianRupee',
         description: 'Salary grades and pay scales',
         requiredFields: ['name', 'minPay', 'maxPay'],
@@ -623,7 +624,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'bank-master',
         label: 'Bank Master',
-        model: 'BankMaster',
+        model: 'Bank',
         icon: 'Landmark',
         description: 'Banks for salary disbursement',
         requiredFields: ['name'],
@@ -649,7 +650,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'fee-group-master',
         label: 'Fee Group Master',
-        model: 'FeeGroupMaster',
+        model: 'FeeGroup',
         icon: 'FolderOpen',
         description: 'Group fee heads together',
         requiredFields: ['name'],
@@ -663,7 +664,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'fee-type-master',
         label: 'Fee Type Master',
-        model: 'FeeTypeMaster',
+        model: 'FeeType',
         icon: 'Receipt',
         description: 'Types of fees',
         requiredFields: ['name'],
@@ -678,7 +679,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'concession-master',
         label: 'Concession Master',
-        model: 'ConcessionMaster',
+        model: 'Concession',
         icon: 'Percent',
         description: 'Fee concessions/discounts',
         requiredFields: ['name', 'type', 'value'],
@@ -696,7 +697,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'scholarship-master',
         label: 'Scholarship Master',
-        model: 'ScholarshipMaster',
+        model: 'Scholarship',
         icon: 'Award',
         description: 'Scholarship schemes',
         requiredFields: ['name', 'type'],
@@ -717,7 +718,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'payment-mode-master',
         label: 'Payment Mode Master',
-        model: 'PaymentModeMaster',
+        model: 'PaymentMode',
         icon: 'Wallet',
         description: 'Payment methods accepted',
         requiredFields: ['name'],
@@ -734,7 +735,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'receipt-series-master',
         label: 'Receipt Series Master',
-        model: 'ReceiptSeriesMaster',
+        model: 'ReceiptSeries',
         icon: 'Hash',
         description: 'Receipt number series configuration',
         requiredFields: ['prefix', 'startNumber'],
@@ -762,7 +763,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'exam-type-master',
         label: 'Exam Type Master',
-        model: 'ExamTypeMaster',
+        model: 'ExamType',
         icon: 'FileQuestion',
         description: 'Types of examinations',
         requiredFields: ['name'],
@@ -779,7 +780,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'exam-term-master',
         label: 'Exam Term Master',
-        model: 'ExamTermMaster',
+        model: 'ExamTerm',
         icon: 'CalendarRange',
         description: 'Exam terms within academic year',
         requiredFields: ['name', 'startDate', 'endDate'],
@@ -794,7 +795,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'result-type-master',
         label: 'Result Type Master',
-        model: 'ResultTypeMaster',
+        model: 'ResultType',
         icon: 'BarChart',
         description: 'Result display types',
         requiredFields: ['name'],
@@ -809,7 +810,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'marking-scheme-master',
         label: 'Marking Scheme Master',
-        model: 'MarkingSchemeMaster',
+        model: 'MarkingScheme',
         icon: 'PenLine',
         description: 'Marking schemes (max marks, passing marks)',
         requiredFields: ['name', 'maxMarks', 'passingMarks'],
@@ -825,7 +826,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'assessment-master',
         label: 'Assessment Master',
-        model: 'AssessmentMaster',
+        model: 'Assessment',
         icon: 'CheckSquare',
         description: 'Assessment types',
         requiredFields: ['name', 'type', 'maxScore'],
@@ -856,7 +857,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'attendance-status-master',
         label: 'Attendance Status Master',
-        model: 'AttendanceStatusMaster',
+        model: 'AttendanceStatusConfig',
         icon: 'CheckCircle',
         description: 'Attendance status values',
         requiredFields: ['name', 'code'],
@@ -875,7 +876,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'late-fine-master',
         label: 'Late Fine Master',
-        model: 'LateFineMaster',
+        model: 'LateFine',
         icon: 'AlertTriangle',
         description: 'Late arrival fine configuration',
         requiredFields: ['afterMinutes', 'fineAmount'],
@@ -891,7 +892,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'leave-reason-master',
         label: 'Leave Reason Master',
-        model: 'LeaveReasonMaster',
+        model: 'LeaveReason',
         icon: 'FileWarning',
         description: 'Predefined leave reasons',
         requiredFields: ['name'],
@@ -905,7 +906,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'attendance-shift-master',
         label: 'Attendance Shift Master',
-        model: 'AttendanceShiftMaster',
+        model: 'AttendanceShift',
         icon: 'Timer',
         description: 'Attendance shifts with grace time',
         requiredFields: ['name', 'startTime', 'endTime'],
@@ -932,7 +933,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'publisher-master',
         label: 'Publisher Master',
-        model: 'PublisherMaster',
+        model: 'Publisher',
         icon: 'Printer',
         description: 'Book publishers',
         requiredFields: ['name'],
@@ -948,7 +949,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'author-master',
         label: 'Author Master',
-        model: 'AuthorMaster',
+        model: 'Author',
         icon: 'Pen',
         description: 'Book authors',
         requiredFields: ['name'],
@@ -962,7 +963,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'language-master',
         label: 'Language Master',
-        model: 'LanguageMaster',
+        model: 'Language',
         icon: 'Languages',
         description: 'Book languages',
         requiredFields: ['name'],
@@ -975,7 +976,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'rack-master',
         label: 'Rack Master',
-        model: 'RackMaster',
+        model: 'Rack',
         icon: 'Server',
         description: 'Library racks',
         requiredFields: ['name'],
@@ -989,7 +990,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'shelf-master',
         label: 'Shelf Master',
-        model: 'ShelfMaster',
+        model: 'LibraryShelf',
         icon: 'Rows3',
         description: 'Shelves within racks',
         requiredFields: ['name', 'rackId'],
@@ -1003,7 +1004,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'book-condition-master',
         label: 'Book Condition Master',
-        model: 'BookConditionMaster',
+        model: 'BookCondition',
         icon: 'ThumbsUp',
         description: 'Condition of books',
         requiredFields: ['name'],
@@ -1030,7 +1031,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'block-master',
         label: 'Block Master',
-        model: 'BlockMaster',
+        model: 'HostelBlock',
         icon: 'Building2',
         description: 'Hostel blocks/wings',
         requiredFields: ['name', 'hostelId'],
@@ -1044,7 +1045,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'floor-master',
         label: 'Floor Master',
-        model: 'FloorMaster',
+        model: 'HostelFloor',
         icon: 'Layers',
         description: 'Floors within blocks',
         requiredFields: ['name', 'blockId', 'number'],
@@ -1059,7 +1060,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'bed-master',
         label: 'Bed Master',
-        model: 'BedMaster',
+        model: 'HostelBed',
         icon: 'BedSingle',
         description: 'Beds within rooms',
         requiredFields: ['roomId', 'bedNumber'],
@@ -1078,7 +1079,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'hostel-type-master',
         label: 'Hostel Type Master',
-        model: 'HostelTypeMaster',
+        model: 'HostelType',
         icon: 'Home',
         description: 'Types of hostels',
         requiredFields: ['name'],
@@ -1104,7 +1105,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'driver-master',
         label: 'Driver Master',
-        model: 'DriverMaster',
+        model: 'Driver',
         icon: 'User',
         description: 'Vehicle drivers',
         requiredFields: ['name', 'phone', 'licenseNumber'],
@@ -1121,7 +1122,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'conductor-master',
         label: 'Conductor Master',
-        model: 'ConductorMaster',
+        model: 'Conductor',
         icon: 'UserCheck',
         description: 'Vehicle conductors',
         requiredFields: ['name', 'phone'],
@@ -1135,7 +1136,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'fuel-type-master',
         label: 'Fuel Type Master',
-        model: 'FuelTypeMaster',
+        model: 'FuelType',
         icon: 'Fuel',
         description: 'Vehicle fuel types',
         requiredFields: ['name'],
@@ -1150,7 +1151,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'gps-device-master',
         label: 'GPS Device Master',
-        model: 'GPSDeviceMaster',
+        model: 'GPSDevice',
         icon: 'MapPin',
         description: 'GPS tracking devices',
         requiredFields: ['deviceId'],
@@ -1177,7 +1178,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'item-category-master',
         label: 'Item Category Master',
-        model: 'ItemCategoryMaster',
+        model: 'ItemCategory',
         icon: 'Folder',
         description: 'Item categories hierarchy',
         requiredFields: ['name'],
@@ -1191,7 +1192,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'item-group-master',
         label: 'Item Group Master',
-        model: 'ItemGroupMaster',
+        model: 'ItemGroup',
         icon: 'LayoutList',
         description: 'Item groups within categories',
         requiredFields: ['name'],
@@ -1204,7 +1205,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'unit-master',
         label: 'Unit Master',
-        model: 'UnitMaster',
+        model: 'Unit',
         icon: 'Ruler',
         description: 'Units of measurement',
         requiredFields: ['name', 'code'],
@@ -1221,7 +1222,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'brand-master',
         label: 'Brand Master',
-        model: 'BrandMaster',
+        model: 'Brand',
         icon: 'Star',
         description: 'Item brands',
         requiredFields: ['name'],
@@ -1233,7 +1234,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'supplier-master',
         label: 'Supplier Master',
-        model: 'SupplierMaster',
+        model: 'Supplier',
         icon: 'Truck',
         description: 'Material suppliers/vendors',
         requiredFields: ['name', 'phone'],
@@ -1251,7 +1252,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'warehouse-master',
         label: 'Warehouse Master',
-        model: 'WarehouseMaster',
+        model: 'Warehouse',
         icon: 'Warehouse',
         description: 'Storage warehouses',
         requiredFields: ['name'],
@@ -1266,7 +1267,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'store-master',
         label: 'Store Master',
-        model: 'StoreMaster',
+        model: 'Store',
         icon: 'Store',
         description: 'Material stores',
         requiredFields: ['name'],
@@ -1281,7 +1282,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'stock-type-master',
         label: 'Stock Type Master',
-        model: 'StockTypeMaster',
+        model: 'StockType',
         icon: 'Boxes',
         description: 'Types of stock items',
         requiredFields: ['name'],
@@ -1308,7 +1309,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'payroll-head-master',
         label: 'Payroll Head Master',
-        model: 'PayrollHeadMaster',
+        model: 'PayrollHead',
         icon: 'FileSpreadsheet',
         description: 'Payroll earning/deduction heads',
         requiredFields: ['name', 'type'],
@@ -1325,7 +1326,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'salary-component-master',
         label: 'Salary Component Master',
-        model: 'SalaryComponentMaster',
+        model: 'SalaryComponent',
         icon: 'Calculator',
         description: 'Salary components (Basic, HRA, DA, etc.)',
         requiredFields: ['name', 'type', 'calculationType'],
@@ -1348,7 +1349,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'pf-master',
         label: 'PF Master',
-        model: 'PFMaster',
+        model: 'PFConfig',
         icon: 'Shield',
         description: 'Provident Fund configuration',
         requiredFields: ['employeeContribution', 'employerContribution'],
@@ -1363,7 +1364,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'esi-master',
         label: 'ESI Master',
-        model: 'ESIMaster',
+        model: 'ESIConfig',
         icon: 'HeartPulse',
         description: 'ESI configuration',
         requiredFields: ['employeeContribution', 'employerContribution'],
@@ -1377,7 +1378,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'tax-slab-master',
         label: 'Tax Slab Master',
-        model: 'TaxSlabMaster',
+        model: 'TaxSlab',
         icon: 'Receipt',
         description: 'Income tax slabs',
         requiredFields: ['fromAmount', 'toAmount', 'percentage', 'regime', 'financialYear'],
@@ -1397,7 +1398,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'increment-type-master',
         label: 'Increment Type Master',
-        model: 'IncrementTypeMaster',
+        model: 'IncrementType',
         icon: 'TrendingUp',
         description: 'Types of salary increments',
         requiredFields: ['name', 'type'],
@@ -1426,7 +1427,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'sms-template-master',
         label: 'SMS Template Master',
-        model: 'SMSTemplateMaster',
+        model: 'SMSTemplate',
         icon: 'Smartphone',
         description: 'SMS templates with DLT IDs',
         requiredFields: ['name', 'content'],
@@ -1442,7 +1443,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'email-template-master',
         label: 'Email Template Master',
-        model: 'EmailTemplateMaster',
+        model: 'EmailTemplate',
         icon: 'Mail',
         description: 'Email templates',
         requiredFields: ['name', 'subject', 'body'],
@@ -1458,7 +1459,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'whatsapp-template-master',
         label: 'WhatsApp Template Master',
-        model: 'WhatsAppTemplateMaster',
+        model: 'WhatsAppTemplate',
         icon: 'MessageCircle',
         description: 'WhatsApp message templates',
         requiredFields: ['name', 'content'],
@@ -1477,7 +1478,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'notification-template-master',
         label: 'Notification Template Master',
-        model: 'NotificationTemplateMaster',
+        model: 'NotificationTemplateTenant',
         icon: 'Bell',
         description: 'Push/in-app notification templates',
         requiredFields: ['name', 'title', 'body', 'type'],
@@ -1496,7 +1497,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'notice-category-master',
         label: 'Notice Category Master',
-        model: 'NoticeCategoryMaster',
+        model: 'NoticeCategory',
         icon: 'FileText',
         description: 'Notice board categories',
         requiredFields: ['name'],
@@ -1522,7 +1523,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'certificate-template-master',
         label: 'Certificate Template Master',
-        model: 'CertificateTemplateMaster',
+        model: 'CertificateTemplate',
         icon: 'FileText',
         description: 'Certificate design templates',
         requiredFields: ['name', 'type', 'content'],
@@ -1549,7 +1550,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'id-card-template-master',
         label: 'ID Card Template Master',
-        model: 'IDCardTemplateMaster',
+        model: 'IDCardTemplate',
         icon: 'IdCard',
         description: 'ID card design templates',
         requiredFields: ['name', 'type'],
@@ -1584,7 +1585,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'role-master',
         label: 'Role Master',
-        model: 'RoleMaster',
+        model: 'Role',
         icon: 'ShieldCheck',
         description: 'User roles',
         requiredFields: ['name', 'code'],
@@ -1600,7 +1601,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'permission-master',
         label: 'Permission Master',
-        model: 'PermissionMaster',
+        model: 'Permission',
         icon: 'Key',
         description: 'Granular permissions',
         requiredFields: ['moduleId', 'action', 'name', 'code'],
@@ -1620,7 +1621,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'user-type-master',
         label: 'User Type Master',
-        model: 'UserTypeMaster',
+        model: 'UserType',
         icon: 'UserCog',
         description: 'User types in the system',
         requiredFields: ['name'],
@@ -1637,7 +1638,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'module-master',
         label: 'Module Master',
-        model: 'ModuleMaster',
+        model: 'Module',
         icon: 'LayoutGrid',
         description: 'System modules',
         requiredFields: ['name', 'code', 'route'],
@@ -1654,7 +1655,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'menu-master',
         label: 'Menu Master',
-        model: 'MenuMaster',
+        model: 'Menu',
         icon: 'Menu',
         description: 'Sidebar menu items',
         requiredFields: ['name', 'moduleId', 'route'],
@@ -1671,7 +1672,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'api-permission-master',
         label: 'API Permission Master',
-        model: 'APIPermissionMaster',
+        model: 'APIPermission',
         icon: 'Lock',
         description: 'API endpoint permissions',
         requiredFields: ['endpoint', 'method'],
@@ -1701,7 +1702,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'document-type-master',
         label: 'Document Type Master',
-        model: 'DocumentTypeMaster',
+        model: 'DocumentType',
         icon: 'File',
         description: 'Types of documents',
         requiredFields: ['name', 'code'],
@@ -1718,7 +1719,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'document-category-master',
         label: 'Document Category Master',
-        model: 'DocumentCategoryMaster',
+        model: 'DocumentCategory',
         icon: 'FolderOpen',
         description: 'Document categories',
         requiredFields: ['name'],
@@ -1731,7 +1732,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'approval-workflow-master',
         label: 'Approval Workflow Master',
-        model: 'ApprovalWorkflowMaster',
+        model: 'ApprovalWorkflow',
         icon: 'GitPullRequest',
         description: 'Multi-step approval workflows',
         requiredFields: ['name', 'module'],
@@ -1757,7 +1758,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'event-category-master',
         label: 'Event Category Master',
-        model: 'EventCategoryMaster',
+        model: 'EventCategory',
         icon: 'Tag',
         description: 'Event categories',
         requiredFields: ['name'],
@@ -1771,7 +1772,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'venue-master',
         label: 'Venue Master',
-        model: 'VenueMaster',
+        model: 'Venue',
         icon: 'MapPin',
         description: 'Event venues',
         requiredFields: ['name'],
@@ -1786,7 +1787,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'event-type-master',
         label: 'Event Type Master',
-        model: 'EventTypeMaster',
+        model: 'EventType',
         icon: 'Calendar',
         description: 'Types of events',
         requiredFields: ['name'],
@@ -1814,7 +1815,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'visitor-type-master',
         label: 'Visitor Type Master',
-        model: 'VisitorTypeMaster',
+        model: 'VisitorType',
         icon: 'UserPlus',
         description: 'Types of visitors',
         requiredFields: ['name'],
@@ -1830,7 +1831,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'purpose-master',
         label: 'Purpose Master',
-        model: 'PurposeMaster',
+        model: 'Purpose',
         icon: 'Target',
         description: 'Visit purposes',
         requiredFields: ['name'],
@@ -1843,7 +1844,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'gate-master',
         label: 'Gate Master',
-        model: 'GateMaster',
+        model: 'Gate',
         icon: 'DoorOpen',
         description: 'School gates',
         requiredFields: ['name', 'type'],
@@ -1871,7 +1872,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'ai-prompt-master',
         label: 'AI Prompt Master',
-        model: 'AIPromptMaster',
+        model: 'AIPrompt',
         icon: 'Sparkles',
         description: 'AI prompt templates',
         requiredFields: ['name', 'prompt', 'module', 'type'],
@@ -1889,7 +1890,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'prediction-rule-master',
         label: 'Prediction Rule Master',
-        model: 'PredictionRuleMaster',
+        model: 'PredictionRule',
         icon: 'TrendingUp',
         description: 'AI prediction rules',
         requiredFields: ['name', 'module', 'action'],
@@ -1905,7 +1906,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'analytics-rule-master',
         label: 'Analytics Rule Master',
-        model: 'AnalyticsRuleMaster',
+        model: 'AnalyticsRule',
         icon: 'BarChart3',
         description: 'Analytics visualization rules',
         requiredFields: ['name', 'module', 'metric'],
@@ -1936,7 +1937,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'theme-master',
         label: 'Theme Master',
-        model: 'ThemeMaster',
+        model: 'Theme',
         icon: 'Palette',
         description: 'UI theme presets',
         requiredFields: ['name', 'primaryColor'],
@@ -1954,7 +1955,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'currency-master',
         label: 'Currency Master',
-        model: 'CurrencyMaster',
+        model: 'Currency',
         icon: 'Coins',
         description: 'Supported currencies',
         requiredFields: ['name', 'code', 'symbol'],
@@ -1970,7 +1971,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'timezone-master',
         label: 'Time Zone Master',
-        model: 'TimeZoneMaster',
+        model: 'Timezone',
         icon: 'Clock',
         description: 'Time zone settings',
         requiredFields: ['name', 'offset', 'code'],
@@ -1985,7 +1986,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'backup-policy-master',
         label: 'Backup Policy Master',
-        model: 'BackupPolicyMaster',
+        model: 'BackupPolicy',
         icon: 'Database',
         description: 'Backup schedule policies',
         requiredFields: ['name', 'frequency'],
@@ -2003,7 +2004,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'audit-type-master',
         label: 'Audit Type Master',
-        model: 'AuditTypeMaster',
+        model: 'AuditType',
         icon: 'Eye',
         description: 'Types of audit actions',
         requiredFields: ['name'],
@@ -2021,7 +2022,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'api-provider-master',
         label: 'API Provider Master',
-        model: 'APIProviderMaster',
+        model: 'APIProvider',
         icon: 'Plug',
         description: 'Third-party API providers',
         requiredFields: ['name', 'type'],
@@ -2040,7 +2041,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'settings-master',
         label: 'Settings Master',
-        model: 'SettingsMaster',
+        model: 'SystemSetting',
         icon: 'Wrench',
         description: 'General key-value settings',
         requiredFields: ['module', 'key', 'value', 'type'],

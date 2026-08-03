@@ -18,15 +18,25 @@ export async function uploadToCloudinary(
   buffer: Buffer,
   folder: string
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
+    // Timeout to prevent hanging forever
+    const timer = setTimeout(() => {
+      reject(new Error("Cloudinary upload timed out after 30s"));
+    }, 30000);
+
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: `college-erp/${folder}`,
         resource_type: "auto",
       },
       (error, result) => {
-        if (error) reject(error);
-        else resolve(result!.secure_url);
+        clearTimeout(timer); // Cancel timeout on completion
+        if (error) {
+          console.error("[Cloudinary] Upload stream error:", error.message);
+          reject(error);
+        } else {
+          resolve(result!.secure_url);
+        }
       }
     );
 

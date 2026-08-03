@@ -118,11 +118,21 @@ export const loginService = async (email: string, password: string) => {
 
   const { password: _, ...safeUser } = user;
 
+  // Fetch tenant info for frontend (logo, name, etc.)
+  let tenant = null;
+  if (user.tenantId) {
+    tenant = await prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { id: true, name: true, type: true, logoUrl: true, backgroundUrl: true, address: true, phone: true, email: true, primaryColor: true },
+    });
+  }
+
   return {
     user: safeUser,
     token,
     forcePasswordChange: user.isFirstLogin || false,
     subscriptionExpired: false,
+    tenant,
   };
 };
 

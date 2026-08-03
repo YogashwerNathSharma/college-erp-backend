@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════════════
+
 // MASTER MODULE - ROUTES
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -18,6 +18,7 @@ import {
   cloneEntry,
   reorderEntries,
   getDropdown,
+  seedDefaults,
 } from './master.controller';
 
 const router = Router();
@@ -32,6 +33,9 @@ router.use(resolveTenant);
 // Categories (no modelName param)
 // ─────────────────────────────────────────────────────────────────
 router.get('/categories', getCategories);
+
+// Seed default master data
+router.post('/seed-defaults', seedDefaults);
 
 // ─────────────────────────────────────────────────────────────────
 // CRUD operations per model

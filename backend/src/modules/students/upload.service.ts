@@ -22,9 +22,9 @@ export const uploadStudentPhoto = async (
     throw new Error("Student not found");
   }
 
-  // Validate file size: min 39KB, max 2MB
-  if (file.size < 39 * 1024) {
-    throw new Error("Photo too small. Minimum 39KB required for clear print quality.");
+  // Validate file size: min 10KB, max 2MB
+  if (file.size < 10 * 1024) {
+    throw new Error("Photo too small. Minimum 10KB required.");
   }
 
   // Delete old photo from Cloudinary if exists
@@ -35,12 +35,18 @@ export const uploadStudentPhoto = async (
   // Upload to Cloudinary OR save locally if Cloudinary not configured
   let photoUrl: string;
 
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  const useCloudinary = process.env.NODE_ENV === "production" && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+
+  if (useCloudinary) {
     // Cloudinary configured — upload there
-    photoUrl = await uploadToCloudinary(file.buffer, "students/photos");
+    console.log("[Photo Upload] Using Cloudinary");
+    photoUrl = await uploadToCloudinary(file.buffer, "students/photos")
+      .catch((err) => { console.error("[Photo Upload] Cloudinary error:", err.message); throw err; });
+    console.log("[Photo Upload] Cloudinary URL:", photoUrl);
   } else {
     // Local fallback — save to /uploads/students/photos/
-    const uploadsDir = path.resolve(__dirname, "../../../uploads/students/photos");
+    const uploadsDir = path.resolve(process.cwd(), "uploads/students/photos");
+    console.log("[Photo Upload] Using local storage:", uploadsDir);
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
@@ -57,6 +63,7 @@ export const uploadStudentPhoto = async (
     where: { id: studentId },
     data: { photoUrl },
   });
+  console.log("[Photo Upload] ✅ Student photo updated in DB for:", studentId);
 
   return { photoUrl };
 };

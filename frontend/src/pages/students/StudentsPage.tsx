@@ -344,7 +344,7 @@ function RowActionsDropdown({
 
     { label: "View Profile", icon: <Eye className="w-4 h-4" />, action: () => navigate(`/students/${student.id}/profile`) },
 
-    { label: "Edit", icon: <Edit className="w-4 h-4" />, action: () => navigate(`/students/edit/${student.id}`) },
+{ label: "Edit", icon: <Edit className="w-4 h-4" />, action: () => navigate(`/students/${student.id}/edit`) },
 
     { label: "Timeline", icon: <Clock className="w-4 h-4" />, action: () => navigate(`/students/${student.id}/timeline`) },
 

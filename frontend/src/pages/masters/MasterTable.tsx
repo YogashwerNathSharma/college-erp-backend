@@ -58,7 +58,19 @@ export default function MasterTable({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [actionMenuId]);
 
-  const visibleFields = fields.slice(0, 6);
+  // Check if field should be hidden (ID fields, relations, internal fields)
+  const isHiddenField = (fieldName: string): boolean => {
+    const hiddenPatterns = [
+      /^(id|_id)$/i,                  // id, _id (MongoDB ID)
+      /Id$/,                           // ending with Id (categoryId, tenantId, etc.)
+      /^(tenantId|createdAt|updatedAt|deletedAt|isDeleted|isActive)$/,  // System fields
+    ];
+    return hiddenPatterns.some(pattern => pattern.test(fieldName));
+  };
+
+  // Filter out hidden fields and take first 6 visible ones
+  const displayFields = fields.filter(f => !isHiddenField(f.name));
+  const visibleFields = displayFields.slice(0, 6);
 
   const formatValue = (value: any, field: FieldConfig): string => {
     if (value === null || value === undefined) return "—";
@@ -69,7 +81,7 @@ export default function MasterTable({
     if (field.type === "color") return value;
     if (field.type === "select" && field.options) {
       const opt = field.options.find(o => o.value === value);
-      return opt ? opt.label : String(value);
+      return opt ? opt.label : "—";
     }
     if (Array.isArray(value)) return value.join(", ");
     if (typeof value === "object") return JSON.stringify(value);

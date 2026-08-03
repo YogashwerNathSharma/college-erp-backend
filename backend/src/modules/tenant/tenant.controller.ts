@@ -17,6 +17,50 @@ import bcrypt from "bcrypt";
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
 /////////////////////////
+// GET TENANT PROFILE (logged-in user's tenant)
+/////////////////////////
+
+export const getTenantProfile = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: "Tenant ID not found in token",
+      });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        logoUrl: true,
+        backgroundUrl: true,
+        address: true,
+        phone: true,
+        email: true,
+        primaryColor: true,
+      },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant not found",
+      });
+    }
+
+    return res.json({ success: true, data: tenant });
+  } catch (error: any) {
+    console.error("GET TENANT PROFILE ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/////////////////////////
 // CREATE TENANT (SUPER ADMIN)
 // ✅ FIXED: NO fraud check — Super Admin is GOD
 /////////////////////////

@@ -779,6 +779,7 @@ export default function App() {
               <Route path="/students/print-engine" element={<StudentPrintEngine />} />
               <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
               <Route path="/students/:id/edit" element={<EditStudentPage />} />
+              <Route path="/students/:id/profile" element={<StudentProfilePage />} />
               <Route path="/students/reports" element={<StudentReportsPage />} />
               <Route path="/students/id-card" element={<StudentIdCardPage />} />
 

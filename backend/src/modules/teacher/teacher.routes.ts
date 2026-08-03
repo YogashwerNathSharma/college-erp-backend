@@ -1,15 +1,14 @@
-
-
 import express from "express";
-import { create, getAll, getById, update, remove, upload } from "./teacher.controller";
+import { create, getAll, getById, update, remove, upload, dashboard } from "./teacher.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import { checkLimit } from "../../middleware/subscriptionLimit.middleware";
-import { createTeacher } from "./teacher.service";
-import { teacherList } from "./report.controller";
 
 const router = express.Router();
+
+// DASHBOARD (must be before /:id)
+router.get("/dashboard", authMiddleware, resolveTenant, dashboard);
 
 // CREATE (with photo upload)
 router.post(
@@ -17,25 +16,16 @@ router.post(
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  checkLimit("teachers"),
   upload.single("photo"),
   create
 );
 
 // GET ALL
-router.get(
-  "/",
-  authMiddleware,
-  resolveTenant,
-  getAll
-);
+router.get("/", authMiddleware, resolveTenant, getAll);
 
 // GET BY ID
-router.get(
-  "/:id",
-  authMiddleware,
-  resolveTenant,
-  getById
-);
+router.get("/:id", authMiddleware, resolveTenant, getById);
 
 // UPDATE (with photo upload)
 router.put(
@@ -48,14 +38,6 @@ router.put(
 );
 
 // DELETE (soft)
-router.delete(
-  "/:id",
-  authMiddleware,
-  allowRoles("ADMIN"),
-  resolveTenant,
-  remove
-);
+router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, remove);
 
-router.post("/", authMiddleware, checkLimit("teachers"), teacherList);
 export default router;
-

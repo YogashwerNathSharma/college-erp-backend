@@ -9,10 +9,8 @@
     "build": "npx prisma generate && tsc",
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
-    "seed-demo": "ts-node prisma/seed-demo.ts",
-    "seed-fresh": "ts-node prisma/seed-fresh.ts",
-    "seed-masters": "ts-node prisma/seed-masters.ts",
-    "seed-erp": "ts-node prisma/seed-full-erp.ts"
+    "seed-erp": "ts-node prisma/seed.ts",
+    "seed-superadmin": "ts-node prisma/seed-superadmin.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

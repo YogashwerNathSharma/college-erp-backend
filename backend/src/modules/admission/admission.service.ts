@@ -13,22 +13,22 @@ export const createAdmission = async (body: any, user: any) => {
     feeStructureId,
   } = body;
 
-    ////////////////////////////
-    // 🔐 0. PRE-VALIDATION
-    ////////////////////////////
-    if (!classId || !sectionId || !academicYearId) {
-      throw new Error("Required fields missing: classId, sectionId, academicYearId");
-    }
+  ////////////////////////////
+  // 🔐 0. PRE-VALIDATION
+  ////////////////////////////
+  if (!classId || !sectionId || !academicYearId) {
+    throw new Error("Required fields missing: classId, sectionId, academicYearId");
+  }
 
-    if (!student || !student.firstName || !student.lastName || !student.dob || !student.fatherName || !student.fatherPhone) {
-      throw new Error("Required student fields missing: firstName, lastName, dob, fatherName, fatherPhone");
-    }
+  if (!student || !student.firstName || !student.lastName || !student.dob || !student.fatherName || !student.fatherPhone) {
+    throw new Error("Required student fields missing: firstName, lastName, dob, fatherName, fatherPhone");
+  }
 
-    ////////////////////////////
-    // 🔐 1. GENERATE ADMISSION NUMBER & SR (outside transaction to avoid deadlock)
-    ////////////////////////////
-    const admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
-    const srNo = await generateSrNumber(tenantId, admissionNo);
+  ////////////////////////////
+  // 🔐 1. GENERATE ADMISSION NUMBER & SR (outside transaction to avoid deadlock)
+  ////////////////////////////
+  const admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+  const srNo = await generateSrNumber(tenantId, admissionNo);
 
   return await prisma.$transaction(async (tx) => {
     ////////////////////////////
@@ -54,7 +54,7 @@ export const createAdmission = async (body: any, user: any) => {
     }
 
     ////////////////////////////
-    // 🔐 2. CHECK CLASS
+    // 🔐 3. CHECK CLASS
     ////////////////////////////
     const classExists = await tx.class.findUnique({
       where: { id: classId },
@@ -65,7 +65,7 @@ export const createAdmission = async (body: any, user: any) => {
     }
 
     ////////////////////////////
-    // 🔐 3. CHECK SECTION
+    // 🔐 4. CHECK SECTION (IMPORTANT: Section has NO isDeleted field, use isActive instead)
     ////////////////////////////
     const sectionExists = await tx.section.findUnique({
       where: { id: sectionId },
@@ -76,7 +76,7 @@ export const createAdmission = async (body: any, user: any) => {
     }
 
     ////////////////////////////
-    // 🔐 4. CHECK ACADEMIC YEAR
+    // 🔐 5. CHECK ACADEMIC YEAR
     ////////////////////////////
     const academicYear = await tx.academicYear.findUnique({
       where: { id: academicYearId },
@@ -87,7 +87,7 @@ export const createAdmission = async (body: any, user: any) => {
     }
 
     ////////////////////////////
-    // 🔐 6. CREATE STUDENT
+    // 🔐 6. CREATE STUDENT (All required fields mapped correctly per Prisma schema)
     ////////////////////////////
     const newStudent = await tx.student.create({
       data: {
@@ -97,7 +97,7 @@ export const createAdmission = async (body: any, user: any) => {
         gender: student.gender || "MALE",
         dob: new Date(student.dob),
         email: student.email || undefined,
-        phone: student.fatherPhone || undefined,
+        phone: student.phone || student.fatherPhone || undefined,
         address: student.address || "N/A",
         admissionNo,
         srNo,
@@ -107,20 +107,23 @@ export const createAdmission = async (body: any, user: any) => {
         motherPhone: student.motherPhone || undefined,
         tenantId,
         academicYearId,
+        status: "active",      // ✅ Explicitly set status
+        isDeleted: false,      // ✅ Initialize soft-delete flag
       },
     });
 
     ////////////////////////////
-    // 🔐 7. CREATE ENROLLMENT
+    // 🔐 7. CREATE ENROLLMENT (REQUIRED: sectionId is mandatory - never omit it)
     ////////////////////////////
     const enrollment = await tx.enrollment.create({
       data: {
         studentId: newStudent.id,
         classId,
-        sectionId,
+        sectionId,              // ✅ CRITICAL: Must always include sectionId
         academicYearId,
         tenantId,
         status: "active",
+        rollNumber: student.rollNumber || undefined,
       },
     });
 
@@ -169,6 +172,7 @@ export const createAdmission = async (body: any, user: any) => {
             installmentNo: 1,
             status: "PENDING",
             dueDate: new Date(),
+            isDeleted: false,   // ✅ Initialize soft-delete flag
           },
         });
       }

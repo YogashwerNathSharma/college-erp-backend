@@ -18,7 +18,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem("themeColor") || "#4f46e5";
   });
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("darkMode") === "true";
+    const stored = localStorage.getItem("darkMode");
+    return stored === null ? true : stored === "true";
   });
 
   useEffect(() => {

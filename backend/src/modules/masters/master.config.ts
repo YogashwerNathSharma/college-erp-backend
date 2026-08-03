@@ -63,7 +63,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
           { name: 'phone', label: 'Phone', type: 'phone' },
           { name: 'email', label: 'Email', type: 'email' },
           { name: 'website', label: 'Website', type: 'url' },
-          { name: 'logo', label: 'Logo', type: 'image' },
+          { name: 'logo', label: 'Logo', type: 'url' },
           { name: 'affiliation', label: 'Affiliation', type: 'text' },
           { name: 'establishedYear', label: 'Established Year', type: 'number', min: 1800, max: 2100 },
           { name: 'principalName', label: 'Principal Name', type: 'text' },

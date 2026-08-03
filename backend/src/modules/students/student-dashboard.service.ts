@@ -448,8 +448,8 @@ export const getCategoryDistribution = async (
 
   const total = students.length;
   const categoryCount: Record<string, number> = {};
-  students.forEach((s) => {
-    const cat = s.categoryId ? (categoryMap.get(s.categoryId) || "Not Assigned") : "Not Assigned";
+  students.forEach((s: any) => {
+    const cat: string = s.categoryId ? (categoryMap.get(s.categoryId as string) || "Not Assigned") : "Not Assigned";
     categoryCount[cat] = (categoryCount[cat] || 0) + 1;
   });
 

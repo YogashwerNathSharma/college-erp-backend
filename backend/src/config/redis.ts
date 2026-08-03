@@ -57,7 +57,7 @@ export const cacheGet = async (key: string): Promise<string | null> => {
   if (!client) return null;
 
   try {
-    return await client.get(key);
+    return await client.get(key) as string | null;
   } catch {
     return null;
   }

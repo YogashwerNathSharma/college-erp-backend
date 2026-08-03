@@ -8,62 +8,95 @@ const router = Router();
 // 🔐 All routes require SUPER_ADMIN
 router.use(authMiddleware, allowRoles("SUPER_ADMIN"));
 
+// Helper: get or create a setting by module+key
+async function getSettingValue(tenantId: string, module: string, key: string): Promise<any> {
+  const setting = await (prisma as any).systemSetting.findFirst({
+    where: { tenantId, module, key },
+  });
+  if (!setting) return null;
+  return setting.type === "JSON" ? JSON.parse(setting.value) : setting.value;
+}
+
+// Helper: upsert a setting
+async function upsertSetting(
+  tenantId: string,
+  module: string,
+  key: string,
+  value: any,
+  type: string = "JSON",
+  description?: string
+) {
+  const stringValue = type === "JSON" ? JSON.stringify(value) : String(value);
+  const existing = await (prisma as any).systemSetting.findFirst({
+    where: { tenantId, module, key },
+  });
+  if (existing) {
+    return (prisma as any).systemSetting.update({
+      where: { id: existing.id },
+      data: { value: stringValue, type },
+    });
+  }
+  return (prisma as any).systemSetting.create({
+    data: { tenantId, module, key, value: stringValue, type, description },
+  });
+}
+
 //////////////////////////////////////////////////////
 // GET ALL SYSTEM SETTINGS
 //////////////////////////////////////////////////////
 
 router.get("/", async (req: any, res: Response) => {
   try {
-    let settings = await prisma.systemSettings.findFirst();
+    const tenantId = req.user?.tenantId || "system";
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) {
-      settings = await prisma.systemSettings.create({
-        data: {
-          appName: "College ERP",
-          appUrl: process.env.BASE_URL || "http://localhost:5000",
-          timezone: "Asia/Kolkata",
-          currency: "INR",
-          language: "en",
-          smtpHost: "",
-          smtpPort: 587,
-          smtpUser: "",
-          smtpPass: "",
-          smtpFrom: "",
-          smsProvider: "none",
-          smsApiKey: "",
-          smsSenderId: "",
-          whatsappEnabled: false,
-          whatsappApiKey: "",
-          whatsappPhoneId: "",
-          firebaseEnabled: false,
-          firebaseProjectId: "",
-          firebaseServerKey: "",
-          googleLoginEnabled: false,
-          googleClientId: "",
-          googleClientSecret: "",
-          microsoftLoginEnabled: false,
-          microsoftClientId: "",
-          microsoftClientSecret: "",
-          facebookLoginEnabled: false,
-          facebookAppId: "",
-          facebookAppSecret: "",
-          storageProvider: "local",
-          s3Bucket: "",
-          s3Region: "",
-          s3AccessKey: "",
-          s3SecretKey: "",
-          backupEnabled: false,
-          backupSchedule: "0 2 * * *",
-          backupRetentionDays: 30,
-          cacheProvider: "memory",
-          redisHost: "",
-          redisPort: 6379,
-          redisPassword: "",
-          maintenanceMode: false,
-          maintenanceMessage: "System is under maintenance. Please try again later.",
-          availableLanguages: JSON.stringify(["en", "hi", "ur", "ta", "te", "bn"]),
-          rtlEnabled: false,
-        },
-      });
+      settings = {
+        appName: "College ERP",
+        appUrl: process.env.BASE_URL || "http://localhost:5000",
+        timezone: "Asia/Kolkata",
+        currency: "INR",
+        language: "en",
+        smtpHost: "",
+        smtpPort: 587,
+        smtpUser: "",
+        smtpPass: "",
+        smtpFrom: "",
+        smsProvider: "none",
+        smsApiKey: "",
+        smsSenderId: "",
+        whatsappEnabled: false,
+        whatsappApiKey: "",
+        whatsappPhoneId: "",
+        firebaseEnabled: false,
+        firebaseProjectId: "",
+        firebaseServerKey: "",
+        googleLoginEnabled: false,
+        googleClientId: "",
+        googleClientSecret: "",
+        microsoftLoginEnabled: false,
+        microsoftClientId: "",
+        microsoftClientSecret: "",
+        facebookLoginEnabled: false,
+        facebookAppId: "",
+        facebookAppSecret: "",
+        storageProvider: "local",
+        s3Bucket: "",
+        s3Region: "",
+        s3AccessKey: "",
+        s3SecretKey: "",
+        backupEnabled: false,
+        backupSchedule: "0 2 * * *",
+        backupRetentionDays: 30,
+        cacheProvider: "memory",
+        redisHost: "",
+        redisPort: 6379,
+        redisPassword: "",
+        maintenanceMode: false,
+        maintenanceMessage: "System is under maintenance. Please try again later.",
+        availableLanguages: ["en", "hi", "ur", "ta", "te", "bn"],
+        rtlEnabled: false,
+      };
+      await upsertSetting(tenantId, "general", "app_settings", settings, "JSON", "Global application settings");
     }
     res.json({ success: true, data: settings });
   } catch (error: any) {
@@ -77,23 +110,23 @@ router.get("/", async (req: any, res: Response) => {
 
 router.put("/application", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { appName, appUrl, timezone, currency, language, rtlEnabled, availableLanguages } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) {
       return res.status(404).json({ success: false, message: "Settings not found" });
     }
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(appName !== undefined && { appName }),
-        ...(appUrl !== undefined && { appUrl }),
-        ...(timezone !== undefined && { timezone }),
-        ...(currency !== undefined && { currency }),
-        ...(language !== undefined && { language }),
-        ...(rtlEnabled !== undefined && { rtlEnabled }),
-        ...(availableLanguages !== undefined && { availableLanguages: JSON.stringify(availableLanguages) }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(appName !== undefined && { appName }),
+      ...(appUrl !== undefined && { appUrl }),
+      ...(timezone !== undefined && { timezone }),
+      ...(currency !== undefined && { currency }),
+      ...(language !== undefined && { language }),
+      ...(rtlEnabled !== undefined && { rtlEnabled }),
+      ...(availableLanguages !== undefined && { availableLanguages }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -106,20 +139,20 @@ router.put("/application", async (req: any, res: Response) => {
 
 router.put("/smtp", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { smtpHost, smtpPort, smtpUser, smtpPass, smtpFrom } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(smtpHost !== undefined && { smtpHost }),
-        ...(smtpPort !== undefined && { smtpPort }),
-        ...(smtpUser !== undefined && { smtpUser }),
-        ...(smtpPass !== undefined && { smtpPass }),
-        ...(smtpFrom !== undefined && { smtpFrom }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(smtpHost !== undefined && { smtpHost }),
+      ...(smtpPort !== undefined && { smtpPort }),
+      ...(smtpUser !== undefined && { smtpUser }),
+      ...(smtpPass !== undefined && { smtpPass }),
+      ...(smtpFrom !== undefined && { smtpFrom }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -149,18 +182,18 @@ router.post("/smtp/test", async (req: any, res: Response) => {
 
 router.put("/sms", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { smsProvider, smsApiKey, smsSenderId } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(smsProvider !== undefined && { smsProvider }),
-        ...(smsApiKey !== undefined && { smsApiKey }),
-        ...(smsSenderId !== undefined && { smsSenderId }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(smsProvider !== undefined && { smsProvider }),
+      ...(smsApiKey !== undefined && { smsApiKey }),
+      ...(smsSenderId !== undefined && { smsSenderId }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -173,18 +206,18 @@ router.put("/sms", async (req: any, res: Response) => {
 
 router.put("/whatsapp", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { whatsappEnabled, whatsappApiKey, whatsappPhoneId } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(whatsappEnabled !== undefined && { whatsappEnabled }),
-        ...(whatsappApiKey !== undefined && { whatsappApiKey }),
-        ...(whatsappPhoneId !== undefined && { whatsappPhoneId }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(whatsappEnabled !== undefined && { whatsappEnabled }),
+      ...(whatsappApiKey !== undefined && { whatsappApiKey }),
+      ...(whatsappPhoneId !== undefined && { whatsappPhoneId }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -197,18 +230,18 @@ router.put("/whatsapp", async (req: any, res: Response) => {
 
 router.put("/firebase", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { firebaseEnabled, firebaseProjectId, firebaseServerKey } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(firebaseEnabled !== undefined && { firebaseEnabled }),
-        ...(firebaseProjectId !== undefined && { firebaseProjectId }),
-        ...(firebaseServerKey !== undefined && { firebaseServerKey }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(firebaseEnabled !== undefined && { firebaseEnabled }),
+      ...(firebaseProjectId !== undefined && { firebaseProjectId }),
+      ...(firebaseServerKey !== undefined && { firebaseServerKey }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -221,29 +254,29 @@ router.put("/firebase", async (req: any, res: Response) => {
 
 router.put("/oauth", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const {
       googleLoginEnabled, googleClientId, googleClientSecret,
       microsoftLoginEnabled, microsoftClientId, microsoftClientSecret,
       facebookLoginEnabled, facebookAppId, facebookAppSecret,
     } = req.body;
 
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(googleLoginEnabled !== undefined && { googleLoginEnabled }),
-        ...(googleClientId !== undefined && { googleClientId }),
-        ...(googleClientSecret !== undefined && { googleClientSecret }),
-        ...(microsoftLoginEnabled !== undefined && { microsoftLoginEnabled }),
-        ...(microsoftClientId !== undefined && { microsoftClientId }),
-        ...(microsoftClientSecret !== undefined && { microsoftClientSecret }),
-        ...(facebookLoginEnabled !== undefined && { facebookLoginEnabled }),
-        ...(facebookAppId !== undefined && { facebookAppId }),
-        ...(facebookAppSecret !== undefined && { facebookAppSecret }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(googleLoginEnabled !== undefined && { googleLoginEnabled }),
+      ...(googleClientId !== undefined && { googleClientId }),
+      ...(googleClientSecret !== undefined && { googleClientSecret }),
+      ...(microsoftLoginEnabled !== undefined && { microsoftLoginEnabled }),
+      ...(microsoftClientId !== undefined && { microsoftClientId }),
+      ...(microsoftClientSecret !== undefined && { microsoftClientSecret }),
+      ...(facebookLoginEnabled !== undefined && { facebookLoginEnabled }),
+      ...(facebookAppId !== undefined && { facebookAppId }),
+      ...(facebookAppSecret !== undefined && { facebookAppSecret }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -256,20 +289,20 @@ router.put("/oauth", async (req: any, res: Response) => {
 
 router.put("/storage", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { storageProvider, s3Bucket, s3Region, s3AccessKey, s3SecretKey } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(storageProvider !== undefined && { storageProvider }),
-        ...(s3Bucket !== undefined && { s3Bucket }),
-        ...(s3Region !== undefined && { s3Region }),
-        ...(s3AccessKey !== undefined && { s3AccessKey }),
-        ...(s3SecretKey !== undefined && { s3SecretKey }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(storageProvider !== undefined && { storageProvider }),
+      ...(s3Bucket !== undefined && { s3Bucket }),
+      ...(s3Region !== undefined && { s3Region }),
+      ...(s3AccessKey !== undefined && { s3AccessKey }),
+      ...(s3SecretKey !== undefined && { s3SecretKey }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -282,18 +315,18 @@ router.put("/storage", async (req: any, res: Response) => {
 
 router.put("/backup", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { backupEnabled, backupSchedule, backupRetentionDays } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(backupEnabled !== undefined && { backupEnabled }),
-        ...(backupSchedule !== undefined && { backupSchedule }),
-        ...(backupRetentionDays !== undefined && { backupRetentionDays }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(backupEnabled !== undefined && { backupEnabled }),
+      ...(backupSchedule !== undefined && { backupSchedule }),
+      ...(backupRetentionDays !== undefined && { backupRetentionDays }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -306,19 +339,19 @@ router.put("/backup", async (req: any, res: Response) => {
 
 router.put("/cache", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { cacheProvider, redisHost, redisPort, redisPassword } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(cacheProvider !== undefined && { cacheProvider }),
-        ...(redisHost !== undefined && { redisHost }),
-        ...(redisPort !== undefined && { redisPort }),
-        ...(redisPassword !== undefined && { redisPassword }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(cacheProvider !== undefined && { cacheProvider }),
+      ...(redisHost !== undefined && { redisHost }),
+      ...(redisPort !== undefined && { redisPort }),
+      ...(redisPassword !== undefined && { redisPassword }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -331,17 +364,17 @@ router.put("/cache", async (req: any, res: Response) => {
 
 router.put("/maintenance", async (req: any, res: Response) => {
   try {
+    const tenantId = req.user?.tenantId || "system";
     const { maintenanceMode, maintenanceMessage } = req.body;
-    let settings = await prisma.systemSettings.findFirst();
+    let settings = await getSettingValue(tenantId, "general", "app_settings");
     if (!settings) return res.status(404).json({ success: false, message: "Settings not found" });
 
-    const updated = await prisma.systemSettings.update({
-      where: { id: settings.id },
-      data: {
-        ...(maintenanceMode !== undefined && { maintenanceMode }),
-        ...(maintenanceMessage !== undefined && { maintenanceMessage }),
-      },
-    });
+    const updated = {
+      ...settings,
+      ...(maintenanceMode !== undefined && { maintenanceMode }),
+      ...(maintenanceMessage !== undefined && { maintenanceMessage }),
+    };
+    await upsertSetting(tenantId, "general", "app_settings", updated);
     res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

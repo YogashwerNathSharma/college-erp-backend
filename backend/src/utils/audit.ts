@@ -16,14 +16,14 @@ export const createAuditLog = async ({
   data?: any;
 }) => {
   try {
-    await prisma.auditLog.create({
+    await (prisma as any).auditLog.create({
       data: {
         action,
         entity,
         entityId,
         userId,
         tenantId: tenantId || "system",
-        data
+        metadata: data || undefined,
       }
     });
   } catch (err) {

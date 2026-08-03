@@ -108,15 +108,15 @@ export const getLeaveReport = async (
   };
 
   if (fromDate && toDate) {
-    whereClause.fromDate = { gte: new Date(fromDate) };
-    whereClause.toDate = { lte: new Date(toDate) };
+    whereClause.startDate = { gte: new Date(fromDate) };
+    whereClause.endDate = { lte: new Date(toDate) };
   }
 
   if (teacherId) {
     whereClause.teacherId = teacherId;
   }
 
-  const leaves = await prisma.teacherLeave.findMany({
+  const leaves = await (prisma as any).leave.findMany({
     where: whereClause,
     include: {
       teacher: { select: { id: true, name: true } },

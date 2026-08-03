@@ -37,11 +37,17 @@ router.get("/gallery", (req, res) => {
 //////////////////////////////////////////////////////
 router.get("/developer-profile", async (req, res) => {
   try {
-    const profile = await prisma.developerProfile.findFirst();
-    if (!profile || !profile.isVisible) {
+    const profile = await (prisma as any).platformSetting.findFirst({
+      where: { key: "developer_profile" },
+    });
+    if (!profile) {
       return res.json({ success: true, data: null });
     }
-    res.json({ success: true, data: profile });
+    const data = JSON.parse(profile.value);
+    if (!data.isVisible) {
+      return res.json({ success: true, data: null });
+    }
+    res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

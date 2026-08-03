@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import multer from "multer";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import path from "path";
+import prisma from "../../utils/prisma";
 import {
   createTeacher,
   getTeachers,
@@ -238,7 +239,6 @@ export const remove = async (req: any, res: Response) => {
 export const dashboard = async (req: any, res: any) => {
   try {
     const tenantId = req.tenantId;
-    const prisma = (await import("../../utils/prisma")).default;
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -257,7 +257,7 @@ export const dashboard = async (req: any, res: any) => {
     const teachers = await prisma.teacher.findMany({
       where: { tenantId, isDeleted: false },
       select: { departmentId: true, createdAt: true, dob: true },
-    });
+    }) as any[];
 
     // Get department names
     const deptIds = [...new Set(teachers.map(t => t.departmentId).filter(Boolean))];
@@ -273,12 +273,12 @@ export const dashboard = async (req: any, res: any) => {
     }
 
     const deptCount: Record<string, number> = {};
-    teachers.forEach(t => {
+    teachers.forEach((t: any) => {
       const deptName = t.departmentId ? (deptMap.get(t.departmentId) || "Other") : "Not Assigned";
       deptCount[deptName] = (deptCount[deptName] || 0) + 1;
     });
     const departmentDistribution = Object.entries(deptCount)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, value]: [string, number]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
     // Experience distribution (based on createdAt as join date)
@@ -293,7 +293,7 @@ export const dashboard = async (req: any, res: any) => {
     const experienceDistribution = Object.entries(expBuckets).map(([range, count]) => ({ range, count }));
 
     // Unique departments count
-    const departmentsCount = new Set(teachers.map(t => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
+    const departmentsCount = new Set(teachers.map((t: any) => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
 
     const stats = {
       totalTeachers: total,

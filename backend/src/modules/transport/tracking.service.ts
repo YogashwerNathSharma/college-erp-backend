@@ -7,14 +7,16 @@ import { sendPickupNotification, sendDropNotification, sendSpeedAlert } from "./
 // TRACKING SERVICE - Business Logic Layer
 // ============================================
 
+const db = prisma as any;
+
 class TrackingService {
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // VEHICLE LOCATION
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
 
   /**
    * Update vehicle's current GPS location.
-   * Also stores in location history.
+   * VehicleLocation now stores history via timestamps (merged model).
    */
   async updateVehicleLocation(
     vehicleId: string,
@@ -37,36 +39,8 @@ class TrackingService {
     const speedLimit = 60;
     const speedCheck = checkSpeedLimit(speed, speedLimit);
 
-    // Upsert current location record
-    const locationData = {
-      vehicleId,
-      latitude: lat,
-      longitude: lng,
-      speed,
-      heading: heading ?? 0,
-      timestamp: new Date(),
-      tenantId,
-    };
-
-    const currentLocation = await prisma.vehicleLocation.upsert({
-      where: {
-        vehicleId_tenantId: {
-          vehicleId,
-          tenantId,
-        },
-      },
-      update: {
-        latitude: lat,
-        longitude: lng,
-        speed,
-        heading: heading ?? 0,
-        timestamp: new Date(),
-      },
-      create: locationData,
-    });
-
-    // Save to location history
-    await prisma.vehicleLocationHistory.create({
+    // Create a new location record (history is maintained via timestamps)
+    const currentLocation = await prisma.vehicleLocation.create({
       data: {
         vehicleId,
         latitude: lat,
@@ -80,7 +54,7 @@ class TrackingService {
 
     // If speed violation detected, create an alert
     if (speedCheck.isViolation) {
-      await prisma.transportAlert.create({
+      await db.transportAlert.create({
         data: {
           vehicleId,
           alertType: "SPEED_VIOLATION",
@@ -106,6 +80,7 @@ class TrackingService {
   async getVehicleCurrentLocation(vehicleId: string, tenantId: string) {
     const location = await prisma.vehicleLocation.findFirst({
       where: { vehicleId, tenantId },
+      orderBy: { timestamp: "desc" },
       include: {
         vehicle: {
           select: {
@@ -129,6 +104,7 @@ class TrackingService {
 
   /**
    * Get vehicle's location history within a date range.
+   * (VehicleLocation now stores all history via timestamps)
    */
   async getVehicleLocationHistory(
     vehicleId: string,
@@ -150,13 +126,13 @@ class TrackingService {
     };
 
     const [history, total] = await Promise.all([
-      prisma.vehicleLocationHistory.findMany({
+      prisma.vehicleLocation.findMany({
         where,
-        orderBy: { timestamp: "asc" },
+        orderBy: { timestamp: "asc" as const },
         skip,
         take: limit,
       }),
-      prisma.vehicleLocationHistory.count({ where }),
+      prisma.vehicleLocation.count({ where }),
     ]);
 
     // Calculate total distance traveled
@@ -182,9 +158,9 @@ class TrackingService {
     };
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // ROUTE LIVE TRACKING
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
 
   /**
    * Get all vehicles currently on a specific route (real-time positions).
@@ -205,8 +181,8 @@ class TrackingService {
       throw new Error("Route not found");
     }
 
-    // Get active trips on this route
-    const activeTrips = await prisma.transportTrip.findMany({
+    // Get active trips on this route (TripLog model)
+    const activeTrips = await db.tripLog.findMany({
       where: {
         routeId,
         tenantId,
@@ -221,21 +197,25 @@ class TrackingService {
 
     // Get current locations of these vehicles
     const vehicleIds = activeTrips.map((trip: any) => trip.vehicleId);
-    const locations = await prisma.vehicleLocation.findMany({
-      where: {
-        vehicleId: { in: vehicleIds },
-        tenantId,
-      },
-    });
+
+    // Get latest location for each vehicle
+    const locations: any[] = [];
+    for (const vid of vehicleIds) {
+      const loc = await prisma.vehicleLocation.findFirst({
+        where: { vehicleId: vid, tenantId },
+        orderBy: { timestamp: "desc" },
+      });
+      if (loc) locations.push(loc);
+    }
 
     // Build response with vehicle positions
     const vehiclesOnRoute = activeTrips.map((trip: any) => {
-      const location = locations.find((loc) => loc.vehicleId === trip.vehicleId);
+      const location = locations.find((loc: any) => loc.vehicleId === trip.vehicleId);
       return {
         trip: {
           id: trip.id,
           status: trip.status,
-          startedAt: trip.startedAt,
+          startedAt: trip.startTime,
           tripType: trip.tripType,
         },
         vehicle: trip.vehicle,
@@ -262,9 +242,9 @@ class TrackingService {
     };
   }
 
-  // ─────────────────────────────────────────────
-  // TRIPS
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
+  // TRIPS (uses TripLog model)
+  // ─────────────────────────────────────────────────
 
   /**
    * Start a new trip for a vehicle on a route.
@@ -288,7 +268,7 @@ class TrackingService {
     if (!route) throw new Error("Route not found");
 
     // Check if vehicle already has an active trip
-    const existingTrip = await prisma.transportTrip.findFirst({
+    const existingTrip = await db.tripLog.findFirst({
       where: { vehicleId, tenantId, status: "ACTIVE" },
     });
 
@@ -297,21 +277,21 @@ class TrackingService {
     }
 
     // Create the trip
-    const trip = await prisma.transportTrip.create({
+    const trip = await db.tripLog.create({
       data: {
         vehicleId,
         routeId,
         driverName,
-        startLatitude: startLat,
-        startLongitude: startLng,
+        startLat,
+        startLng,
         tripType,
         status: "ACTIVE",
-        startedAt: new Date(),
+        startTime: new Date(),
         tenantId,
       },
       include: {
         vehicle: { select: { id: true, vehicleNo: true, type: true } },
-        route: { select: { id: true, name: true, code: true } },
+        route: { select: { id: true, name: true } },
       },
     });
 
@@ -329,7 +309,7 @@ class TrackingService {
     tenantId: string,
     notes?: string
   ) {
-    const trip = await prisma.transportTrip.findFirst({
+    const trip = await db.tripLog.findFirst({
       where: { id: tripId, tenantId, status: "ACTIVE" },
     });
 
@@ -337,18 +317,16 @@ class TrackingService {
       throw new Error("Active trip not found");
     }
 
-    const endedAt = new Date();
-    const durationSeconds = Math.round((endedAt.getTime() - trip.startedAt!.getTime()) / 1000);
+    const endTime = new Date();
 
-    const updatedTrip = await prisma.transportTrip.update({
+    const updatedTrip = await db.tripLog.update({
       where: { id: tripId },
       data: {
-        endLatitude: endLat,
-        endLongitude: endLng,
+        endLat,
+        endLng,
         totalDistance,
-        durationSeconds,
         status: "COMPLETED",
-        endedAt,
+        endTime,
         notes: notes || null,
       },
       include: {
@@ -389,23 +367,23 @@ class TrackingService {
     }
     if (filters.status) where.status = filters.status;
     if (filters.startDate || filters.endDate) {
-      where.startedAt = {};
-      if (filters.startDate) where.startedAt.gte = new Date(filters.startDate);
-      if (filters.endDate) where.startedAt.lte = new Date(filters.endDate);
+      where.startTime = {};
+      if (filters.startDate) where.startTime.gte = new Date(filters.startDate);
+      if (filters.endDate) where.startTime.lte = new Date(filters.endDate);
     }
 
     const [trips, total] = await Promise.all([
-      prisma.transportTrip.findMany({
+      db.tripLog.findMany({
         where,
-        orderBy: { startedAt: "desc" },
+        orderBy: { startTime: "desc" },
         skip,
         take: limit,
         include: {
           vehicle: { select: { id: true, vehicleNo: true, driverName: true } },
-          route: { select: { id: true, name: true, code: true } },
+          route: { select: { id: true, name: true } },
         },
       }),
-      prisma.transportTrip.count({ where }),
+      db.tripLog.count({ where }),
     ]);
 
     return {
@@ -419,9 +397,9 @@ class TrackingService {
     };
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // GEOFENCE ALERTS
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
 
   /**
    * Create a geofence/tracking alert.
@@ -448,7 +426,7 @@ class TrackingService {
       throw new Error("Vehicle not found");
     }
 
-    const alert = await prisma.transportAlert.create({
+    const alert = await db.transportAlert.create({
       data: {
         vehicleId: data.vehicleId,
         alertType: data.alertType,
@@ -502,7 +480,7 @@ class TrackingService {
     }
 
     const [alerts, total] = await Promise.all([
-      prisma.transportAlert.findMany({
+      db.transportAlert.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip,
@@ -511,7 +489,7 @@ class TrackingService {
           vehicle: { select: { id: true, vehicleNo: true, driverName: true } },
         },
       }),
-      prisma.transportAlert.count({ where }),
+      db.transportAlert.count({ where }),
     ]);
 
     return {
@@ -529,7 +507,7 @@ class TrackingService {
    * Resolve an alert.
    */
   async resolveAlert(alertId: string, resolvedBy: string, tenantId: string, resolution?: string) {
-    const alert = await prisma.transportAlert.findFirst({
+    const alert = await db.transportAlert.findFirst({
       where: { id: alertId, tenantId, status: "ACTIVE" },
     });
 
@@ -537,7 +515,7 @@ class TrackingService {
       throw new Error("Active alert not found");
     }
 
-    return prisma.transportAlert.update({
+    return db.transportAlert.update({
       where: { id: alertId },
       data: {
         status: "RESOLVED",
@@ -551,9 +529,9 @@ class TrackingService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // PICKUP / DROP
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
+  // PICKUP / DROP (uses StudentPickupDrop model)
+  // ─────────────────────────────────────────────────
 
   /**
    * Record a student pickup or drop event.
@@ -573,7 +551,7 @@ class TrackingService {
     },
     tenantId: string
   ) {
-    const record = await prisma.transportPickupDrop.create({
+    const record = await db.studentPickupDrop.create({
       data: {
         studentId: data.studentId,
         studentName: data.studentName,
@@ -581,9 +559,14 @@ class TrackingService {
         tripId: data.tripId || null,
         stopId: data.stopId || null,
         eventType: data.type,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        date: new Date(),
+        status: "COMPLETED",
+        pickupLat: data.type === "PICKUP" ? data.latitude : undefined,
+        pickupLng: data.type === "PICKUP" ? data.longitude : undefined,
+        pickupTime: data.type === "PICKUP" ? (data.timestamp ? new Date(data.timestamp) : new Date()) : undefined,
+        dropLat: data.type === "DROP" ? data.latitude : undefined,
+        dropLng: data.type === "DROP" ? data.longitude : undefined,
+        dropTime: data.type === "DROP" ? (data.timestamp ? new Date(data.timestamp) : new Date()) : undefined,
         tenantId,
       },
       include: {
@@ -604,9 +587,9 @@ class TrackingService {
     return record;
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // STUDENT STATUS
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
 
   /**
    * Get a student's current transport status (for parent app).
@@ -634,13 +617,13 @@ class TrackingService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const latestEvent = await prisma.transportPickupDrop.findFirst({
+    const latestEvent = await db.studentPickupDrop.findFirst({
       where: {
         studentId,
         tenantId,
-        timestamp: { gte: today },
+        date: { gte: today },
       },
-      orderBy: { timestamp: "desc" },
+      orderBy: { createdAt: "desc" },
     });
 
     // Get vehicle's current location
@@ -650,6 +633,7 @@ class TrackingService {
     if (assignment.vehicle) {
       vehicleLocation = await prisma.vehicleLocation.findFirst({
         where: { vehicleId: assignment.vehicle.id, tenantId },
+        orderBy: { timestamp: "desc" },
       });
 
       // Calculate ETA to student's stop if vehicle is moving
@@ -668,7 +652,7 @@ class TrackingService {
     // Check if there's an active trip for this vehicle
     let activeTrip = null;
     if (assignment.vehicle) {
-      activeTrip = await prisma.transportTrip.findFirst({
+      activeTrip = await db.tripLog.findFirst({
         where: {
           vehicleId: assignment.vehicle.id,
           tenantId,
@@ -678,7 +662,7 @@ class TrackingService {
           id: true,
           tripType: true,
           status: true,
-          startedAt: true,
+          startTime: true,
           driverName: true,
         },
       });
@@ -687,7 +671,7 @@ class TrackingService {
     // Determine current status
     let currentStatus = "NOT_STARTED";
     if (latestEvent) {
-      currentStatus = latestEvent.type === "PICKUP" ? "IN_TRANSIT" : "DROPPED";
+      currentStatus = latestEvent.eventType === "PICKUP" ? "IN_TRANSIT" : "DROPPED";
     } else if (activeTrip) {
       currentStatus = "BUS_EN_ROUTE";
     }
@@ -706,10 +690,10 @@ class TrackingService {
       currentStatus,
       latestEvent: latestEvent
         ? {
-            type: latestEvent.type,
-            timestamp: latestEvent.timestamp,
-            latitude: latestEvent.latitude,
-            longitude: latestEvent.longitude,
+            type: latestEvent.eventType,
+            timestamp: latestEvent.pickupTime || latestEvent.dropTime,
+            latitude: latestEvent.pickupLat || latestEvent.dropLat,
+            longitude: latestEvent.pickupLng || latestEvent.dropLng,
           }
         : null,
       vehicleLocation: vehicleLocation
@@ -726,16 +710,19 @@ class TrackingService {
     };
   }
 
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // ETA CALCULATION
-  // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
 
   /**
    * Calculate ETA for a vehicle to reach a specific stop.
    */
   async calculateETAForStop(vehicleId: string, stopId: string, tenantId: string) {
     const [vehicleLocation, stop] = await Promise.all([
-      prisma.vehicleLocation.findFirst({ where: { vehicleId, tenantId } }),
+      prisma.vehicleLocation.findFirst({
+        where: { vehicleId, tenantId },
+        orderBy: { timestamp: "desc" },
+      }),
       prisma.routeStop.findFirst({ where: { id: stopId, tenantId, isDeleted: false } }),
     ]);
 

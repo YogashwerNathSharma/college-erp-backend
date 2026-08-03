@@ -50,7 +50,7 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
     } catch (err: any) {
       console.error("❌ Failed to generate admission number:", err.message);
       // Try sync counter and retry once
-      const { syncAdmissionCounter } = await import("./admission-number.service");
+      const { syncAdmissionCounter } = await import("./admission-number.service.js");
       await syncAdmissionCounter(tenantId, academicYearId);
       finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
       console.log(`✅ Generated after sync: ${finalAdmissionNo}`);

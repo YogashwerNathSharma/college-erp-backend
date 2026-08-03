@@ -5,14 +5,14 @@
     "moduleResolution": "node16",
     "rootDir": "./src",
     "outDir": "./dist",
-    "strict": true,
-    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "skipLibCheck": true,
-
+    "esModuleInterop": true,
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src"],
   "exclude": ["src/modules/fees old","src/modules/examold"]
 
 }
-

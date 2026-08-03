@@ -247,7 +247,7 @@ export const dashboard = async (req: any, res: any) => {
     const [total, active, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
       prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
       prisma.teacher.count({ where: { tenantId, isDeleted: false } }), // all non-deleted are active
-      prisma.leave.count({ where: { tenantId, status: "Approved", toDate: { gte: now }, fromDate: { lte: now } } }).catch(() => 0),
+      prisma.leave.count({ where: { tenantId, status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
       prisma.teacher.count({ where: { tenantId, isDeleted: false, createdAt: { gte: thirtyDaysAgo } } }),
       prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
       prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),

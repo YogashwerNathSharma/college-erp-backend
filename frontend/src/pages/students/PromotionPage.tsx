@@ -178,6 +178,7 @@ const PromotionPage = () => {
 
       // Refresh eligible list
       fetchEligible();
+      fetchPromotedHistory();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Promotion failed", "error");
     } finally {
@@ -220,6 +221,7 @@ const PromotionPage = () => {
       );
       setEligibleStudents([]);
       setSelectedStudents([]);
+      fetchPromotedHistory();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Bulk promotion failed", "error");
     } finally {
@@ -236,7 +238,9 @@ const PromotionPage = () => {
   const fetchPromotedHistory = async () => {
     setHistoryLoading(true);
     try {
-      const res = await axios.get(getFullUrl("/api/students/reports/promotion"));
+      const res = await axios.get(getFullUrl("/api/students/reports/promotion"), {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
       setPromotedHistory(res.data.data?.report || []);
     } catch (err) {
       console.error("Failed to fetch promotion history:", err);
@@ -437,7 +441,7 @@ const PromotionPage = () => {
                 <tr
                   key={e.id}
                   className={`border-b dark:border-[var(--border)] hover:bg-gray-50 dark:hover:bg-[var(--surface-overlay)] ${
-                    selectedStudents.includes(e.student.id) ? "bg-primary-50 dark:bg-primary-900/20" : ""
+                    selectedStudents.includes(e.student.id) ? "bg-indigo-50 dark:bg-indigo-950/40" : ""
                   }`}
                 >
                   <td className="p-3">

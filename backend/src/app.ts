@@ -61,6 +61,7 @@ import studentDashboardRoutes from "./modules/students/student-dashboard.routes"
 import studentSearchRoutes from "./modules/students/student-search.routes";
 import studentCommunicationRoutes from "./modules/students/student-communication.routes";
 import studentOperationsRoutes from "./modules/students/student-operations.routes";
+import studentReportsRoutes from "./modules/students/student-reports.routes";
 
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import attendanceReportRoutes from "./modules/attendance/attendance-report.routes";
@@ -275,6 +276,7 @@ app.use("/api/students/dashboard", studentDashboardRoutes);
 app.use("/api/students/search", studentSearchRoutes);
 app.use("/api/students/communication", studentCommunicationRoutes);
 app.use("/api/students/operations", studentOperationsRoutes);
+app.use("/api/students/reports", studentReportsRoutes);
 
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/subjects", subjectRoutes);

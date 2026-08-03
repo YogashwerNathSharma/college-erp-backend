@@ -341,16 +341,16 @@ const AcademicYearPage: React.FC = () => {
   const LoadingSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm animate-pulse">
+        <div key={i} className="rounded-2xl border border-gray-200 dark:border-[var(--border)] bg-white dark:bg-[var(--surface-raised)] p-6 shadow-sm animate-pulse">
           <div className="flex items-center justify-between mb-4">
-            <div className="h-6 w-24 bg-gray-200 rounded-lg" />
-            <div className="h-6 w-16 bg-gray-200 rounded-full" />
+            <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+            <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
           </div>
           <div className="space-y-3">
-            <div className="h-4 w-40 bg-gray-100 rounded" />
-            <div className="h-4 w-36 bg-gray-100 rounded" />
+            <div className="h-4 w-40 bg-gray-100 dark:bg-gray-700 rounded" />
+            <div className="h-4 w-36 bg-gray-100 dark:bg-gray-700 rounded" />
           </div>
-          <div className="mt-5 h-9 w-full bg-gray-100 rounded-lg" />
+          <div className="mt-5 h-9 w-full bg-gray-100 dark:bg-gray-700 rounded-lg" />
         </div>
       ))}
     </div>
@@ -363,7 +363,7 @@ const AcademicYearPage: React.FC = () => {
       <div className="w-20 h-20 rounded-full bg-primary-50 flex items-center justify-center mb-5">
         <GraduationCap className="w-10 h-10 text-indigo-400" />
       </div>
-      <h3 className="text-lg font-semibold text-gray-800 mb-2">No Academic Years Found</h3>
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">No Academic Years Found</h3>
       <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
         Get started by creating your first academic year.
       </p>
@@ -377,18 +377,18 @@ const AcademicYearPage: React.FC = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-[var(--bg)] p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Academic Year</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage academic years and set the currently active session.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Academic Year</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage academic years and set the currently active session.</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           <button
             onClick={() => setShowRecycleBin(!showRecycleBin)}
             className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border transition-colors ${
-              showRecycleBin ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              showRecycleBin ? "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" : "bg-white dark:bg-[var(--surface-raised)] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[var(--border)] hover:bg-gray-50 dark:hover:bg-[var(--surface-overlay)]"
             }`}
           >
             <Archive className="w-4 h-4" />
@@ -429,7 +429,7 @@ const AcademicYearPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-3 mb-6">
             <Archive className="w-5 h-5 text-orange-500" />
-            <h2 className="text-lg font-semibold text-gray-800">Recycle Bin</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Recycle Bin</h2>
             <span className="text-sm text-gray-500">({deletedYears.length} items)</span>
           </div>
 
@@ -502,8 +502,8 @@ const AcademicYearPage: React.FC = () => {
                     key={year.id}
                     className={`relative rounded-2xl border p-6 shadow-sm transition-all duration-200 ${
                       year.isCurrent || year.isActive
-                        ? "bg-gradient-to-br from-indigo-50/80 to-white border-primary-300 ring-1 ring-indigo-200"
-                        : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
+                        ? "bg-gradient-to-br from-indigo-50/80 to-white dark:from-indigo-950/40 dark:to-[var(--surface-raised)] border-primary-300 dark:border-primary-700 ring-1 ring-indigo-200 dark:ring-indigo-800"
+                        : "bg-white dark:bg-[var(--surface-raised)] border-gray-200 dark:border-[var(--border)] hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md"
                     }`}
                   >
                     {/* Current Year Ribbon */}
@@ -519,14 +519,14 @@ const AcademicYearPage: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          year.isCurrent || year.isActive ? "bg-primary-100 text-primary-600" : "bg-gray-100 text-gray-500"
+                          year.isCurrent || year.isActive ? "bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                         }`}>
                           <Calendar className="w-5 h-5" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900">{year.name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{year.name}</h3>
                       </div>
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        year.isCurrent || year.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                        year.isCurrent || year.isActive ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${year.isCurrent || year.isActive ? "bg-green-500" : "bg-gray-400"}`} />
                         {year.isCurrent ? "Current" : year.isActive ? "Active" : "Inactive"}
@@ -562,7 +562,7 @@ const AcademicYearPage: React.FC = () => {
 
                       <button
                         onClick={() => handleEdit(year)}
-                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-200 hover:bg-primary-50 transition-colors"
+                        className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-[var(--border)] text-gray-500 dark:text-gray-400 hover:text-primary-600 hover:border-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                         title="Edit"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -572,7 +572,7 @@ const AcademicYearPage: React.FC = () => {
                         <button
                           onClick={() => handleSoftDelete(year.id, year.name)}
                           disabled={actionLoading === year.id}
-                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors disabled:opacity-60"
+                          className="w-10 h-10 inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-[var(--border)] text-gray-500 dark:text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60"
                           title="Move to Recycle Bin"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -590,17 +590,17 @@ const AcademicYearPage: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!submitting) { setShowModal(false); setEditingYear(null); setFormError(null); } }} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="relative w-full max-w-md bg-white dark:bg-[var(--surface-raised)] rounded-2xl shadow-xl border border-gray-200 dark:border-[var(--border)] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-[var(--border)]">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-primary-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {editingYear ? "Edit Academic Year" : "Add Academic Year"}
                 </h2>
               </div>
-              <button onClick={() => { if (!submitting) { setShowModal(false); setEditingYear(null); setFormError(null); } }} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              <button onClick={() => { if (!submitting) { setShowModal(false); setEditingYear(null); setFormError(null); } }} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -614,18 +614,18 @@ const AcademicYearPage: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Academic Year Name</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g. 2025-26" className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow placeholder:text-gray-400" disabled={submitting} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Academic Year Name</label>
+                <input type="text" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} placeholder="e.g. 2025-26" className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow placeholder:text-gray-400 dark:placeholder:text-gray-500" disabled={submitting} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Start Date</label>
-                <input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Start Date</label>
+                <input type="date" value={formData.startDate} onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">End Date</label>
-                <input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">End Date</label>
+                <input type="date" value={formData.endDate} onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-[var(--border)] dark:bg-[var(--surface-overlay)] dark:text-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow" disabled={submitting} />
               </div>
 
               <div className="flex items-center gap-3 pt-2">

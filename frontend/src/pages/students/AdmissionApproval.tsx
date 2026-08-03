@@ -126,7 +126,12 @@ export default function AdmissionApproval() {
       );
 
       const data = res.data.data;
-      setStudents(data.students || []);
+      // Map backend 'status' field to frontend 'admissionStatus'
+      const studentsList = (data.students || []).map((s: any) => ({
+        ...s,
+        admissionStatus: s.admissionStatus || s.status || "pending",
+      }));
+      setStudents(studentsList);
       setTotalPages(data.totalPages || 1);
       setTotal(data.total || 0);
     } catch (err: any) {

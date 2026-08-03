@@ -20,10 +20,11 @@ export const changeStatusHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
     const studentId = req.params.id;
-    const { status, reason } = req.body;
+    const { status, admissionStatus, reason } = req.body;
+    const finalStatus = admissionStatus || status;
 
-    const validStatuses = ["active", "inactive", "transferred", "passed", "dropped", "suspended", "alumni"];
-    if (!status || !validStatuses.includes(status)) {
+    const validStatuses = ["active", "inactive", "transferred", "passed", "dropped", "suspended", "alumni", "pending", "verified", "approved", "rejected"];
+    if (!finalStatus || !validStatuses.includes(finalStatus)) {
       return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
     }
 
@@ -37,7 +38,7 @@ export const changeStatusHandler = async (req: any, res: Response) => {
     await prisma.student.update({
       where: { id: studentId },
       data: {
-        status,
+        status: finalStatus,
         statusChangedAt: new Date(),
         statusChangedBy: req.user?.userId || req.user?.name,
         statusReason: reason || null,

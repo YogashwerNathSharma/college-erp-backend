@@ -7,6 +7,7 @@ import { Router, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import prisma from "../../utils/prisma";
 import { uploadDocument } from "../../utils/upload";
 
 import {
@@ -39,6 +40,34 @@ router.patch("/:id/status", allowRoles("ADMIN"), async (req: any, res: Response)
     }
     const result = await changeStudentStatus(req.tenantId, req.params.id, { status, reason, effectiveDate }, req.user.userId);
     res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// Admission status update (POST - used by Admission Approval page)
+router.post("/:id/status", allowRoles("ADMIN"), async (req: any, res: Response) => {
+  try {
+    const { admissionStatus, status, statusReason, reason } = req.body;
+    const finalStatus = admissionStatus || status;
+    if (!finalStatus) {
+      return res.status(400).json({ success: false, message: "Status is required" });
+    }
+    const validStatuses = ["pending", "verified", "approved", "rejected", "active", "inactive"];
+    if (!validStatuses.includes(finalStatus)) {
+      return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
+    }
+    // Direct update without full status change service (simpler for admission flow)
+    const updated = await prisma.student.update({
+      where: { id: req.params.id },
+      data: {
+        status: finalStatus,
+        statusChangedAt: new Date(),
+        statusChangedBy: req.user?.userId,
+        statusReason: statusReason || reason || null,
+      },
+    });
+    res.json({ success: true, data: updated });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }

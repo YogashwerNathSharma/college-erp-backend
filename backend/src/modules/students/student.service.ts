@@ -143,7 +143,7 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
       guardianRelation: guardianRelation || null,
       photoUrl: photoUrl || null,
       admissionDate: new Date(),
-      status: "active",
+      status: "pending",
       isDeleted: false,
       tenant: { connect: { id: tenantId } },
       academicYear: { connect: { id: academicYearId } },
@@ -198,13 +198,16 @@ export const getAllStudents = async (
     sectionId?: string;
     academicYearId?: string;
     status?: string;
+    admissionStatus?: string;
     search?: string;
     gender?: string;
+    dateFrom?: string;
+    dateTo?: string;
     page?: number;
     limit?: number;
   }
 ) => {
-  const { classId, sectionId, academicYearId, status, search, gender, page = 1, limit = 50 } = filters;
+  const { classId, sectionId, academicYearId, status, admissionStatus, search, gender, dateFrom, dateTo, page = 1, limit = 50 } = filters;
 
   const where: any = {
     tenantId,
@@ -212,12 +215,18 @@ export const getAllStudents = async (
   };
 
   if (status) where.status = status;
+  if (admissionStatus) where.status = admissionStatus;
   if (gender) {
     const genderMap: Record<string, string[]> = {
       male: ["Male", "male", "M", "MALE"],
       female: ["Female", "female", "F", "FEMALE"],
     };
     where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
+  }
+  if (dateFrom || dateTo) {
+    where.admissionDate = {};
+    if (dateFrom) where.admissionDate.gte = new Date(dateFrom);
+    if (dateTo) where.admissionDate.lte = new Date(dateTo);
   }
   if (search) {
     where.OR = [

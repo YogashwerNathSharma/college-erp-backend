@@ -272,7 +272,6 @@ router.get("/excel/template", async (req: any, res: Response) => {
 // SIBLINGS
 // ══════════════════════════════════════════════════════════════════════════════
 
-import prisma from "../../utils/prisma";
 
 router.get("/:id/siblings", async (req: any, res: Response) => {
   try {

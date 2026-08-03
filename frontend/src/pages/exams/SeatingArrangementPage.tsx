@@ -134,6 +134,20 @@ const SeatingArrangementPage: React.FC = () => {
     return map;
   }, [selectedClassIds, classes]);
 
+  // Group exams by name to show unique exam terms (for seating plan, classes are mixed room-wise)
+  const uniqueExamTerms = useMemo(() => {
+    const termMap = new Map<string, { name: string; ids: string[]; firstId: string }>();
+    exams.forEach(exam => {
+      const existing = termMap.get(exam.name);
+      if (existing) {
+        existing.ids.push(exam.id);
+      } else {
+        termMap.set(exam.name, { name: exam.name, ids: [exam.id], firstId: exam.id });
+      }
+    });
+    return Array.from(termMap.values());
+  }, [exams]);
+
   // Filter seats by search and room
   const displaySeats = useMemo(() => {
     let filtered = seats.filter(s => s.assigned);
@@ -617,9 +631,9 @@ const SeatingArrangementPage: React.FC = () => {
                 className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
               >
                 <option value="">-- Choose Exam --</option>
-                {exams.map(exam => (
-                  <option key={exam.id} value={exam.id}>
-                    {exam.name} {exam.className ? `(${exam.className})` : ""}
+                {uniqueExamTerms.map(term => (
+                  <option key={term.firstId} value={term.firstId}>
+                    {term.name}
                   </option>
                 ))}
               </select>

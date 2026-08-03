@@ -79,7 +79,17 @@ export const getDashboardStats = async (
   academicYearId?: string
 ): Promise<DashboardStats> => {
   const baseWhere: any = { tenantId, isDeleted: false };
-  if (academicYearId) baseWhere.academicYearId = academicYearId;
+
+  // Filter students by academic year via active enrollments
+  if (academicYearId) {
+    baseWhere.enrollments = {
+      some: {
+        academicYearId,
+        status: "active",
+        isDeleted: false,
+      },
+    };
+  }
 
   const [
     totalStudents,
@@ -96,13 +106,13 @@ export const getDashboardStats = async (
     birthdayToday,
   ] = await Promise.all([
     prisma.student.count({ where: baseWhere }),
-    prisma.student.count({ where: { ...baseWhere, status: "active" } }),
-    prisma.student.count({ where: { ...baseWhere, status: { not: "active" } } }),
+    prisma.student.count({ where: { ...baseWhere, status: { in: ["active", "pending", "verified"] } } }),
+    prisma.student.count({ where: { ...baseWhere, status: { notIn: ["active", "pending", "verified"] } } }),
     prisma.student.count({
-      where: { ...baseWhere, gender: "MALE" },
+      where: { ...baseWhere, status: { in: ["active", "pending", "verified"] }, gender: "MALE" },
     }),
     prisma.student.count({
-      where: { ...baseWhere, gender: "FEMALE" },
+      where: { ...baseWhere, status: { in: ["active", "pending", "verified"] }, gender: "FEMALE" },
     }),
     getNewAdmissionsCount(tenantId, 30),
     getLeavingStudentsCount(tenantId, 30),
@@ -195,7 +205,6 @@ export const getClassStrength = async (
   academicYearId?: string
 ): Promise<ClassStrengthItem[]> => {
   const classWhere: any = { tenantId, isDeleted: false };
-  if (academicYearId) classWhere.academicYearId = academicYearId;
 
   const classes = await prisma.class.findMany({
     where: classWhere,
@@ -206,6 +215,7 @@ export const getClassStrength = async (
         where: {
           status: "active",
           isDeleted: false,
+          ...(academicYearId ? { academicYearId } : {}),
         },
         include: {
           student: { select: { gender: true } },
@@ -283,7 +293,7 @@ export const getMonthlyAdmissionTrend = async (
       tenantId,
       isDeleted: false,
       admissionDate: { gte: twelveMonthsAgo },
-      ...(academicYearId && { academicYearId }),
+      ...(academicYearId && { enrollments: { some: { academicYearId, isDeleted: false } } }),
     },
     select: { admissionDate: true },
   });
@@ -401,7 +411,14 @@ export const getGenderRatio = async (
   academicYearId?: string
 ): Promise<GenderRatioItem[]> => {
   const where: any = { tenantId, isDeleted: false, status: "active" };
-  if (academicYearId) where.academicYearId = academicYearId;
+  if (academicYearId) {
+    where.enrollments = {
+      some: {
+        academicYearId,
+        isDeleted: false,
+      },
+    };
+  }
 
   const students = await prisma.student.findMany({
     where,
@@ -432,7 +449,14 @@ export const getCategoryDistribution = async (
   academicYearId?: string
 ): Promise<CategoryItem[]> => {
   const where: any = { tenantId, isDeleted: false };
-  if (academicYearId) where.academicYearId = academicYearId;
+  if (academicYearId) {
+    where.enrollments = {
+      some: {
+        academicYearId,
+        isDeleted: false,
+      },
+    };
+  }
 
   const students = await prisma.student.findMany({
     where,

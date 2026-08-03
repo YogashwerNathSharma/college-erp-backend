@@ -59,6 +59,10 @@ const PromotionPage = () => {
   const [promoting, setPromoting] = useState(false);
   const [promotionType, setPromotionType] = useState("promotion");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  
+  // Promoted students history
+  const [promotedHistory, setPromotedHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Fetch academic years and classes
   useEffect(() => {
@@ -75,6 +79,7 @@ const PromotionPage = () => {
       }
     };
     fetchData();
+    fetchPromotedHistory();
   }, []);
 
   // Fetch FROM sections when fromClassId changes
@@ -226,6 +231,27 @@ const PromotionPage = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  // Fetch promoted students history
+  const fetchPromotedHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await axios.get(getFullUrl("/api/students/reports/promotion"));
+      setPromotedHistory(res.data.data?.report || []);
+    } catch (err) {
+      console.error("Failed to fetch promotion history:", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Group promoted history by toClass
+  const groupedByClass = promotedHistory.reduce((acc: Record<string, any[]>, item: any) => {
+    const key = item.toClass || "Unknown";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -445,6 +471,82 @@ const PromotionPage = () => {
           <p className="text-sm mt-1">Then click "Find Eligible Students" to see who can be promoted</p>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          PROMOTED STUDENTS HISTORY (Grouped by Class)
+      ═══════════════════════════════════════════════════════════════ */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">📋 Promoted Students</h2>
+          <button
+            onClick={fetchPromotedHistory}
+            className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+          >
+            🔄 Refresh
+          </button>
+        </div>
+
+        {historyLoading ? (
+          <div className="text-center py-8 text-gray-500">Loading promotion history...</div>
+        ) : promotedHistory.length === 0 ? (
+          <div className="text-center py-8 bg-white dark:bg-[var(--surface-raised)] rounded-xl shadow dark:shadow-none dark:border dark:border-[var(--border)]">
+            <p className="text-gray-500 dark:text-gray-400">No promotions recorded yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(groupedByClass).map(([className, students]) => (
+              <div key={className} className="bg-white dark:bg-[var(--surface-raised)] rounded-xl shadow dark:shadow-none dark:border dark:border-[var(--border)] overflow-hidden">
+                <div className="px-4 py-3 bg-green-50 dark:bg-green-900/20 border-b dark:border-[var(--border)] flex items-center justify-between">
+                  <h3 className="font-semibold text-green-800 dark:text-green-400">
+                    📚 Promoted to: {className}
+                  </h3>
+                  <span className="text-xs bg-green-100 dark:bg-green-800/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full font-medium">
+                    {(students as any[]).length} students
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-[var(--surface-overlay)]">
+                      <tr>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">#</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Student Name</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Admission No</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">From Class</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">To Section</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Type</th>
+                        <th className="p-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y dark:divide-[var(--border)]">
+                      {(students as any[]).map((s, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
+                          <td className="p-3 text-gray-500 dark:text-gray-400">{idx + 1}</td>
+                          <td className="p-3 font-medium text-gray-900 dark:text-gray-100">{s.studentName}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{s.admissionNo}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{s.fromClass} - {s.fromSection}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{s.toSection}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              s.promotionType === "detention" 
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" 
+                                : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            }`}>
+                              {s.promotionType === "detention" ? "Detained" : s.promotionType === "jump" ? "Jump" : "Promoted"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-500 dark:text-gray-400 text-xs">
+                            {new Date(s.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

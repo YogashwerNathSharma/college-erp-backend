@@ -682,7 +682,7 @@ function RoleDashboard() {
 //////////////////////////////////////////////////////
 function RoleSettings() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user?.role === "SUPER_ADMIN" ? <SuperAdminSettings /> : <SettingsPage />;
+  return user?.role === "SUPER_ADMIN" ? <SuperAdminSettings /> : <TenantAdminSettings />;
 }
 
 //////////////////////////////////////////////////////

@@ -444,7 +444,7 @@ export const getCategoryDistribution = async (
     where: { tenantId },
     select: { id: true, name: true },
   });
-  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+  const categoryMap = new Map<string, string>(categories.map((c: any) => [c.id, c.name]));
 
   const total = students.length;
   const categoryCount: Record<string, number> = {};

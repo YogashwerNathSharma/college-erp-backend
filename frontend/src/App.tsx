@@ -356,7 +356,8 @@ axios.interceptors.response.use(
         return Promise.reject(error);
       }
       localStorage.setItem("subscriptionExpired", "true");
-      window.location.href = "/subscription-expired";
+      // Temporarily disabled subscription redirect to prevent page refresh loops
+      // window.location.href = "/subscription-expired";
     }
     return Promise.reject(error);
   }
@@ -509,9 +510,10 @@ function ProtectedRoute() {
   // Skip subscription redirect for print/report/exam pages
   const skipRedirectPaths = ["/subscription-expired", "/subscriptions", "/print", "/report-card", "/consolidated", "/exams/"];
   const shouldSkipRedirect = skipRedirectPaths.some((p) => location.pathname.includes(p));
-  if (isExpired && !shouldSkipRedirect) {
-    return <Navigate to="/subscription-expired" replace />;
-  }
+  // Temporarily disabled - causing unwanted redirects
+  // if (isExpired && !shouldSkipRedirect) {
+  //   return <Navigate to="/subscription-expired" replace />;
+  // }
 
   // 🔥 FIXED: Direct allow print paths on mobile browser redirects to bypass strict structural array blockers
   if (location.pathname.startsWith("/print/")) {

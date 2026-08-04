@@ -6,13 +6,16 @@
 export interface MasterField {
   name: string;
   label: string;
-  type: 'text' | 'number' | 'email' | 'phone' | 'date' | 'datetime' | 'select' | 'boolean' | 'textarea' | 'color' | 'url' | 'json' | 'array';
+  type: 'text' | 'number' | 'email' | 'phone' | 'date' | 'datetime' | 'select' | 'boolean' | 'textarea' | 'color' | 'url' | 'json' | 'array' | 'lookup';
   required?: boolean;
   options?: { label: string; value: string }[];
   placeholder?: string;
   min?: number;
   max?: number;
   defaultValue?: any;
+  lookupUrl?: string;       // API endpoint for lookup type (e.g., '/api/academic')
+  lookupLabelField?: string; // Field to use as label (default: 'name')
+  lookupValueField?: string; // Field to use as value (default: 'id')
 }
 
 export interface MasterModelConfig {
@@ -789,7 +792,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
           { name: 'name', label: 'Term Name', type: 'text', required: true, placeholder: 'e.g., Term 1' },
           { name: 'startDate', label: 'Start Date', type: 'date', required: true },
           { name: 'endDate', label: 'End Date', type: 'date', required: true },
-          { name: 'academicYearId', label: 'Academic Year (ID)', type: 'text' },
+          { name: 'academicYearId', label: 'Academic Year', type: 'lookup', required: true, lookupUrl: '/api/academic', lookupLabelField: 'name', lookupValueField: 'id' },
         ],
       },
       {

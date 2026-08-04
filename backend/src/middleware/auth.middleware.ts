@@ -83,8 +83,9 @@ export const subscriptionCheckMiddleware = async (
     }
 
 // Check active subscription
-    // ═══ DEV MODE: Skip subscription check ═══
-    if (process.env.NODE_ENV !== "production") {
+    // ═══ TEMPORARILY DISABLED: Skip subscription check in all environments ═══
+    // TODO: Re-enable once subscription plans are properly set up
+    if (true) {
       return next();
     }
 

@@ -18,6 +18,9 @@ interface FieldConfig {
   min?: number;
   max?: number;
   defaultValue?: any;
+  lookupUrl?: string;
+  lookupLabelField?: string;
+  lookupValueField?: string;
 }
 
 interface MasterFormProps {
@@ -27,6 +30,62 @@ interface MasterFormProps {
   onClose: () => void;
   loading: boolean;
   title: string;
+}
+
+
+// ─── Lookup Field Component (fetches options from API) ───────────────────────
+function LookupField({ field, value, onChange }: { field: FieldConfig; value: any; onChange: (val: string) => void }) {
+  const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(getFullUrl(field.lookupUrl || ""), {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const data = res.data?.data || res.data || [];
+        const labelField = field.lookupLabelField || "name";
+        const valueField = field.lookupValueField || "id";
+        setOptions(
+          (Array.isArray(data) ? data : []).map((item: any) => ({
+            label: item[labelField] || item.name || item.id,
+            value: item[valueField] || item.id,
+          }))
+        );
+      } catch (err) {
+        console.error("Lookup fetch failed:", err);
+        setOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (field.lookupUrl) fetchOptions();
+  }, [field.lookupUrl, field.lookupLabelField, field.lookupValueField]);
+
+  if (loading) {
+    return (
+      <select disabled className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm">
+        <option>Loading...</option>
+      </select>
+    );
+  }
+
+  return (
+    <select
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+    >
+      <option value="">Select {field.label}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 export default function MasterForm({
@@ -366,6 +425,15 @@ export default function MasterForm({
             placeholder={field.placeholder || "{}"}
             rows={4}
             className={`${baseClasses} font-mono text-xs resize-none`}
+          />
+        );
+
+      case "lookup":
+        return (
+          <LookupField
+            field={field}
+            value={value}
+            onChange={(val) => handleChange(field.name, val)}
           />
         );
 

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import express from "express";
+import prisma from "../../utils/prisma";
 import {
   createExam,
   updateExam,
@@ -124,6 +125,20 @@ router.get("/:id/schedule", authMiddleware, getExamSchedule);
 // Admit Cards (dynamic)
 router.get("/:id/admit-cards", authMiddleware, getAdmitCards);
 router.get("/:examId/admit-card/:studentId", authMiddleware, getAdmitCard);
+
+// Delete all admit cards for an exam
+router.delete("/:id/admit-cards", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const examId = req.params.id;
+    const result = await prisma.admitCard.deleteMany({
+      where: { examId, tenantId },
+    });
+    res.json({ success: true, message: `Deleted ${result.count} admit cards`, count: result.count });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Question Papers (dynamic)
 router.get("/:id/question-papers", authMiddleware, getQuestionPapers);

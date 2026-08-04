@@ -16,6 +16,7 @@ import {
   User,
   School,
   Filter,
+  Trash2,
 } from "lucide-react";
 
 const YN_UDP_API = "https://yn-udp.onrender.com/api";
@@ -215,6 +216,28 @@ const AdmitCardPage: React.FC = () => {
       toast.error(msg);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Delete all admit cards for the selected exam term
+  const handleDeleteAll = async () => {
+    if (!selectedExam) {
+      toast.error("Please select an exam");
+      return;
+    }
+    if (!confirm("Are you sure you want to delete ALL admit cards for this exam? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const selectedExamName = exams.find((e: any) => e.id === selectedExam)?.name;
+      const relatedExamIds = exams.filter((e: any) => e.name === selectedExamName).map((e: any) => e.id);
+      for (const examId of relatedExamIds) {
+        await axios.delete(getFullUrl(`/api/exam/${examId}/admit-cards`), { headers });
+      }
+      toast.success("All admit cards deleted");
+      setAdmitCards([]);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete admit cards");
     }
   };
 
@@ -834,6 +857,15 @@ const AdmitCardPage: React.FC = () => {
                 )}
                 Generate All
               </button>
+              {admitCards.length > 0 && (
+                <button
+                  onClick={handleDeleteAll}
+                  className="inline-flex items-center px-4 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete All ({admitCards.length})
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1316,11 +1316,25 @@ export const getAdmitCardsService = async (
 
   const studentIds = admitCards.map((ac: any) => ac.studentId);
   const students = studentIds.length > 0
-    ? await prisma.student.findMany({ where: { id: { in: studentIds } } })
+    ? await prisma.student.findMany({
+        where: { id: { in: studentIds } },
+        include: {
+          enrollments: {
+            where: { isDeleted: false, status: "active" },
+            include: {
+              class: { select: { id: true, name: true } },
+              section: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      })
     : [];
 
   return admitCards.map((ac: any) => {
     const student = students.find((s: any) => s.id === ac.studentId);
+    const enrollment = (student as any)?.enrollments?.[0];
     return {
       ...ac,
       student: {
@@ -1329,6 +1343,9 @@ export const getAdmitCardsService = async (
         rollNo: ac.rollNo,
         photoUrl: (student as any)?.photoUrl || "",
         fatherName: (student as any)?.fatherName || "",
+        className: enrollment?.class?.name || "",
+        sectionName: enrollment?.section?.name || "",
+        classId: enrollment?.class?.id || "",
       },
     };
   });
@@ -1927,11 +1944,17 @@ export const generateCustomSeatingService = async (
     });
     if (exam) {
       // Create a temp schedule so we can store seating (FK constraint requires valid examScheduleId)
-      // Get a valid subjectId for this exam's class
-      const firstSubject = await prisma.subject.findFirst({
-        where: { classId: exam.classId, tenantId },
+      // Get a valid subjectId from ANY of the selected classes (not just exam's class)
+      let firstSubject = await prisma.subject.findFirst({
+        where: { classId: { in: classIds }, tenantId },
       });
-      if (!firstSubject) throw new Error("No subjects found for this class. Please add subjects first.");
+      if (!firstSubject) {
+        // Fallback: try exam's own class
+        firstSubject = await prisma.subject.findFirst({
+          where: { classId: exam.classId, tenantId },
+        });
+      }
+      if (!firstSubject) throw new Error("No subjects found for selected classes. Please add subjects first.");
 
       const tempSchedule = await prisma.examSchedule.create({
         data: {
@@ -1951,7 +1974,8 @@ export const generateCustomSeatingService = async (
   if (!exam) throw new Error("Exam not found. Please create an exam schedule first.");
 
   // Fetch students from selected classes
-  const enrollments = await prisma.enrollment.findMany({
+  // Try with exam's academic year first; if no results, try current active year
+  let enrollments = await prisma.enrollment.findMany({
     where: {
       classId: { in: classIds },
       academicYearId: exam.academicYearId,
@@ -1960,6 +1984,25 @@ export const generateCustomSeatingService = async (
       isDeleted: false,
     },
   });
+
+  // Fallback: if no enrollments found, try with current active academic year
+  if (enrollments.length === 0) {
+    const activeYear = await prisma.academicYear.findFirst({
+      where: { tenantId, isDeleted: false, OR: [{ isCurrent: true }, { isActive: true }] },
+    });
+    if (activeYear && activeYear.id !== exam.academicYearId) {
+      enrollments = await prisma.enrollment.findMany({
+        where: {
+          classId: { in: classIds },
+          academicYearId: activeYear.id,
+          tenantId,
+          status: "active",
+          isDeleted: false,
+        },
+      });
+      console.log("🪑 [SEATING] Used active year fallback:", activeYear.id, "| Enrollments:", enrollments.length);
+    }
+  }
 
   // Deduplicate students (one per studentId)
   const studentIds = [...new Set(enrollments.map((e: any) => e.studentId))];

@@ -176,8 +176,17 @@ const AdmitCardPage: React.FC = () => {
   const fetchAdmitCards = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-cards`), { headers });
-      setAdmitCards(res.data?.data || res.data || []);
+      // Get all exam IDs with the same name as selected
+      const selectedExamName = exams.find((e: any) => e.id === selectedExam)?.name;
+      const relatedExamIds = exams.filter((e: any) => e.name === selectedExamName).map((e: any) => e.id);
+      
+      // Fetch admit cards for all related exams
+      const allCards: any[] = [];
+      for (const examId of relatedExamIds) {
+        const res = await axios.get(getFullUrl(`/api/exam/${examId}/admit-cards`), { headers });
+        allCards.push(...(res.data?.data || res.data || []));
+      }
+      setAdmitCards(allCards);
     } catch {
       toast.error("Failed to load admit cards");
     } finally {
@@ -192,7 +201,13 @@ const AdmitCardPage: React.FC = () => {
     }
     setGenerating(true);
     try {
-      await axios.post(getFullUrl("/api/exam/admit-cards/generate"), { examId: selectedExam }, { headers });
+      // Generate for all exams with the same name
+      const selectedExamName = exams.find((e: any) => e.id === selectedExam)?.name;
+      const relatedExamIds = exams.filter((e: any) => e.name === selectedExamName).map((e: any) => e.id);
+      
+      for (const examId of relatedExamIds) {
+        await axios.post(getFullUrl("/api/exam/admit-cards/generate"), { examId }, { headers });
+      }
       toast.success("Admit cards generated successfully");
       fetchAdmitCards();
     } catch (error: any) {
@@ -736,11 +751,16 @@ const AdmitCardPage: React.FC = () => {
                 className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">-- Select Exam --</option>
-                {exams.map((exam) => (
-                  <option key={exam.id} value={exam.id}>
-                    {exam.name} {exam.className ? `(${exam.className})` : ""}
+                {/* Group by exam name - show only unique term names */}
+                {Array.from(new Set(exams.map((e: any) => e.name))).map((examName) => {
+                  // Use the first exam ID with this name as the value
+                  const firstExam = exams.find((e: any) => e.name === examName);
+                  return (
+                  <option key={examName as string} value={firstExam?.id || ""}>
+                    {examName as string}
                   </option>
-                ))}
+                  );
+                })}
               </select>
             </div>
 

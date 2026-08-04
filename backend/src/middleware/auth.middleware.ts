@@ -83,9 +83,13 @@ export const subscriptionCheckMiddleware = async (
     }
 
 // Check active subscription
-    // ═══ TEMPORARILY DISABLED: Skip subscription check in all environments ═══
-    // TODO: Re-enable once subscription plans are properly set up
-    if (true) {
+    // ═══ DEV MODE: Skip subscription check ═══
+    if (process.env.NODE_ENV !== "production") {
+      return next();
+    }
+
+    // ═══ Skip subscription check for SUPER_ADMIN only ═══
+    if (user.role === "SUPER_ADMIN") {
       return next();
     }
 

@@ -54,6 +54,7 @@ const CreateEditExam: React.FC = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [examTerms, setExamTerms] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fetchingExam, setFetchingExam] = useState(false);
@@ -76,12 +77,14 @@ const CreateEditExam: React.FC = () => {
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [classRes, yearRes] = await Promise.all([
+      const [classRes, yearRes, termRes] = await Promise.all([
         axios.get(getFullUrl("/api/class"), { headers }),
         axios.get(getFullUrl("/api/academic"), { headers }),
+        axios.get(getFullUrl("/api/masters/exam-term-master/dropdown"), { headers }).catch(() => ({ data: { data: [] } })),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
+      setExamTerms(termRes.data?.data || termRes.data || []);
     } catch (error) {
       toast.error("Failed to load form options");
     } finally {
@@ -219,20 +222,37 @@ const CreateEditExam: React.FC = () => {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-            {/* Exam Name */}
+            {/* Exam Name (from Exam Term Master) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Exam Name <span className="text-red-500">*</span>
+                Exam Term <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g., First Term Examination 2025"
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-                required
-              />
+              {examTerms.length > 0 ? (
+                <select
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+                  required
+                >
+                  <option value="">-- Select Exam Term --</option>
+                  {examTerms.map((term) => (
+                    <option key={term.id} value={term.name}>
+                      {term.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="e.g., Unit Test 1 (Add terms in Masters → Exam Term)"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+                  required
+                />
+              )}
             </div>
 
             {/* Type and Class */}

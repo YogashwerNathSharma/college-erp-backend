@@ -786,7 +786,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         model: 'ExamTerm',
         icon: 'CalendarRange',
         description: 'Exam terms within academic year',
-        requiredFields: ['name', 'startDate', 'endDate'],
+        requiredFields: ['name', 'startDate', 'endDate', 'academicYearId'],
         searchFields: ['name'],
         fields: [
           { name: 'name', label: 'Term Name', type: 'text', required: true, placeholder: 'e.g., Term 1' },

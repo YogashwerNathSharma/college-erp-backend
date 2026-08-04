@@ -16,7 +16,7 @@ const router = express.Router();
 router.get("/", authMiddleware, async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const rooms = await prisma.room.findMany({
+    const rooms = await prisma.examRoom.findMany({
       where: { tenantId, isDeleted: false },
       orderBy: { name: "asc" },
     });
@@ -36,7 +36,7 @@ router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (req:
       return res.status(400).json({ success: false, message: "Name and capacity are required" });
     }
 
-    const room = await prisma.room.create({
+    const room = await prisma.examRoom.create({
       data: { name, capacity: Number(capacity), location: location || null, tenantId, isDeleted: false },
     });
     return res.status(201).json({ success: true, data: room, message: "Room created" });
@@ -51,7 +51,7 @@ router.put("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (re
     const { id } = req.params;
     const { name, capacity, location } = req.body;
 
-    const room = await prisma.room.update({
+    const room = await prisma.examRoom.update({
       where: { id },
       data: {
         ...(name && { name }),
@@ -69,7 +69,7 @@ router.put("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (re
 router.delete("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (req: any, res: Response) => {
   try {
     const { id } = req.params;
-    await prisma.room.update({
+    await prisma.examRoom.update({
       where: { id },
       data: { isDeleted: true },
     });

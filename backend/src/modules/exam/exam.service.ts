@@ -944,7 +944,7 @@ export const getExamScheduleService = async (
 
   const [subjects, rooms] = await Promise.all([
     subjectIds.length > 0 ? prisma.subject.findMany({ where: { id: { in: subjectIds } } }) : [],
-    roomIds.length > 0 ? prisma.room.findMany({ where: { id: { in: roomIds } } }) : [],
+    roomIds.length > 0 ? prisma.examRoom.findMany({ where: { id: { in: roomIds } } }) : [],
   ]);
 
   return schedules.map((sch) => {
@@ -1006,7 +1006,7 @@ export const generateSeatingService = async (
   });
   if (!schedule) throw new Error("Schedule not found");
 
-  const room = await prisma.room.findFirst({
+  const room = await prisma.examRoom.findFirst({
     where: { id: roomId, tenantId, isDeleted: false },
   });
   if (!room) throw new Error("Room not found");
@@ -1130,7 +1130,7 @@ export const getSeatingByScheduleService = async (
   // Get all rooms used
   const roomIds = [...new Set(seatings.map((s: any) => s.roomId))];
   const rooms = roomIds.length > 0
-    ? await prisma.room.findMany({ where: { id: { in: roomIds } } })
+    ? await prisma.examRoom.findMany({ where: { id: { in: roomIds } } })
     : [];
   const roomNameMap: Record<string, string> = {};
   for (const r of rooms as any[]) {
@@ -1257,7 +1257,7 @@ export const getAdmitCardService = async (
   const roomIds = schedules.map((s: any) => s.roomId);
   const [subjects, rooms] = await Promise.all([
     subjectIds.length > 0 ? prisma.subject.findMany({ where: { id: { in: subjectIds } } }) : [],
-    roomIds.length > 0 ? prisma.room.findMany({ where: { id: { in: roomIds } } }) : [],
+    roomIds.length > 0 ? prisma.examRoom.findMany({ where: { id: { in: roomIds } } }) : [],
   ]);
 
   const schedule = schedules.map((sch: any) => {
@@ -1906,7 +1906,7 @@ export const generateCustomSeatingService = async (
   });
 
   // Validate rooms
-  const roomsData = await prisma.room.findMany({
+  const roomsData = await prisma.examRoom.findMany({
     where: { id: { in: allRoomIds }, tenantId, isDeleted: false },
   });
   if (roomsData.length === 0) throw new Error("No valid rooms found");

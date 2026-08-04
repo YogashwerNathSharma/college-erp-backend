@@ -222,17 +222,7 @@ const SeatingArrangementPage: React.FC = () => {
 
   const fetchClasses = async () => {
     try {
-      let academicYearId = "";
-      try {
-        const ayRes = await axios.get(getFullUrl("/api/academic"), { headers });
-        const years = ayRes.data?.data || ayRes.data || [];
-        const active = years.find((y: any) => y.isCurrent || y.isActive);
-        if (active) academicYearId = active.id;
-      } catch {}
-      const res = await axios.get(getFullUrl("/api/class"), {
-        headers,
-        params: academicYearId ? { academicYearId } : undefined,
-      });
+      const res = await axios.get(getFullUrl("/api/class"), { headers });
       setClasses(res.data?.data || res.data || []);
     } catch {}
   };
@@ -659,8 +649,8 @@ const SeatingArrangementPage: React.FC = () => {
                       }}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-gray-700 flex-1">{room.name}</span>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{room.capacity || 40} seats</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-200 flex-1">{room.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{room.capacity || 40} seats</span>
                   </label>
                 ))}
               </div>

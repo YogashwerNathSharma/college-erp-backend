@@ -1,5 +1,5 @@
 // @ts-nocheck
-// seating.service.ts — Production Seating Engine (FIXED: enrollment query + error handling)
+// seating.service.ts — Production Seating Engine (DEBUG + FIXED)
 
 import prisma from '../../utils/prisma';
 
@@ -25,77 +25,71 @@ function sortStudentsByRollNo(students: { id: string; admissionNo?: string | nul
   });
 }
 
-export const generateInterleavedSeatingService = async (data: {
-  examScheduleId: string;
-  classIds: string[];
-  roomConfigs?: RoomConfig[];
-  benchPattern?: BenchPatternEntry[];
-  // Legacy
-  roomIds?: string[];
-  rows?: number;
-  benchesPerRow?: number;
-  seatsPerBench?: number;
-  groupSize?: number;
-  academicYearId?: string;
-  tenantId: string;
-}) => {
+export const generateInterleavedSeatingService = async (data: any) => {
+  console.log('[SEATING] generateInterleavedSeatingService called', JSON.stringify({
+    examScheduleId: data.examScheduleId,
+    classIds: data.classIds,
+    roomConfigs: data.roomConfigs,
+    benchPattern: data.benchPattern,
+    tenantId: data.tenantId,
+  }, null, 2));
+
   const { examScheduleId, classIds, tenantId } = data;
 
+  if (!examScheduleId) throw new Error('examScheduleId is required');
   if (!classIds || classIds.length === 0) throw new Error('No classes selected');
+  if (!tenantId) throw new Error('tenantId is missing — auth issue');
 
   const schedule = await prisma.examSchedule.findFirst({
     where: { id: examScheduleId, tenantId },
   });
-  if (!schedule) throw new Error(`Exam schedule not found: ${examScheduleId}`);
+  console.log('[SEATING] schedule:', schedule?.id || 'NOT FOUND');
+  if (!schedule) throw new Error(`Exam schedule not found. ID: ${examScheduleId}, tenantId: ${tenantId}`);
 
   const exam = await prisma.exam.findFirst({
-    where: { id: schedule.examId, tenantId, isDeleted: false },
+    where: { id: schedule.examId, tenantId },
   });
+  console.log('[SEATING] exam:', exam?.id || 'NOT FOUND');
   if (!exam) throw new Error(`Exam not found for schedule: ${examScheduleId}`);
 
   const academicYearId = data.academicYearId || exam.academicYearId;
 
-  // ─── Normalize room configs ───
+  // ─ Normalize room configs
   let roomConfigs: RoomConfig[] = [];
   if (data.roomConfigs && data.roomConfigs.length > 0) {
     roomConfigs = data.roomConfigs;
   } else if (data.roomIds && data.roomIds.length > 0) {
-    roomConfigs = data.roomIds.map((id) => ({
-      roomId: id,
-      rows: data.rows || 5,
-      benches: data.benchesPerRow || 10,
+    roomConfigs = data.roomIds.map((id: string) => ({
+      roomId: id, rows: data.rows || 5, benches: data.benchesPerRow || 10,
     }));
   }
   if (roomConfigs.length === 0) throw new Error('No rooms configured');
+  console.log('[SEATING] roomConfigs:', roomConfigs.length);
 
-  // ─── Normalize bench pattern ───
+  // ─ Normalize bench pattern
   let benchPattern: BenchPatternEntry[] = [];
   if (data.benchPattern && data.benchPattern.length > 0) {
-    benchPattern = data.benchPattern.filter(b => b.classIds && b.classIds.length > 0);
+    benchPattern = data.benchPattern.filter((b: any) => b.classIds && b.classIds.length > 0);
   }
   if (benchPattern.length === 0) {
-    // Auto: group classIds in slots of 3
     for (let i = 0; i < classIds.length; i += 3)
       benchPattern.push({ benchSlot: Math.floor(i / 3) + 1, classIds: classIds.slice(i, i + 3) });
   }
   if (benchPattern.length === 0) throw new Error('Bench pattern is empty');
+  console.log('[SEATING] benchPattern:', benchPattern.length, 'slots');
 
-  const maxSeatsPerBench = Math.max(...benchPattern.map(b => b.classIds.length));
-
-  // ─── Fetch rooms ───
+  // ─ Fetch rooms
   const roomIds = roomConfigs.map((r) => r.roomId);
   const rooms = await prisma.examRoom.findMany({ where: { id: { in: roomIds }, tenantId } });
+  console.log('[SEATING] rooms found:', rooms.length, '/', roomIds.length);
 
-  // ─── Fetch students per class ───
-  // NOTE: No status filter — schema may use different values (ACTIVE/active/enrolled)
-  // We just filter by classId + academicYear + not deleted
-  const classQueues = new Map<string, string[]>();
+  // ─ Fetch students per class
+  const classQueues = new Map();
 
   for (const classId of classIds) {
-    // Try multiple approaches to get students
     let studentIds: string[] = [];
 
-    // Approach 1: via Enrollment model
+    // Try 1: Enrollment model
     try {
       const enrollments = await prisma.enrollment.findMany({
         where: {
@@ -103,65 +97,62 @@ export const generateInterleavedSeatingService = async (data: {
           ...(academicYearId ? { academicYearId } : {}),
           tenantId,
           isDeleted: false,
-          // Don't filter by status — field values vary across tenants
         },
-        select: { studentId: true, student: { select: { id: true, admissionNo: true } } },
+        select: { studentId: true },
       });
-      studentIds = enrollments
-        .filter(e => e.studentId)
-        .map(e => e.studentId);
-    } catch (e) {
-      // Enrollment model might not have all fields
+      studentIds = enrollments.map((e: any) => e.studentId).filter(Boolean);
+      console.log(`[SEATING] classId ${classId}: ${studentIds.length} via Enrollment`);
+    } catch (e: any) {
+      console.warn('[SEATING] Enrollment query failed:', e.message);
     }
 
-    // Approach 2: fallback via Student model directly
+    // Try 2: Direct Student model
     if (studentIds.length === 0) {
       try {
         const students = await prisma.student.findMany({
-          where: {
-            classId,
-            tenantId,
-            isDeleted: false,
-          },
-          select: { id: true, admissionNo: true },
+          where: { classId, tenantId, isDeleted: false },
+          select: { id: true },
         });
-        studentIds = students.map(s => s.id);
-      } catch (e) {
-        // ignore
+        studentIds = students.map((s: any) => s.id);
+        console.log(`[SEATING] classId ${classId}: ${studentIds.length} via Student model`);
+      } catch (e: any) {
+        console.warn('[SEATING] Student direct query failed:', e.message);
       }
     }
 
     if (studentIds.length > 0) {
-      // Fetch admission numbers for sorting
       const studentData = await prisma.student.findMany({
         where: { id: { in: studentIds }, isDeleted: false },
         select: { id: true, admissionNo: true },
       });
       const sorted = sortStudentsByRollNo(
-        studentIds.map(id => ({
+        studentIds.map((id: string) => ({
           id,
-          admissionNo: studentData.find(s => s.id === id)?.admissionNo || '',
+          admissionNo: studentData.find((s: any) => s.id === id)?.admissionNo || '',
         }))
       );
-      classQueues.set(classId, sorted.map(s => s.id));
+      classQueues.set(classId, sorted.map((s: any) => s.id));
     }
   }
 
+  const totalStudents = Array.from(classQueues.values()).reduce((acc: number, q: any) => acc + q.length, 0);
+  console.log('[SEATING] total students across all classes:', totalStudents);
+
   if (classQueues.size === 0)
     throw new Error(
-      'No students found for selected classes. Check that students are enrolled in these classes for the current academic year.'
+      `No students found for any selected class. Classes checked: ${classIds.join(', ')}. ` +
+      `Make sure students are enrolled in these classes (academicYearId: ${academicYearId}).`
     );
 
-  const totalStudents = Array.from(classQueues.values()).reduce((acc, q) => acc + q.length, 0);
+  // ─ Delete old seating
+  const deleted = await prisma.seatingArrangement.deleteMany({ where: { examScheduleId, tenantId } });
+  console.log('[SEATING] deleted old records:', deleted.count);
 
-  // ─── Delete old seating ───
-  await prisma.seatingArrangement.deleteMany({ where: { examScheduleId, tenantId } });
-
-  // ─── Generate seats per room ───
+  // ─ Generate seats
   const toCreate: any[] = [];
 
   for (const roomConfig of roomConfigs) {
-    const room = rooms.find((r) => r.id === roomConfig.roomId);
+    const room = rooms.find((r: any) => r.id === roomConfig.roomId);
     const roomName = room?.name || roomConfig.roomId;
     let patternIdx = 0;
 
@@ -175,9 +166,8 @@ export const generateInterleavedSeatingService = async (data: {
           const queue = classQueues.get(classId);
           if (!queue || queue.length === 0) continue;
 
-          const studentId = queue.shift()!;
+          const studentId = queue.shift();
           const seatCode = `R${row}-B${bench}-S${sp + 1}`;
-
           toCreate.push({
             examScheduleId,
             studentId,
@@ -198,20 +188,23 @@ export const generateInterleavedSeatingService = async (data: {
     }
   }
 
+  console.log('[SEATING] seats to create:', toCreate.length);
+
   if (toCreate.length === 0)
     throw new Error(
-      'No students could be seated. Verify that students exist and are enrolled in the selected classes.'
+      `Seats created = 0. Students found: ${totalStudents}, Rooms: ${roomConfigs.length}. ` +
+      `Check bench pattern classIds match selected classIds.`
     );
 
   await prisma.seatingArrangement.createMany({ data: toCreate });
+  console.log('[SEATING] createMany done');
 
-  const unassignedCount = Array.from(classQueues.values()).reduce((acc, q) => acc + q.length, 0);
+  const unassignedCount = Array.from(classQueues.values()).reduce((acc: number, q: any) => acc + q.length, 0);
 
   return {
-    message:
-      unassignedCount > 0
-        ? `${toCreate.length} students assigned. ${unassignedCount} remaining — add more rooms/benches.`
-        : `All ${toCreate.length} students assigned successfully!`,
+    message: unassignedCount > 0
+      ? `${toCreate.length} students assigned. ${unassignedCount} remaining — add more rooms/benches.`
+      : `All ${toCreate.length} students assigned successfully!`,
     totalAssigned: toCreate.length,
     totalStudents,
     unassignedCount,
@@ -220,26 +213,23 @@ export const generateInterleavedSeatingService = async (data: {
 };
 
 export const getSeatingWithDetailsService = async (examScheduleId: string, tenantId: string) => {
-  const seats = await prisma.seatingArrangement.findMany({
-    where: { examScheduleId, tenantId },
-  });
+  const seats = await prisma.seatingArrangement.findMany({ where: { examScheduleId, tenantId } });
   if (seats.length === 0) return [];
 
-  const studentIds = [...new Set(seats.map((s) => s.studentId).filter(Boolean))];
+  const studentIds = [...new Set(seats.map((s: any) => s.studentId).filter(Boolean))];
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds }, isDeleted: false },
     select: { id: true, firstName: true, lastName: true, admissionNo: true },
   });
 
   const classIds = [...new Set(seats.map((s: any) => s.classId).filter(Boolean))];
-  const clsList =
-    classIds.length > 0
-      ? await prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } })
-      : [];
+  const clsList = classIds.length > 0
+    ? await prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } })
+    : [];
 
   return seats.map((seat: any) => {
-    const student = students.find((s) => s.id === seat.studentId);
-    const cls = clsList.find((c) => c.id === seat.classId);
+    const student = students.find((s: any) => s.id === seat.studentId);
+    const cls = clsList.find((c: any) => c.id === seat.classId);
     return {
       ...seat,
       seatNumber: seat.seatNo || seat.seatNumber,

@@ -38,7 +38,12 @@ import {
   generateCustomSeating,
   aiArrangeSeating,
 } from "./exam.controller";
-import { generateInterleavedSeatingService, getSeatingWithDetailsService } from "./seating.service";
+import {
+  generateInterleavedSeatingService,
+  generateWholeExamSeatingService,
+  getSeatingWithDetailsService,
+  getAttendanceRegisterService,
+} from "./seating.service";
 import { getBulkAdmitCardsService } from "./bulk-admit-cards.service";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
@@ -72,8 +77,7 @@ router.post("/seating/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMI
 router.post("/seating/generate-custom", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateCustomSeating);
 router.post("/seating/ai-arrange", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), aiArrangeSeating);
 
-// NEW: Interleaved seating
-// Body: { examScheduleId, roomIds[], classIds[], rows, benchesPerRow, seatsPerBench?, groupSize? }
+// Single schedule interleaved seating
 router.post(
   "/seating/generate-interleaved",
   authMiddleware,
@@ -90,7 +94,24 @@ router.post(
   }
 );
 
-// Get seating with full student details (enriched)
+// Whole-exam seating — generates same plan for ALL subject schedules at once
+router.post(
+  "/seating/generate-whole-exam",
+  authMiddleware,
+  allowRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: any, res: any) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const result = await generateWholeExamSeatingService({ ...req.body, tenantId });
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("WHOLE EXAM SEATING ERROR:", error);
+      res.status(500).json({ success: false, message: error.message || "Error generating whole-exam seating" });
+    }
+  }
+);
+
+// Get seating with full student details (enriched — includes fatherName, sectionName)
 router.get(
   "/seating-detail/:scheduleId",
   authMiddleware,
@@ -108,13 +129,28 @@ router.get(
 
 router.get("/seating/:scheduleId", authMiddleware, getSeatingBySchedule);
 
+// Attendance register — room-wise list with all subject dates as columns
+router.get(
+  "/attendance-register/:examId",
+  authMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { examId } = req.params;
+      const data = await getAttendanceRegisterService(examId, tenantId);
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("ATTENDANCE REGISTER ERROR:", error);
+      res.status(500).json({ success: false, message: error.message || "Error fetching attendance register" });
+    }
+  }
+);
+
 // ─────────────────────────────────────────────────────────────
 // ADMIT CARD ROUTES
 // ─────────────────────────────────────────────────────────────
 router.post("/admit-cards/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateAdmitCards);
 
-// NEW: Bulk admit cards — single fast API call (no N+1)
-// Query: { examName, classId? }
 router.get(
   "/admit-cards/bulk",
   authMiddleware,

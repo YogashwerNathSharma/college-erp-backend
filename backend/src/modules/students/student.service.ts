@@ -2,6 +2,9 @@
 import prisma from "../../utils/prisma";
 import { generateSrNumber, generateAdmissionNumber } from "./admission-number.service";
 
+// Statuses that count as "active/enrolled" students (consistent with dashboard)
+const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
+
 // ============================================
 // CREATE STUDENT — WITH AUTO ENROLLMENT
 // ============================================
@@ -49,8 +52,8 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
       console.log(`✅ Generated admission number: ${finalAdmissionNo}`);
     } catch (err: any) {
       console.error("❌ Failed to generate admission number:", err.message);
-      // Try sync counter and retry once
-      const { syncAdmissionCounter } = await import("./admission-number.service.js");
+      // Try sync counter and retry once — use static import to avoid .js extension issues
+      const { syncAdmissionCounter } = await import("./admission-number.service");
       await syncAdmissionCounter(tenantId, academicYearId);
       finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
       console.log(`✅ Generated after sync: ${finalAdmissionNo}`);
@@ -216,13 +219,15 @@ export const getAllStudents = async (
 
   if (status) where.status = status;
   if (admissionStatus) where.status = admissionStatus;
+
+  // Gender filter — DB now stores normalized enum: MALE / FEMALE / OTHER
   if (gender) {
-    const genderMap: Record<string, string[]> = {
-      male: ["Male", "male", "M", "MALE"],
-      female: ["Female", "female", "F", "FEMALE"],
-    };
-    where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
+    const g = gender.toUpperCase();
+    if (g === "MALE" || g === "M") where.gender = "MALE";
+    else if (g === "FEMALE" || g === "F") where.gender = "FEMALE";
+    else where.gender = "OTHER";
   }
+
   if (dateFrom || dateTo) {
     where.admissionDate = {};
     if (dateFrom) where.admissionDate.gte = new Date(dateFrom);
@@ -459,14 +464,13 @@ export const getStudentStats = async (tenantId: string, academicYearId?: string)
     });
 
     const total = enrollments.length;
-    // Use student.status as source of truth (toggle updates student.status)
-    // Fallback to enrollment.status for backward compatibility
     const getStatus = (e: any) => e.student.status || e.status;
-    const active = enrollments.filter((e) => getStatus(e) === "active").length;
-    const inactive = enrollments.filter((e) => getStatus(e) === "inactive").length;
+    // Use same ACTIVE_STATUSES constant for consistency with dashboard
+    const active = enrollments.filter((e) => ACTIVE_STATUSES.includes(getStatus(e))).length;
+    const inactive = enrollments.filter((e) => !ACTIVE_STATUSES.includes(getStatus(e))).length;
     const left = enrollments.filter((e) => getStatus(e) === "left" || e.status === "left").length;
-    const boys = enrollments.filter((e) => ["Male", "male", "M", "MALE"].includes(e.student.gender) && getStatus(e) === "active").length;
-    const girls = enrollments.filter((e) => ["Female", "female", "F", "FEMALE"].includes(e.student.gender) && getStatus(e) === "active").length;
+    const boys = enrollments.filter((e) => e.student.gender === "MALE" && ACTIVE_STATUSES.includes(getStatus(e))).length;
+    const girls = enrollments.filter((e) => e.student.gender === "FEMALE" && ACTIVE_STATUSES.includes(getStatus(e))).length;
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -480,11 +484,11 @@ export const getStudentStats = async (tenantId: string, academicYearId?: string)
 
   const [total, active, inactive, left, boys, girls] = await Promise.all([
     prisma.student.count({ where: baseWhere }),
-    prisma.student.count({ where: { ...baseWhere, status: "active" } }),
-    prisma.student.count({ where: { ...baseWhere, status: "inactive" } }),
+    prisma.student.count({ where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] } } }),
+    prisma.student.count({ where: { ...baseWhere, status: { notIn: [...ACTIVE_STATUSES] } } }),
     prisma.student.count({ where: { ...baseWhere, status: "left" } }),
-    prisma.student.count({ where: { ...baseWhere, gender: { in: ["Male", "male", "M", "MALE"] } } }),
-    prisma.student.count({ where: { ...baseWhere, gender: { in: ["Female", "female", "F", "FEMALE"] } } }),
+    prisma.student.count({ where: { ...baseWhere, gender: "MALE" } }),
+    prisma.student.count({ where: { ...baseWhere, gender: "FEMALE" } }),
   ]);
 
   const now = new Date();

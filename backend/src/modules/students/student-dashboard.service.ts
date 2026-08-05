@@ -18,6 +18,9 @@ import {
 } from "./student.types";
 import { MONTHS } from "./student.constants";
 
+// Statuses that count as "active/enrolled" students
+const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
+
 // ============================================
 // GET FULL DASHBOARD DATA (single API call)
 // ============================================
@@ -106,13 +109,14 @@ export const getDashboardStats = async (
     birthdayToday,
   ] = await Promise.all([
     prisma.student.count({ where: baseWhere }),
-    prisma.student.count({ where: { ...baseWhere, status: { in: ["active", "pending", "verified"] } } }),
-    prisma.student.count({ where: { ...baseWhere, status: { notIn: ["active", "pending", "verified"] } } }),
+    // Active = enrolled students (active + pending + verified)
+    prisma.student.count({ where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] } } }),
+    prisma.student.count({ where: { ...baseWhere, status: { notIn: [...ACTIVE_STATUSES] } } }),
     prisma.student.count({
-      where: { ...baseWhere, status: { in: ["active", "pending", "verified"] }, gender: "MALE" },
+      where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] }, gender: "MALE" },
     }),
     prisma.student.count({
-      where: { ...baseWhere, status: { in: ["active", "pending", "verified"] }, gender: "FEMALE" },
+      where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] }, gender: "FEMALE" },
     }),
     getNewAdmissionsCount(tenantId, 30),
     getLeavingStudentsCount(tenantId, 30),
@@ -147,12 +151,14 @@ export const getBirthdayToday = async (tenantId: string): Promise<BirthdayStuden
   const month = today.getMonth() + 1;
   const day = today.getDate();
 
-  // MongoDB aggregation to match day and month of DOB
+  // Fetch all active/enrolled students and filter by DOB day/month in app layer
+  // (MongoDB does not support day/month extraction natively via Prisma)
   const students = await prisma.student.findMany({
     where: {
       tenantId,
       isDeleted: false,
-      status: "active",
+      // Include all enrolled students (active + pending + verified)
+      status: { in: [...ACTIVE_STATUSES] },
     },
     include: {
       enrollments: {
@@ -167,7 +173,7 @@ export const getBirthdayToday = async (tenantId: string): Promise<BirthdayStuden
     },
   });
 
-  // Filter in application layer for DOB day/month match
+  // Filter students whose birthday is today
   const birthdayStudents = students.filter((s) => {
     const dob = new Date(s.dob);
     return dob.getMonth() + 1 === month && dob.getDate() === day;
@@ -288,6 +294,7 @@ export const getMonthlyAdmissionTrend = async (
   const now = new Date();
   const twelveMonthsAgo = new Date(now.getFullYear() - 1, now.getMonth(), 1);
 
+  // Single DB query — bucket in memory
   const students = await prisma.student.findMany({
     where: {
       tenantId,
@@ -316,44 +323,47 @@ export const getMonthlyAdmissionTrend = async (
 
 // ============================================
 // STUDENT GROWTH (Year-over-Year)
+// Optimized: all 5 years fetched in parallel instead of sequentially
 // ============================================
 export const getStudentGrowth = async (tenantId: string): Promise<StudentGrowthItem[]> => {
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
 
-  const result: StudentGrowthItem[] = [];
+  // Run all year queries in parallel (was sequential — 15 DB calls, now 1 batch)
+  const allYearData = await Promise.all(
+    years.map(async (year) => {
+      const startOfYear = new Date(year, 0, 1);
+      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
 
-  for (const year of years) {
-    const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+      const [totalStudents, newAdmissions, transfers] = await Promise.all([
+        prisma.student.count({
+          where: {
+            tenantId,
+            isDeleted: false,
+            admissionDate: { lte: endOfYear },
+          },
+        }),
+        prisma.student.count({
+          where: {
+            tenantId,
+            admissionDate: { gte: startOfYear, lte: endOfYear },
+          },
+        }),
+        prisma.student.count({
+          where: {
+            tenantId,
+            status: "transferred",
+            statusChangedAt: { gte: startOfYear, lte: endOfYear },
+          },
+        }),
+      ]);
 
-    const [totalStudents, newAdmissions, transfers] = await Promise.all([
-      prisma.student.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-          admissionDate: { lte: endOfYear },
-        },
-      }),
-      prisma.student.count({
-        where: {
-          tenantId,
-          admissionDate: { gte: startOfYear, lte: endOfYear },
-        },
-      }),
-      prisma.student.count({
-        where: {
-          tenantId,
-          status: "transferred",
-          statusChangedAt: { gte: startOfYear, lte: endOfYear },
-        },
-      }),
-    ]);
+      return { year, totalStudents, newAdmissions, transfers };
+    })
+  );
 
-    result.push({ year, totalStudents, newAdmissions, transfers });
-  }
-
-  return result;
+  // Ensure result is sorted by year ascending
+  return allYearData.sort((a, b) => a.year - b.year);
 };
 
 // ============================================
@@ -410,7 +420,8 @@ export const getGenderRatio = async (
   tenantId: string,
   academicYearId?: string
 ): Promise<GenderRatioItem[]> => {
-  const where: any = { tenantId, isDeleted: false, status: "active" };
+  // Include all enrolled students (active + pending + verified)
+  const where: any = { tenantId, isDeleted: false, status: { in: [...ACTIVE_STATUSES] } };
   if (academicYearId) {
     where.enrollments = {
       some: {
@@ -426,13 +437,10 @@ export const getGenderRatio = async (
   });
 
   const total = students.length;
-  const maleCount = students.filter((s) =>
-    s.gender === "MALE"
-  ).length;
-  const femaleCount = students.filter((s) =>
-    s.gender === "FEMALE"
-  ).length;
+  const maleCount = students.filter((s) => s.gender === "MALE").length;
+  const femaleCount = students.filter((s) => s.gender === "FEMALE").length;
   const otherCount = total - maleCount - femaleCount;
+
   return {
     male: maleCount,
     female: femaleCount,
@@ -458,16 +466,17 @@ export const getCategoryDistribution = async (
     };
   }
 
-  const students = await prisma.student.findMany({
-    where,
-    select: { categoryId: true },
-  });
+  const [students, categories] = await Promise.all([
+    prisma.student.findMany({
+      where,
+      select: { categoryId: true },
+    }),
+    prisma.category.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+    }),
+  ]);
 
-  // Fetch all categories for this tenant to map IDs to names
-  const categories = await prisma.category.findMany({
-    where: { tenantId },
-    select: { id: true, name: true },
-  });
   const categoryMap = new Map<string, string>(categories.map((c: any) => [c.id, c.name]));
 
   const total = students.length;

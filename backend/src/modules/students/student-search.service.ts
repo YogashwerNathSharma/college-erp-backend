@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ══════════════════════════════════════════════════════════════════════════════
 // STUDENT SEARCH SERVICE — Advanced Search & Saved Filters
 // ══════════════════════════════════════════════════════════════════════════════
@@ -43,7 +42,7 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
   const pageSize = Math.min(limit, MAX_PAGE_SIZE);
 
   // Build the where clause dynamically
-  const where: any = {
+  const where: Record<string, unknown> = {
     tenantId,
     isDeleted: false,
   };
@@ -74,9 +73,9 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
   }
 
   if (mobile) {
-    if (!where.OR) where.OR = [];
+    const existing = (where.OR as unknown[]) || [];
     where.OR = [
-      ...(where.OR || []),
+      ...existing,
       { phone: { contains: mobile } },
       { fatherPhone: { contains: mobile } },
       { motherPhone: { contains: mobile } },
@@ -93,12 +92,11 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
   }
 
   if (gender) {
-    const genderMap: Record<string, string[]> = {
-      male: ["Male", "male", "M", "MALE"],
-      female: ["Female", "female", "F", "FEMALE"],
-      other: ["Other", "other"],
-    };
-    where.gender = { in: genderMap[gender.toLowerCase()] || [gender] };
+    // DB stores normalized enum: MALE / FEMALE / OTHER
+    const g = gender.toUpperCase();
+    if (g === "MALE" || g === "M") where.gender = "MALE";
+    else if (g === "FEMALE" || g === "F") where.gender = "FEMALE";
+    else where.gender = "OTHER";
   }
 
   if (bloodGroup) {
@@ -119,19 +117,21 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
 
   // Date range filters
   if (admissionDateFrom || admissionDateTo) {
-    where.admissionDate = {};
-    if (admissionDateFrom) where.admissionDate.gte = new Date(admissionDateFrom);
-    if (admissionDateTo) where.admissionDate.lte = new Date(admissionDateTo);
+    const dateFilter: Record<string, Date> = {};
+    if (admissionDateFrom) dateFilter.gte = new Date(admissionDateFrom);
+    if (admissionDateTo) dateFilter.lte = new Date(admissionDateTo);
+    where.admissionDate = dateFilter;
   }
 
   if (dobFrom || dobTo) {
-    where.dob = {};
-    if (dobFrom) where.dob.gte = new Date(dobFrom);
-    if (dobTo) where.dob.lte = new Date(dobTo);
+    const dobFilter: Record<string, Date> = {};
+    if (dobFrom) dobFilter.gte = new Date(dobFrom);
+    if (dobTo) dobFilter.lte = new Date(dobTo);
+    where.dob = dobFilter;
   }
 
   // Enrollment-based filters (class, section, academic year)
-  const enrollmentFilter: any = {};
+  const enrollmentFilter: Record<string, string> = {};
   if (classId) enrollmentFilter.classId = classId;
   if (sectionId) enrollmentFilter.sectionId = sectionId;
   if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
@@ -148,7 +148,6 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
 
   // Transport filter
   if (transport === true) {
-    // Students who have active transport assignments
     const transportStudentIds = await getTransportStudentIds(tenantId);
     where.id = { in: transportStudentIds };
   }
@@ -156,21 +155,21 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
   // Hostel filter
   if (hostel === true) {
     const hostelStudentIds = await getHostelStudentIds(tenantId);
-    if (where.id) {
-      // Intersection
-      where.id = { in: (where.id.in || []).filter((id: string) => hostelStudentIds.includes(id)) };
+    const existingIdFilter = where.id as { in?: string[] } | undefined;
+    if (existingIdFilter?.in) {
+      // Intersection of transport and hostel students
+      where.id = { in: existingIdFilter.in.filter((id) => hostelStudentIds.includes(id)) };
     } else {
       where.id = { in: hostelStudentIds };
     }
   }
 
-  // Build sort
-  const orderBy: any = {};
-  if (sortBy && ["firstName", "lastName", "admissionNo", "rollNumber", "createdAt", "admissionDate", "dob", "status"].includes(sortBy)) {
-    orderBy[sortBy] = sortDir;
-  } else {
-    orderBy.createdAt = "desc";
-  }
+  // Build sort — only allow safe sort fields
+  const allowedSortFields = ["firstName", "lastName", "admissionNo", "rollNumber", "createdAt", "admissionDate", "dob", "status"] as const;
+  type SortField = typeof allowedSortFields[number];
+  const safeSortBy: SortField = (allowedSortFields as readonly string[]).includes(sortBy) ? sortBy as SortField : "createdAt";
+  const safeDir = sortDir === "asc" ? "asc" : "desc";
+  const orderBy: Record<string, string> = { [safeSortBy]: safeDir };
 
   // Execute query
   const [students, total] = await Promise.all([
@@ -215,7 +214,7 @@ export const checkDuplicate = async (
   params: { aadharNo?: string; phone?: string; email?: string; admissionNo?: string }
 ) => {
   const { aadharNo, phone, email, admissionNo } = params;
-  const duplicates: Array<{ field: string; student: any }> = [];
+  const duplicates: Array<{ field: string; student: unknown }> = [];
 
   if (aadharNo) {
     const found = await prisma.student.findFirst({
@@ -345,7 +344,7 @@ async function getTransportStudentIds(tenantId: string): Promise<string[]> {
       where: { tenantId, isActive: true },
       select: { studentId: true },
     });
-    return assignments.map((a: any) => a.studentId).filter(Boolean);
+    return assignments.map((a) => a.studentId).filter((id): id is string => Boolean(id));
   } catch {
     return [];
   }
@@ -360,7 +359,7 @@ async function getHostelStudentIds(tenantId: string): Promise<string[]> {
       where: { tenantId, isActive: true },
       select: { studentId: true },
     });
-    return allocations.map((a: any) => a.studentId).filter(Boolean);
+    return allocations.map((a) => a.studentId).filter((id): id is string => Boolean(id));
   } catch {
     return [];
   }

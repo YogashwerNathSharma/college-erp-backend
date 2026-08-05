@@ -2,62 +2,48 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-// List students with pagination and search
 export const list = query({
   args: {
     paginationOpts: paginationOptsValidator,
-    search: v.optional(v.string()),
     status: v.optional(v.string()),
-    classId: v.optional(v.string()),
     approvalStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const q = ctx.db.query("students");
-
     if (args.status) {
       return await q
         .withIndex("by_status", (qi) => qi.eq("status", args.status!))
         .filter((qi) => qi.neq(qi.field("isDeleted"), true))
         .paginate(args.paginationOpts);
     }
-
     if (args.approvalStatus) {
       return await q
-        .withIndex("by_approval_status", (qi) =>
-          qi.eq("approvalStatus", args.approvalStatus!)
-        )
+        .withIndex("by_approval_status", (qi) => qi.eq("approvalStatus", args.approvalStatus!))
         .filter((qi) => qi.neq(qi.field("isDeleted"), true))
         .paginate(args.paginationOpts);
     }
-
     return await q
       .filter((qi) => qi.neq(qi.field("isDeleted"), true))
       .paginate(args.paginationOpts);
   },
 });
 
-// Get all active students for a list of class names (for seating plan)
 export const listByClasses = query({
   args: { classNames: v.array(v.string()) },
   handler: async (ctx, args) => {
     const all = await ctx.db
       .query("students")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
-    return all.filter(
-      (s) => s.className && args.classNames.includes(s.className)
-    );
+    return all.filter((s) => s.className && args.classNames.includes(s.className));
   },
 });
 
-// Get distinct class names of active students
 export const listClasses = query({
   args: {},
   handler: async (ctx) => {
     const students = await ctx.db
       .query("students")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
     const classes = new Set<string>();
@@ -68,7 +54,25 @@ export const listClasses = query({
   },
 });
 
-// Get dashboard stats
+export const listClassesWithCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const students = await ctx.db
+      .query("students")
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+    const counts: Record<string, number> = {};
+    for (const s of students) {
+      if (s.className) {
+        counts[s.className] = (counts[s.className] ?? 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
 export const dashboardStats = query({
   args: {},
   handler: async (ctx) => {
@@ -76,46 +80,29 @@ export const dashboardStats = query({
       .query("students")
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
-
     const total = allStudents.length;
     const active = allStudents.filter((s) => s.status === "active").length;
-    const pending = allStudents.filter(
-      (s) => s.approvalStatus === "pending"
-    ).length;
-    const transferred = allStudents.filter(
-      (s) => s.status === "transferred"
-    ).length;
-
+    const pending = allStudents.filter((s) => s.approvalStatus === "pending").length;
+    const transferred = allStudents.filter((s) => s.status === "transferred").length;
     const male = allStudents.filter((s) => s.gender === "Male").length;
     const female = allStudents.filter((s) => s.gender === "Female").length;
-
     const classCounts: Record<string, number> = {};
     for (const s of allStudents) {
-      if (s.className) {
-        classCounts[s.className] = (classCounts[s.className] ?? 0) + 1;
-      }
+      if (s.className) classCounts[s.className] = (classCounts[s.className] ?? 0) + 1;
     }
-
     const recent = allStudents
       .filter((s) => s.admissionDate)
-      .sort((a, b) =>
-        (b.admissionDate ?? "").localeCompare(a.admissionDate ?? "")
-      )
+      .sort((a, b) => (b.admissionDate ?? "").localeCompare(a.admissionDate ?? ""))
       .slice(0, 5);
-
     return { total, active, pending, transferred, male, female, classCounts, recent };
   },
 });
 
-// Get single student
 export const getById = query({
   args: { id: v.id("students") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
-  },
+  handler: async (ctx, args) => ctx.db.get(args.id),
 });
 
-// Create student
 export const create = mutation({
   args: {
     admissionNo: v.string(),
@@ -152,12 +139,9 @@ export const create = mutation({
     status: v.string(),
     approvalStatus: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("students", { ...args, isDeleted: false });
-  },
+  handler: async (ctx, args) => ctx.db.insert("students", { ...args, isDeleted: false }),
 });
 
-// Update student
 export const update = mutation({
   args: {
     id: v.id("students"),
@@ -185,31 +169,20 @@ export const update = mutation({
   },
 });
 
-// Soft delete
 export const softDelete = mutation({
   args: { id: v.id("students") },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
-      isDeleted: true,
-      deletedAt: new Date().toISOString(),
-      status: "deleted",
-    });
+    await ctx.db.patch(args.id, { isDeleted: true, deletedAt: new Date().toISOString(), status: "deleted" });
   },
 });
 
-// Restore from recycle bin
 export const restore = mutation({
   args: { id: v.id("students") },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
-      isDeleted: false,
-      deletedAt: undefined,
-      status: "active",
-    });
+    await ctx.db.patch(args.id, { isDeleted: false, deletedAt: undefined, status: "active" });
   },
 });
 
-// Promote students (update class)
 export const promote = mutation({
   args: {
     studentIds: v.array(v.id("students")),
@@ -219,28 +192,18 @@ export const promote = mutation({
   },
   handler: async (ctx, args) => {
     for (const id of args.studentIds) {
-      await ctx.db.patch(id, {
-        className: args.newClassName,
-        section: args.newSection,
-        academicYear: args.academicYear,
-      });
+      await ctx.db.patch(id, { className: args.newClassName, section: args.newSection, academicYear: args.academicYear });
     }
     return { promoted: args.studentIds.length };
   },
 });
 
-// Get deleted students
 export const getDeleted = query({
   args: { paginationOpts: paginationOptsValidator },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("students")
-      .filter((q) => q.eq(q.field("isDeleted"), true))
-      .paginate(args.paginationOpts);
-  },
+  handler: async (ctx, args) =>
+    ctx.db.query("students").filter((q) => q.eq(q.field("isDeleted"), true)).paginate(args.paginationOpts),
 });
 
-// Approve/reject admission
 export const updateApproval = mutation({
   args: {
     id: v.id("students"),
@@ -248,9 +211,6 @@ export const updateApproval = mutation({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
-      approvalStatus: args.approvalStatus,
-      ...(args.status ? { status: args.status } : {}),
-    });
+    await ctx.db.patch(args.id, { approvalStatus: args.approvalStatus, ...(args.status ? { status: args.status } : {}) });
   },
 });

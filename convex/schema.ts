@@ -51,7 +51,6 @@ export default defineSchema({
     .index("by_admission_no", ["admissionNo"])
     .index("by_approval_status", ["approvalStatus"]),
 
-  // Exam configurations for seating plan
   exams: defineTable({
     name: v.string(),
     date: v.string(),
@@ -61,18 +60,17 @@ export default defineSchema({
     totalHalls: v.number(),
     seatsPerRow: v.number(),
     rowsPerHall: v.number(),
-    status: v.string(), // draft | published
+    status: v.string(),
     createdAt: v.string(),
   }).index("by_status", ["status"]),
 
-  // Generated seating allocations
   seatAllocations: defineTable({
     examId: v.id("exams"),
     studentId: v.id("students"),
     hallNo: v.number(),
     rowNo: v.number(),
     seatNo: v.number(),
-    globalSeatNo: v.number(), // unique seat number across hall
+    globalSeatNo: v.number(),
     admissionNo: v.string(),
     studentName: v.string(),
     className: v.string(),

@@ -24,6 +24,22 @@ const COLORS = [
   { bg: '#ecfeff', bd: '#06b6d4', tx: '#155e75' },
 ];
 
+// ─── Palette lookup by className string ──────────────────────────────────────
+const CLASS_PALETTE: string[] = [
+  '#3b82f6','#22c55e','#f59e0b','#ec4899','#6366f1',
+  '#a855f7','#14b8a6','#ef4444','#eab308','#64748b','#d946ef','#06b6d4',
+];
+const classNameColorCache: Record<string, { bg: string; bd: string; tx: string }> = {};
+function colorForClass(name?: string) {
+  if (!name) return { bg: '#f1f5f9', bd: '#94a3b8', tx: '#475569' };
+  if (classNameColorCache[name]) return classNameColorCache[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  const hex = CLASS_PALETTE[h % CLASS_PALETTE.length];
+  classNameColorCache[name] = { bg: hex + '22', bd: hex, tx: hex };
+  return classNameColorCache[name];
+}
+
 interface ClassItem    { id: string; name: string; }
 interface ExamItem     { id: string; name: string; }
 interface RoomItem     { id: string; name: string; capacity?: number; }
@@ -87,6 +103,104 @@ function triggerPrint(html: string) {
   }
 }
 
+// ─── Classroom Grid View (Screen + Print) ────────────────────────────────────
+// Each row shows ALL benches as equal-width columns (proper classroom layout)
+interface ClassroomGridProps {
+  roomName: string;
+  rowMap: Record<number, Record<number, Seat[]>>;
+  colorForSeat: (s: Seat) => { bg: string; bd: string; tx: string };
+}
+
+const ClassroomGridView: React.FC<ClassroomGridProps> = ({ roomName, rowMap, colorForSeat }) => {
+  const allBenchNos = useMemo(() => {
+    const set = new Set<number>();
+    Object.values(rowMap).forEach(bm => Object.keys(bm).forEach(b => set.add(+b)));
+    return Array.from(set).sort((a, b) => a - b);
+  }, [rowMap]);
+
+  const sortedRows = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4">
+      {/* Room header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Building2 className="w-4 h-4 text-indigo-500" />
+        <h3 className="text-sm font-bold text-gray-800">{roomName}</h3>
+        <span className="text-xs text-gray-400">
+          ({Object.values(rowMap).flatMap(bm => Object.values(bm)).flat().length} students)
+        </span>
+      </div>
+
+      {/* Board */}
+      <div className="text-center mb-4">
+        <span className="inline-block px-10 py-1 bg-gray-800 text-white text-[9px] rounded-full tracking-widest uppercase">
+          Board / Door
+        </span>
+      </div>
+
+      {/* Bench column headers */}
+      <div
+        className="grid mb-1"
+        style={{ gridTemplateColumns: `56px repeat(${allBenchNos.length}, 1fr)`, gap: '4px' }}
+      >
+        <div />
+        {allBenchNos.map(bn => (
+          <div key={bn} className="text-center text-[9px] font-bold text-indigo-500 py-0.5 bg-indigo-50 rounded-md">
+            B{bn}
+          </div>
+        ))}
+      </div>
+
+      {/* Rows */}
+      {sortedRows.map(rowNum => (
+        <div
+          key={rowNum}
+          className="grid mb-2"
+          style={{ gridTemplateColumns: `56px repeat(${allBenchNos.length}, 1fr)`, gap: '4px', alignItems: 'start' }}
+        >
+          {/* Row label */}
+          <div className="flex items-center justify-center">
+            <span className="text-[9px] font-bold text-gray-400 bg-gray-100 rounded-lg px-1.5 py-1 text-center">
+              Row<br />{rowNum}
+            </span>
+          </div>
+
+          {/* Each bench column */}
+          {allBenchNos.map(bn => {
+            const bSeats = rowMap[rowNum]?.[bn];
+            if (!bSeats || bSeats.length === 0) {
+              return <div key={bn} className="min-h-[48px] rounded-xl border border-dashed border-gray-200 bg-gray-50/50" />;
+            }
+            const sorted = [...bSeats].sort((a, b) => (a.seatInBench ?? 0) - (b.seatInBench ?? 0));
+            return (
+              <div key={bn} className="rounded-xl overflow-hidden border border-gray-200">
+                {sorted.map((seat, si) => {
+                  const col = colorForSeat(seat);
+                  return (
+                    <div
+                      key={si}
+                      style={{ background: col.bg, borderBottom: si < sorted.length - 1 ? `1px solid ${col.bd}44` : 'none' }}
+                      className="px-1.5 py-1.5 text-center"
+                    >
+                      <div className="text-[9px] font-bold truncate leading-tight" style={{ color: col.tx }}>
+                        {(seat.studentName || '—').split(' ')[0]}
+                      </div>
+                      <div className="text-[8px] text-gray-400 truncate leading-tight">{seat.rollNo}</div>
+                      <div className="text-[8px] font-semibold truncate leading-tight" style={{ color: col.tx }}>
+                        {seat.className}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const SeatingArrangementPage: React.FC = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -127,6 +241,8 @@ const SeatingArrangementPage: React.FC = () => {
     return m;
   }, [classes]);
 
+  const colorForSeat = (s: Seat) => classColorMap[s.className || ''] || colorForClass(s.className);
+
   const uniqueExams = useMemo(() => {
     const seen = new Set<string>();
     return exams.filter(e => { if (seen.has(e.name)) return false; seen.add(e.name); return true; });
@@ -136,14 +252,15 @@ const SeatingArrangementPage: React.FC = () => {
   const maxSeatPerBench  = useMemo(() => benchSlots.reduce((m, s) => Math.max(m, s.classIds.length), 0), [benchSlots]);
   const totalCapacity    = useMemo(() => roomConfs.reduce((a, r) => a + r.rows * r.benches * maxSeatPerBench, 0), [roomConfs, maxSeatPerBench]);
 
+  // Group seats: room → row → bench → seats[]
   const seatGrouped = useMemo(() => {
     const g: Record<string, Record<number, Record<number, Seat[]>>> = {};
     seats.forEach(s => {
-      const rm = s.roomName || 'Unknown';
-      const row = s.rowNo ?? 1;
+      const rm    = s.roomName || 'Unknown';
+      const row   = s.rowNo   ?? 1;
       const bench = s.benchNo ?? 1;
-      if (!g[rm]) g[rm] = {};
-      if (!g[rm][row]) g[rm][row] = {};
+      if (!g[rm])          g[rm] = {};
+      if (!g[rm][row])     g[rm][row] = {};
       if (!g[rm][row][bench]) g[rm][row][bench] = [];
       g[rm][row][bench].push(s);
     });
@@ -207,9 +324,7 @@ const SeatingArrangementPage: React.FC = () => {
       setAttendanceData(r.data?.data);
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to load attendance register');
-    } finally {
-      setLoadingAttendance(false);
-    }
+    } finally { setLoadingAttendance(false); }
   };
 
   // Pattern actions
@@ -278,42 +393,89 @@ const SeatingArrangementPage: React.FC = () => {
     }
   };
 
-  // ─── PRINT BUILDERS ──────────────────────────────────────
+  // ─── PRINT BUILDERS ──────────────────────────────────────────────────────────
 
+  /**
+   * Room Chart — same classroom grid layout as the screen view.
+   * Each room = one page; rows as horizontal strips; benches as equal columns.
+   */
   const buildRoomChartHTML = () => {
-    let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Room Chart</title><style>
-@page{size:A4 landscape;margin:8mm}
-body{font-family:Arial;font-size:9px}
-.page{page-break-after:always;padding:4mm}
-h2{text-align:center;font-size:13px;color:#1e3a8a;margin:0 0 4px}
-.board{text-align:center;margin-bottom:6px}.board span{background:#1e3a8a;color:#fff;padding:2px 20px;border-radius:20px;font-size:8px}
-.row-wrap{margin-bottom:5px}.rl{font-size:8px;color:#888;font-weight:bold;margin-bottom:2px}
-.benches{display:flex;flex-wrap:wrap;gap:3px}
-.bench{border:1px solid #ccc;border-radius:3px;overflow:hidden;min-width:70px}
-.bh{background:#e8eaf6;text-align:center;font-size:7px;padding:1px;font-weight:bold;color:#3730a3}
-.seats{display:flex}.seat{flex:1;padding:2px 1px;text-align:center;border-right:1px solid #e5e7eb}.seat:last-child{border-right:none}
-.sn{font-weight:bold;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sr{font-size:7px;color:#6b7280}.sc{font-size:7px;font-weight:bold}
+    let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Room Seating Chart</title><style>
+@page { size: A4 landscape; margin: 8mm }
+* { box-sizing: border-box }
+body { font-family: Arial, sans-serif; font-size: 9px; background: #fff }
+.page { page-break-after: always; padding: 4mm }
+.room-title { text-align: center; font-size: 14px; font-weight: bold; color: #1e3a8a; margin-bottom: 3mm }
+.board { text-align: center; margin-bottom: 5mm }
+.board span { background: #1e293b; color: #fff; padding: 2px 24px; border-radius: 20px; font-size: 8px; letter-spacing: 2px }
+.meta { text-align: center; font-size: 8px; color: #64748b; margin-bottom: 4mm }
+.bench-headers { display: grid; margin-bottom: 2px }
+.bh-spacer { }
+.bh-cell { background: #e0e7ff; color: #3730a3; font-weight: bold; text-align: center; border-radius: 4px; padding: 2px 1px; font-size: 8px }
+.row-grid { display: grid; margin-bottom: 4px; align-items: start }
+.row-label { display: flex; align-items: center; justify-content: center }
+.row-label span { background: #f1f5f9; color: #64748b; font-weight: bold; border-radius: 4px; padding: 2px 4px; font-size: 8px; text-align: center; line-height: 1.2 }
+.bench-cell { border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; min-height: 28px }
+.bench-cell.empty { background: #fafafa; border-style: dashed }
+.seat { padding: 2px 2px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.06) }
+.seat:last-child { border-bottom: none }
+.s-name { font-weight: bold; font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.s-roll { font-size: 7px; color: #94a3b8 }
+.s-cls  { font-size: 7px; font-weight: bold }
 </style></head><body>`;
-    Object.entries(seatGrouped).forEach(([rm, rowMap]) => {
-      h += `<div class="page"><h2>${rm}</h2><div class="board"><span>BOARD / DOOR</span></div>`;
-      Object.entries(rowMap).sort(([a],[b])=>+a-+b).forEach(([row, bm]) => {
-        h += `<div class="row-wrap"><div class="rl">Row ${row}</div><div class="benches">`;
-        Object.entries(bm).sort(([a],[b])=>+a-+b).forEach(([bn, bs]) => {
-          const sorted = [...bs].sort((a,b)=>(a.seatInBench??0)-(b.seatInBench??0));
-          h += `<div class="bench"><div class="bh">B${bn}</div><div class="seats">`;
-          sorted.forEach(s => { h += `<div class="seat"><div class="sn">${(s.studentName||'').split(' ')[0]||'—'}</div><div class="sr">${s.rollNo||''}</div><div class="sc">${s.className||''}</div></div>`; });
-          h += `</div></div>`;
+
+    Object.entries(seatGrouped).forEach(([roomName, rowMap]) => {
+      const allBenchNos = Array.from(new Set(
+        Object.values(rowMap).flatMap(bm => Object.keys(bm).map(Number))
+      )).sort((a, b) => a - b);
+      const sortedRows = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+      const totalStudents = Object.values(rowMap).flatMap(bm => Object.values(bm)).flat().length;
+      const cols = allBenchNos.length;
+      const colTemplate = `56px repeat(${cols}, 1fr)`;
+
+      h += `<div class="page">
+        <div class="room-title">${roomName}</div>
+        <div class="meta">${totalStudents} students &nbsp;·&nbsp; ${sortedRows.length} rows &nbsp;·&nbsp; ${cols} benches/row</div>
+        <div class="board"><span>BOARD / DOOR</span></div>
+        <div class="bench-headers" style="display:grid;grid-template-columns:${colTemplate};gap:3px;margin-bottom:3px">
+          <div class="bh-spacer"></div>
+          ${allBenchNos.map(bn => `<div class="bh-cell">B${bn}</div>`).join('')}
+        </div>`;
+
+      sortedRows.forEach(rowNum => {
+        h += `<div class="row-grid" style="grid-template-columns:${colTemplate};gap:3px">
+          <div class="row-label"><span>Row<br/>${rowNum}</span></div>`;
+        allBenchNos.forEach(bn => {
+          const bSeats = rowMap[rowNum]?.[bn];
+          if (!bSeats || bSeats.length === 0) {
+            h += `<div class="bench-cell empty"></div>`;
+          } else {
+            const sorted = [...bSeats].sort((a, b) => (a.seatInBench ?? 0) - (b.seatInBench ?? 0));
+            h += `<div class="bench-cell">`;
+            sorted.forEach(s => {
+              const col = colorForSeat(s);
+              h += `<div class="seat" style="background:${col.bg};border-bottom-color:${col.bd}33">
+                <div class="s-name" style="color:${col.tx}">${(s.studentName || '').split(' ')[0] || '—'}</div>
+                <div class="s-roll">${s.rollNo || ''}</div>
+                <div class="s-cls" style="color:${col.tx}">${s.className || ''}</div>
+              </div>`;
+            });
+            h += `</div>`;
+          }
         });
-        h += `</div></div>`;
+        h += `</div>`;
       });
       h += `</div>`;
     });
+
     return h + `</body></html>`;
   };
 
+  /**
+   * Student Slips — 3 per row, grouped by room, sorted by seatNo.
+   * Shows: Seat No (large), Name, Roll No, Class, Section, Room, Father Name.
+   */
   const buildStudentSlipsHTML = () => {
-    // Group by room for room-wise printing
     const byRoom: Record<string, Seat[]> = {};
     seats.forEach(s => {
       const rn = s.roomName || 'Unknown';
@@ -322,33 +484,38 @@ h2{text-align:center;font-size:13px;color:#1e3a8a;margin:0 0 4px}
     });
 
     let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Student Seat Slips</title><style>
-@page{size:A4;margin:8mm}
-body{font-family:Arial;font-size:9px}
-.room-header{font-size:13px;font-weight:bold;color:#1e3a8a;text-align:center;margin:8px 0 6px;border-bottom:2px solid #1e3a8a;padding-bottom:4px}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;margin-bottom:8mm}
-.slip{border:1.5px solid #1e3a8a;border-radius:4px;padding:6px}
-.stitle{font-size:10px;font-weight:bold;text-align:center;color:#1e3a8a;border-bottom:1px solid #ddd;margin-bottom:4px;padding-bottom:2px}
-.row{display:flex;justify-content:space-between;margin:1.5px 0}
-.lbl{color:#888}.val{font-weight:bold;text-align:right;max-width:65%}
-.seat-big{font-size:14px;font-weight:bold;color:#1e3a8a;text-align:center;margin:4px 0 2px;letter-spacing:1px}
+@page { size: A4; margin: 10mm }
+* { box-sizing: border-box }
+body { font-family: Arial; font-size: 9px; background: #fff }
+.room-header { font-size: 13px; font-weight: bold; color: #1e3a8a; text-align: center;
+  margin: 10px 0 6px; border-bottom: 2px solid #1e3a8a; padding-bottom: 4px }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px }
+.slip { border: 1.5px solid #1e3a8a; border-radius: 6px; padding: 7px; page-break-inside: avoid }
+.slip-title { font-size: 9px; font-weight: bold; text-align: center; color: #1e3a8a;
+  border-bottom: 1px solid #ddd; margin-bottom: 4px; padding-bottom: 2px; letter-spacing: 0.5px }
+.seat-no { font-size: 18px; font-weight: bold; color: #1e3a8a; text-align: center;
+  margin: 4px 0 6px; letter-spacing: 1px; border: 2px solid #1e3a8a; border-radius: 4px; padding: 2px }
+.row { display: flex; justify-content: space-between; margin: 2px 0; font-size: 8px }
+.lbl { color: #94a3b8; white-space: nowrap }
+.val { font-weight: bold; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; color: #1e293b }
 </style></head><body>`;
 
     Object.entries(byRoom).forEach(([roomName, roomSeats]) => {
-      // Sort room seats by seatNo
-      const sorted = [...roomSeats].sort((a, b) => (a.seatNumber || '').localeCompare(b.seatNumber || '', undefined, { numeric: true }));
+      const sorted = [...roomSeats].sort((a, b) =>
+        (a.seatNumber || '').localeCompare(b.seatNumber || '', undefined, { numeric: true }));
       h += `<div class="room-header">Room: ${roomName}</div><div class="grid">`;
       sorted.forEach(s => {
         h += `<div class="slip">
-          <div class="stitle">SEAT SLIP</div>
-          <div class="seat-big">${s.seatNumber || s.seatNo || '—'}</div>
+          <div class="slip-title">SEAT SLIP</div>
+          <div class="seat-no">${s.seatNumber || s.seatNo || '—'}</div>
           ${[
-            ['Name',    s.studentName || ''],
-            ['Roll No', s.rollNo || ''],
-            ['Class',   s.className || ''],
-            ['Section', s.sectionName || ''],
+            ['Name',    s.studentName || '—'],
+            ['Roll No', s.rollNo      || '—'],
+            ['Class',   s.className   || '—'],
+            ['Section', s.sectionName || '—'],
             ['Room',    roomName],
-            ['F/Name',  s.fatherName || ''],
-          ].map(([l,v]) => `<div class="row"><span class="lbl">${l}:</span><span class="val">${v}</span></div>`).join('')}
+            ['F/Name',  s.fatherName  || '—'],
+          ].map(([l, v]) => `<div class="row"><span class="lbl">${l}:</span><span class="val">${v}</span></div>`).join('')}
         </div>`;
       });
       h += `</div>`;
@@ -356,45 +523,62 @@ body{font-family:Arial;font-size:9px}
     return h + `</body></html>`;
   };
 
+  /**
+   * Invigilator Sheet — room-wise table, sorted by seat position.
+   */
   const buildInvigilatorHTML = () => {
-    let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invigilator Report</title><style>
-@page{size:A4;margin:10mm}
-body{font-family:Arial;font-size:9px}
-.page{page-break-after:always}
-h2{text-align:center;font-size:13px;color:#1e3a8a;margin:0 0 8px}
-table{width:100%;border-collapse:collapse}
-th{background:#1e3a8a;color:#fff;padding:3px 5px;font-size:8px;text-align:left}
-td{padding:3px 5px;border-bottom:1px solid #e5e7eb;font-size:8px}
-tr:nth-child(even){background:#f8fafc}
+    let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invigilator Sheet</title><style>
+@page { size: A4; margin: 10mm }
+body { font-family: Arial; font-size: 9px }
+.page { page-break-after: always }
+h2 { text-align: center; font-size: 13px; color: #1e3a8a; margin: 0 0 8px }
+table { width: 100%; border-collapse: collapse }
+th { background: #1e3a8a; color: #fff; padding: 4px 5px; font-size: 8px; text-align: left }
+td { padding: 3px 5px; border-bottom: 1px solid #e5e7eb; font-size: 8px }
+tr:nth-child(even) td { background: #f8fafc }
 </style></head><body>`;
+
     Object.entries(seatGrouped).forEach(([rm, rowMap]) => {
-      const all = Object.values(rowMap).flatMap(bm => Object.values(bm).flat())
-        .sort((a,b)=>{ if((a.rowNo??0)!==(b.rowNo??0))return(a.rowNo??0)-(b.rowNo??0); if((a.benchNo??0)!==(b.benchNo??0))return(a.benchNo??0)-(b.benchNo??0); return(a.seatInBench??0)-(b.seatInBench??0); });
+      const all = Object.values(rowMap)
+        .flatMap(bm => Object.values(bm).flat())
+        .sort((a, b) => {
+          if ((a.rowNo ?? 0) !== (b.rowNo ?? 0)) return (a.rowNo ?? 0) - (b.rowNo ?? 0);
+          if ((a.benchNo ?? 0) !== (b.benchNo ?? 0)) return (a.benchNo ?? 0) - (b.benchNo ?? 0);
+          return (a.seatInBench ?? 0) - (b.seatInBench ?? 0);
+        });
       h += `<div class="page"><h2>${rm} — Invigilator Sheet</h2>
-        <table><thead><tr><th>#</th><th>Seat No</th><th>Roll No</th><th>Student Name</th><th>Class/Sec</th><th>Father Name</th><th>Signature</th></tr></thead><tbody>`;
-      all.forEach((s,i) => {
-        h += `<tr><td>${i+1}</td><td>${s.seatNumber||''}</td><td>${s.rollNo||''}</td><td>${s.studentName||''}</td><td>${s.className||''}${s.sectionName ? ' / '+s.sectionName : ''}</td><td>${s.fatherName||''}</td><td style="width:55px"></td></tr>`;
+        <table><thead><tr>
+          <th>#</th><th>Seat No</th><th>Roll No</th><th>Student Name</th>
+          <th>Class/Sec</th><th>Father Name</th><th>Signature</th>
+        </tr></thead><tbody>`;
+      all.forEach((s, i) => {
+        h += `<tr><td>${i+1}</td><td>${s.seatNumber||''}</td><td>${s.rollNo||''}</td><td>${s.studentName||''}</td>
+          <td>${s.className||''}${s.sectionName ? '/'+s.sectionName : ''}</td>
+          <td>${s.fatherName||''}</td><td style="width:55px"></td></tr>`;
       });
       h += `</tbody></table></div>`;
     });
     return h + `</body></html>`;
   };
 
+  /**
+   * Attendance Register — landscape, one row per student, subject dates as columns.
+   */
   const buildAttendanceRegisterHTML = () => {
     if (!attendanceData) return '';
     const { exam, schedules: scheds, rooms } = attendanceData;
     let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Attendance Register</title><style>
-@page{size:A4 landscape;margin:8mm}
-body{font-family:Arial;font-size:8px}
-.page{page-break-after:always}
-h2{text-align:center;font-size:12px;color:#1e3a8a;margin:0 0 2px}
-h3{font-size:10px;color:#374151;margin:0 0 4px}
-.meta{text-align:center;font-size:8px;color:#6b7280;margin-bottom:6px}
-table{width:100%;border-collapse:collapse;font-size:7.5px}
-th{background:#1e3a8a;color:#fff;padding:3px 4px;text-align:center;border:1px solid #1e40af}
-td{padding:2px 4px;border:1px solid #d1d5db;text-align:center}
-.name-cell{text-align:left;min-width:80px}
-tr:nth-child(even){background:#f9fafb}
+@page { size: A4 landscape; margin: 8mm }
+body { font-family: Arial; font-size: 8px }
+.page { page-break-after: always }
+h2 { text-align: center; font-size: 12px; color: #1e3a8a; margin: 0 0 2px }
+h3 { font-size: 10px; color: #374151; margin: 0 0 4px }
+.meta { text-align: center; font-size: 8px; color: #6b7280; margin-bottom: 6px }
+table { width: 100%; border-collapse: collapse }
+th { background: #1e3a8a; color: #fff; padding: 3px 4px; text-align: center; border: 1px solid #1e40af; font-size: 7.5px }
+td { padding: 2px 4px; border: 1px solid #d1d5db; text-align: center; font-size: 7.5px }
+.name-cell { text-align: left; min-width: 80px }
+tr:nth-child(even) td { background: #f9fafb }
 </style></head><body>`;
 
     rooms.forEach((room: any) => {
@@ -402,27 +586,16 @@ tr:nth-child(even){background:#f9fafb}
         <h2>${exam.name} — Attendance Register</h2>
         <h3>Room: ${room.roomName}</h3>
         <div class="meta">Total Students: ${room.students.length}</div>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Seat</th>
-              <th>Roll No</th>
-              <th class="name-cell">Student Name</th>
-              <th>Class/Sec</th>
-              <th>Subject (Exam Date)</th>
-              ${scheds.map((sch: any) => `<th>${sch.subjectName}<br/>${new Date(sch.examDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>`;
+        <table><thead><tr>
+          <th>#</th><th>Seat</th><th>Roll No</th>
+          <th class="name-cell">Student Name</th><th>Class/Sec</th>
+          ${scheds.map((sch: any) => `<th>${sch.subjectName}<br/>${new Date(sch.examDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}</th>`).join('')}
+        </tr></thead><tbody>`;
       room.students.forEach((st: any, idx: number) => {
         h += `<tr>
-          <td>${idx + 1}</td>
-          <td>${st.seatNo || ''}</td>
-          <td>${st.rollNo || ''}</td>
-          <td class="name-cell">${st.studentName || ''}</td>
-          <td>${st.className || ''}${st.sectionName ? '/' + st.sectionName : ''}</td>
-          <td></td>
+          <td>${idx+1}</td><td>${st.seatNo||''}</td><td>${st.rollNo||''}</td>
+          <td class="name-cell">${st.studentName||''}</td>
+          <td>${st.className||''}${st.sectionName ? '/'+st.sectionName : ''}</td>
           ${scheds.map(() => `<td style="min-width:28px"></td>`).join('')}
         </tr>`;
       });
@@ -431,11 +604,10 @@ tr:nth-child(even){background:#f9fafb}
     return h + `</body></html>`;
   };
 
+  // ─── Navigation guards ───────────────────────────────────────────────────────
   const canGoStep2 = !!selectedSchedule && selectedClassIds.length > 0;
   const canGoStep3 = benchSlots.length > 0 && benchSlots.every(s => s.classIds.length > 0);
   const canGoStep4 = roomConfs.length > 0;
-
-  // In whole-exam mode step 1 only needs exam + classes (no schedule required)
   const canGoStep2WholeExam = !!selectedExam && selectedClassIds.length > 0;
 
   const goNext = () => {
@@ -445,6 +617,8 @@ tr:nth-child(even){background:#f9fafb}
     if (step === 3 && !canGoStep4) return toast.error('Select at least one room');
     setStep(s => Math.min(4, s + 1));
   };
+
+  // ─── Step renders ────────────────────────────────────────────────────────────
 
   const renderStep1 = () => (
     <div className="space-y-5">
@@ -456,7 +630,7 @@ tr:nth-child(even){background:#f9fafb}
         </button>
         <button onClick={() => setWholeExamMode(true)}
           className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${wholeExamMode ? 'bg-white shadow text-indigo-700' : 'text-gray-500'}`}>
-          Whole Exam (All Subjects at Once)
+          Whole Exam (All Subjects)
         </button>
       </div>
 
@@ -484,7 +658,7 @@ tr:nth-child(even){background:#f9fafb}
 
       {wholeExamMode && schedules.length > 0 && (
         <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-800">
-          <strong>{schedules.length} subject schedules found.</strong> Same seating plan will be applied to all of them.
+          <strong>{schedules.length} subject schedules found.</strong> Same seating plan will be applied to all.
         </div>
       )}
 
@@ -523,7 +697,7 @@ tr:nth-child(even){background:#f9fafb}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-bold text-gray-800">Bench Pattern Designer</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Which classes sit on each bench slot. Pattern repeats across all rows & rooms.</p>
+          <p className="text-xs text-gray-500 mt-0.5">Which classes sit on each bench slot. Repeats across all rows.</p>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={loadPattern} className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-gray-300 rounded-xl hover:bg-gray-50"><RotateCcw className="w-3 h-3" /> Load</button>
@@ -580,12 +754,15 @@ tr:nth-child(even){background:#f9fafb}
           {' '}| repeats
         </div>
       )}
-      {(() => { const un = selectedClassIds.filter(id => !assignedClassIds.includes(id)); return un.length > 0 ? (
-        <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-xs text-yellow-800 flex gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span><strong>Not in any slot:</strong> {un.map(id => classes.find(c=>c.id===id)?.name).join(', ')}</span>
-        </div>
-      ) : null; })()}
+      {(() => {
+        const un = selectedClassIds.filter(id => !assignedClassIds.includes(id));
+        return un.length > 0 ? (
+          <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-xs text-yellow-800 flex gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span><strong>Not in any slot:</strong> {un.map(id => classes.find(c=>c.id===id)?.name).join(', ')}</span>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 
@@ -593,21 +770,27 @@ tr:nth-child(even){background:#f9fafb}
     <div className="space-y-4">
       <div>
         <h3 className="text-sm font-bold text-gray-800">Room Configuration</h3>
-        <p className="text-xs text-gray-500 mt-0.5">Each room can have different rows and benches.</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          Students fill rooms in order — when one room is full, remaining students automatically overflow to the next room.
+        </p>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        {[{v:roomConfs.length,l:'Rooms',col:'#4f46e5'},{v:totalCapacity,l:'Total Seats',col:'#059669'},{v:selectedClassIds.length,l:'Classes',col:'#d97706'}].map(({v,l,col})=>(
-          <div key={l} className="border rounded-xl p-2.5" style={{borderColor:col+'33',background:col+'0d'}}>
-            <div className="text-lg font-bold" style={{color:col}}>{v}</div>
-            <div className="text-[10px] mt-0.5" style={{color:col+'aa'}}>{l}</div>
+        {[
+          { v: roomConfs.length, l: 'Rooms',       col: '#4f46e5' },
+          { v: totalCapacity,    l: 'Total Seats',  col: '#059669' },
+          { v: selectedClassIds.length, l: 'Classes', col: '#d97706' },
+        ].map(({ v, l, col }) => (
+          <div key={l} className="border rounded-xl p-2.5" style={{ borderColor: col+'33', background: col+'0d' }}>
+            <div className="text-lg font-bold" style={{ color: col }}>{v}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: col+'aa' }}>{l}</div>
           </div>
         ))}
       </div>
       <div className="space-y-2">
         {allRooms.map(room => {
           const conf = roomConfs.find(r => r.roomId === room.id);
-          const sel = !!conf;
-          const cap = conf ? conf.rows * conf.benches * maxSeatPerBench : 0;
+          const sel  = !!conf;
+          const cap  = conf ? conf.rows * conf.benches * maxSeatPerBench : 0;
           return (
             <div key={room.id} className={`border rounded-2xl p-3 transition-all ${sel ? 'border-indigo-300 bg-indigo-50/60' : 'border-gray-200 bg-white'}`}>
               <div className="flex items-center gap-3">
@@ -640,6 +823,7 @@ tr:nth-child(even){background:#f9fafb}
 
   const renderStep4 = () => (
     <div className="space-y-4">
+      {/* Checklist */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4">
         <h3 className="text-sm font-bold text-gray-800 mb-3">Pre-Generation Checklist</h3>
         <div className="space-y-1.5">
@@ -647,7 +831,7 @@ tr:nth-child(even){background:#f9fafb}
             { ok: wholeExamMode ? !!selectedExam : !!selectedSchedule, label: wholeExamMode ? 'Exam selected' : 'Schedule selected' },
             { ok: selectedClassIds.length > 0, label: `${selectedClassIds.length} classes selected` },
             { ok: canGoStep3,                  label: `${benchSlots.length} bench slots configured` },
-            { ok: roomConfs.length > 0,        label: `${roomConfs.length} rooms configured` },
+            { ok: roomConfs.length > 0,        label: `${roomConfs.length} rooms configured (overflow to next room is automatic)` },
             { ok: totalCapacity > 0,           label: `${totalCapacity} total seats available` },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2 text-xs">
@@ -656,21 +840,20 @@ tr:nth-child(even){background:#f9fafb}
             </div>
           ))}
         </div>
-
         {wholeExamMode && (
           <div className="mt-3 p-2 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700">
-            <strong>Whole Exam Mode:</strong> One click generates seats for all {schedules.length} subject schedules using the same room plan.
+            <strong>Whole Exam Mode:</strong> Generates seats for all {schedules.length} subject schedules at once.
           </div>
         )}
-
         <button onClick={handleGenerate}
           disabled={generating || !canGoStep3 || !canGoStep4 || (wholeExamMode ? !selectedExam : !selectedSchedule)}
           className="mt-4 w-full flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">
           {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-          {generating ? 'Generating... please wait' : wholeExamMode ? 'Generate for Whole Exam' : 'Generate Seating Arrangement'}
+          {generating ? 'Generating... please wait' : wholeExamMode ? 'Generate for Whole Exam' : 'Generate Seating'}
         </button>
       </div>
 
+      {/* Error */}
       {genError && (
         <div className="p-4 bg-red-50 border border-red-300 rounded-2xl">
           <div className="flex items-start gap-2">
@@ -683,6 +866,7 @@ tr:nth-child(even){background:#f9fafb}
         </div>
       )}
 
+      {/* Success */}
       {genResult && (
         <div className={`p-4 rounded-2xl border ${genResult.unassignedCount > 0 ? 'bg-yellow-50 border-yellow-300 text-yellow-800' : 'bg-green-50 border-green-300 text-green-800'}`}>
           <div className="flex items-center gap-2">
@@ -714,12 +898,12 @@ tr:nth-child(even){background:#f9fafb}
         </div>
       )}
 
-      {/* Attendance Register section */}
+      {/* Attendance Register */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-bold text-gray-800">Attendance Register</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Room-wise register with all exam dates — print for invigilators</p>
+            <p className="text-xs text-gray-500 mt-0.5">Room-wise register with all exam dates</p>
           </div>
           <button onClick={fetchAttendanceRegister} disabled={loadingAttendance || !selectedExam}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50">
@@ -742,49 +926,16 @@ tr:nth-child(even){background:#f9fafb}
         )}
       </div>
 
-      {/* Seating view */}
+      {/* ── Classroom Grid View ── */}
       {loading
         ? <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-indigo-400" /></div>
         : seats.length > 0 && Object.entries(seatGrouped).map(([roomName, rowMap]) => (
-            <div key={roomName} className="bg-white border border-gray-200 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Building2 className="w-4 h-4 text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-800">{roomName}</h3>
-                <span className="text-xs text-gray-400">({Object.values(rowMap).flatMap(bm=>Object.values(bm)).flat().length} students)</span>
-              </div>
-              <div className="text-center mb-3">
-                <span className="inline-block px-8 py-1 bg-gray-800 text-white text-[9px] rounded-full tracking-widest">BOARD / DOOR</span>
-              </div>
-              {Object.entries(rowMap).sort(([a],[b])=>+a-+b).map(([rowNum, benchMap]) => (
-                <div key={rowNum} className="mb-4">
-                  <div className="text-[10px] font-bold text-gray-500 mb-1.5">Row {rowNum}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(benchMap).sort(([a],[b])=>+a-+b).map(([benchNum, bSeats]) => {
-                      const sorted = [...bSeats].sort((a,b)=>(a.seatInBench??0)-(b.seatInBench??0));
-                      return (
-                        <div key={benchNum} className="border border-gray-200 rounded-xl overflow-hidden">
-                          <div className="text-[8px] text-center text-indigo-600 bg-indigo-50 py-0.5 font-bold border-b border-indigo-100">B{benchNum}</div>
-                          <div className="flex">
-                            {sorted.map(seat => {
-                              const col = classColorMap[seat.className||''] || {bg:'#f1f5f9',bd:'#94a3b8',tx:'#475569'};
-                              return (
-                                <div key={`${seat.rowNo}-${seat.benchNo}-${seat.seatInBench}`}
-                                  style={{ background: col.bg, borderRight: `1px solid ${col.bd}` }}
-                                  className="flex flex-col items-center px-1.5 py-1.5 min-w-[40px] last:border-r-0">
-                                  <span className="text-[8px] font-bold truncate w-full text-center" style={{color:col.tx}}>{(seat.studentName||'').split(' ')[0]||'—'}</span>
-                                  <span className="text-[7px] text-gray-400">{seat.rollNo}</span>
-                                  <span className="text-[7px] font-semibold mt-0.5" style={{color:col.tx}}>{seat.className}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ClassroomGridView
+              key={roomName}
+              roomName={roomName}
+              rowMap={rowMap as Record<number, Record<number, Seat[]>>}
+              colorForSeat={colorForSeat}
+            />
           ))
       }
     </div>
@@ -792,21 +943,26 @@ tr:nth-child(even){background:#f9fafb}
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => navigate('/exams')} className="p-2 rounded-xl hover:bg-gray-100"><ArrowLeft className="w-5 h-5" /></button>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Dynamic Exam Seating Engine</h1>
-            <p className="text-xs text-gray-500">Pattern-based • Roll number wise • Per-room configurable</p>
+            <p className="text-xs text-gray-500">Pattern-based · Roll-wise · Auto room overflow</p>
           </div>
         </div>
 
+        {/* Step tabs */}
         <div className="flex bg-white border border-gray-200 rounded-2xl p-1 mb-5">
           {STEPS.map(({ n, label, Icon }) => {
             const active = step === n;
             const done   = step > n;
             return (
-              <button key={n} onClick={() => { if (n < step || (n===2&&(wholeExamMode?canGoStep2WholeExam:canGoStep2))||(n===3&&canGoStep3)||(n===4&&canGoStep4)) setStep(n); }}
+              <button key={n}
+                onClick={() => {
+                  const ok2 = wholeExamMode ? canGoStep2WholeExam : canGoStep2;
+                  if (n < step || (n===2&&ok2)||(n===3&&canGoStep3)||(n===4&&canGoStep4)) setStep(n);
+                }}
                 className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[11px] font-semibold transition-all ${active ? 'bg-indigo-600 text-white shadow' : done ? 'text-indigo-600 hover:bg-indigo-50' : 'text-gray-400'}`}>
                 <Icon className="w-3 h-3" />
                 <span className="hidden sm:inline">{label}</span>

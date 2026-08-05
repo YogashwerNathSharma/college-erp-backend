@@ -12,7 +12,7 @@ export const list = query({
     approvalStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("students");
+    const q = ctx.db.query("students");
 
     if (args.status) {
       return await q
@@ -23,7 +23,9 @@ export const list = query({
 
     if (args.approvalStatus) {
       return await q
-        .withIndex("by_approval_status", (qi) => qi.eq("approvalStatus", args.approvalStatus!))
+        .withIndex("by_approval_status", (qi) =>
+          qi.eq("approvalStatus", args.approvalStatus!)
+        )
         .filter((qi) => qi.neq(qi.field("isDeleted"), true))
         .paginate(args.paginationOpts);
     }
@@ -31,6 +33,38 @@ export const list = query({
     return await q
       .filter((qi) => qi.neq(qi.field("isDeleted"), true))
       .paginate(args.paginationOpts);
+  },
+});
+
+// Get all active students for a list of class names (for seating plan)
+export const listByClasses = query({
+  args: { classNames: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const all = await ctx.db
+      .query("students")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+    return all.filter(
+      (s) => s.className && args.classNames.includes(s.className)
+    );
+  },
+});
+
+// Get distinct class names of active students
+export const listClasses = query({
+  args: {},
+  handler: async (ctx) => {
+    const students = await ctx.db
+      .query("students")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+    const classes = new Set<string>();
+    for (const s of students) {
+      if (s.className) classes.add(s.className);
+    }
+    return Array.from(classes).sort();
   },
 });
 
@@ -45,14 +79,16 @@ export const dashboardStats = query({
 
     const total = allStudents.length;
     const active = allStudents.filter((s) => s.status === "active").length;
-    const pending = allStudents.filter((s) => s.approvalStatus === "pending").length;
-    const transferred = allStudents.filter((s) => s.status === "transferred").length;
+    const pending = allStudents.filter(
+      (s) => s.approvalStatus === "pending"
+    ).length;
+    const transferred = allStudents.filter(
+      (s) => s.status === "transferred"
+    ).length;
 
-    // Gender breakdown
     const male = allStudents.filter((s) => s.gender === "Male").length;
     const female = allStudents.filter((s) => s.gender === "Female").length;
 
-    // Class-wise count
     const classCounts: Record<string, number> = {};
     for (const s of allStudents) {
       if (s.className) {
@@ -60,22 +96,14 @@ export const dashboardStats = query({
       }
     }
 
-    // Recent admissions (last 5)
     const recent = allStudents
       .filter((s) => s.admissionDate)
-      .sort((a, b) => (b.admissionDate ?? "").localeCompare(a.admissionDate ?? ""))
+      .sort((a, b) =>
+        (b.admissionDate ?? "").localeCompare(a.admissionDate ?? "")
+      )
       .slice(0, 5);
 
-    return {
-      total,
-      active,
-      pending,
-      transferred,
-      male,
-      female,
-      classCounts,
-      recent,
-    };
+    return { total, active, pending, transferred, male, female, classCounts, recent };
   },
 });
 
@@ -125,10 +153,7 @@ export const create = mutation({
     approvalStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("students", {
-      ...args,
-      isDeleted: false,
-    });
+    return await ctx.db.insert("students", { ...args, isDeleted: false });
   },
 });
 

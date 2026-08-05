@@ -51,47 +51,35 @@ export default defineSchema({
     .index("by_admission_no", ["admissionNo"])
     .index("by_approval_status", ["approvalStatus"]),
 
-  // Fee structure per class + academic year
-  feeStructures: defineTable({
-    className: v.string(),
+  // Exam configurations for seating plan
+  exams: defineTable({
+    name: v.string(),
+    date: v.string(),
     academicYear: v.string(),
-    feeType: v.string(),
-    amount: v.number(),
-    frequency: v.string(),
-    dueDate: v.optional(v.string()),
-    description: v.optional(v.string()),
-    isActive: v.boolean(),
-  })
-    .index("by_class_year", ["className", "academicYear"])
-    .index("by_academic_year", ["academicYear"]),
+    classes: v.array(v.string()),
+    studentsPerSeat: v.number(),
+    totalHalls: v.number(),
+    seatsPerRow: v.number(),
+    rowsPerHall: v.number(),
+    status: v.string(), // draft | published
+    createdAt: v.string(),
+  }).index("by_status", ["status"]),
 
-  // Individual fee payments per student
-  feePayments: defineTable({
+  // Generated seating allocations
+  seatAllocations: defineTable({
+    examId: v.id("exams"),
     studentId: v.id("students"),
-    studentName: v.string(),
+    hallNo: v.number(),
+    rowNo: v.number(),
+    seatNo: v.number(),
+    globalSeatNo: v.number(), // unique seat number across hall
     admissionNo: v.string(),
+    studentName: v.string(),
     className: v.string(),
-    academicYear: v.string(),
-    feeType: v.string(),
-    amount: v.number(),
-    discount: v.optional(v.number()),
-    fine: v.optional(v.number()),
-    totalAmount: v.number(),
-    amountPaid: v.number(),
-    balance: v.number(),
-    paymentDate: v.string(),
-    paymentMode: v.string(),
-    receiptNo: v.string(),
-    month: v.optional(v.string()),
-    chequeNo: v.optional(v.string()),
-    bankName: v.optional(v.string()),
-    remarks: v.optional(v.string()),
-    status: v.string(),
-    collectedBy: v.optional(v.string()),
+    section: v.optional(v.string()),
+    rollNo: v.optional(v.string()),
   })
-    .index("by_student", ["studentId"])
-    .index("by_receipt", ["receiptNo"])
-    .index("by_status", ["status"])
-    .index("by_academic_year", ["academicYear"])
-    .index("by_class_year", ["className", "academicYear"]),
+    .index("by_exam", ["examId"])
+    .index("by_exam_hall", ["examId", "hallNo"])
+    .index("by_exam_student", ["examId", "studentId"]),
 });

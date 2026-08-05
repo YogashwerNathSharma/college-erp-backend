@@ -1208,14 +1208,6 @@ export const seedAgeConfigHandler = async (req: any, res: any) => {
 
 
 
-    const { PrismaClient } = require("@prisma/client");
-
-
-
-    
-
-
-
     const tenant = await prisma.tenant.findUnique({ where: { id: req.tenantId } });
 
 

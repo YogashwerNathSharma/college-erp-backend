@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// exam.routes.ts — Full Exam Routes (FIXED)
+// exam.routes.ts — Full Exam Routes (FIXED + NEW ENDPOINTS)
 // ═══════════════════════════════════════════════════════
 
 import express from "express";
@@ -38,6 +38,8 @@ import {
   generateCustomSeating,
   aiArrangeSeating,
 } from "./exam.controller";
+import { generateInterleavedSeatingService, getSeatingWithDetailsService } from "./seating.service";
+import { getBulkAdmitCardsService } from "./bulk-admit-cards.service";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
@@ -47,40 +49,88 @@ const router = express.Router();
 // STATIC ROUTES FIRST (before :id routes)
 // ═══════════════════════════════════════════════════════
 
-// Get all exams
 router.get("/", authMiddleware, getExams);
-
-// Create exam
 router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExam);
 
-// Dashboard & Reports
 router.get("/dashboard", authMiddleware, getExamDashboard);
 router.get("/reports", authMiddleware, getExamReports);
 
-// Add/Update subjects for an exam
 router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), addExamSubjects);
-
-// Enter/Update marks (bulk)
 router.post("/marks", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), enterMarks);
 
-// Consolidated Report
 router.get("/consolidated-report/:studentId", authMiddleware, getConsolidatedReport);
 
-// Exam Schedule (static paths)
+// Exam Schedule
 router.post("/schedule", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExamSchedule);
 router.put("/schedule/:scheduleId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), updateExamSchedule);
 router.delete("/schedule/:scheduleId", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), deleteExamSchedule);
 
-// Seating Arrangement
+// ─────────────────────────────────────────────────────────────
+// SEATING ROUTES
+// ─────────────────────────────────────────────────────────────
 router.post("/seating/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateSeating);
-router.get("/seating/:scheduleId", authMiddleware, getSeatingBySchedule);
-
-// Custom Seating (Multi-class, configurable)
 router.post("/seating/generate-custom", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateCustomSeating);
 router.post("/seating/ai-arrange", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), aiArrangeSeating);
 
-// Admit Cards
+// NEW: Interleaved seating
+// Body: { examScheduleId, roomIds[], classIds[], rows, benchesPerRow, seatsPerBench?, groupSize? }
+router.post(
+  "/seating/generate-interleaved",
+  authMiddleware,
+  allowRoles("ADMIN", "SUPER_ADMIN"),
+  async (req: any, res: any) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const result = await generateInterleavedSeatingService({ ...req.body, tenantId });
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("INTERLEAVED SEATING ERROR:", error);
+      res.status(500).json({ success: false, message: error.message || "Error generating seating" });
+    }
+  }
+);
+
+// Get seating with full student details (enriched)
+router.get(
+  "/seating-detail/:scheduleId",
+  authMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { scheduleId } = req.params;
+      const seats = await getSeatingWithDetailsService(scheduleId, tenantId);
+      res.json({ success: true, data: seats });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+);
+
+router.get("/seating/:scheduleId", authMiddleware, getSeatingBySchedule);
+
+// ─────────────────────────────────────────────────────────────
+// ADMIT CARD ROUTES
+// ─────────────────────────────────────────────────────────────
 router.post("/admit-cards/generate", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateAdmitCards);
+
+// NEW: Bulk admit cards — single fast API call (no N+1)
+// Query: { examName, classId? }
+router.get(
+  "/admit-cards/bulk",
+  authMiddleware,
+  async (req: any, res: any) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { examName, classId } = req.query as { examName: string; classId?: string };
+      if (!examName) return res.status(400).json({ success: false, message: "examName is required" });
+      const data = await getBulkAdmitCardsService({ examName, classId, tenantId });
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("BULK ADMIT CARDS ERROR:", error);
+      res.status(500).json({ success: false, message: error.message || "Error fetching bulk admit cards" });
+    }
+  }
+);
 
 // Question Papers
 router.post("/question-papers", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), uploadQuestionPaper);
@@ -95,52 +145,31 @@ router.delete("/invigilators/:assignmentId", authMiddleware, allowRoles("ADMIN",
 // DYNAMIC :id ROUTES (AFTER all static routes)
 // ═══════════════════════════════════════════════════════
 
-// Get single exam
 router.get("/:id", authMiddleware, getExamById);
-
-// Update exam
 router.put("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), updateExam);
-
-// Delete exam (soft)
 router.delete("/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), deleteExam);
 
-// Get subjects of an exam
 router.get("/:id/subjects", authMiddleware, getExamSubjects);
-
-// Get marks
 router.get("/:id/marks", authMiddleware, getMarks);
-
-// Generate results
 router.post("/:id/generate-results", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), generateResults);
-
-// Get results
 router.get("/:id/results", authMiddleware, getResults);
-
-// Report card
 router.get("/:examId/report-card/:studentId", authMiddleware, getReportCard);
-
-// Exam Schedule (dynamic)
 router.get("/:id/schedule", authMiddleware, getExamSchedule);
 
-// Admit Cards (dynamic)
 router.get("/:id/admit-cards", authMiddleware, getAdmitCards);
 router.get("/:examId/admit-card/:studentId", authMiddleware, getAdmitCard);
 
-// Delete all admit cards for an exam
 router.delete("/:id/admit-cards", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const examId = req.params.id;
-    const result = await prisma.admitCard.deleteMany({
-      where: { examId, tenantId },
-    });
+    const result = await prisma.admitCard.deleteMany({ where: { examId, tenantId } });
     res.json({ success: true, message: `Deleted ${result.count} admit cards`, count: result.count });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Question Papers (dynamic)
 router.get("/:id/question-papers", authMiddleware, getQuestionPapers);
 
 export default router;

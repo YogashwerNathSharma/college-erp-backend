@@ -121,36 +121,14 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }
 
 @media print {
-  .print\:hidden {
-    display: none !important;
-  }
-
-  body {
-    background: white !important;
-    color: black !important;
-  }
-
-  .admit-card {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  @page {
-    margin: 1cm;
-  }
+  .print\:hidden { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .admit-card { page-break-inside: avoid; break-inside: avoid; }
+  @page { margin: 1cm; }
 }

@@ -15,7 +15,6 @@ export default function App() {
           <Route path="/seating-plan" element={<SeatingPlan />} />
           <Route path="/admit-cards" element={<AdmitCards />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

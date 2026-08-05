@@ -1,50 +1,19 @@
 import type { Doc } from "@/convex/_generated/dataModel.d.ts";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 
-type Allocation = {
-  _id: string;
-  hallNo: number;
-  rowNo: number;
-  seatNo: number;
-  globalSeatNo: number;
-  admissionNo: string;
-  studentName: string;
-  className: string;
-  section?: string;
-  rollNo?: string;
-};
-
+type Allocation = { _id: string; hallNo: number; rowNo: number; seatNo: number; globalSeatNo: number; admissionNo: string; studentName: string; className: string; section?: string; rollNo?: string; };
 type Exam = Doc<"exams">;
+type Props = { allocations: Allocation[] | undefined; hallNo: number; exam: Exam; };
 
-type Props = {
-  allocations: Allocation[] | undefined;
-  hallNo: number;
-  exam: Exam;
-};
-
-// Group allocations by row and seat
-function buildGrid(
-  allocations: Allocation[],
-  seatsPerRow: number,
-  rowsPerHall: number
-): Allocation[][][] {
-  // grid[row][seat] = array of students (for studentsPerSeat > 1)
-  const grid: Allocation[][][] = Array.from({ length: rowsPerHall }, () =>
-    Array.from({ length: seatsPerRow }, () => [])
-  );
-
+function buildGrid(allocations: Allocation[], seatsPerRow: number, rowsPerHall: number): Allocation[][][] {
+  const grid: Allocation[][][] = Array.from({ length: rowsPerHall }, () => Array.from({ length: seatsPerRow }, () => []));
   for (const alloc of allocations) {
-    const r = alloc.rowNo - 1;
-    const s = alloc.seatNo - 1;
-    if (r >= 0 && r < rowsPerHall && s >= 0 && s < seatsPerRow) {
-      grid[r][s].push(alloc);
-    }
+    const r = alloc.rowNo - 1; const s = alloc.seatNo - 1;
+    if (r >= 0 && r < rowsPerHall && s >= 0 && s < seatsPerRow) grid[r][s].push(alloc);
   }
-
   return grid;
 }
 
-// Class colors for visual distinction
 const CLASS_COLORS: string[] = [
   "bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-200",
   "bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-200",
@@ -58,123 +27,58 @@ const CLASS_COLORS: string[] = [
 
 function getClassColor(className: string, classes: string[]): string {
   const idx = classes.indexOf(className);
-  return CLASS_COLORS[idx % CLASS_COLORS.length] ?? CLASS_COLORS[0];
+  return CLASS_COLORS[idx % CLASS_COLORS.length] ?? CLASS_COLORS[0]!;
 }
 
 export function HallSeatingGrid({ allocations, hallNo, exam }: Props) {
-  if (allocations === undefined) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-20 w-full" />
-        ))}
-      </div>
-    );
-  }
+  if (allocations === undefined) return <div className="space-y-3">{[1,2,3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}</div>;
+  if (allocations.length === 0) return <p className="text-sm text-muted-foreground py-8 text-center">No students allocated to Hall {hallNo}.</p>;
 
   const grid = buildGrid(allocations, exam.seatsPerRow, exam.rowsPerHall);
-
-  // Compute global seat number starting point for this hall
   const seatsPerHall = exam.seatsPerRow * exam.rowsPerHall;
 
   return (
     <div className="space-y-4">
-      {/* Print header */}
       <div className="hidden print:block text-center mb-4">
         <h2 className="text-xl font-bold">{exam.name}</h2>
-        <p className="text-sm">
-          Date: {new Date(exam.date).toLocaleDateString("en-IN")} &bull; Hall No: {hallNo}
-        </p>
-        <p className="text-xs text-gray-500">
-          {exam.studentsPerSeat} student(s) per seat &bull; {exam.seatsPerRow} seats per row
-        </p>
+        <p className="text-sm">Date: {new Date(exam.date).toLocaleDateString("en-IN")} &bull; Hall No: {hallNo}</p>
+        <p className="text-xs text-gray-500">{exam.studentsPerSeat} student(s) per seat &bull; {exam.seatsPerRow} seats per row</p>
       </div>
-
-      {/* Legend */}
       <div className="flex flex-wrap gap-2 print:hidden">
         {exam.classes.map((cls, i) => (
-          <span
-            key={cls}
-            className={`text-xs px-2 py-1 rounded-full font-medium ${CLASS_COLORS[i % CLASS_COLORS.length]}`}
-          >
-            {cls}
-          </span>
+          <span key={cls} className={`text-xs px-2 py-1 rounded-full font-medium ${CLASS_COLORS[i % CLASS_COLORS.length]}`}>{cls}</span>
         ))}
       </div>
-
-      {/* BLACKBOARD */}
       <div className="w-full rounded-lg bg-slate-800 text-white text-center py-2 text-sm font-semibold tracking-widest print:border print:border-gray-800 print:bg-transparent print:text-black">
         BLACKBOARD / FRONT OF HALL
       </div>
-
-      {/* Grid: each row = one row of benches */}
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
-          {/* Column headers */}
-          <div
-            className="grid gap-2 mb-1"
-            style={{ gridTemplateColumns: `auto repeat(${exam.seatsPerRow}, 1fr)` }}
-          >
+          <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: `auto repeat(${exam.seatsPerRow}, 1fr)` }}>
             <div className="text-xs text-muted-foreground font-medium text-center w-10">Row</div>
             {Array.from({ length: exam.seatsPerRow }, (_, i) => (
-              <div key={i} className="text-xs text-muted-foreground text-center font-medium">
-                Col {i + 1}
-              </div>
+              <div key={i} className="text-xs text-muted-foreground text-center font-medium">Col {i + 1}</div>
             ))}
           </div>
-
-          {/* Rows */}
           {grid.map((row, rowIdx) => {
             const hasAny = row.some((cell) => cell.length > 0);
-            if (!hasAny && rowIdx >= allocations.length / exam.seatsPerRow + 1) return null;
-
+            if (!hasAny) return null;
             return (
-              <div
-                key={rowIdx}
-                className="grid gap-2 mb-2"
-                style={{ gridTemplateColumns: `auto repeat(${exam.seatsPerRow}, 1fr)` }}
-              >
-                {/* Row label */}
-                <div className="text-xs text-muted-foreground font-semibold text-center w-10 flex items-center justify-center">
-                  R{rowIdx + 1}
-                </div>
-
-                {/* Seats */}
+              <div key={rowIdx} className="grid gap-2 mb-2" style={{ gridTemplateColumns: `auto repeat(${exam.seatsPerRow}, 1fr)` }}>
+                <div className="text-xs text-muted-foreground font-semibold text-center w-10 flex items-center justify-center">R{rowIdx + 1}</div>
                 {row.map((cell, seatIdx) => {
                   const globalSeatBase = (hallNo - 1) * seatsPerHall + rowIdx * exam.seatsPerRow + seatIdx + 1;
                   return (
-                    <div
-                      key={seatIdx}
-                      className={`rounded-lg border-2 ${
-                        cell.length === 0
-                          ? "border-dashed border-border bg-muted/30"
-                          : "border-border bg-card"
-                      } min-h-[80px] p-1.5`}
-                    >
+                    <div key={seatIdx} className={`rounded-lg border-2 ${cell.length === 0 ? "border-dashed border-border bg-muted/30" : "border-border bg-card"} min-h-[80px] p-1.5`}>
                       {cell.length === 0 ? (
-                        <div className="h-full flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground font-mono">
-                            #{globalSeatBase}
-                          </span>
-                        </div>
+                        <div className="h-full flex items-center justify-center"><span className="text-xs text-muted-foreground font-mono">#{globalSeatBase}</span></div>
                       ) : (
                         <div className="space-y-1">
                           {cell.map((student) => (
-                            <div
-                              key={student._id}
-                              className={`rounded p-1 ${getClassColor(student.className, exam.classes)}`}
-                            >
-                              <div className="text-[10px] font-bold">
-                                #{student.globalSeatNo}
-                              </div>
-                              <div className="text-[11px] font-semibold leading-tight truncate">
-                                {student.studentName}
-                              </div>
-                              <div className="text-[10px] opacity-80">
-                                {student.className}
-                                {student.section ? `-${student.section}` : ""} &bull;{" "}
-                                {student.admissionNo}
-                              </div>
+                            <div key={student._id} className={`rounded p-1 ${getClassColor(student.className, exam.classes)}`}>
+                              <div className="text-[10px] font-bold">#{student.globalSeatNo}</div>
+                              <div className="text-[11px] font-semibold leading-tight truncate">{student.studentName}</div>
+                              <div className="text-[10px] opacity-80">{student.className}{student.section ? `-${student.section}` : ""} &bull; {student.admissionNo}</div>
                             </div>
                           ))}
                         </div>
@@ -187,11 +91,7 @@ export function HallSeatingGrid({ allocations, hallNo, exam }: Props) {
           })}
         </div>
       </div>
-
-      {/* Summary */}
-      <div className="text-xs text-muted-foreground print:hidden">
-        Hall {hallNo}: {allocations.length} student(s) allocated
-      </div>
+      <div className="text-xs text-muted-foreground print:hidden">Hall {hallNo}: {allocations.length} student(s) allocated</div>
     </div>
   );
 }

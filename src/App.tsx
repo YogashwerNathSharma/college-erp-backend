@@ -4,6 +4,7 @@ import AuthCallback from "./pages/auth/Callback.tsx";
 import AppLayout from "./components/layout/AppLayout.tsx";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
+// Students
 import StudentsListPage from "./pages/students/StudentsListPage.tsx";
 import StudentDashboardPage from "./pages/students/StudentDashboardPage.tsx";
 import NewAdmissionPage from "./pages/students/NewAdmissionPage.tsx";
@@ -21,6 +22,12 @@ import ReportsPage from "./pages/students/ReportsPage.tsx";
 import IdCardPage from "./pages/students/IdCardPage.tsx";
 import SavedFiltersPage from "./pages/students/SavedFiltersPage.tsx";
 import RecycleBinPage from "./pages/students/RecycleBinPage.tsx";
+// Fees
+import FeeDashboardPage from "./pages/fees/FeeDashboardPage.tsx";
+import CollectFeePage from "./pages/fees/CollectFeePage.tsx";
+import FeePaymentsPage from "./pages/fees/FeePaymentsPage.tsx";
+import FeeStructurePage from "./pages/fees/FeeStructurePage.tsx";
+import FeeReceiptPage from "./pages/fees/FeeReceiptPage.tsx";
 
 export default function App() {
   return (
@@ -30,6 +37,7 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Index />} />
+            {/* Students */}
             <Route path="/students/dashboard" element={<StudentDashboardPage />} />
             <Route path="/students" element={<StudentsListPage />} />
             <Route path="/students/new-admission" element={<NewAdmissionPage />} />
@@ -47,6 +55,12 @@ export default function App() {
             <Route path="/students/id-card" element={<IdCardPage />} />
             <Route path="/students/saved-filters" element={<SavedFiltersPage />} />
             <Route path="/students/recycle-bin" element={<RecycleBinPage />} />
+            {/* Fees */}
+            <Route path="/fees/dashboard" element={<FeeDashboardPage />} />
+            <Route path="/fees/collect" element={<CollectFeePage />} />
+            <Route path="/fees/payments" element={<FeePaymentsPage />} />
+            <Route path="/fees/structure" element={<FeeStructurePage />} />
+            <Route path="/fees/receipt" element={<FeeReceiptPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

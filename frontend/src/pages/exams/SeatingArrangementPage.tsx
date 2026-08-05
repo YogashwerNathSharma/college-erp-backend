@@ -34,7 +34,7 @@ interface Seat {
   studentId?: string; studentName?: string; rollNo?: string;
   roomName?: string; className?: string;
   rowNo?: number; benchNo?: number; seatInBench?: number;
-  seatNumber?: string; assigned?: boolean;
+  seatNumber?: string; seatNo?: string; assigned?: boolean;
 }
 
 const STEPS = [
@@ -43,6 +43,35 @@ const STEPS = [
   { n: 3, label: 'Rooms',    Icon: Building2 },
   { n: 4, label: 'Generate', Icon: Users },
 ];
+
+/**
+ * Parse seatNo string like "R1-B5-S2" into { rowNo, benchNo, seatInBench }.
+ * Falls back gracefully if the format doesn't match.
+ */
+function parseSeatCode(seatNo?: string): { rowNo: number; benchNo: number; seatInBench: number } {
+  if (!seatNo) return { rowNo: 1, benchNo: 1, seatInBench: 1 };
+  const m = seatNo.match(/R(\d+)-B(\d+)-S(\d+)/i);
+  if (m) return { rowNo: parseInt(m[1], 10), benchNo: parseInt(m[2], 10), seatInBench: parseInt(m[3], 10) };
+  return { rowNo: 1, benchNo: 1, seatInBench: 1 };
+}
+
+/**
+ * Enrich raw seat records coming from the API with rowNo/benchNo/seatInBench
+ * parsed from the seatNo field (stored as "R1-B5-S2").
+ */
+function enrichSeats(raw: Seat[]): Seat[] {
+  return raw.map(seat => {
+    const code = seat.seatNo || seat.seatNumber || '';
+    const parsed = parseSeatCode(code);
+    return {
+      ...seat,
+      seatNumber: code,
+      rowNo:      seat.rowNo      ?? parsed.rowNo,
+      benchNo:    seat.benchNo    ?? parsed.benchNo,
+      seatInBench: seat.seatInBench ?? parsed.seatInBench,
+    };
+  });
+}
 
 const SeatingArrangementPage: React.FC = () => {
   const navigate = useNavigate();
@@ -144,7 +173,8 @@ const SeatingArrangementPage: React.FC = () => {
         const d = r.data?.data || r.data || {};
         raw = Array.isArray(d) ? d : d.seats || [];
       }
-      setSeats(raw);
+      // Parse rowNo/benchNo/seatInBench from seatNo string (e.g. "R1-B5-S2")
+      setSeats(enrichSeats(raw));
     } catch { setSeats([]); }
     finally { setLoading(false); }
   };
@@ -220,16 +250,41 @@ const SeatingArrangementPage: React.FC = () => {
     }
   };
 
-  // Print
+  // Print — uses data URI instead of window.open to avoid mobile popup blocker
   const handlePrint = (type: 'room' | 'student' | 'invigilator') => {
-    const w = window.open('', '_blank');
-    if (!w) return toast.error('Allow popups for printing');
     let html = '';
     if (type === 'room') html = buildRoomChartHTML();
     else if (type === 'student') html = buildStudentSlipsHTML();
     else html = buildInvigilatorHTML();
-    w.document.write(html); w.document.close();
-    setTimeout(() => { w.print(); w.close(); }, 500);
+
+    // Try window.open first; fall back to iframe-based print for mobile
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => { w.focus(); w.print(); }, 600);
+    } else {
+      // Fallback: hidden iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(html);
+        doc.close();
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setTimeout(() => document.body.removeChild(iframe), 2000);
+        }, 600);
+      }
+    }
   };
 
   const buildRoomChartHTML = () => {
@@ -481,7 +536,7 @@ const SeatingArrangementPage: React.FC = () => {
         </button>
       </div>
 
-      {/* ERROR BANNER — persistent, not just toast */}
+      {/* ERROR BANNER */}
       {genError && (
         <div className="p-4 bg-red-50 border border-red-300 rounded-2xl">
           <div className="flex items-start gap-2">
@@ -515,7 +570,7 @@ const SeatingArrangementPage: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           {[{t:'room',l:'Room Chart',col:'bg-indigo-600 hover:bg-indigo-700'},{t:'student',l:'Student Slips',col:'bg-emerald-600 hover:bg-emerald-700'},{t:'invigilator',l:'Invigilator Sheet',col:'bg-slate-700 hover:bg-slate-800'}]
             .map(({t,l,col}) => (
-              <button key={t} onClick={() => handlePrint(t as any)}
+              <button key={t} onClick={() => handlePrint(t as 'room' | 'student' | 'invigilator')}
                 className={`flex items-center gap-1.5 px-4 py-2 ${col} text-white rounded-xl text-xs font-semibold`}>
                 <Printer className="w-3.5 h-3.5" /> {l}
               </button>

@@ -1,72 +1,16 @@
 // @ts-nocheck
-// ═══════════════════════════════════════════════════════════════════════════
-// seating.service.ts — FIXED Interleaved Seating
-// Pattern: Class 1,2,3 → Bench 1 | Class 4,5,6 → Bench 2 | repeat
-// ═══════════════════════════════════════════════════════════════════════════
+// seating.service.ts — Interleaved Seating (FIXED)
+// Pattern per room: Bench1→[Cls1,Cls2,Cls3] | Bench2→[Cls4,Cls5,Cls6] | Bench3→[Cls1,Cls2,Cls3] ...
 
 import prisma from '../../utils/prisma';
 
 function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return arr;
-}
-
-// Build interleaved assignments:
-// group[0] = [Cls1, Cls2, Cls3] → Bench offset 0, 2, 4...
-// group[1] = [Cls4, Cls5, Cls6] → Bench offset 1, 3, 5...
-function buildInterleavedSeats(
-  studentsByClass: Map<string, string[]>,
-  totalRows: number,
-  benchesPerRow: number,
-  seatsPerBench: number,
-  groupSize: number
-) {
-  const classOrder = Array.from(studentsByClass.keys());
-  const ptrs: Record<string, number> = {};
-  classOrder.forEach(c => (ptrs[c] = 0));
-  const totalClasses = classOrder.length;
-  const numGroups = Math.ceil(totalClasses / groupSize);
-
-  const result: {
-    seatNo: string;
-    studentId: string;
-    classId: string;
-    rowNo: number;
-    benchNo: number;
-    seatInBench: number;
-  }[] = [];
-
-  let globalBench = 0;
-  for (let row = 1; row <= totalRows; row++) {
-    for (let bench = 1; bench <= benchesPerRow; bench++, globalBench++) {
-      const groupIdx = globalBench % numGroups;
-      const startCls = (groupIdx * groupSize) % totalClasses;
-      const benchClasses: string[] = [];
-      for (let k = 0; k < seatsPerBench; k++) {
-        benchClasses.push(classOrder[(startCls + k) % totalClasses]);
-      }
-      for (let s = 0; s < seatsPerBench; s++) {
-        const classId = benchClasses[s % benchClasses.length];
-        const students = studentsByClass.get(classId) || [];
-        const ptr = ptrs[classId];
-        if (ptr >= students.length) continue;
-        const studentId = students[ptr];
-        ptrs[classId] = ptr + 1;
-        result.push({
-          seatNo: `R${row}-B${bench}-S${s + 1}`,
-          studentId,
-          classId,
-          rowNo: row,
-          benchNo: bench,
-          seatInBench: s + 1,
-        });
-      }
-    }
-  }
-  return result;
+  return a;
 }
 
 export const generateInterleavedSeatingService = async (data: {
@@ -91,18 +35,24 @@ export const generateInterleavedSeatingService = async (data: {
     tenantId,
   } = data;
 
-  const schedule = await prisma.examSchedule.findFirst({ where: { id: examScheduleId, tenantId } });
+  const schedule = await prisma.examSchedule.findFirst({
+    where: { id: examScheduleId, tenantId },
+  });
   if (!schedule) throw new Error('Exam schedule not found');
 
-  const exam = await prisma.exam.findFirst({ where: { id: schedule.examId, tenantId, isDeleted: false } });
+  const exam = await prisma.exam.findFirst({
+    where: { id: schedule.examId, tenantId, isDeleted: false },
+  });
   if (!exam) throw new Error('Exam not found');
 
   const academicYearId = data.academicYearId || exam.academicYearId;
 
-  const rooms = await prisma.examRoom.findMany({ where: { id: { in: roomIds }, tenantId } });
+  const rooms = await prisma.examRoom.findMany({
+    where: { id: { in: roomIds }, tenantId },
+  });
 
-  // Fetch enrolled students per class
-  const studentsByClass: Map<string, string[]> = new Map();
+  // ─── Fetch enrolled students per class (shuffled) ───
+  const studentQueues: Map<string, string[]> = new Map();
   for (const classId of classIds) {
     const enrollments = await prisma.enrollment.findMany({
       where: {
@@ -114,56 +64,68 @@ export const generateInterleavedSeatingService = async (data: {
       },
       select: { studentId: true },
     });
-    const ids = enrollments.map(e => e.studentId);
-    if (ids.length > 0) studentsByClass.set(classId, shuffle(ids));
+    const ids = shuffle(enrollments.map((e) => e.studentId));
+    if (ids.length > 0) studentQueues.set(classId, ids);
   }
 
-  if (studentsByClass.size === 0) throw new Error('No enrolled students found for selected classes');
+  const classOrder = classIds.filter((id) => studentQueues.has(id));
+  if (classOrder.length === 0)
+    throw new Error('No enrolled students found for selected classes');
 
-  // Delete old seating
-  await prisma.seatingArrangement.deleteMany({ where: { examScheduleId, tenantId } });
+  const numGroups = Math.ceil(classOrder.length / groupSize);
 
-  // Build assignments across all rooms combined
-  const totalRows = rows * roomIds.length;
-  const allAssignments = buildInterleavedSeats(studentsByClass, totalRows, benchesPerRow, seatsPerBench, groupSize);
+  // ─── Delete old seating ───
+  await prisma.seatingArrangement.deleteMany({
+    where: { examScheduleId, tenantId },
+  });
 
-  // Distribute to rooms
-  const seatsPerRoom = rows * benchesPerRow * seatsPerBench;
+  // ─── Assign per-room independently ───
+  // Shared queues across rooms so students aren't duplicated
   const toCreate: any[] = [];
-  let ai = 0;
 
   for (let ri = 0; ri < roomIds.length; ri++) {
     const roomId = roomIds[ri];
-    const room = rooms.find(r => r.id === roomId);
+    const room = rooms.find((r) => r.id === roomId);
     const roomName = room?.name || `Room ${ri + 1}`;
 
-    for (let i = 0; i < seatsPerRoom && ai < allAssignments.length; i++, ai++) {
-      const a = allAssignments[ai];
-      const localRow = Math.floor(i / (benchesPerRow * seatsPerBench)) + 1;
-      const localBench = Math.floor((i % (benchesPerRow * seatsPerBench)) / seatsPerBench) + 1;
-      const localSeat = (i % seatsPerBench) + 1;
+    for (let row = 1; row <= rows; row++) {
+      for (let bench = 1; bench <= benchesPerRow; bench++) {
+        // Determine which group this bench belongs to (0-indexed)
+        const groupIdx = (bench - 1) % numGroups;
+        const startCls = groupIdx * groupSize;
 
-      toCreate.push({
-        examScheduleId,
-        studentId: a.studentId,
-        // MongoDB is flexible — write both field names for compatibility
-        seatNo: `R${localRow}-B${localBench}-S${localSeat}`,
-        seatNumber: `R${localRow}-B${localBench}-S${localSeat}`,
-        roomId,
-        roomName,
-        classId: a.classId,
-        tenantId,
-        assigned: true,
-        rowNo: localRow,
-        benchNo: localBench,
-        seatInBench: localSeat,
-      });
+        for (let seat = 1; seat <= seatsPerBench; seat++) {
+          // Class index for this seat position
+          const clsIdx = (startCls + seat - 1) % classOrder.length;
+          const classId = classOrder[clsIdx];
+          const queue = studentQueues.get(classId);
+          if (!queue || queue.length === 0) continue;
+
+          const studentId = queue.shift()!;
+          const seatLabel = `R${row}-B${bench}-S${seat}`;
+
+          toCreate.push({
+            examScheduleId,
+            studentId,
+            seatNo: seatLabel,
+            seatNumber: seatLabel,
+            roomId,
+            roomName,
+            classId,
+            tenantId,
+            assigned: true,
+            rowNo: row,
+            benchNo: bench,
+            seatInBench: seat,
+          });
+        }
+      }
     }
   }
 
-  if (toCreate.length > 0) {
-    await prisma.seatingArrangement.createMany({ data: toCreate });
-  }
+  if (toCreate.length === 0) throw new Error('No students could be assigned');
+
+  await prisma.seatingArrangement.createMany({ data: toCreate });
 
   return {
     message: 'Seating generated successfully',
@@ -175,32 +137,39 @@ export const generateInterleavedSeatingService = async (data: {
   };
 };
 
-export const getSeatingWithDetailsService = async (examScheduleId: string, tenantId: string) => {
+export const getSeatingWithDetailsService = async (
+  examScheduleId: string,
+  tenantId: string
+) => {
   const seats = await prisma.seatingArrangement.findMany({
     where: { examScheduleId, tenantId },
   });
-
   if (seats.length === 0) return [];
 
-  const studentIds = seats.map(s => s.studentId).filter(Boolean);
+  const studentIds = seats.map((s) => s.studentId).filter(Boolean);
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds }, isDeleted: false },
     select: { id: true, firstName: true, lastName: true, admissionNo: true },
   });
 
-  const classIds = [...new Set(seats.map(s => s.classId).filter(Boolean))];
-  const classes = classIds.length > 0 ? await prisma.class.findMany({
-    where: { id: { in: classIds } },
-    select: { id: true, name: true },
-  }) : [];
+  const classIds = [...new Set(seats.map((s: any) => s.classId).filter(Boolean))];
+  const classes =
+    classIds.length > 0
+      ? await prisma.class.findMany({
+          where: { id: { in: classIds } },
+          select: { id: true, name: true },
+        })
+      : [];
 
-  return seats.map(seat => {
-    const student = students.find(s => s.id === seat.studentId);
-    const cls = classes.find(c => c.id === (seat as any).classId);
+  return seats.map((seat: any) => {
+    const student = students.find((s) => s.id === seat.studentId);
+    const cls = classes.find((c) => c.id === seat.classId);
     return {
       ...seat,
-      seatNumber: (seat as any).seatNo || (seat as any).seatNumber || seat.seatNo,
-      studentName: student ? `${student.firstName} ${student.lastName}` : null,
+      seatNumber: seat.seatNo || seat.seatNumber,
+      studentName: student
+        ? `${student.firstName} ${student.lastName}`
+        : null,
       rollNo: student?.admissionNo || null,
       className: cls?.name || null,
       assigned: true,

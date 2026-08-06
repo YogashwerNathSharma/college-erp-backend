@@ -2,23 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#4f46e5" />
+
+    <!-- ── SEO ─────────────────────────────────────────────────────────── -->
     <title>College ERP</title>
+    <meta name="description" content="College ERP — Student, Staff, Exam &amp; Fee Management System" />
+    <meta name="theme-color" content="#4f46e5" />
 
-    <!-- ✅ Preconnect to API server (faster first API call) -->
-    <link rel="preconnect" href="http://localhost:5000" />
-    <link rel="preconnect" href="http://localhost:5000" crossorigin />
-    
-    <!-- ✅ DNS prefetch for Razorpay (loaded later on payment pages) -->
-    <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
+    <!-- ── Favicon ─────────────────────────────────────────────────────── -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
 
-    <!-- ✅ Preload critical CSS for faster first paint -->
-    <link rel="modulepreload" href="/src/main.tsx" />
+    <!-- ── DNS prefetch for API server (reduces first-request latency) ── -->
+    <link rel="dns-prefetch" href="https://2p8.onrender.com" />
+    <link rel="preconnect" href="https://2p8.onrender.com" crossorigin />
 
-    <!-- ✅ Preload critical font if using one -->
-    <!-- <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin /> -->
+    <!-- ── PWA-ready: allow browser to cache assets aggressively ────────
+         NOTE: We intentionally do NOT add no-cache / no-store meta tags.
+         All JS/CSS assets have content-hash filenames so they are safe
+         to cache forever. Only index.html itself should be re-validated. -->
   </head>
   <body>
     <div id="root"></div>

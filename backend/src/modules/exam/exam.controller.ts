@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { Response } from "express";
+import { cached } from "../../utils/cache";
 import {
   createExamService,
   generateCustomSeatingService,
@@ -485,12 +486,16 @@ export const removeInvigilator = async (req: any, res: Response) => {
 
 /////////////////////////
 // EXAM DASHBOARD
+// 🚀 CACHED (20s TTL) — instant on repeat clicks/navigation
 /////////////////////////
 export const getExamDashboard = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { academicYearId, classId } = req.query;
-    const result = await getExamDashboardService(tenantId, academicYearId as string, classId as string);
+    const cacheKey = `exam-dash:${tenantId}:${academicYearId || "all"}:${classId || "all"}`;
+    const result = await cached(cacheKey, 20000, () =>
+      getExamDashboardService(tenantId, academicYearId as string, classId as string)
+    );
     return res.json({ success: true, data: result });
   } catch (error: any) {
     console.error("DASHBOARD ERROR:", error);
@@ -543,4 +548,3 @@ export const aiArrangeSeating = async (req: any, res: Response) => {
     return res.status(500).json({ success: false, message: error.message || "Error in AI seating arrangement" });
   }
 };
-

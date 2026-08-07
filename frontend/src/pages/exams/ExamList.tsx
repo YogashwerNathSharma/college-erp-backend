@@ -111,45 +111,43 @@ const ExamList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (isPublished: boolean) => {
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          isPublished
-            ? "bg-green-100 text-green-800"
-            : "bg-yellow-100 text-yellow-800"
-        }`}
-      >
-        {isPublished ? "Published" : "Draft"}
-      </span>
-    );
-  };
+  const getStatusBadge = (isPublished: boolean) => (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+      isPublished
+        ? "bg-green-500/20 text-green-400"
+        : "bg-yellow-500/20 text-yellow-400"
+    }`}>
+      {isPublished ? "Published" : "Draft"}
+    </span>
+  );
 
   const getTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      TERM: "bg-primary-100 text-primary-800",
-      UNIT_TEST: "bg-purple-100 text-purple-800",
-      PRACTICAL: "bg-primary-100 text-primary-800",
+      TERM:        "bg-blue-500/20 text-blue-400",
+      UNIT_TEST:   "bg-purple-500/20 text-purple-400",
+      HALF_YEARLY: "bg-indigo-500/20 text-indigo-400",
+      ANNUAL:      "bg-rose-500/20 text-rose-400",
+      PRACTICAL:   "bg-cyan-500/20 text-cyan-400",
+      QUARTERLY:   "bg-amber-500/20 text-amber-400",
     };
     return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          colors[type] || "bg-gray-100 text-gray-800"
-        }`}
-      >
-        {type?.replace("_", " ") || "N/A"}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        colors[type] ?? "bg-gray-500/20 text-gray-400"
+      }`}>
+        {type?.replace(/_/g, " ") || "N/A"}
       </span>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Examinations</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Examinations</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Manage exams, marks entry, and results
             </p>
           </div>
@@ -163,39 +161,31 @@ const ExamList: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Class
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class</label>
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Classes</option>
                 {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </option>
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Academic Year
-              </label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Academic Year</label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
               >
                 <option value="">All Years</option>
                 {academicYears.map((yr) => (
-                  <option key={yr.id} value={yr.id}>
-                    {yr.name}
-                  </option>
+                  <option key={yr.id} value={yr.id}>{yr.name}</option>
                 ))}
               </select>
             </div>
@@ -203,19 +193,17 @@ const ExamList: React.FC = () => {
         </div>
 
         {/* Exam Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-              <span className="ml-3 text-gray-500">Loading exams...</span>
+              <span className="ml-3 text-gray-500 dark:text-gray-400">Loading exams...</span>
             </div>
           ) : exams.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <FileSpreadsheet className="w-16 h-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No exams found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by creating your first exam
-              </p>
+              <FileSpreadsheet className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No exams found</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating your first exam</p>
               <button
                 onClick={() => navigate("/exams/create")}
                 className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
@@ -226,156 +214,83 @@ const ExamList: React.FC = () => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Exam Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Class
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {["Exam Name", "Type", "Class", "Date", "Status", "Actions"].map(h => (
+                      <th key={h} className={`px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${h === "Actions" ? "text-right" : "text-left"}`}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {exams.map((exam) => (
-                    <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={exam.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {exam.name}
-                        </div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{exam.name}</div>
                         {exam.sectionName && (
-                          <div className="text-xs text-gray-500">
-                            Section: {exam.sectionName}
-                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Section: {exam.sectionName}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getTypeBadge(exam.type)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap">{getTypeBadge(exam.type)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                         {exam.className || "N/A"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                         {exam.startDate && (
                           <>
                             <div>{new Date(exam.startDate).toLocaleDateString("en-IN")}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               to {new Date(exam.endDate).toLocaleDateString("en-IN")}
                             </div>
                           </>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(exam.isPublished)}
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(exam.isPublished)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {/* Edit */}
-                          <button
-                            onClick={() => navigate(`/exams/edit/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                            title="Edit Exam"
-                          >
+                          <button onClick={() => navigate(`/exams/edit/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-primary-400 hover:bg-primary-500/10 rounded-lg transition-colors" title="Edit Exam">
                             <Edit className="w-4 h-4" />
                           </button>
-
-                          {/* Subjects */}
-                          <button
-                            onClick={() => navigate(`/exams/${exam.id}/subjects`)}
-                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                            title="Subjects"
-                          >
+                          <button onClick={() => navigate(`/exams/${exam.id}/subjects`)}
+                            className="p-1.5 text-gray-400 hover:text-primary-400 hover:bg-primary-500/10 rounded-lg transition-colors" title="Subjects">
                             <BookOpen className="w-4 h-4" />
                           </button>
-
-                          {/* Schedule */}
-                          <button
-                            onClick={() => navigate(`/exam-schedule/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"
-                            title="Schedule"
-                          >
+                          <button onClick={() => navigate(`/exam-schedule/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors" title="Schedule">
                             <Calendar className="w-4 h-4" />
                           </button>
-
-                          {/* Marks Entry */}
-                          <button
-                            onClick={() => navigate(`/exams/${exam.id}/marks`)}
-                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Marks Entry"
-                          >
+                          <button onClick={() => navigate(`/exams/${exam.id}/marks`)}
+                            className="p-1.5 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors" title="Marks Entry">
                             <ClipboardList className="w-4 h-4" />
                           </button>
-
-                          {/* Results */}
-                          <button
-                            onClick={() => navigate(`/exams/${exam.id}/results`)}
-                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                            title="Results"
-                          >
+                          <button onClick={() => navigate(`/exams/${exam.id}/results`)}
+                            className="p-1.5 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors" title="Results">
                             <BarChart3 className="w-4 h-4" />
                           </button>
-
-                          {/* Admit Card */}
-                          <button
-                            onClick={() => navigate(`/exam-admit-cards/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            title="Admit Cards"
-                          >
+                          <button onClick={() => navigate(`/exam-admit-cards/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors" title="Admit Cards">
                             <IdCard className="w-4 h-4" />
                           </button>
-
-                          {/* Question Papers */}
-                          <button
-                            onClick={() => navigate(`/exam-question-papers/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                            title="Question Papers"
-                          >
+                          <button onClick={() => navigate(`/exam-question-papers/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-teal-400 hover:bg-teal-500/10 rounded-lg transition-colors" title="Question Papers">
                             <FileText className="w-4 h-4" />
                           </button>
-
-                          {/* Seating */}
-                          <button
-                            onClick={() => navigate(`/exam-seating/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Seating Arrangement"
-                          >
+                          <button onClick={() => navigate(`/exam-seating/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors" title="Seating Arrangement">
                             <Users className="w-4 h-4" />
                           </button>
-
-                          {/* Invigilators */}
-                          <button
-                            onClick={() => navigate(`/exam-invigilators/${exam.id}`)}
-                            className="p-1.5 text-gray-400 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors"
-                            title="Invigilators"
-                          >
+                          <button onClick={() => navigate(`/exam-invigilators/${exam.id}`)}
+                            className="p-1.5 text-gray-400 hover:text-pink-400 hover:bg-pink-500/10 rounded-lg transition-colors" title="Invigilators">
                             <UserCog className="w-4 h-4" />
                           </button>
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDelete(exam.id)}
-                            disabled={deleting === exam.id}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                            title="Delete Exam"
-                          >
-                            {deleting === exam.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
+                          <button onClick={() => handleDelete(exam.id)} disabled={deleting === exam.id}
+                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50" title="Delete Exam">
+                            {deleting === exam.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />}
                           </button>
                         </div>
                       </td>

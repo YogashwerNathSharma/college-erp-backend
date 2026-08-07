@@ -42,6 +42,34 @@ interface AdmitCardDetail {
 }
 type PrintMode = 'single' | 'class' | 'school';
 
+// Shared print CSS used by both single and bulk print windows
+const PRINT_STYLES = `
+  @page { size: A4; margin: 8mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  body { margin:0; font-family: Arial, sans-serif; }
+  .page { page-break-after: always; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+  .card { border: 2px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+  .school-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .school-header img { width:50px; height:50px; object-fit:contain; }
+  .school-name { font-size:14px; font-weight:bold; text-align:center; flex:1; }
+  .school-sub { font-size:10px; text-align:center; color:#555; }
+  .title-bar { background:#1e3a8a !important; color:white !important; text-align:center; padding:4px; border-radius:4px; margin:6px 0; }
+  .title-bar h2 { margin:0; font-size:13px; }
+  .title-bar p { margin:0; font-size:10px; }
+  .info-photo { display:flex; gap:10px; }
+  .info-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; font-size:10px; }
+  .info-row { display:flex; gap:4px; }
+  .label { color:#555; white-space:nowrap; }
+  .value { font-weight:600; }
+  .photo { width:60px; height:75px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; border-radius:4px; overflow:hidden; font-size:9px; color:#888; }
+  .photo img { width:100%; height:100%; object-fit:cover; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; font-size:9px; }
+  th { background:#1e3a8a !important; color:white !important; padding:3px 5px; text-align:left; }
+  td { padding:3px 5px; border-bottom:1px solid #ddd; }
+  .sigs { display:flex; justify-content:space-around; margin-top:10px; text-align:center; font-size:9px; }
+  .sig-line { border-top:1px solid #333; width:100px; margin:0 auto 3px; }
+`;
+
 // ═══════════════════════════════════════════════════════════════════
 const AdmitCardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +89,7 @@ const AdmitCardPage: React.FC = () => {
   const [viewingCard, setViewingCard] = useState<AdmitCardDetail | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [bulkPrinting, setBulkPrinting] = useState(false);
+  const [singlePrinting, setSinglePrinting] = useState(false);
 
   useEffect(() => { fetchExams(); fetchClasses(); }, []);
   useEffect(() => { if (paramExamId) setSelectedExam(paramExamId); }, [paramExamId]);
@@ -133,10 +162,6 @@ const AdmitCardPage: React.FC = () => {
     return admitCards;
   })();
 
-  // FIX: when the same exam name spans multiple classes, admitCards can hold
-  // cards from several different examId records at once. Always use the
-  // specific card's own examId (not the dropdown's selectedExam) so "View"
-  // hits the correct exam/student combination instead of 404-ing.
   const handleView = async (examId: string, studentId: string) => {
     setViewLoading(true);
     setViewingCard(null);
@@ -150,28 +175,76 @@ const AdmitCardPage: React.FC = () => {
   };
 
   // ─────────────────────────────────────────────────
-  // FAST BULK PRINT — uses single batch API call instead of N sequential calls
-  // FIXED:
-  //   1) "single" mode now filters the bulk response down to the selected
-  //      student instead of printing every student's card.
-  //   2) Print is triggered only after all images have finished loading
-  //      (or after a safety timeout), so photos/logos are not blank.
+  // SINGLE CARD PRINT — opens dedicated print window with correct colors/styles
+  // FIX: previously used window.print() which printed the whole page without
+  // background colours. Now uses same renderAdmitCardHTML approach as bulk print.
+  // ─────────────────────────────────────────────────
+  const handleSinglePrint = () => {
+    if (!viewingCard) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { toast.error('Please allow popups for printing'); return; }
+
+    setSinglePrinting(true);
+    const cardHTML = renderAdmitCardHTML(viewingCard);
+
+    printWindow.document.write(`
+      <!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Admit Card — ${viewingCard.student?.name || ''}</title>
+      <style>
+        ${PRINT_STYLES}
+        .page { page-break-after: unset; }
+      </style>
+      </head><body>
+        <div class="page">${cardHTML}</div>
+      </body></html>
+    `);
+    printWindow.document.close();
+
+    const waitForImagesThenPrint = () => {
+      const images = Array.from(printWindow.document.images);
+      if (images.length === 0) {
+        printWindow.focus();
+        printWindow.print();
+        setSinglePrinting(false);
+        return;
+      }
+      let remaining = images.length;
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        printWindow.focus();
+        printWindow.print();
+        setSinglePrinting(false);
+      };
+      const onOneDone = () => { remaining -= 1; if (remaining <= 0) finish(); };
+      images.forEach((img) => {
+        if (img.complete) { onOneDone(); }
+        else {
+          img.addEventListener('load', onOneDone);
+          img.addEventListener('error', onOneDone);
+        }
+      });
+      setTimeout(finish, 3000);
+    };
+
+    printWindow.onload = waitForImagesThenPrint;
+    setTimeout(waitForImagesThenPrint, 100);
+  };
+
+  // ─────────────────────────────────────────────────
+  // FAST BULK PRINT
   // ─────────────────────────────────────────────────
   const handleBulkPrint = async () => {
     if (filteredCards.length === 0) return toast.error('No admit cards to print');
     if (printMode === 'single' && !selectedStudent) return toast.error('Please select a student');
 
-    // FIX (mobile/Safari popup blocking): open the window synchronously,
-    // inside the click handler, BEFORE any await. If we open it after the
-    // API call finishes, the browser no longer considers it a direct
-    // result of the user's tap/click and silently blocks the popup.
     const printWindow = window.open('', '_blank');
     if (!printWindow) { toast.error('Please allow popups for printing'); return; }
     printWindow.document.write('<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center;color:#555;">Preparing admit cards…</body></html>');
 
     setBulkPrinting(true);
     try {
-      // Single bulk API call
       const examName = exams.find(e => e.id === selectedExam)?.name || '';
       const classId = printMode === 'class' && selectedClass
         ? classes.find(c => c.name === selectedClass)?.id
@@ -189,10 +262,6 @@ const AdmitCardPage: React.FC = () => {
       );
       let allCards: AdmitCardDetail[] = res.data?.data || res.data || [];
 
-      // FIX: the bulk endpoint only supports filtering by exam/class on the
-      // server. For "single student" mode we must filter client-side by the
-      // student actually selected in the dropdown, otherwise every student
-      // in the exam/class gets printed.
       if (printMode === 'single' && selectedStudent) {
         allCards = allCards.filter(
           (c) => c.admitCard?.studentId === selectedStudent
@@ -215,37 +284,11 @@ const AdmitCardPage: React.FC = () => {
       printWindow.document.write(`
         <!DOCTYPE html><html><head><meta charset="UTF-8">
         <title>Admit Cards — ${examName}</title>
-        <style>
-          @page { size: A4; margin: 8mm; }
-          body { margin:0; font-family: Arial, sans-serif; }
-          .page { page-break-after: always; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
-          .card { border: 2px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
-          .school-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-          .school-header img { width:50px; height:50px; object-fit:contain; }
-          .school-name { font-size:14px; font-weight:bold; text-align:center; flex:1; }
-          .school-sub { font-size:10px; text-align:center; color:#555; }
-          .title-bar { background:#1e3a8a; color:white; text-align:center; padding:4px; border-radius:4px; margin:6px 0; }
-          .title-bar h2 { margin:0; font-size:13px; }
-          .title-bar p { margin:0; font-size:10px; }
-          .info-photo { display:flex; gap:10px; }
-          .info-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; font-size:10px; }
-          .info-row { display:flex; gap:4px; }
-          .label { color:#555; white-space:nowrap; }
-          .value { font-weight:600; }
-          .photo { width:60px; height:75px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; border-radius:4px; overflow:hidden; font-size:9px; color:#888; }
-          .photo img { width:100%; height:100%; object-fit:cover; }
-          table { width:100%; border-collapse:collapse; margin-top:6px; font-size:9px; }
-          th { background:#1e3a8a; color:white; padding:3px 5px; text-align:left; }
-          td { padding:3px 5px; border-bottom:1px solid #ddd; }
-          .sigs { display:flex; justify-content:space-around; margin-top:10px; text-align:center; font-size:9px; }
-          .sig-line { border-top:1px solid #333; width:100px; margin:0 auto 3px; }
-        </style>
+        <style>${PRINT_STYLES}</style>
         </head><body>${cardsHTML}</body></html>
       `);
       printWindow.document.close();
 
-      // FIX: wait for every <img> to finish loading (or error out) before
-      // triggering print, with a safety timeout so it never hangs forever.
       const waitForImagesThenPrint = () => {
         const images = Array.from(printWindow.document.images);
         if (images.length === 0) {
@@ -254,7 +297,6 @@ const AdmitCardPage: React.FC = () => {
           printWindow.close();
           return;
         }
-
         let remaining = images.length;
         let settled = false;
         const finish = () => {
@@ -264,26 +306,18 @@ const AdmitCardPage: React.FC = () => {
           printWindow.print();
           printWindow.close();
         };
-        const onOneDone = () => {
-          remaining -= 1;
-          if (remaining <= 0) finish();
-        };
-
+        const onOneDone = () => { remaining -= 1; if (remaining <= 0) finish(); };
         images.forEach((img) => {
-          if (img.complete) {
-            onOneDone();
-          } else {
+          if (img.complete) { onOneDone(); }
+          else {
             img.addEventListener('load', onOneDone);
             img.addEventListener('error', onOneDone);
           }
         });
-
-        // Safety net in case an image never fires load/error
         setTimeout(finish, 3000);
       };
 
       printWindow.onload = waitForImagesThenPrint;
-      // In case onload already fired before we attached the handler
       setTimeout(waitForImagesThenPrint, 100);
 
       toast.success(`Printing ${allCards.length} admit card${allCards.length > 1 ? 's' : ''}...`);
@@ -596,14 +630,16 @@ const AdmitCardPage: React.FC = () => {
               <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin" /></div>
             ) : viewingCard ? (
               <>
-                <div className="flex items-center justify-between px-5 py-4 border-b print:hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b">
                   <span className="font-semibold">Admit Card Preview</span>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => window.print()}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm"
+                      onClick={handleSinglePrint}
+                      disabled={singlePrinting}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm disabled:opacity-50"
                     >
-                      <Printer className="w-4 h-4" /> Print
+                      {singlePrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                      Print
                     </button>
                     <button
                       onClick={() => setViewingCard(null)}

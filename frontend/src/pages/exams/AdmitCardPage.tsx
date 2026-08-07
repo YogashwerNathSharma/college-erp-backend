@@ -21,6 +21,7 @@ interface Exam { id: string; name: string; className?: string; }
 interface ClassItem { id: string; name: string; }
 interface AdmitCardItem {
   id: string;
+  examId: string;
   studentId: string;
   student?: { id: string; name: string; rollNo: string; photoUrl?: string; fatherName?: string; className?: string; };
   rollNo: string;
@@ -132,12 +133,19 @@ const AdmitCardPage: React.FC = () => {
     return admitCards;
   })();
 
-  const handleView = async (studentId: string) => {
+  // FIX: when the same exam name spans multiple classes, admitCards can hold
+  // cards from several different examId records at once. Always use the
+  // specific card's own examId (not the dropdown's selectedExam) so "View"
+  // hits the correct exam/student combination instead of 404-ing.
+  const handleView = async (examId: string, studentId: string) => {
     setViewLoading(true);
+    setViewingCard(null);
     try {
-      const res = await axios.get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${studentId}`), { headers });
+      const res = await axios.get(getFullUrl(`/api/exam/${examId}/admit-card/${studentId}`), { headers });
       setViewingCard(res.data?.data || res.data);
-    } catch { toast.error('Failed to load admit card'); }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load admit card');
+    }
     finally { setViewLoading(false); }
   };
 
@@ -152,6 +160,15 @@ const AdmitCardPage: React.FC = () => {
   const handleBulkPrint = async () => {
     if (filteredCards.length === 0) return toast.error('No admit cards to print');
     if (printMode === 'single' && !selectedStudent) return toast.error('Please select a student');
+
+    // FIX (mobile/Safari popup blocking): open the window synchronously,
+    // inside the click handler, BEFORE any await. If we open it after the
+    // API call finishes, the browser no longer considers it a direct
+    // result of the user's tap/click and silently blocks the popup.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { toast.error('Please allow popups for printing'); return; }
+    printWindow.document.write('<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center;color:#555;">Preparing admit cards…</body></html>');
+
     setBulkPrinting(true);
     try {
       // Single bulk API call
@@ -184,11 +201,9 @@ const AdmitCardPage: React.FC = () => {
 
       if (allCards.length === 0) {
         toast.error('No admit card data found');
+        printWindow.close();
         return;
       }
-
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) { toast.error('Allow popups for printing'); return; }
 
       let cardsHTML = '';
       for (let i = 0; i < allCards.length; i += 2) {
@@ -274,6 +289,7 @@ const AdmitCardPage: React.FC = () => {
       toast.success(`Printing ${allCards.length} admit card${allCards.length > 1 ? 's' : ''}...`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to load admit cards for printing');
+      printWindow.close();
     } finally {
       setBulkPrinting(false);
     }
@@ -556,7 +572,7 @@ const AdmitCardPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            onClick={() => handleView(card.student?.id || card.studentId)}
+                            onClick={() => handleView(card.examId, card.student?.id || card.studentId)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100"
                           >
                             <Eye className="w-3.5 h-3.5" /> View

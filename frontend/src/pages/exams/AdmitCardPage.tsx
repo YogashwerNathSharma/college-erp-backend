@@ -143,9 +143,15 @@ const AdmitCardPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────
   // FAST BULK PRINT — uses single batch API call instead of N sequential calls
+  // FIXED:
+  //   1) "single" mode now filters the bulk response down to the selected
+  //      student instead of printing every student's card.
+  //   2) Print is triggered only after all images have finished loading
+  //      (or after a safety timeout), so photos/logos are not blank.
   // ─────────────────────────────────────────────────
   const handleBulkPrint = async () => {
     if (filteredCards.length === 0) return toast.error('No admit cards to print');
+    if (printMode === 'single' && !selectedStudent) return toast.error('Please select a student');
     setBulkPrinting(true);
     try {
       // Single bulk API call
@@ -164,7 +170,17 @@ const AdmitCardPage: React.FC = () => {
           },
         }
       );
-      const allCards: AdmitCardDetail[] = res.data?.data || res.data || [];
+      let allCards: AdmitCardDetail[] = res.data?.data || res.data || [];
+
+      // FIX: the bulk endpoint only supports filtering by exam/class on the
+      // server. For "single student" mode we must filter client-side by the
+      // student actually selected in the dropdown, otherwise every student
+      // in the exam/class gets printed.
+      if (printMode === 'single' && selectedStudent) {
+        allCards = allCards.filter(
+          (c) => c.admitCard?.studentId === selectedStudent
+        );
+      }
 
       if (allCards.length === 0) {
         toast.error('No admit card data found');
@@ -212,8 +228,50 @@ const AdmitCardPage: React.FC = () => {
         </head><body>${cardsHTML}</body></html>
       `);
       printWindow.document.close();
-      setTimeout(() => { printWindow.print(); printWindow.close(); }, 400);
-      toast.success(`Printing ${allCards.length} admit cards...`);
+
+      // FIX: wait for every <img> to finish loading (or error out) before
+      // triggering print, with a safety timeout so it never hangs forever.
+      const waitForImagesThenPrint = () => {
+        const images = Array.from(printWindow.document.images);
+        if (images.length === 0) {
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+          return;
+        }
+
+        let remaining = images.length;
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          printWindow.focus();
+          printWindow.print();
+          printWindow.close();
+        };
+        const onOneDone = () => {
+          remaining -= 1;
+          if (remaining <= 0) finish();
+        };
+
+        images.forEach((img) => {
+          if (img.complete) {
+            onOneDone();
+          } else {
+            img.addEventListener('load', onOneDone);
+            img.addEventListener('error', onOneDone);
+          }
+        });
+
+        // Safety net in case an image never fires load/error
+        setTimeout(finish, 3000);
+      };
+
+      printWindow.onload = waitForImagesThenPrint;
+      // In case onload already fired before we attached the handler
+      setTimeout(waitForImagesThenPrint, 100);
+
+      toast.success(`Printing ${allCards.length} admit card${allCards.length > 1 ? 's' : ''}...`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to load admit cards for printing');
     } finally {
@@ -427,7 +485,7 @@ const AdmitCardPage: React.FC = () => {
                 {admitCards.length > 0 && (
                   <button
                     onClick={handleBulkPrint}
-                    disabled={bulkPrinting}
+                    disabled={bulkPrinting || (printMode === 'single' && !selectedStudent)}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
                   >
                     {bulkPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}

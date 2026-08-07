@@ -1,5 +1,6 @@
 import { Response } from "express";
 import prisma from "../../utils/prisma";
+import { cached } from "../../utils/cache";
 
 // ══════════════════════════════════════════════════════════════════
 // STUDENT DASHBOARD CONTROLLER
@@ -11,102 +12,102 @@ const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
 /**
  * GET /api/students/dashboard/full
  * Returns complete dashboard data in a single API call
+ * 🚀 CACHED (30s TTL) — instant on repeated clicks/navigation
  */
 export const getFullDashboardHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
     const { academicYearId } = req.query;
 
-    const [
-      totalStudents,
-      activeStudents,
-      inactiveStudents,
-      maleStudents,
-      femaleStudents,
-      transportCount,
-      hostelCount,
-      birthdayToday,
-      recentAdmissions,
-      classStrength,
-      sectionStrength,
-      categoryDistribution,
-      monthlyAdmission,
-      genderRatio,
-      feeDefaulters,
-      leavingStudents,
-    ] = await Promise.all([
-      // Total students
-      prisma.student.count({
-        where: { tenantId, isDeleted: false, ...(academicYearId && { academicYearId }) },
-      }),
-      // Active students (pending/verified also count as enrolled)
-      prisma.student.count({
-        where: { tenantId, isDeleted: false, status: { in: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) },
-      }),
-      // Inactive students
-      prisma.student.count({
-        where: { tenantId, isDeleted: false, status: { notIn: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) },
-      }),
-      // Male students (DB stores normalized enum MALE)
-      prisma.student.count({
-        where: { tenantId, isDeleted: false, gender: "MALE", ...(academicYearId && { academicYearId }) },
-      }),
-      // Female students (DB stores normalized enum FEMALE)
-      prisma.student.count({
-        where: { tenantId, isDeleted: false, gender: "FEMALE", ...(academicYearId && { academicYearId }) },
-      }),
-      // Transport students count
-      prisma.transportAssignment.count({
-        where: { tenantId, status: "ACTIVE" },
-      }).catch(() => 0),
-      // Hostel students count
-      prisma.hostelAllocation.count({
-        where: { tenantId, status: "ACTIVE" },
-      }).catch(() => 0),
-      // Birthday today
-      getBirthdayTodayData(tenantId),
-      // Recent admissions (last 30 days)
-      prisma.student.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-          ...(academicYearId && { academicYearId }),
-        },
-      }),
-      // Class strength
-      getClassStrengthData(tenantId, academicYearId),
-      // Section strength
-      getSectionStrengthData(tenantId, academicYearId),
-      // Category distribution
-      getCategoryDistributionData(tenantId, academicYearId),
-      // Monthly admission trend (parallel, not sequential)
-      getMonthlyAdmissionData(tenantId, academicYearId),
-      // Gender ratio
-      getGenderRatioData(tenantId, academicYearId),
-      // Fee defaulters count
-      prisma.studentFee.count({
-        where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 } },
-      }).catch(() => 0),
-      // Leaving students (last 30 days)
-      prisma.student.count({
-        where: {
-          tenantId,
-          isDeleted: false,
-          status: { in: ["transferred", "dropped", "passed"] },
-          statusChangedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }).catch(() => 0),
-    ]);
+    const data = await cached(`student-dash:${tenantId}:${academicYearId || "all"}`, 30000, async () => {
+      const [
+        totalStudents,
+        activeStudents,
+        inactiveStudents,
+        maleStudents,
+        femaleStudents,
+        transportCount,
+        hostelCount,
+        birthdayToday,
+        recentAdmissions,
+        classStrength,
+        sectionStrength,
+        categoryDistribution,
+        monthlyAdmission,
+        genderRatio,
+        feeDefaulters,
+        leavingStudents,
+      ] = await Promise.all([
+        // Total students
+        prisma.student.count({
+          where: { tenantId, isDeleted: false, ...(academicYearId && { academicYearId }) },
+        }),
+        // Active students (pending/verified also count as enrolled)
+        prisma.student.count({
+          where: { tenantId, isDeleted: false, status: { in: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) },
+        }),
+        // Inactive students
+        prisma.student.count({
+          where: { tenantId, isDeleted: false, status: { notIn: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) },
+        }),
+        // Male students (DB stores normalized enum MALE)
+        prisma.student.count({
+          where: { tenantId, isDeleted: false, gender: "MALE", ...(academicYearId && { academicYearId }) },
+        }),
+        // Female students (DB stores normalized enum FEMALE)
+        prisma.student.count({
+          where: { tenantId, isDeleted: false, gender: "FEMALE", ...(academicYearId && { academicYearId }) },
+        }),
+        // Transport students count
+        prisma.transportAssignment.count({
+          where: { tenantId, status: "ACTIVE" },
+        }).catch(() => 0),
+        // Hostel students count
+        prisma.hostelAllocation.count({
+          where: { tenantId, status: "ACTIVE" },
+        }).catch(() => 0),
+        // Birthday today
+        getBirthdayTodayData(tenantId),
+        // Recent admissions (last 30 days)
+        prisma.student.count({
+          where: {
+            tenantId,
+            isDeleted: false,
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            ...(academicYearId && { academicYearId }),
+          },
+        }),
+        // Class strength
+        getClassStrengthData(tenantId, academicYearId),
+        // Section strength
+        getSectionStrengthData(tenantId, academicYearId),
+        // Category distribution
+        getCategoryDistributionData(tenantId, academicYearId),
+        // Monthly admission trend (parallel, not sequential)
+        getMonthlyAdmissionData(tenantId, academicYearId),
+        // Gender ratio
+        getGenderRatioData(tenantId, academicYearId),
+        // Fee defaulters count
+        prisma.studentFee.count({
+          where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 } },
+        }).catch(() => 0),
+        // Leaving students (last 30 days)
+        prisma.student.count({
+          where: {
+            tenantId,
+            isDeleted: false,
+            status: { in: ["transferred", "dropped", "passed"] },
+            statusChangedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        }).catch(() => 0),
+      ]);
 
-    // Scholarship count (students who have scholarship fee discounts)
-    const scholarshipCount = await prisma.feeDiscount.count({
-      where: { tenantId, isDeleted: false, name: { contains: "scholarship", mode: "insensitive" } },
-    }).catch(() => 0);
+      // Scholarship count (students who have scholarship fee discounts)
+      const scholarshipCount = await prisma.feeDiscount.count({
+        where: { tenantId, isDeleted: false, name: { contains: "scholarship", mode: "insensitive" } },
+      }).catch(() => 0);
 
-    res.json({
-      success: true,
-      data: {
+      return {
         stats: {
           totalStudents,
           activeStudents,
@@ -127,8 +128,10 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
         categoryDistribution,
         monthlyAdmission,
         genderRatio,
-      },
+      };
     });
+
+    res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

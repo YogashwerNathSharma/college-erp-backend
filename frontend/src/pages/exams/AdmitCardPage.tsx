@@ -40,19 +40,15 @@ interface AdmitCardDetail {
 }
 type PrintMode = 'single' | 'class' | 'school';
 
-// Cards per A4 page
 const CARDS_PER_PAGE = 3;
 
-// Shared print CSS — compact enough for 3 cards per A4 page
 const PRINT_STYLES = `
   @page { size: A4 portrait; margin: 6mm; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; box-sizing: border-box; }
   body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-
-  /* One A4 page = exactly 3 cards stacked */
   .page {
     width: 100%;
-    height: 277mm; /* A4 297mm − 2×6mm margin = 285mm, leave 8mm slack */
+    height: 277mm;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -61,8 +57,6 @@ const PRINT_STYLES = `
     padding: 2mm 0;
   }
   .page:last-child { page-break-after: avoid; break-after: avoid; }
-
-  /* Each card takes roughly 1/3 of the page height */
   .card {
     flex: 0 0 calc(33.33% - 3mm);
     border: 1.5px solid #333;
@@ -70,54 +64,25 @@ const PRINT_STYLES = `
     padding: 5px 8px;
     overflow: hidden;
   }
-
-  /* Dashed cut-line between cards */
   .card + .card { border-top: 1px dashed #aaa; }
-
   .school-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
   .school-header img { width: 36px; height: 36px; object-fit: contain; }
   .school-info { flex: 1; text-align: center; }
   .school-name { font-size: 11px; font-weight: bold; }
   .school-sub { font-size: 8px; color: #555; }
-
-  .title-bar {
-    background: #1e3a8a !important;
-    color: white !important;
-    text-align: center;
-    padding: 2px 4px;
-    border-radius: 3px;
-    margin: 3px 0;
-  }
+  .title-bar { background: #1e3a8a !important; color: white !important; text-align: center; padding: 2px 4px; border-radius: 3px; margin: 3px 0; }
   .title-bar h2 { margin: 0; font-size: 10px; }
   .title-bar p  { margin: 0; font-size: 8px; }
-
   .info-photo { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 3px; }
   .info-table { flex: 1; border-collapse: collapse; font-size: 8px; }
   .info-table td { padding: 1px 2px; }
   .info-table .lbl { color: #555; white-space: nowrap; font-weight: 600; width: 30%; }
-
-  .photo {
-    width: 45px; height: 55px;
-    border: 1px solid #ccc;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 3px; overflow: hidden;
-    font-size: 7px; color: #888; text-align: center;
-    flex-shrink: 0;
-  }
+  .photo { width: 45px; height: 55px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; border-radius: 3px; overflow: hidden; font-size: 7px; color: #888; text-align: center; flex-shrink: 0; }
   .photo img { width: 100%; height: 100%; object-fit: cover; }
-
   .schedule-table { width: 100%; border-collapse: collapse; font-size: 7.5px; margin-top: 2px; }
-  .schedule-table th {
-    background: #1e3a8a !important; color: white !important;
-    padding: 2px 3px; text-align: left;
-  }
+  .schedule-table th { background: #1e3a8a !important; color: white !important; padding: 2px 3px; text-align: left; }
   .schedule-table td { padding: 2px 3px; border-bottom: 0.5px solid #ddd; }
-
-  .sigs {
-    display: flex; justify-content: space-around;
-    margin-top: 5px; padding-top: 2px;
-    font-size: 7.5px; text-align: center;
-  }
+  .sigs { display: flex; justify-content: space-around; margin-top: 5px; padding-top: 2px; font-size: 7.5px; text-align: center; }
   .sig-line { border-top: 0.5px solid #333; width: 70px; margin: 0 auto 2px; }
 `;
 
@@ -224,17 +189,26 @@ const AdmitCardPage: React.FC = () => {
   };
 
   // ─────────────────────────────────────────────────
-  // Helper: open print window, inject HTML+CSS, wait for images, then print
+  // Render cards into a print window and trigger print
   // ─────────────────────────────────────────────────
-  const openPrintWindow = (title: string, bodyHTML: string, onDone?: () => void) => {
+  const printCards = (allCards: AdmitCardDetail[], title: string) => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) { toast.error('Please allow popups for printing'); return; }
+    if (!printWindow) {
+      toast.error('Popup blocked! Please allow popups for this site and try again.');
+      return;
+    }
+
+    let pagesHTML = '';
+    for (let i = 0; i < allCards.length; i += CARDS_PER_PAGE) {
+      const chunk = allCards.slice(i, i + CARDS_PER_PAGE);
+      pagesHTML += `<div class="page">${chunk.map(renderAdmitCardHTML).join('')}</div>`;
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${title}</title>
       <style>${PRINT_STYLES}</style>
-      </head><body>${bodyHTML}</body></html>
+      </head><body>${pagesHTML}</body></html>
     `);
     printWindow.document.close();
 
@@ -242,7 +216,6 @@ const AdmitCardPage: React.FC = () => {
       const images = Array.from(printWindow.document.images);
       if (images.length === 0) {
         printWindow.focus(); printWindow.print();
-        onDone?.();
         return;
       }
       let remaining = images.length;
@@ -251,18 +224,18 @@ const AdmitCardPage: React.FC = () => {
         if (settled) return;
         settled = true;
         printWindow.focus(); printWindow.print();
-        onDone?.();
       };
       const onOne = () => { if (--remaining <= 0) finish(); };
       images.forEach(img => {
         if (img.complete) onOne();
         else { img.addEventListener('load', onOne); img.addEventListener('error', onOne); }
       });
-      setTimeout(finish, 3000);
+      setTimeout(finish, 4000);
     };
 
+    // Trigger after load or after short delay (whichever comes first)
     printWindow.onload = triggerPrint;
-    setTimeout(triggerPrint, 100);
+    setTimeout(triggerPrint, 300);
   };
 
   // ─────────────────────────────────────────────────
@@ -271,93 +244,82 @@ const AdmitCardPage: React.FC = () => {
   const handleSinglePrint = () => {
     if (!viewingCard) return;
     setSinglePrinting(true);
-    const cardHTML = renderAdmitCardHTML(viewingCard);
-    openPrintWindow(
-      `Admit Card — ${viewingCard.student?.name || ''}`,
-      `<div class="page" style="height:auto;">${cardHTML}</div>`,
-      () => setSinglePrinting(false)
-    );
+    printCards([viewingCard], `Admit Card — ${viewingCard.student?.name || ''}`);
+    setSinglePrinting(false);
   };
 
   // ─────────────────────────────────────────────────
-  // BULK PRINT — 3 cards per A4 page
+  // BULK PRINT — fetches full data then prints 3 per page
+  // Falls back to individual fetches if bulk API fails
   // ─────────────────────────────────────────────────
   const handleBulkPrint = async () => {
     if (filteredCards.length === 0) return toast.error('No admit cards to print');
     if (printMode === 'single' && !selectedStudent) return toast.error('Please select a student');
 
-    // Open window synchronously (before await) to avoid popup blocker
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) { toast.error('Please allow popups for printing'); return; }
-    printWindow.document.write('<!DOCTYPE html><html><body style="font-family:Arial;padding:40px;text-align:center;color:#555;">Preparing admit cards…</body></html>');
-
     setBulkPrinting(true);
+    const loadingToast = toast.loading(`Loading ${filteredCards.length} admit cards…`);
+
     try {
+      let allCards: AdmitCardDetail[] = [];
+
+      // ── Try bulk API first ──────────────────────────────
       const examName = exams.find(e => e.id === selectedExam)?.name || '';
-      const classId = printMode === 'class' && selectedClass
-        ? classes.find(c => c.name === selectedClass)?.id
+      const classObj = printMode === 'class' && selectedClass
+        ? classes.find(c => c.name === selectedClass)
         : undefined;
 
-      const res = await axios.get(getFullUrl('/api/exam/admit-cards/bulk'), {
-        headers,
-        params: { examName, ...(classId ? { classId } : {}) },
-      });
-      let allCards: AdmitCardDetail[] = res.data?.data || res.data || [];
+      try {
+        const res = await axios.get(getFullUrl('/api/exam/admit-cards/bulk'), {
+          headers,
+          params: {
+            examName,
+            ...(classObj?.id ? { classId: classObj.id } : {}),
+          },
+          timeout: 30000,
+        });
+        allCards = res.data?.data || res.data || [];
 
-      if (printMode === 'single' && selectedStudent) {
-        allCards = allCards.filter(c => c.admitCard?.studentId === selectedStudent);
+        // Filter client-side for single student mode
+        if (printMode === 'single' && selectedStudent) {
+          allCards = allCards.filter(c => c.admitCard?.studentId === selectedStudent);
+        }
+
+        // If class mode, filter client-side too (in case backend doesn't filter)
+        if (printMode === 'class' && selectedClass && allCards.length > filteredCards.length) {
+          const studentIdsInClass = filteredCards.map(c => c.studentId);
+          allCards = allCards.filter(c => studentIdsInClass.includes(c.admitCard?.studentId));
+        }
+      } catch (bulkErr: any) {
+        // ── Fallback: fetch each card individually ──────────
+        console.warn('Bulk API failed, falling back to individual fetches:', bulkErr?.message);
+        toast.loading(`Bulk fetch failed, loading individually…`, { id: loadingToast });
+
+        const cardsToFetch = filteredCards.slice(0, 50); // limit to 50 for safety
+        const results = await Promise.allSettled(
+          cardsToFetch.map(card =>
+            axios.get(getFullUrl(`/api/exam/${card.examId}/admit-card/${card.student?.id || card.studentId}`), { headers })
+              .then(r => r.data?.data || r.data)
+          )
+        );
+        allCards = results
+          .filter((r): r is PromiseFulfilledResult<AdmitCardDetail> => r.status === 'fulfilled' && !!r.value)
+          .map(r => r.value);
       }
 
+      toast.dismiss(loadingToast);
+
       if (allCards.length === 0) {
-        toast.error('No admit card data found');
-        printWindow.close();
+        toast.error('No admit card data found. Please generate admit cards first.');
         return;
       }
 
-      // Build pages: CARDS_PER_PAGE (3) cards per .page div
-      let pagesHTML = '';
-      for (let i = 0; i < allCards.length; i += CARDS_PER_PAGE) {
-        const chunk = allCards.slice(i, i + CARDS_PER_PAGE);
-        const cardsInPage = chunk.map(c => renderAdmitCardHTML(c)).join('');
-        pagesHTML += `<div class="page">${cardsInPage}</div>`;
-      }
+      const pages = Math.ceil(allCards.length / CARDS_PER_PAGE);
+      toast.success(`Opening print window: ${allCards.length} cards on ${pages} page${pages > 1 ? 's' : ''}…`);
 
-      printWindow.document.write(`
-        <!DOCTYPE html><html><head><meta charset="UTF-8">
-        <title>Admit Cards — ${examName}</title>
-        <style>${PRINT_STYLES}</style>
-        </head><body>${pagesHTML}</body></html>
-      `);
-      printWindow.document.close();
-
-      const triggerPrint = () => {
-        const images = Array.from(printWindow.document.images);
-        if (images.length === 0) {
-          printWindow.focus(); printWindow.print(); printWindow.close();
-          return;
-        }
-        let remaining = images.length;
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          printWindow.focus(); printWindow.print(); printWindow.close();
-        };
-        const onOne = () => { if (--remaining <= 0) finish(); };
-        images.forEach(img => {
-          if (img.complete) onOne();
-          else { img.addEventListener('load', onOne); img.addEventListener('error', onOne); }
-        });
-        setTimeout(finish, 3000);
-      };
-
-      printWindow.onload = triggerPrint;
-      setTimeout(triggerPrint, 100);
-
-      toast.success(`Printing ${allCards.length} admit card${allCards.length > 1 ? 's' : ''} (${Math.ceil(allCards.length / CARDS_PER_PAGE)} page${Math.ceil(allCards.length / CARDS_PER_PAGE) > 1 ? 's' : ''})...`);
+      printCards(allCards, `Admit Cards — ${examName}`);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to load admit cards for printing');
-      printWindow.close();
+      toast.dismiss(loadingToast);
+      toast.error(err.response?.data?.message || err.message || 'Failed to load admit cards for printing');
     } finally {
       setBulkPrinting(false);
     }
@@ -413,7 +375,9 @@ const AdmitCardPage: React.FC = () => {
       </div>`;
   };
 
-  // Render admit card in modal (JSX preview)
+  // ─────────────────────────────────────────────────
+  // Modal preview (JSX)
+  // ─────────────────────────────────────────────────
   const renderAdmitCardJSX = (data: AdmitCardDetail) => {
     const logoUrl = getFullUrl(data.tenant?.logoUrl);
     const photoUrl = getFullUrl(data.student?.photoUrl);
@@ -476,7 +440,6 @@ const AdmitCardPage: React.FC = () => {
     <>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          {/* Header */}
           <div className="flex items-center mb-6">
             <button onClick={() => navigate('/exams')} className="mr-4 p-2 rounded-lg hover:bg-gray-100">
               <ArrowLeft className="w-5 h-5" />
@@ -487,16 +450,11 @@ const AdmitCardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Controls */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[180px]">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Exam</label>
-                <select
-                  value={selectedExam}
-                  onChange={e => setSelectedExam(e.target.value)}
-                  className="w-full text-sm border-gray-300 rounded-lg shadow-sm"
-                >
+                <select value={selectedExam} onChange={e => setSelectedExam(e.target.value)} className="w-full text-sm border-gray-300 rounded-lg shadow-sm">
                   <option value="">-- Select Exam --</option>
                   {[...new Map(exams.map(e => [e.name, e])).values()].map(exam => (
                     <option key={exam.id} value={exam.id}>{exam.name}</option>
@@ -508,12 +466,8 @@ const AdmitCardPage: React.FC = () => {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Print Mode</label>
                 <div className="flex gap-1">
                   {(['school', 'class', 'single'] as PrintMode[]).map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setPrintMode(m)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border capitalize ${
-                        printMode === m ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300'
-                      }`}
+                    <button key={m} onClick={() => setPrintMode(m)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border capitalize ${printMode === m ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300'}`}
                     >{m}</button>
                   ))}
                 </div>
@@ -522,11 +476,7 @@ const AdmitCardPage: React.FC = () => {
               {printMode === 'class' && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Class</label>
-                  <select
-                    value={selectedClass}
-                    onChange={e => setSelectedClass(e.target.value)}
-                    className="text-sm border-gray-300 rounded-lg"
-                  >
+                  <select value={selectedClass} onChange={e => setSelectedClass(e.target.value)} className="text-sm border-gray-300 rounded-lg">
                     <option value="">All Classes</option>
                     {classes.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </select>
@@ -536,47 +486,30 @@ const AdmitCardPage: React.FC = () => {
               {printMode === 'single' && (
                 <div className="flex-1 min-w-[180px]">
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Student</label>
-                  <select
-                    value={selectedStudent}
-                    onChange={e => setSelectedStudent(e.target.value)}
-                    className="w-full text-sm border-gray-300 rounded-lg"
-                  >
+                  <select value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} className="w-full text-sm border-gray-300 rounded-lg">
                     <option value="">-- Select Student --</option>
                     {admitCards.map(c => (
-                      <option key={c.studentId} value={c.studentId}>
-                        {c.student?.name || c.studentId}
-                      </option>
+                      <option key={c.studentId} value={c.studentId}>{c.student?.name || c.studentId}</option>
                     ))}
                   </select>
                 </div>
               )}
 
               <div className="flex gap-2">
-                <button
-                  onClick={handleGenerateAll}
-                  disabled={generating || !selectedExam}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-                >
+                <button onClick={handleGenerateAll} disabled={generating || !selectedExam}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
                   {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Generate All
                 </button>
                 {admitCards.length > 0 && (
-                  <button
-                    onClick={handleBulkPrint}
-                    disabled={bulkPrinting || (printMode === 'single' && !selectedStudent)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-                  >
+                  <button onClick={handleBulkPrint} disabled={bulkPrinting || (printMode === 'single' && !selectedStudent)}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                     {bulkPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                    {bulkPrinting
-                      ? 'Loading...'
-                      : `Print ${printMode === 'school' ? 'All' : printMode === 'class' ? 'Class' : 'Selected'} (${filteredCards.length})`}
+                    {bulkPrinting ? 'Loading...' : `Print ${printMode === 'school' ? 'All' : printMode === 'class' ? 'Class' : 'Selected'} (${filteredCards.length})`}
                   </button>
                 )}
                 {admitCards.length > 0 && (
-                  <button
-                    onClick={handleDeleteAll}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100"
-                  >
+                  <button onClick={handleDeleteAll} className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
@@ -584,7 +517,6 @@ const AdmitCardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Admit Cards Table */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 py-4 border-b">
               <h2 className="text-base font-semibold text-gray-800">
@@ -628,17 +560,13 @@ const AdmitCardPage: React.FC = () => {
                         <td className="px-4 py-3 text-gray-600">{card.student?.rollNo || card.rollNo}</td>
                         <td className="px-4 py-3 text-gray-600">{card.student?.className || '—'}</td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            card.isGenerated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${card.isGenerated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                             {card.isGenerated ? 'Generated' : 'Pending'}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleView(card.examId, card.student?.id || card.studentId)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100"
-                          >
+                          <button onClick={() => handleView(card.examId, card.student?.id || card.studentId)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100">
                             <Eye className="w-3.5 h-3.5" /> View
                           </button>
                         </td>
@@ -652,7 +580,6 @@ const AdmitCardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Single Admit Card Modal */}
       {(viewingCard || viewLoading) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -663,11 +590,8 @@ const AdmitCardPage: React.FC = () => {
                 <div className="flex items-center justify-between px-5 py-4 border-b">
                   <span className="font-semibold">Admit Card Preview</span>
                   <div className="flex gap-2">
-                    <button
-                      onClick={handleSinglePrint}
-                      disabled={singlePrinting}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm disabled:opacity-50"
-                    >
+                    <button onClick={handleSinglePrint} disabled={singlePrinting}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm disabled:opacity-50">
                       {singlePrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
                       Print
                     </button>

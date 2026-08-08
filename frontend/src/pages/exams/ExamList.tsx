@@ -270,7 +270,7 @@ const ExamList: React.FC = () => {
                             className="p-1.5 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors" title="Results">
                             <BarChart3 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => navigate(`/exam-admit-cards/${exam.id}`)}
+                          <button onClick={() => navigate(`/exam-admit-card`)}
                             className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors" title="Admit Cards">
                             <IdCard className="w-4 h-4" />
                           </button>

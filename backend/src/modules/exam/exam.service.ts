@@ -1253,6 +1253,23 @@ export const getAdmitCardService = async (
     orderBy: { examDate: "asc" },
   });
 
+  // Get allotted room from seating arrangement
+  let allottedRoom = "";
+  let seatNo = "";
+  if (schedules.length > 0) {
+    const scheduleIds = schedules.map((s: any) => s.id);
+    console.log('[ADMIT-CARD] Looking for seating:', { scheduleIds, studentId, tenantId });
+    const seating = await prisma.seatingArrangement.findFirst({
+      where: { examScheduleId: { in: scheduleIds }, studentId, tenantId, isDeleted: false },
+    });
+    console.log('[ADMIT-CARD] Seating found:', seating ? { roomId: seating.roomId, seatNo: seating.seatNo } : 'NONE');
+    if (seating) {
+      seatNo = seating.seatNo || "";
+      const room = await prisma.examRoom.findFirst({ where: { id: seating.roomId } });
+      allottedRoom = (room as any)?.name || "";
+    }
+  }
+
   const subjectIds = schedules.map((s: any) => s.subjectId);
   const roomIds = schedules.map((s: any) => s.roomId);
   const [subjects, rooms] = await Promise.all([
@@ -1274,6 +1291,8 @@ export const getAdmitCardService = async (
 
   return {
     admitCard,
+    allottedRoom,
+    seatNo,
     exam: {
       name: exam.name,
       type: exam.type,

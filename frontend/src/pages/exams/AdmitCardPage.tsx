@@ -27,6 +27,8 @@ interface AdmitCardItem {
 }
 interface AdmitCardDetail {
   admitCard: any;
+  allottedRoom?: string;
+  seatNo?: string;
   student: {
     name: string; fatherName: string; motherName: string;
     rollNo: string; admissionNo: string; dob: string;
@@ -61,28 +63,31 @@ const PRINT_STYLES = `
     flex: 0 0 calc(33.33% - 3mm);
     border: 1.5px solid #333;
     border-radius: 5px;
-    padding: 5px 8px;
+    padding: 5px 8px 8px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .card + .card { border-top: 1px dashed #aaa; }
   .school-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
   .school-header img { width: 36px; height: 36px; object-fit: contain; }
+  .school-header .spacer { width: 36px; flex-shrink: 0; }
   .school-info { flex: 1; text-align: center; }
   .school-name { font-size: 11px; font-weight: bold; }
   .school-sub { font-size: 8px; color: #555; }
   .title-bar { background: #1e3a8a !important; color: white !important; text-align: center; padding: 2px 4px; border-radius: 3px; margin: 3px 0; }
   .title-bar h2 { margin: 0; font-size: 10px; }
   .title-bar p  { margin: 0; font-size: 8px; }
-  .info-photo { display: flex; gap: 6px; align-items: flex-start; margin-bottom: 3px; }
+  .info-photo { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 3px; }
   .info-table { flex: 1; border-collapse: collapse; font-size: 8px; }
   .info-table td { padding: 1px 2px; }
   .info-table .lbl { color: #555; white-space: nowrap; font-weight: 600; width: 30%; }
-  .photo { width: 45px; height: 55px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; border-radius: 3px; overflow: hidden; font-size: 7px; color: #888; text-align: center; flex-shrink: 0; }
+  .photo { width: 50px; height: 60px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; border-radius: 3px; overflow: hidden; font-size: 7px; color: #888; text-align: center; flex-shrink: 0; margin-right: 5px; }
   .photo img { width: 100%; height: 100%; object-fit: cover; }
   .schedule-table { width: 100%; border-collapse: collapse; font-size: 7.5px; margin-top: 2px; }
   .schedule-table th { background: #1e3a8a !important; color: white !important; padding: 2px 3px; text-align: left; }
   .schedule-table td { padding: 2px 3px; border-bottom: 0.5px solid #ddd; }
-  .sigs { display: flex; justify-content: space-around; margin-top: 5px; padding-top: 2px; font-size: 7.5px; text-align: center; }
+  .sigs { display: flex; justify-content: space-between; margin-top: auto; padding: 8px 15px 0; font-size: 7.5px; text-align: center; }
   .sig-line { border-top: 0.5px solid #333; width: 70px; margin: 0 auto 2px; }
 `;
 
@@ -347,6 +352,7 @@ const AdmitCardPage: React.FC = () => {
             ${data.tenant?.address ? `<div class="school-sub">${data.tenant.address}</div>` : ''}
             ${data.tenant?.phone ? `<div class="school-sub">Ph: ${data.tenant.phone}</div>` : ''}
           </div>
+          <div class="spacer"></div>
         </div>
         <div class="title-bar">
           <h2>ADMIT CARD</h2>
@@ -354,12 +360,19 @@ const AdmitCardPage: React.FC = () => {
         </div>
         <div class="info-photo">
           <table class="info-table">
-            <tr><td class="lbl">Name</td><td>: ${data.student?.name || ''}</td></tr>
-            <tr><td class="lbl">Father</td><td>: ${data.student?.fatherName || ''}</td></tr>
-            <tr><td class="lbl">Class</td><td>: ${data.student?.class?.name || data.exam?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}</td></tr>
-            <tr><td class="lbl">Roll No</td><td>: ${data.student?.rollNo || ''}</td></tr>
-            <tr><td class="lbl">Adm No</td><td>: ${data.student?.admissionNo || ''}</td></tr>
-            <tr><td class="lbl">DOB</td><td>: ${data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : ''}</td></tr>
+            <tr>
+              <td class="lbl">Name</td><td>: ${data.student?.name || ''}</td>
+              <td class="lbl" style="padding-left:8px">Roll No</td><td>: ${data.student?.rollNo || ''}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Father</td><td>: ${data.student?.fatherName || ''}</td>
+              <td class="lbl" style="padding-left:8px">Adm No</td><td>: ${data.student?.admissionNo || ''}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Class</td><td>: ${data.student?.class?.name || data.exam?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}</td>
+              <td class="lbl" style="padding-left:8px">DOB</td><td>: ${data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : ''}</td>
+            </tr>
+            ${data.allottedRoom ? `<tr><td class="lbl">Room</td><td colspan="3">: ${data.allottedRoom}${data.seatNo ? ' (Seat: ' + data.seatNo + ')' : ''}</td></tr>` : ''}
           </table>
           <div class="photo">${photoUrl ? `<img src="${photoUrl}" alt="photo" />` : 'Photo'}</div>
         </div>
@@ -383,28 +396,53 @@ const AdmitCardPage: React.FC = () => {
     const photoUrl = getFullUrl(data.student?.photoUrl);
     return (
       <div className="border-2 border-gray-300 rounded-xl p-5 bg-white text-sm">
-        <div className="flex items-start gap-3 mb-3">
+        {/* School Header — Logo Left, Name Center, Right spacer for symmetry */}
+        <div className="flex items-center gap-3 mb-3">
           {logoUrl && <img src={logoUrl} className="w-14 h-14 object-contain" alt="logo" />}
-          <div className="flex-1 text-center">
+          <div className="flex-1 text-center leading-tight">
             <div className="font-bold text-base">{data.tenant?.name}</div>
             {data.tenant?.address && <div className="text-xs text-gray-500">{data.tenant.address}</div>}
             {data.tenant?.phone && <div className="text-xs text-gray-500">Ph: {data.tenant.phone}</div>}
           </div>
+          {/* Right spacer to balance the logo and truly center the text */}
+          <div className="w-14 flex-shrink-0"></div>
         </div>
-        <div className="bg-blue-900 text-white text-center rounded p-1 mb-3">
+        {/* ADMIT CARD title — full width centered */}
+        <div className="bg-blue-900 text-white text-center rounded py-2 px-4 mb-3">
           <div className="font-bold text-sm">ADMIT CARD</div>
           <div className="text-xs">{data.exam?.name}</div>
         </div>
-        <div className="flex gap-3 mb-3">
-          <table className="flex-1 text-xs">
+        {/* Student Info — 3 rows with 2 columns + Photo on right */}
+        <div className="flex gap-4 mb-4 items-start">
+          <table className="flex-1 text-xs border-collapse">
             <tbody>
-              {([['Name', data.student?.name], ['Father', data.student?.fatherName], ['Class', `${data.student?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}`], ['Roll No', data.student?.rollNo], ['Adm No', data.student?.admissionNo], ['DOB', data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : '']] as [string, string | undefined][])
-                .map(([l, v]) => (
-                  <tr key={l}><td className="text-gray-500 pr-2 whitespace-nowrap">{l}:</td><td className="font-medium">{v}</td></tr>
-                ))}
+              <tr>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Name:</td>
+                <td className="font-medium py-0.5 pr-4">{data.student?.name}</td>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Roll No:</td>
+                <td className="font-medium py-0.5">{data.student?.rollNo}</td>
+              </tr>
+              <tr>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Father:</td>
+                <td className="font-medium py-0.5 pr-4">{data.student?.fatherName}</td>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Adm No:</td>
+                <td className="font-medium py-0.5">{data.student?.admissionNo}</td>
+              </tr>
+              <tr>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Class:</td>
+                <td className="font-medium py-0.5 pr-4">{`${data.student?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}`}</td>
+                <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">DOB:</td>
+                <td className="font-medium py-0.5">{data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : ''}</td>
+              </tr>
+              {data.allottedRoom && (
+                <tr>
+                  <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Room:</td>
+                  <td className="font-medium py-0.5" colSpan={3}>{data.allottedRoom}{data.seatNo ? ` (Seat: ${data.seatNo})` : ''}</td>
+                </tr>
+              )}
             </tbody>
           </table>
-          <div className="w-16 h-20 border rounded flex items-center justify-center bg-gray-50 text-xs text-gray-400">
+          <div className="w-20 h-24 border rounded flex items-center justify-center bg-gray-50 text-xs text-gray-400 flex-shrink-0">
             {photoUrl ? <img src={photoUrl} className="w-full h-full object-cover" alt="photo" /> : 'Photo'}
           </div>
         </div>

@@ -141,6 +141,7 @@ export const generateInterleavedSeatingService = async (data: any) => {
 
   const toCreate: any[] = [];
 
+  // Track which classes are already assigned to the current bench (for interleaving)
   for (const roomConfig of roomConfigs) {
     let patternIdx = 0;
 
@@ -149,12 +150,44 @@ export const generateInterleavedSeatingService = async (data: any) => {
         const entry = benchPattern[patternIdx % benchPattern.length];
         patternIdx++;
 
+        // Track which classes have been placed on THIS bench (to avoid same class on same bench)
+        const classesOnThisBench = new Set<string>();
+
         for (let sp = 0; sp < entry.classIds.length; sp++) {
           const classId = entry.classIds[sp];
           const queue = classQueues.get(classId);
-          if (!queue || queue.length === 0) continue;
 
-          const studentId = queue.shift();
+          let studentId: string | undefined;
+
+          if (queue && queue.length > 0) {
+            studentId = queue.shift();
+            classesOnThisBench.add(classId);
+          } else {
+            // Class exhausted — find a different class that still has students
+            // and is NOT already on this bench (to maintain interleaving)
+            let fallbackFound = false;
+            for (const [fallbackClassId, fallbackQueue] of classQueues.entries()) {
+              if (fallbackQueue.length > 0 && !classesOnThisBench.has(fallbackClassId)) {
+                studentId = fallbackQueue.shift();
+                classesOnThisBench.add(fallbackClassId);
+                fallbackFound = true;
+                break;
+              }
+            }
+            // If no different class available, try ANY class with remaining students
+            if (!fallbackFound) {
+              for (const [fallbackClassId, fallbackQueue] of classQueues.entries()) {
+                if (fallbackQueue.length > 0) {
+                  studentId = fallbackQueue.shift();
+                  classesOnThisBench.add(fallbackClassId);
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!studentId) continue; // All students assigned
+
           const seatCode = `R${row}-B${bench}-S${sp + 1}`;
 
           toCreate.push({

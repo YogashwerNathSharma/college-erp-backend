@@ -92,6 +92,19 @@ export const getBulkAdmitCardsService = async (data: {
     schedulesByExam[sch.examId].push(sch);
   });
 
+  // 7b. Batch fetch seating arrangements for all students across all schedules
+  const allScheduleIds = allSchedules.map(s => s.id);
+  const seatings = allScheduleIds.length > 0 && studentIds.length > 0
+    ? await prisma.seatingArrangement.findMany({
+        where: { examScheduleId: { in: allScheduleIds }, studentId: { in: studentIds }, tenantId, isDeleted: false },
+      })
+    : [];
+  // Fetch seating room names
+  const seatingRoomIds = [...new Set(seatings.map(s => s.roomId).filter(Boolean))];
+  const seatingRooms = seatingRoomIds.length > 0
+    ? await prisma.examRoom.findMany({ where: { id: { in: seatingRoomIds } }, select: { id: true, name: true } })
+    : [];
+
   // 8. Assemble result
   return admitCards.map(ac => {
     const student = students.find(s => s.id === ac.studentId);
@@ -99,6 +112,11 @@ export const getBulkAdmitCardsService = async (data: {
     const cls = classes.find(c => c.id === student?.classId);
     const sec = sections.find(s => s.id === student?.sectionId);
     const examSchedules = schedulesByExam[ac.examId] || [];
+
+    // Find seating for this student (from any schedule of this exam)
+    const examScheduleIds = examSchedules.map(s => s.id);
+    const studentSeating = seatings.find(s => s.studentId === ac.studentId && examScheduleIds.includes(s.examScheduleId));
+    const seatingRoom = studentSeating ? seatingRooms.find(r => r.id === studentSeating.roomId) : null;
 
     const schedule = examSchedules.map(sch => ({
       examDate: sch.examDate?.toISOString() || '',
@@ -110,6 +128,8 @@ export const getBulkAdmitCardsService = async (data: {
 
     return {
       admitCard: ac,
+      allottedRoom: seatingRoom?.name || '',
+      seatNo: studentSeating?.seatNo || '',
       student: {
         name: student ? `${student.firstName} ${student.lastName}` : '',
         fatherName: student?.fatherName || '',

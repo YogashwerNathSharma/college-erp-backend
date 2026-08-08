@@ -223,7 +223,7 @@ const YnUdpPage = lazyWithRetry(() => import("./pages/yn-udp/YnUdpPage"));
 // Attendance
 const AttendancePage = lazyWithRetry(() => import("./pages/AttendancePage/AttendancePage"));
 const AttendanceReportPage = lazyWithRetry(() => import("./pages/AttendancePage/AttendanceReportPage"));
-const AttendanceDashboardPage = lazyWithRetry(() => import("./pages/AttendancePage/AttendanceDashboardPage"));
+const AttendanceDashboardPage = lazyWithRetry(() => import("./pages/AttendancePage/AttendanceDashboard"));
 
 // Library
 const LibraryDashboard = lazyWithRetry(() => import("./pages/library/LibraryDashboard"));

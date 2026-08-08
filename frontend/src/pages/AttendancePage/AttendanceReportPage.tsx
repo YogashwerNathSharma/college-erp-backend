@@ -370,13 +370,68 @@ const AttendanceReportPage = () => {
   const renderTable = () => {
     if (!reportData) return <div className="p-8 text-center text-gray-400">No data to display</div>;
 
+    // ─── MONTHLY REGISTER FORMAT ───
+    const isMonthlyRegister = reportData.daysInMonth && reportData.students && reportData.students[0]?.days;
+    if (isMonthlyRegister) {
+      const { daysInMonth, students, dailyTotals } = reportData;
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px] border-collapse border border-gray-300 dark:border-gray-600">
+            <thead className="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th className="border border-gray-300 dark:border-gray-600 px-1 py-1.5 text-center font-semibold w-8">#</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-1.5 py-1.5 text-left font-semibold min-w-[100px]">Student Name</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-1.5 py-1.5 text-left font-semibold min-w-[90px]">Father Name</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-1 py-1.5 text-center font-semibold w-10">Roll</th>
+                {Array.from({ length: daysInMonth }, (_, i) => (
+                  <th key={i} className="border border-gray-300 dark:border-gray-600 px-0.5 py-1.5 text-center font-medium w-5">{i + 1}</th>
+                ))}
+                <th className="border border-gray-300 dark:border-gray-600 px-1 py-1.5 text-center font-semibold w-6 bg-green-50 dark:bg-green-900/30">P</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-1 py-1.5 text-center font-semibold w-6 bg-red-50 dark:bg-red-900/30">A</th>
+                <th className="border border-gray-300 dark:border-gray-600 px-1 py-1.5 text-center font-semibold w-8 bg-blue-50 dark:bg-blue-900/30">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((student: any, idx: number) => (
+                <tr key={student.studentId || idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                  <td className="border border-gray-300 dark:border-gray-600 px-1 py-1 text-center text-gray-500">{idx + 1}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-1.5 py-1 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{student.name}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-1.5 py-1 text-gray-600 dark:text-gray-300 whitespace-nowrap">{student.fatherName || ""}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-1 py-1 text-center text-gray-600 dark:text-gray-300">{student.rollNumber || idx + 1}</td>
+                  {student.days.map((day: string, di: number) => (
+                    <td key={di} className={`border border-gray-200 dark:border-gray-700 px-0 py-1 text-center font-medium ${
+                      day === "P" ? "text-green-600 bg-green-50/50 dark:bg-green-900/20" :
+                      day === "A" ? "text-red-600 bg-red-50/50 dark:bg-red-900/20" : "text-gray-300"
+                    }`}>{day || "—"}</td>
+                  ))}
+                  <td className="border border-gray-300 dark:border-gray-600 px-1 py-1 text-center font-semibold text-green-700 bg-green-50 dark:bg-green-900/30">{student.presentDays}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-1 py-1 text-center font-semibold text-red-700 bg-red-50 dark:bg-red-900/30">{student.absentDays}</td>
+                  <td className="border border-gray-300 dark:border-gray-600 px-1 py-1 text-center font-bold text-blue-700 bg-blue-50 dark:bg-blue-900/30">{student.percentage}%</td>
+                </tr>
+              ))}
+              {/* Daily totals row */}
+              {dailyTotals && (
+                <tr className="bg-gray-100 dark:bg-gray-700 font-semibold">
+                  <td colSpan={4} className="border border-gray-300 dark:border-gray-600 px-1.5 py-1.5 text-right text-xs">Total Present</td>
+                  {dailyTotals.map((t: number, i: number) => (
+                    <td key={i} className="border border-gray-300 dark:border-gray-600 px-0 py-1.5 text-center text-[9px]">{t || ""}</td>
+                  ))}
+                  <td colSpan={3} className="border border-gray-300 dark:border-gray-600"></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // ─── GENERIC TABLE FOR OTHER REPORTS ───
     const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
     if (!Array.isArray(data) || data.length === 0) {
       return <div className="p-8 text-center text-gray-400 dark:text-gray-500">No records found for the selected filters</div>;
     }
 
-    // Determine columns based on data shape
-    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted"].includes(k));
+    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted", "days"].includes(k));
 
     return (
       <div className="overflow-x-auto">
@@ -397,20 +452,16 @@ const AttendanceReportPage = () => {
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{idx + 1}</td>
                 {columns.map((col) => (
                   <td key={col} className="px-3 py-2 text-gray-700 dark:text-gray-200 text-xs whitespace-nowrap">
-                    {col === "status" || col === "Status" ? (
+                    {col === "status" ? (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                        (String(row[col]).toUpperCase() === "PRESENT" || row[col] === "P") ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                        (String(row[col]).toUpperCase() === "ABSENT" || row[col] === "A") ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                        (String(row[col]).toUpperCase() === "LATE" || row[col] === "Lt") ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                        (String(row[col]).toUpperCase() === "NOT_MARKED") ? "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400" :
-                        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                      }`}>
-                        {String(row[col] || "-").toUpperCase()}
-                      </span>
-                    ) : col.includes("percent") || col.includes("Percent") || col === "percentage" ? (
+                        String(row[col]).toUpperCase() === "PRESENT" ? "bg-green-100 text-green-700" :
+                        String(row[col]).toUpperCase() === "ABSENT" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>{String(row[col] || "-")}</span>
+                    ) : col.includes("percent") || col === "percentage" ? (
                       `${parseFloat(row[col] || 0).toFixed(1)}%`
                     ) : (
-                      String(row[col] ?? "-")
+                      String(row[col] ?? "—")
                     )}
                   </td>
                 ))}
@@ -418,18 +469,6 @@ const AttendanceReportPage = () => {
             ))}
           </tbody>
         </table>
-
-        {/* Summary Footer */}
-        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300 flex flex-wrap gap-4">
-          <span><strong>Total Records:</strong> {data.length}</span>
-          {data[0]?.status && (
-            <>
-              <span><strong>Present:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "PRESENT" || r.status === "P").length}</span>
-              <span><strong>Absent:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "ABSENT" || r.status === "A").length}</span>
-              <span><strong>Leave:</strong> {data.filter((r: any) => (r.status || "").toUpperCase() === "LEAVE" || r.status === "L").length}</span>
-            </>
-          )}
-        </div>
       </div>
     );
   };
@@ -440,10 +479,6 @@ const AttendanceReportPage = () => {
 
   const handlePrint = async () => {
     if (!reportData) return;
-    const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
-    if (!Array.isArray(data) || data.length === 0) { toast.error("No data to print"); return; }
-
-    const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted"].includes(k));
     const signatureHTML = await getPrintSignatureHTML();
     const logoUrl = tenant.logoUrl || "";
     const schoolName = tenant.name || "School Name";
@@ -454,15 +489,39 @@ const AttendanceReportPage = () => {
     const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-    const presentCount = data.filter((r: any) => r.status === "present" || r.status === "P").length;
-    const absentCount = data.filter((r: any) => r.status === "absent" || r.status === "A").length;
-    const attendPercent = data.length > 0 && data[0]?.status ? ((presentCount / data.length) * 100).toFixed(2) : "";
+    // Detect monthly register format
+    const isMonthlyRegister = reportData.daysInMonth && reportData.students && reportData.students[0]?.days;
+    let tableHTML = "";
+
+    if (isMonthlyRegister) {
+      const { daysInMonth, students, dailyTotals } = reportData;
+      const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => `<th style="width:18px;text-align:center;padding:2px;font-size:8px;">${i + 1}</th>`).join("");
+      const headerRow = `<tr><th style="width:25px;">S.No</th><th style="min-width:90px;">Name</th><th style="min-width:80px;">Father</th><th style="width:30px;">Roll</th>${dayHeaders}<th style="width:22px;background:#d4edda;">P</th><th style="width:22px;background:#f8d7da;">A</th><th style="width:32px;background:#cce5ff;">%</th></tr>`;
+
+      const bodyRows = students.map((s: any, i: number) => {
+        const dayCells = s.days.map((d: string) => {
+          const style = d === "P" ? "color:green;font-weight:bold;" : d === "A" ? "color:red;font-weight:bold;" : "color:#ccc;";
+          return `<td style="text-align:center;padding:1px;font-size:8px;${style}">${d || "\u2014"}</td>`;
+        }).join("");
+        return `<tr><td style="text-align:center;">${i + 1}</td><td>${s.name}</td><td>${s.fatherName || ""}</td><td style="text-align:center;">${s.rollNumber || i + 1}</td>${dayCells}<td style="text-align:center;font-weight:bold;background:#d4edda;">${s.presentDays}</td><td style="text-align:center;font-weight:bold;background:#f8d7da;">${s.absentDays}</td><td style="text-align:center;font-weight:bold;background:#cce5ff;">${s.percentage}%</td></tr>`;
+      }).join("");
+
+      const totalRow = dailyTotals ? `<tr style="background:#f0f0f0;font-weight:bold;"><td colspan="4" style="text-align:right;padding:3px 6px;">Total Present</td>${dailyTotals.map((t: number) => `<td style="text-align:center;font-size:8px;">${t || ""}</td>`).join("")}<td colspan="3"></td></tr>` : "";
+      tableHTML = `<table><thead>${headerRow}</thead><tbody>${bodyRows}${totalRow}</tbody></table>`;
+    } else {
+      const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
+      if (!Array.isArray(data) || data.length === 0) { toast.error("No data to print"); return; }
+      const columns = Object.keys(data[0] || {}).filter(k => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted", "days"].includes(k));
+      const headerRow = `<tr><th>S.No</th>${columns.map(c => `<th>${c.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}</th>`).join("")}</tr>`;
+      const bodyRows = data.map((row: any, i: number) => `<tr><td>${i + 1}</td>${columns.map(c => `<td>${row[c] ?? "\u2014"}</td>`).join("")}</tr>`).join("");
+      tableHTML = `<table><thead>${headerRow}</thead><tbody>${bodyRows}</tbody></table>`;
+    }
 
     const html = `
       <html><head><title>${getReportTitle()}</title>
       <style>
-        @page { margin: 10mm; }
-        body { font-family: Arial, sans-serif; font-size: 11px; color: #333; }
+        @page { size: landscape; margin: 8mm; }
+        body { font-family: Arial, sans-serif; font-size: 10px; color: #333; }
         .header { display: flex; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
         .logo { width: 50px; height: 50px; object-fit: contain; margin-right: 12px; }
         .school-info { flex: 1; text-align: center; }
@@ -472,10 +531,9 @@ const AttendanceReportPage = () => {
         .report-title { text-align: center; font-size: 14px; font-weight: bold; margin: 10px 0 5px; }
         .report-sub { text-align: center; font-size: 10px; color: #666; margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        th { background: #f0f0f0; border: 1px solid #ccc; padding: 4px 6px; text-align: left; font-size: 10px; text-transform: uppercase; }
-        td { border: 1px solid #ddd; padding: 3px 6px; font-size: 10px; }
+        th { background: #f0f0f0; border: 1px solid #ccc; padding: 3px 4px; text-align: left; font-size: 9px; text-transform: uppercase; }
+        td { border: 1px solid #ddd; padding: 2px 4px; font-size: 9px; }
         tr:nth-child(even) { background: #fafafa; }
-        .summary-footer { margin-top: 10px; padding: 8px; border-top: 2px solid #333; font-size: 11px; font-weight: bold; }
         .signature { margin-top: 30px; }
       </style></head><body>
       <div class="header">
@@ -489,12 +547,8 @@ const AttendanceReportPage = () => {
         </div>
       </div>
       <div class="report-title">${getReportTitle()}</div>
-      <div class="report-sub">${getSubtitle()} | Total Records: ${data.length}</div>
-      <table>
-        <thead><tr><th>S.No</th>${columns.map(c => `<th>${c.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}</th>`).join("")}</tr></thead>
-        <tbody>${data.map((row: any, i: number) => `<tr><td>${i + 1}</td>${columns.map(c => `<td>${row[c] ?? "-"}</td>`).join("")}</tr>`).join("")}</tbody>
-      </table>
-      ${data[0]?.status ? `<div class="summary-footer">Total Students: ${data.length} | Present: ${presentCount} | Absent: ${absentCount} | Attendance: ${attendPercent}%</div>` : ""}
+      <div class="report-sub">${getSubtitle()}</div>
+      ${tableHTML}
       <div class="signature">${signatureHTML}</div>
       </body></html>
     `;

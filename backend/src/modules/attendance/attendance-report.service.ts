@@ -21,7 +21,7 @@ export const getMonthlyReportService = async (
     where: { classId, sectionId, tenantId, isDeleted: false },
     include: {
       student: {
-        select: { id: true, firstName: true, lastName: true, rollNumber: true },
+        select: { id: true, firstName: true, lastName: true, rollNumber: true, fatherName: true, admissionNo: true },
       },
     },
     orderBy: { student: { rollNumber: "asc" } },
@@ -84,6 +84,7 @@ export const getMonthlyReportService = async (
     return {
       studentId: e.student.id,
       name: `${e.student.firstName} ${e.student.lastName}`,
+      fatherName: e.student.fatherName || "",
       rollNumber: e.student.rollNumber || "",
       days,
       presentDays,

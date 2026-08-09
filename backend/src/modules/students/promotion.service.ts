@@ -1,6 +1,34 @@
 
 import prisma from "../../utils/prisma";
 
+const validateEnrollmentTenantReferences = async (
+  tx: any,
+  tenantId: string,
+  refs: {
+    studentId: string;
+    classIds?: string[];
+    sectionIds?: string[];
+    academicYearIds?: string[];
+  }
+) => {
+  const student = await tx.student.findFirst({
+    where: { id: refs.studentId, tenantId, isDeleted: false },
+    select: { id: true },
+  });
+  if (!student) throw new Error("Invalid student reference for current tenant");
+
+  const checks = [
+    ...(refs.classIds || []).map((id) => ["class", id, () => tx.class.findFirst({ where: { id, tenantId } })] as const),
+    ...(refs.sectionIds || []).map((id) => ["section", id, () => tx.section.findFirst({ where: { id, tenantId } })] as const),
+    ...(refs.academicYearIds || []).map((id) => ["academic year", id, () => tx.academicYear.findFirst({ where: { id, tenantId } })] as const),
+  ];
+
+  for (const [name, id, lookup] of checks) {
+    if (!id) continue;
+    if (!(await lookup())) throw new Error(`Invalid ${name} reference for current tenant`);
+  }
+};
+
 // ============================================
 // GET ELIGIBLE STUDENTS FOR PROMOTION
 // ============================================
@@ -61,8 +89,15 @@ export const promoteStudent = async (
   promotionType: string = "promotion"
 ) => {
   return prisma.$transaction(async (tx) => {
+    await validateEnrollmentTenantReferences(tx, tenantId, {
+      studentId,
+      classIds: [fromClassId, toClassId],
+      sectionIds: [fromSectionId, toSectionId],
+      academicYearIds: [fromYearId, toYearId],
+    });
+
     // 1. Mark old enrollment as "promoted"
-    await tx.enrollment.updateMany({
+    const sourceEnrollment = await tx.enrollment.findFirst({
       where: {
         studentId,
         classId: fromClassId,
@@ -70,7 +105,14 @@ export const promoteStudent = async (
         academicYearId: fromYearId,
         tenantId,
         status: "active",
+        isDeleted: false,
       },
+      select: { id: true },
+    });
+    if (!sourceEnrollment) throw new Error("Active enrollment not found for current tenant");
+
+    await tx.enrollment.updateMany({
+      where: { id: sourceEnrollment.id, tenantId, status: "active" },
       data: {
         status: "promoted",
         updatedAt: new Date(),
@@ -228,6 +270,13 @@ export const undoPromotion = async (
   if (!promotion) throw new Error("Promotion record not found");
 
   return prisma.$transaction(async (tx) => {
+    await validateEnrollmentTenantReferences(tx, tenantId, {
+      studentId: promotion.studentId,
+      classIds: [promotion.fromClassId, promotion.toClassId],
+      sectionIds: [promotion.fromSectionId, promotion.toSectionId],
+      academicYearIds: [promotion.fromAcademicYearId, promotion.toAcademicYearId],
+    });
+
     // 1. Soft-delete new enrollment
     await tx.enrollment.updateMany({
       where: {
@@ -300,7 +349,14 @@ export const changeSectionService = async (
   userId: string
 ) => {
   return prisma.$transaction(async (tx) => {
-    await tx.enrollment.updateMany({
+    await validateEnrollmentTenantReferences(tx, tenantId, {
+      studentId,
+      classIds: [classId],
+      sectionIds: [fromSectionId, toSectionId],
+      academicYearIds: [academicYearId],
+    });
+
+    const enrollment = await tx.enrollment.findFirst({
       where: {
         studentId,
         classId,
@@ -310,6 +366,12 @@ export const changeSectionService = async (
         status: "active",
         isDeleted: false,
       },
+      select: { id: true },
+    });
+    if (!enrollment) throw new Error("Active enrollment not found for current tenant");
+
+    await tx.enrollment.updateMany({
+      where: { id: enrollment.id, tenantId, status: "active" },
       data: {
         sectionId: toSectionId,
         updatedAt: new Date(),

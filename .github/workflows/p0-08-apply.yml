@@ -18,8 +18,8 @@ jobs:
           fetch-depth: 0
 
       - name: Apply minimal P0-08 patch
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           path = Path("backend/src/modules/students/student.service.ts")
@@ -106,6 +106,7 @@ const assertStudentTenantReferences = async (
           text = text.replace(call_anchor, call + call_anchor, 1)
 
           path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Verify patch shape
         run: |
@@ -113,8 +114,6 @@ const assertStudentTenantReferences = async (
           grep -n "assertStudentTenantReferences" backend/src/modules/students/student.service.ts
 
       - name: Remove temporary workflow and commit patch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

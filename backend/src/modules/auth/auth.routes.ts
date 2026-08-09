@@ -1,25 +1,19 @@
 import { Router } from "express";
 import multer from "multer";
-
-import {
-  login, register, registerTenant, registerSuperAdmin,
-  changePassword, forgotPassword, resetPassword,
-} from "./auth.controller";
+import { login, register, registerTenant, registerSuperAdmin, changePassword, forgotPassword, resetPassword } from "./auth.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { allowInitialSuperAdminSetup } from "./super-admin-bootstrap.middleware";
 import { refreshTokenHandler } from "./auth.refresh";
 
 const router = Router();
-
-// Upload config
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Public
 router.post("/login", login);
 
 // Refresh token endpoint
 router.post("/refresh-token", refreshTokenHandler);
 
-// 🔥 WITH multer — logo + background upload support
+// Existing public school/college signup flow.
 router.post(
   "/register-tenant",
   upload.fields([
@@ -29,10 +23,12 @@ router.post(
   registerTenant
 );
 
-router.post("/super-admin", registerSuperAdmin);
-router.post("/register", register);
+// One-time bootstrap only: once a SUPER_ADMIN exists, this endpoint is closed.
+router.post("/super-admin", allowInitialSuperAdminSetup, registerSuperAdmin);
 
-// Protected
+// Protected tenant user creation. Tenant ID comes from the authenticated JWT.
+router.post("/register", authMiddleware, register);
+
 router.post("/change-password", authMiddleware, changePassword);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);

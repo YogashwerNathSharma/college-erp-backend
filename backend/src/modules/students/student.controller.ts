@@ -30,6 +30,8 @@ import {
   toggleAgeConfigStatus,
 } from "./age-validation.service";
 
+import { validateStudentTenantReferences } from "./tenant-reference-validation";
+
 // ============================================
 // STUDENT CRUD
 // ============================================
@@ -38,6 +40,18 @@ export const createStudentHandler = async (req: any, res: any) => {
   try {
     console.log("[Admission] Received payload keys:", Object.keys(req.body));
     console.log("[Admission] tenantId:", req.tenantId, "| userId:", req.user?.userId);
+
+    const { academicYearId, classId, sectionId, religionId, casteId, categoryId, nationalityId } = req.body;
+    await validateStudentTenantReferences(req.tenantId, {
+      academicYearId,
+      classId,
+      sectionId,
+      religionId,
+      casteId,
+      categoryId,
+      nationalityId,
+    });
+
     const result = await createStudent(req.body, req.tenantId, req.user?.userId);
     // Invalidate dashboard + stats caches so they refresh with new student
     invalidateCache(`dashboard:${req.tenantId}`);

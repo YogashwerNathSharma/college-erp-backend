@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x]
+        node-version: [18.x, 20.x]
 
     steps:
       - uses: actions/checkout@v4
@@ -21,18 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-      - name: Install shared dependencies
-        run: cd shared && npm install
-
-      - name: Install backend dependencies
-        run: cd backend && npm ci
-
-      - name: Install frontend dependencies
-        run: cd frontend && npm install
-
-      - name: Install student portal dependencies
-        run: cd student-portal && npm install
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build shared package
         run: cd shared && npm run build
@@ -64,22 +56,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 22
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
+          cache: "npm"
 
-      - name: Install backend dependencies
-        run: cd backend && npm ci
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Build backend
+      - name: Run backend tests
         env:
           DATABASE_URL: mongodb://localhost:27017/college_erp_test
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
           NODE_ENV: test
-        run: cd backend && npm run build
+        run: |
+          cd backend
+          npm run build
+          # npm test (uncomment when tests are added)
 
-      # Automated tests will be enabled when the backend test suite is added.
-      - name: Test suite status
-        run: echo "Backend build completed; automated test suite is not configured yet."
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage/

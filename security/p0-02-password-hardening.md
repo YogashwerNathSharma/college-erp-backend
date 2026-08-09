@@ -1,0 +1,1 @@
+P0-02 password hardening is implemented on the security/p0-02-password-hardening branch. This file documents the isolated security change and can be removed during cleanup.

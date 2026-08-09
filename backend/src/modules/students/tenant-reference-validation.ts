@@ -18,9 +18,9 @@ export const validateStudentTenantReferences = async (
   }
 ) => {
   const checks = [
-    ["academic year", refs.academicYearId, () => prisma.academicYear.findFirst({ where: { id: refs.academicYearId!, tenantId, isDeleted: false } })],
-    ["class", refs.classId, () => prisma.class.findFirst({ where: { id: refs.classId!, tenantId, isDeleted: false } })],
-    ["section", refs.sectionId, () => prisma.section.findFirst({ where: { id: refs.sectionId!, tenantId, isDeleted: false } })],
+    ["academic year", refs.academicYearId, () => prisma.academicYear.findFirst({ where: { id: refs.academicYearId!, tenantId } })],
+    ["class", refs.classId, () => prisma.class.findFirst({ where: { id: refs.classId!, tenantId } })],
+    ["section", refs.sectionId, () => prisma.section.findFirst({ where: { id: refs.sectionId!, tenantId } })],
     ["religion", refs.religionId, () => prisma.religion.findFirst({ where: { id: refs.religionId!, tenantId } })],
     ["caste", refs.casteId, () => prisma.caste.findFirst({ where: { id: refs.casteId!, tenantId } })],
     ["category", refs.categoryId, () => prisma.category.findFirst({ where: { id: refs.categoryId!, tenantId } })],

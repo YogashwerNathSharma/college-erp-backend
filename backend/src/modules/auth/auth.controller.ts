@@ -102,7 +102,24 @@ export const login = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const user = await registerService(req.body);
+    const authenticatedUser = req.user;
+    if (!authenticatedUser?.userId || !authenticatedUser.tenantId) {
+      return res.status(403).json({ success: false, message: "A tenant administrator account is required" });
+    }
+
+    const requestedRole = typeof req.body?.role === "string" ? req.body.role.toUpperCase() : "ADMIN";
+    if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(requestedRole)) {
+      return res.status(400).json({ success: false, message: "Invalid user role" });
+    }
+
+    // Never trust tenantId supplied by the client. The authenticated user's tenant is authoritative.
+    const registrationData = {
+      ...req.body,
+      tenantId: authenticatedUser.tenantId,
+      role: requestedRole,
+    };
+
+    const user = await registerService(registrationData);
     return res.status(201).json({ success: true, data: user });
   } catch (error: any) {
     return res.status(400).json({ success: false, message: error.message });

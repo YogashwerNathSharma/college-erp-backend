@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
 
 import {
@@ -28,7 +28,20 @@ router.post(
 
 // One-time bootstrap only: once a SUPER_ADMIN exists, this endpoint is closed.
 router.post("/super-admin", allowInitialSuperAdminSetup, registerSuperAdmin);
-router.post("/register", register);
+
+// Internal tenant-user registration. This endpoint is intentionally NOT public.
+// Only an authenticated tenant ADMIN can create a user inside their own tenant.
+const tenantAdminOnly = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.role !== "ADMIN" || !req.user.tenantId) {
+    return res.status(403).json({
+      success: false,
+      message: "Only a tenant administrator can create users",
+    });
+  }
+  next();
+};
+
+router.post("/register", authMiddleware, tenantAdminOnly, register);
 
 // Protected
 router.post("/change-password", authMiddleware, changePassword);

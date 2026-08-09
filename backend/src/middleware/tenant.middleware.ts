@@ -57,3 +57,21 @@ export const tenantFilter = (req: Request) => {
   if (req.user?.role === "SUPER_ADMIN") return {};
   return { tenantId: req.user?.tenantId };
 };
+
+/**
+ * resolveTenant — resolves tenantId from JWT and injects into request.
+ * Used by all module routes as middleware after authMiddleware.
+ * Also enforces cross-tenant isolation.
+ */
+export const resolveTenant = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // For authenticated users, tenantId already comes from JWT (set by authMiddleware)
+  // This middleware ensures it's also available in req.body for downstream services
+  if (req.user?.tenantId && req.body && typeof req.body === "object") {
+    req.body.tenantId = req.user.tenantId;
+  }
+  next();
+};

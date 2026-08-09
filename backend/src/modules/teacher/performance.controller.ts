@@ -6,6 +6,7 @@ import {
   getPerformanceByTeacher,
   getAllPerformances,
 } from "./performance.service";
+import logger from "../../config/logger";
 
 // ✅ CREATE / UPDATE PERFORMANCE
 export const create = async (req: any, res: Response) => {
@@ -21,7 +22,7 @@ export const create = async (req: any, res: Response) => {
     );
     return res.status(201).json({ success: true, data });
   } catch (e: any) {
-    console.error("CREATE PERFORMANCE ERROR:", e);
+    logger.error("CREATE PERFORMANCE ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -44,7 +45,7 @@ export const getByTeacher = async (req: any, res: Response) => {
     const data = await getPerformanceByTeacher(teacherId, academicYearId as string, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET PERFORMANCE ERROR:", e);
+    logger.error("GET PERFORMANCE ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -60,7 +61,7 @@ export const getAll = async (req: any, res: Response) => {
     const data = await getAllPerformances(req.query, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET ALL PERFORMANCES ERROR:", e);
+    logger.error("GET ALL PERFORMANCES ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };

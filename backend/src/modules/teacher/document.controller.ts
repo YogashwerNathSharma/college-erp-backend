@@ -3,6 +3,7 @@
 import { Request, Response } from "express";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import { uploadDocument, getDocuments, getAllDocuments, deleteDocument } from "./document.service";
+import logger from "../../config/logger";
 
 // ✅ UPLOAD DOCUMENT
 export const upload = async (req: any, res: Response) => {
@@ -25,7 +26,7 @@ export const upload = async (req: any, res: Response) => {
     );
     return res.status(201).json({ success: true, data });
   } catch (e: any) {
-    console.error("UPLOAD DOCUMENT ERROR:", e);
+    logger.error("UPLOAD DOCUMENT ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -48,7 +49,7 @@ export const getByTeacher = async (req: any, res: Response) => {
     const data = await getAllDocuments(tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET DOCUMENTS ERROR:", e);
+    logger.error("GET DOCUMENTS ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -66,7 +67,7 @@ export const remove = async (req: any, res: Response) => {
     await deleteDocument(id, tenantId);
     return res.json({ success: true, message: "Document deleted successfully" });
   } catch (e: any) {
-    console.error("DELETE DOCUMENT ERROR:", e);
+    logger.error("DELETE DOCUMENT ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };

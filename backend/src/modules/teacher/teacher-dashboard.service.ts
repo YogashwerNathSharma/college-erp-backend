@@ -1,4 +1,5 @@
 import prisma from "../../utils/prisma";
+import logger from "../../config/logger";
 
 export const getTeacherDashboardData = async (tenantId: string) => {
   const now = new Date();
@@ -37,7 +38,7 @@ export const getTeacherDashboardData = async (tenantId: string) => {
   // Department distribution
   let departments: any[] = [];
   try {
-    departments = await (prisma as any).department.findMany({
+    departments = await prisma.department.findMany({
       where: { tenantId, isActive: true },
       select: { id: true, name: true },
     });
@@ -111,7 +112,7 @@ export const getTeacherDashboardData = async (tenantId: string) => {
       status: t.leaves[0]?.status || "APPROVED",
     }));
   } catch (e) {
-    console.error("Leave query error:", e);
+    logger.warn("Teacher dashboard leave query failed", { error: (e as any)?.message });
   }
 
   return {

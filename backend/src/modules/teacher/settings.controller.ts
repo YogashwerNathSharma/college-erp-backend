@@ -2,6 +2,7 @@
 
 import { Request, Response } from "express";
 import { getSettings, updateSettings } from "./settings.service";
+import logger from "../../config/logger";
 
 // ✅ GET SETTINGS
 export const get = async (req: any, res: Response) => {
@@ -14,7 +15,7 @@ export const get = async (req: any, res: Response) => {
     const data = await getSettings(tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET SETTINGS ERROR:", e);
+    logger.error("GET SETTINGS ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -30,7 +31,7 @@ export const update = async (req: any, res: Response) => {
     const data = await updateSettings(req.body, tenantId);
     return res.json({ success: true, data, message: "Settings updated successfully" });
   } catch (e: any) {
-    console.error("UPDATE SETTINGS ERROR:", e);
+    logger.error("UPDATE SETTINGS ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };

@@ -9,6 +9,7 @@ import {
   getPerformanceReport,
   getSubjectAssignmentReport,
 } from "./report.service";
+import logger from "../../config/logger";
 
 // ✅ TEACHER LIST REPORT
 export const teacherList = async (req: any, res: Response) => {
@@ -21,7 +22,7 @@ export const teacherList = async (req: any, res: Response) => {
     const data = await getTeacherListReport(tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("TEACHER LIST REPORT ERROR:", e);
+    logger.error("TEACHER LIST REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -48,7 +49,7 @@ export const attendance = async (req: any, res: Response) => {
     );
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("ATTENDANCE REPORT ERROR:", e);
+    logger.error("ATTENDANCE REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -71,7 +72,7 @@ export const leave = async (req: any, res: Response) => {
     );
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("LEAVE REPORT ERROR:", e);
+    logger.error("LEAVE REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -93,7 +94,7 @@ export const salary = async (req: any, res: Response) => {
     );
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("SALARY REPORT ERROR:", e);
+    logger.error("SALARY REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -111,7 +112,7 @@ export const performance = async (req: any, res: Response) => {
     const data = await getPerformanceReport(tenantId, academicYearId as string);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("PERFORMANCE REPORT ERROR:", e);
+    logger.error("PERFORMANCE REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -128,7 +129,7 @@ export const subjectAssignment = async (req: any, res: Response) => {
     const data = await getSubjectAssignmentReport(tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("SUBJECT ASSIGNMENT REPORT ERROR:", e);
+    logger.error("SUBJECT ASSIGNMENT REPORT ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };

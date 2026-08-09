@@ -6,6 +6,7 @@ import {
   getCommunications,
   deleteCommunication,
 } from "./communication.service";
+import logger from "../../config/logger";
 
 // ✅ CREATE COMMUNICATION
 export const create = async (req: any, res: Response) => {
@@ -21,7 +22,7 @@ export const create = async (req: any, res: Response) => {
     );
     return res.status(201).json({ success: true, data });
   } catch (e: any) {
-    console.error("CREATE COMMUNICATION ERROR:", e);
+    logger.error("CREATE COMMUNICATION ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -37,7 +38,7 @@ export const getAll = async (req: any, res: Response) => {
     const data = await getCommunications(req.query, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET COMMUNICATIONS ERROR:", e);
+    logger.error("GET COMMUNICATIONS ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -55,7 +56,7 @@ export const remove = async (req: any, res: Response) => {
     await deleteCommunication(id, tenantId);
     return res.json({ success: true, message: "Deleted successfully" });
   } catch (e: any) {
-    console.error("DELETE COMMUNICATION ERROR:", e);
+    logger.error("DELETE COMMUNICATION ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };

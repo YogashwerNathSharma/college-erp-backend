@@ -7,6 +7,7 @@ import {
   getPayslip,
   updateSalary,
 } from "./salary.service";
+import logger from "../../config/logger";
 
 // ✅ CREATE SALARY
 export const create = async (req: any, res: Response) => {
@@ -19,7 +20,7 @@ export const create = async (req: any, res: Response) => {
     const salary = await createSalary(req.body, tenantId);
     return res.status(201).json({ success: true, data: salary });
   } catch (e: any) {
-    console.error("CREATE SALARY ERROR:", e);
+    logger.error("CREATE SALARY ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -35,7 +36,7 @@ export const getAll = async (req: any, res: Response) => {
     const data = await getSalaries(req.query, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET SALARIES ERROR:", e);
+    logger.error("GET SALARIES ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -58,7 +59,7 @@ export const slip = async (req: any, res: Response) => {
     const data = await getPayslip(teacherId, parseInt(month), parseInt(year), tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET PAYSLIP ERROR:", e);
+    logger.error("GET PAYSLIP ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -76,7 +77,7 @@ export const update = async (req: any, res: Response) => {
     const data = await updateSalary(id, req.body, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("UPDATE SALARY ERROR:", e);
+    logger.error("UPDATE SALARY ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };

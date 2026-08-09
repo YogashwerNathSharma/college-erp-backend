@@ -26,9 +26,9 @@ export const getTeacherListReport = async (tenantId: string) => {
     email: t.email,
     phone: t.phone,
     gender: t.gender || null,
-    designation: (t as any).designation || null,
-    department: (t as any).department || null,
-    status: (t as any).status || "active",
+    designationId: t.designationId || null,
+    departmentId: t.departmentId || null,
+    status: t.isDeleted ? "inactive" : "active",
     dob: t.dob || null,
     employeeId: t.employeeId || null,
     subjects: t.subjects.map((s) => s.subject.name).join(", "),
@@ -116,7 +116,7 @@ export const getLeaveReport = async (
     whereClause.teacherId = teacherId;
   }
 
-  const leaves = await (prisma as any).leave.findMany({
+  const leaves = await prisma.leave.findMany({
     where: whereClause,
     include: {
       teacher: { select: { id: true, name: true } },

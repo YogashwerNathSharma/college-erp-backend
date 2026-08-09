@@ -1,6 +1,7 @@
 
 import { getPagination } from "../../utils/pagination";
 import prisma from "../../utils/prisma";
+import logger from "../../config/logger";
 import { buildPaginationMeta } from "../../utils/pagination";
 
 //////////////////////////////////////////////////////

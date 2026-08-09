@@ -8,6 +8,7 @@ import {
   updateLeaveStatus,
   cancelLeave,
 } from "./leave.service";
+import logger from "../../config/logger";
 
 // ✅ APPLY LEAVE
 export const apply = async (req: any, res: Response) => {
@@ -20,7 +21,7 @@ export const apply = async (req: any, res: Response) => {
     const leave = await applyLeave(req.body, tenantId);
     return res.status(201).json({ success: true, data: leave });
   } catch (e: any) {
-    console.error("APPLY LEAVE ERROR:", e);
+    logger.error("APPLY LEAVE ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -36,7 +37,7 @@ export const getAll = async (req: any, res: Response) => {
     const data = await getLeaves(req.query, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("GET LEAVES ERROR:", e);
+    logger.error("GET LEAVES ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -53,7 +54,7 @@ export const stats = async (req: any, res: Response) => {
     const data = await getLeaveStats(tenantId, teacherId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("LEAVE STATS ERROR:", e);
+    logger.error("LEAVE STATS ERROR:", e);
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -77,7 +78,7 @@ export const approve = async (req: any, res: Response) => {
     const data = await updateLeaveStatus(id, status, userId, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    console.error("APPROVE LEAVE ERROR:", e);
+    logger.error("APPROVE LEAVE ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -95,7 +96,7 @@ export const remove = async (req: any, res: Response) => {
     await cancelLeave(id, tenantId);
     return res.json({ success: true, message: "Leave cancelled successfully" });
   } catch (e: any) {
-    console.error("CANCEL LEAVE ERROR:", e);
+    logger.error("CANCEL LEAVE ERROR:", e);
     return res.status(400).json({ success: false, message: e.message });
   }
 };

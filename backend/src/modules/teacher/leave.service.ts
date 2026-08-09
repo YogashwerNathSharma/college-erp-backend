@@ -29,7 +29,7 @@ export const applyLeave = async (data: any, tenantId: string) => {
   const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
   // Check overlapping leaves
-  const overlapping = await (prisma as any).leave.findFirst({
+  const overlapping = await prisma.leave.findFirst({
     where: {
       teacherId: data.teacherId,
       isDeleted: false,
@@ -47,7 +47,7 @@ export const applyLeave = async (data: any, tenantId: string) => {
     throw new Error("Leave already applied for overlapping dates");
   }
 
-  const leave = await (prisma as any).leave.create({
+  const leave = await prisma.leave.create({
     data: {
       teacherId: data.teacherId,
       leaveType: data.leaveType,
@@ -87,7 +87,7 @@ export const getLeaves = async (query: any, tenantId: string) => {
   }
 
   const [leaves, total] = await Promise.all([
-    (prisma as any).leave.findMany({
+    prisma.leave.findMany({
       where: whereClause,
       include: {
         teacher: { select: { id: true, name: true, email: true } },
@@ -96,7 +96,7 @@ export const getLeaves = async (query: any, tenantId: string) => {
       skip,
       take: limit,
     }),
-    (prisma as any).leave.count({ where: whereClause }),
+    prisma.leave.count({ where: whereClause }),
   ]);
 
   return {
@@ -113,10 +113,10 @@ export const getLeaveStats = async (tenantId: string, teacherId?: string) => {
   if (teacherId) whereBase.teacherId = teacherId;
 
   const [total, approved, pending, rejected] = await Promise.all([
-    (prisma as any).leave.count({ where: whereBase }),
-    (prisma as any).leave.count({ where: { ...whereBase, status: "APPROVED" } }),
-    (prisma as any).leave.count({ where: { ...whereBase, status: "PENDING" } }),
-    (prisma as any).leave.count({ where: { ...whereBase, status: "REJECTED" } }),
+    prisma.leave.count({ where: whereBase }),
+    prisma.leave.count({ where: { ...whereBase, status: "APPROVED" } }),
+    prisma.leave.count({ where: { ...whereBase, status: "PENDING" } }),
+    prisma.leave.count({ where: { ...whereBase, status: "REJECTED" } }),
   ]);
 
   return { total, approved, pending, rejected };
@@ -131,7 +131,7 @@ export const updateLeaveStatus = async (
   approvedBy: string,
   tenantId: string
 ) => {
-  const leave = await (prisma as any).leave.findFirst({
+  const leave = await prisma.leave.findFirst({
     where: { id, tenantId, isDeleted: false },
   });
 
@@ -143,7 +143,7 @@ export const updateLeaveStatus = async (
     throw new Error("Leave already processed");
   }
 
-  const updated = await (prisma as any).leave.update({
+  const updated = await prisma.leave.update({
     where: { id },
     data: { status, approvedBy, approvedAt: new Date() },
   });
@@ -155,7 +155,7 @@ export const updateLeaveStatus = async (
 // CANCEL / DELETE LEAVE
 //////////////////////////////////////////////////////
 export const cancelLeave = async (id: string, tenantId: string) => {
-  const leave = await (prisma as any).leave.findFirst({
+  const leave = await prisma.leave.findFirst({
     where: { id, tenantId, isDeleted: false },
   });
 
@@ -163,7 +163,7 @@ export const cancelLeave = async (id: string, tenantId: string) => {
     throw new Error("Leave not found");
   }
 
-  await (prisma as any).leave.update({
+  await prisma.leave.update({
     where: { id },
     data: { isDeleted: true, deletedAt: new Date() },
   });

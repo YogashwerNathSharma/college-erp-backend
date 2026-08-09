@@ -7,15 +7,100 @@ import crypto from "crypto";
 // Supports: Razorpay (primary), Paytm, PhonePe, CCAvenue
 // ══════════════════════════════════════════════════
 
-/**
- * Generate unique order ID
- */
 function generateOrderId(): string {
   const date = new Date();
   const prefix = "ORD";
   const year = date.getFullYear();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `${prefix}-${year}-${random}`;
+}
+
+/**
+ * P0-07: Atomically finalize a successful online payment.
+ * Verify and webhook callbacks both use this path so concurrent/repeated
+ * callbacks can produce only one SUCCESS transition and one fee Payment.
+ */
+async function finalizeSuccessfulPayment(
+  paymentId: string,
+  tenantId: string,
+  data: {
+    gatewayPaymentId?: string;
+    gatewaySignature?: string;
+    gatewayResponse?: any;
+    paymentMethod?: string;
+  }
+) {
+  return prisma.$transaction(async (tx) => {
+    const now = new Date();
+
+    const transitioned = await tx.onlinePayment.updateMany({
+      where: {
+        id: paymentId,
+        tenantId,
+        status: { not: "SUCCESS" },
+      },
+      data: {
+        status: "SUCCESS",
+        gatewayPaymentId: data.gatewayPaymentId,
+        gatewaySignature: data.gatewaySignature,
+        gatewayResponse: data.gatewayResponse,
+        paymentMethod: data.paymentMethod,
+        paidAt: now,
+      },
+    });
+
+    const payment = await tx.onlinePayment.findFirst({
+      where: { id: paymentId, tenantId },
+    });
+
+    if (!payment) {
+      throw new Error("Payment order not found");
+    }
+
+    // Another request already finalized this payment. Do not create another fee Payment.
+    if (transitioned.count === 0) {
+      return payment;
+    }
+
+    if (payment.feeId) {
+      const reference = data.gatewayPaymentId || payment.gatewayOrderId || payment.orderId;
+
+      // Legacy-safe duplicate check plus the atomic SUCCESS transition above prevents
+      // repeated verify/webhook callbacks from inserting duplicate fee payments.
+      const existingFeePayment = await tx.payment.findFirst({
+        where: {
+          tenantId,
+          studentFeeId: payment.feeId,
+          reference,
+        },
+      });
+
+      if (!existingFeePayment) {
+        await tx.payment.create({
+          data: {
+            tenantId,
+            studentFeeId: payment.feeId,
+            amount: payment.amount,
+            method: "ONLINE" as any,
+            paymentMode: "ONLINE",
+            paymentDate: now,
+            receiptNo: payment.orderId || `RCP-${Date.now()}`,
+            reference,
+            remarks: "Online payment via Razorpay",
+          },
+        });
+      }
+    }
+
+    await tx.paymentLink.updateMany({
+      where: { tenantId, paymentId: payment.id },
+      data: { status: "PAID", paidAt: now },
+    });
+
+    return tx.onlinePayment.findFirst({
+      where: { id: payment.id, tenantId },
+    });
+  });
 }
 
 /**
@@ -40,7 +125,6 @@ export const createOrder = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "amount and purpose are required" });
     }
 
-    // Get gateway config
     const gatewayConfig = await prisma.paymentGatewayConfig.findFirst({
       where: { tenantId, provider, isActive: true },
     });
@@ -56,7 +140,6 @@ export const createOrder = async (req: Request, res: Response) => {
     let gatewayOrderId: string | null = null;
     let gatewayResponse: any = null;
 
-    // Create order with gateway
     if (provider === "RAZORPAY") {
       const Razorpay = require("razorpay");
       const instance = new Razorpay({
@@ -65,7 +148,7 @@ export const createOrder = async (req: Request, res: Response) => {
       });
 
       const razorpayOrder = await instance.orders.create({
-        amount: Math.round(amount * 100), // Razorpay takes amount in paise
+        amount: Math.round(amount * 100),
         currency,
         receipt: orderId,
         notes: { tenantId, studentId, purpose },
@@ -75,7 +158,6 @@ export const createOrder = async (req: Request, res: Response) => {
       gatewayResponse = razorpayOrder;
     }
 
-    // Save to DB
     const payment = await prisma.onlinePayment.create({
       data: {
         tenantId,
@@ -100,7 +182,7 @@ export const createOrder = async (req: Request, res: Response) => {
       data: {
         payment,
         gatewayOrderId,
-        gatewayKey: gatewayConfig.apiKey, // Public key for frontend
+        gatewayKey: gatewayConfig.apiKey,
         amount: amount * 100,
         currency,
       },
@@ -125,7 +207,6 @@ export const verifyPayment = async (req: Request, res: Response) => {
       razorpay_signature,
     } = req.body;
 
-    // Find the payment record
     const payment = await prisma.onlinePayment.findFirst({
       where: {
         tenantId,
@@ -145,64 +226,34 @@ export const verifyPayment = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, message: "Payment already verified", data: payment });
     }
 
-    // Verify signature (Razorpay)
     if (payment.config?.provider === "RAZORPAY") {
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        return res.status(400).json({ success: false, message: "Payment verification data is incomplete" });
+      }
+
       const expectedSignature = crypto
         .createHmac("sha256", payment.config.apiSecret || "")
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest("hex");
 
       if (expectedSignature !== razorpay_signature) {
-        await prisma.onlinePayment.update({
-          where: { id: payment.id },
+        await prisma.onlinePayment.updateMany({
+          where: { id: payment.id, tenantId, status: { not: "SUCCESS" } },
           data: { status: "FAILED", gatewayResponse: req.body },
         });
         return res.status(400).json({ success: false, message: "Payment signature verification failed" });
       }
     }
 
-    // Update payment status
-    const updatedPayment = await prisma.onlinePayment.update({
-      where: { id: payment.id },
-      data: {
-        status: "SUCCESS",
-        gatewayPaymentId: razorpay_payment_id,
-        gatewaySignature: razorpay_signature,
-        gatewayResponse: req.body,
-        paidAt: new Date(),
-      },
-    });
-
-    // If linked to a fee, update the student fee record
-    if (payment.feeId) {
-      try {
-        await prisma.payment.create({
-          data: {
-            tenantId,
-            studentFeeId: payment.feeId,
-            amount: payment.amount,
-            method: "ONLINE" as any,
-            paymentMode: "ONLINE",
-            paymentDate: new Date(),
-            receiptNo: payment.orderId || `RCP-${Date.now()}`,
-            reference: razorpay_payment_id,
-            remarks: "Online payment via Razorpay",
-          },
-        });
-      } catch (feeErr) {
-        console.error("Fee link error (non-critical):", feeErr);
-      }
-    }
-
-    // Update payment link if exists
-    await prisma.paymentLink.updateMany({
-      where: { tenantId, paymentId: payment.id },
-      data: { status: "PAID", paidAt: new Date() },
+    const updatedPayment = await finalizeSuccessfulPayment(payment.id, tenantId, {
+      gatewayPaymentId: razorpay_payment_id,
+      gatewaySignature: razorpay_signature,
+      gatewayResponse: req.body,
     });
 
     return res.status(200).json({
       success: true,
-      message: "Payment verified successfully",
+      message: updatedPayment?.status === "SUCCESS" ? "Payment verified successfully" : "Payment processed",
       data: updatedPayment,
     });
   } catch (error: any) {
@@ -219,9 +270,6 @@ export const webhookHandler = async (req: Request, res: Response) => {
   try {
     const signature = req.headers["x-razorpay-signature"] as string;
     const body = JSON.stringify(req.body);
-
-    // Find active config to get webhook secret
-    // Note: In multi-tenant, we need to figure out tenant from the order
     const event = req.body;
     const orderId = event?.payload?.order?.entity?.receipt;
 
@@ -238,34 +286,34 @@ export const webhookHandler = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, message: "Payment not found" });
     }
 
-    // Verify webhook signature
     const expectedSignature = crypto
       .createHmac("sha256", payment.config.webhookSecret)
       .update(body)
       .digest("hex");
 
-    if (expectedSignature !== signature) {
+    if (!signature || expectedSignature !== signature) {
       return res.status(400).json({ success: false, message: "Invalid webhook signature" });
     }
 
-    // Handle events
     switch (event.event) {
-      case "payment.captured":
-        await prisma.onlinePayment.update({
-          where: { id: payment.id },
-          data: {
-            status: "SUCCESS",
-            gatewayPaymentId: event.payload.payment.entity.id,
-            paymentMethod: event.payload.payment.entity.method,
-            paidAt: new Date(),
-            gatewayResponse: event.payload,
-          },
+      case "payment.captured": {
+        const gatewayPayment = event.payload?.payment?.entity;
+        if (!gatewayPayment?.id) {
+          return res.status(200).json({ success: true, message: "Payment event missing payment id" });
+        }
+
+        await finalizeSuccessfulPayment(payment.id, payment.tenantId, {
+          gatewayPaymentId: gatewayPayment.id,
+          paymentMethod: gatewayPayment.method,
+          gatewayResponse: event.payload,
         });
         break;
+      }
 
       case "payment.failed":
-        await prisma.onlinePayment.update({
-          where: { id: payment.id },
+        // Never regress an already successful payment to FAILED when callbacks arrive out of order.
+        await prisma.onlinePayment.updateMany({
+          where: { id: payment.id, tenantId: payment.tenantId, status: { not: "SUCCESS" } },
           data: { status: "FAILED", gatewayResponse: event.payload },
         });
         break;
@@ -286,7 +334,7 @@ export const webhookHandler = async (req: Request, res: Response) => {
     return res.status(200).json({ success: true });
   } catch (error: any) {
     console.error("Webhook error:", error);
-    return res.status(200).json({ success: true }); // Always return 200 to webhooks
+    return res.status(200).json({ success: true });
   }
 };
 
@@ -412,7 +460,6 @@ export const generatePaymentLink = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "studentId, amount, and purpose required" });
     }
 
-    // Create the payment order first
     const orderId = generateOrderId();
     const payment = await prisma.onlinePayment.create({
       data: {
@@ -428,7 +475,6 @@ export const generatePaymentLink = async (req: Request, res: Response) => {
       },
     });
 
-    // Generate link URL (tenant's payment page)
     const linkUrl = `${process.env.FRONTEND_URL || "https://erp.example.com"}/pay/${orderId}`;
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
@@ -451,9 +497,6 @@ export const generatePaymentLink = async (req: Request, res: Response) => {
         whatsappSent: sendWhatsApp,
       },
     });
-
-    // TODO: Send SMS/Email/WhatsApp notification with link
-    // This would integrate with the Notification Engine
 
     return res.status(201).json({
       success: true,
@@ -482,10 +525,9 @@ export const getConfig = async (req: Request, res: Response) => {
         merchantId: true,
         isActive: true,
         isTest: true,
-        apiKey: true, // Public key is safe to return
+        apiKey: true,
         createdAt: true,
         updatedAt: true,
-        // Exclude: apiSecret, webhookSecret
       },
     });
 
@@ -531,7 +573,6 @@ export const getPaymentStats = async (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId || req.user?.tenantId;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const [totalPayments, successPayments, todayCollection, monthCollection, failedCount, pendingLinks] = await Promise.all([

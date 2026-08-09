@@ -3,6 +3,52 @@
 import prisma from "../../config/prisma";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
 
+const validateAttendanceReferences = async (
+  tenantId: string,
+  classId: string,
+  sectionId: string,
+  academicYearId: string,
+  studentIds: string[]
+) => {
+  const [classRecord, sectionRecord, academicYear, students, enrollments] = await Promise.all([
+    prisma.class.findFirst({ where: { id: classId, tenantId } }),
+    prisma.section.findFirst({ where: { id: sectionId, tenantId } }),
+    prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } }),
+    prisma.student.findMany({
+      where: { id: { in: studentIds }, tenantId, isDeleted: false },
+      select: { id: true },
+    }),
+    prisma.enrollment.findMany({
+      where: {
+        tenantId,
+        classId,
+        sectionId,
+        academicYearId,
+        studentId: { in: studentIds },
+        status: "active",
+        isDeleted: false,
+      },
+      select: { studentId: true },
+    }),
+  ]);
+
+  if (!classRecord) throw new Error("Invalid class reference for current tenant");
+  if (!sectionRecord) throw new Error("Invalid section reference for current tenant");
+  if (!academicYear) throw new Error("Invalid academic year reference for current tenant");
+
+  const validStudentIds = new Set(students.map((student) => student.id));
+  const enrolledStudentIds = new Set(enrollments.map((enrollment) => enrollment.studentId));
+
+  for (const studentId of studentIds) {
+    if (!validStudentIds.has(studentId)) {
+      throw new Error("Invalid student reference for current tenant");
+    }
+    if (!enrolledStudentIds.has(studentId)) {
+      throw new Error("Student is not enrolled in the selected class, section, and academic year");
+    }
+  }
+};
+
 // ========================================
 // MARK ATTENDANCE (Bulk - first time)
 // ========================================
@@ -13,6 +59,14 @@ export const markAttendanceService = async (
   const { classId, sectionId, academicYearId, date, students } = data;
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
+
+  await validateAttendanceReferences(
+    tenantId,
+    classId,
+    sectionId,
+    academicYearId,
+    students.map((student) => student.studentId)
+  );
 
   const attendanceData: any[] = [];
 
@@ -40,9 +94,7 @@ export const markAttendanceService = async (
   }
 
   if (attendanceData.length > 0) {
-    await prisma.attendance.createMany({
-      data: attendanceData,
-    });
+    await prisma.attendance.createMany({ data: attendanceData });
   }
 
   return {
@@ -63,6 +115,14 @@ export const updateAttendanceService = async (
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
+  await validateAttendanceReferences(
+    tenantId,
+    classId,
+    sectionId,
+    academicYearId,
+    students.map((student) => student.studentId)
+  );
+
   let updatedCount = 0;
 
   for (const s of students) {
@@ -71,6 +131,7 @@ export const updateAttendanceService = async (
         studentId: s.studentId,
         classId,
         sectionId,
+        academicYearId,
         date: attendanceDate,
         tenantId,
         isDeleted: false,
@@ -99,10 +160,7 @@ export const updateAttendanceService = async (
     }
   }
 
-  return {
-    message: "Attendance updated successfully",
-    updatedCount,
-  };
+  return { message: "Attendance updated successfully", updatedCount };
 };
 
 // ========================================
@@ -117,7 +175,6 @@ export const getClassAttendanceService = async (
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
-  // Get all students in this class/section
   const enrollments = await prisma.enrollment.findMany({
     where: {
       classId,
@@ -138,12 +195,9 @@ export const getClassAttendanceService = async (
         },
       },
     },
-    orderBy: {
-      student: { rollNumber: "asc" },
-    },
+    orderBy: { student: { rollNumber: "asc" } },
   });
 
-  // Get existing attendance for this date
   const attendanceRecords = await prisma.attendance.findMany({
     where: {
       classId,
@@ -154,12 +208,7 @@ export const getClassAttendanceService = async (
     },
   });
 
-  // Map attendance by studentId
-  const attendanceMap = new Map(
-    attendanceRecords.map((a) => [a.studentId, a.status])
-  );
-
-  // Build response with student info + status
+  const attendanceMap = new Map(attendanceRecords.map((a) => [a.studentId, a.status]));
   const students = enrollments.map((e) => ({
     studentId: e.student.id,
     name: `${e.student.firstName} ${e.student.lastName}`,
@@ -187,11 +236,7 @@ export const getStudentAttendanceService = async (
   tenantId: string
 ) => {
   return prisma.attendance.findMany({
-    where: {
-      studentId,
-      tenantId,
-      isDeleted: false,
-    },
+    where: { studentId, tenantId, isDeleted: false },
     orderBy: { date: "desc" },
   });
 };
@@ -207,16 +252,12 @@ export const getAttendanceReportService = async (
 ) => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
-
   const records = await prisma.attendance.findMany({
     where: {
       studentId,
       tenantId,
       isDeleted: false,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
+      date: { gte: startDate, lte: endDate },
     },
   });
 
@@ -245,12 +286,7 @@ export const getAttendanceSummaryService = async (
   tenantId: string
 ) => {
   const records = await prisma.attendance.findMany({
-    where: {
-      studentId,
-      academicYearId,
-      tenantId,
-      isDeleted: false,
-    },
+    where: { studentId, academicYearId, tenantId, isDeleted: false },
   });
 
   const total = records.length;
@@ -267,7 +303,7 @@ export const getAttendanceSummaryService = async (
 };
 
 // ========================================
-// DASHBOARD STATS (like image #1 - Dashboard)
+// DASHBOARD STATS
 // ========================================
 export const getDashboardStatsService = async (
   tenantId: string,
@@ -276,21 +312,14 @@ export const getDashboardStatsService = async (
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Total students (from enrollments for this academic year)
   const enrollments = await prisma.enrollment.findMany({
     where: { tenantId, academicYearId, isDeleted: false },
     select: { studentId: true, classId: true },
   });
   const totalStudents = enrollments.length;
-  const studentIds = enrollments.map((e: any) => e.studentId);
 
-  // Today's attendance
   const todayRecords = await prisma.attendance.findMany({
-    where: {
-      tenantId,
-      date: today,
-      isDeleted: false,
-    },
+    where: { tenantId, date: today, isDeleted: false },
   });
 
   const presentToday = todayRecords.filter((r) => r.status === "PRESENT").length;
@@ -298,25 +327,16 @@ export const getDashboardStatsService = async (
   const lateToday = todayRecords.filter((r) => r.status === "LATE").length;
   const onLeave = todayRecords.filter((r) => r.status === "LEAVE").length;
 
-  // Weekly trend (last 7 days)
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
   const weekRecords = await prisma.attendance.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      date: { gte: sevenDaysAgo, lte: today },
-    },
+    where: { tenantId, isDeleted: false, date: { gte: sevenDaysAgo, lte: today } },
   });
 
-  // Group by date for weekly trend
   const dateMap = new Map<string, { present: number; absent: number }>();
   for (const r of weekRecords) {
     const dateKey = r.date.toISOString().split("T")[0];
-    if (!dateMap.has(dateKey)) {
-      dateMap.set(dateKey, { present: 0, absent: 0 });
-    }
+    if (!dateMap.has(dateKey)) dateMap.set(dateKey, { present: 0, absent: 0 });
     const data = dateMap.get(dateKey)!;
     if (r.status === "PRESENT") data.present++;
     else data.absent++;
@@ -337,7 +357,6 @@ export const getDashboardStatsService = async (
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Overall attendance % for this academic year
   const allRecords = await prisma.attendance.count({
     where: { tenantId, academicYearId, isDeleted: false },
   });
@@ -346,13 +365,14 @@ export const getDashboardStatsService = async (
   });
   const attendancePercentage = allRecords === 0 ? "0" : ((allPresent / allRecords) * 100).toFixed(1);
 
-  // Class-wise attendance (today or overall if no today data)
   const classIds = [...new Set(enrollments.map((e: any) => e.classId).filter(Boolean))];
   const classes = classIds.length > 0
-    ? await prisma.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } })
+    ? await prisma.class.findMany({
+        where: { id: { in: classIds }, tenantId },
+        select: { id: true, name: true },
+      })
     : [];
 
-  // Build enrollment map per class
   const classEnrollMap = new Map<string, string[]>();
   for (const e of enrollments) {
     if (!classEnrollMap.has(e.classId)) classEnrollMap.set(e.classId, []);
@@ -365,31 +385,23 @@ export const getDashboardStatsService = async (
     const present = classRecords.filter((r) => r.status === "PRESENT").length;
     const absent = classRecords.filter((r) => r.status === "ABSENT" || r.status === "LATE").length;
     const total = classStudentIds.length;
-    // If no today data, use overall
     const pct = classRecords.length > 0
       ? Math.round((present / Math.max(classRecords.length, 1)) * 100)
       : (allRecords > 0 ? Math.round(parseFloat(attendancePercentage)) : 0);
-    return {
-      className: cls.name,
-      present,
-      absent,
-      total,
-      percentage: pct,
-    };
+    return { className: cls.name, present, absent, total, percentage: pct };
   }).sort((a: any, b: any) => a.className.localeCompare(b.className, undefined, { numeric: true }));
 
-  // Absent students today (with details)
   const absentRecords = todayRecords.filter((r) => r.status === "ABSENT");
   let absentStudents: any[] = [];
   if (absentRecords.length > 0) {
     const absentStudentIds = absentRecords.map((r) => r.studentId);
     const students = await prisma.student.findMany({
-      where: { id: { in: absentStudentIds }, isDeleted: false },
+      where: { id: { in: absentStudentIds }, tenantId, isDeleted: false },
       select: { id: true, firstName: true, lastName: true, phone: true, classId: true, sectionId: true },
     });
     const sectionIds = [...new Set(students.map((s: any) => s.sectionId).filter(Boolean))];
     const sections = sectionIds.length > 0
-      ? await prisma.section.findMany({ where: { id: { in: sectionIds } }, select: { id: true, name: true } })
+      ? await prisma.section.findMany({ where: { id: { in: sectionIds }, tenantId }, select: { id: true, name: true } })
       : [];
 
     absentStudents = students.slice(0, 10).map((s: any) => {
@@ -406,7 +418,6 @@ export const getDashboardStatsService = async (
     });
   }
 
-  // Heatmap data (class x day for this week)
   const heatmapData = classes.map((cls: any) => {
     const classStudentIds = classEnrollMap.get(cls.id) || [];
     const classDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((dayName, idx) => {
@@ -437,4 +448,3 @@ export const getDashboardStatsService = async (
     heatmapData,
   };
 };
-

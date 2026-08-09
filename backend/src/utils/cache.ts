@@ -60,3 +60,17 @@ export const CacheKeys = {
   attendanceReport: (tenantId: string, date: string) => `attendance:${tenantId}:${date}`,
   timetable: (tenantId: string, classId: string) => `timetable:${tenantId}:${classId}`,
 };
+
+/**
+ * cached() — alias used by existing controllers
+ * Signature: cached(key, ttlMs, fetcher)
+ * TTL is in milliseconds (converted to seconds internally)
+ */
+export const cached = async <T>(
+  key: string,
+  ttlMs: number,
+  fetcher: () => Promise<T>
+): Promise<T> => {
+  const ttlSeconds = Math.max(1, Math.round(ttlMs / 1000));
+  return cacheAside<T>(key, fetcher, ttlSeconds);
+};

@@ -32,7 +32,7 @@ jobs:
         run: cd frontend && npm install
 
       - name: Install student portal dependencies
-        run: cd student-portal && npm ci
+        run: cd student-portal && npm install
 
       - name: Build shared package
         run: cd shared && npm run build

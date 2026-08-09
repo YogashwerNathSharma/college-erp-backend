@@ -7,9 +7,10 @@ export const generateToken = (payload: any) => {
   });
 };
 
-// Long-lived refresh token (30 days)
+// Long-lived refresh token (30 days) — falls back to JWT_SECRET if JWT_REFRESH_SECRET not set
 export const generateRefreshToken = (payload: any) => {
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, {
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!;
+  return jwt.sign(payload, secret, {
     expiresIn: "30d",
   });
 };
@@ -19,5 +20,6 @@ export const verifyToken = (token: string) => {
 };
 
 export const verifyRefreshToken = (token: string) => {
-  return jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
+  const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!;
+  return jwt.verify(token, secret);
 };

@@ -12,8 +12,7 @@ export const getDashboard = async (
     const TIMEOUT_MS = 25000; // 25 seconds max
     const timeoutId = setTimeout(() => {
       if (!res.headersSent) {
-    clearTimeout(timeoutId);
-    console.error(
+        console.error("Dashboard API TIMEOUT after 25s");
         res.status(504).json({ success: false, message: "Dashboard loading timeout. Please refresh the page." });
       }
     }, TIMEOUT_MS);

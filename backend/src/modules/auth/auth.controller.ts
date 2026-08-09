@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
@@ -9,6 +9,41 @@ import {
   autoAssignFreePlanService,
   checkFreePlanAlreadyUsed,
 } from "../subscription/subscription.service";
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_REQUEST_COOLDOWN_MS = 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCK_MS = 15 * 60 * 1000;
+
+interface ResetOtpState {
+  hash: string;
+  attempts: number;
+  requestedAt: number;
+  lockedUntil?: number;
+}
+
+const parseResetOtpState = (value: string | null): ResetOtpState | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (
+      typeof parsed?.hash !== "string" ||
+      typeof parsed?.attempts !== "number" ||
+      typeof parsed?.requestedAt !== "number"
+    ) {
+      return null;
+    }
+    return parsed as ResetOtpState;
+  } catch {
+    return null;
+  }
+};
+
+const genericForgotPasswordResponse = (res: Response) =>
+  res.json({
+    success: true,
+    message: "If an account exists for this email, a password reset OTP has been sent.",
+  });
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -122,24 +157,49 @@ export const registerSuperAdmin = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     let { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: "Email is required" });
+    if (!email) return genericForgotPasswordResponse(res);
     email = email.toLowerCase().trim();
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ success: false, message: "User not found with this email" });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    await prisma.user.update({ where: { email }, data: { resetOtp: otp, resetOtpExpiry: otpExpiry } });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return genericForgotPasswordResponse(res);
+
+    const now = Date.now();
+    const existingState = parseResetOtpState(user.resetOtp);
+    if (existingState?.lockedUntil && existingState.lockedUntil > now) {
+      return genericForgotPasswordResponse(res);
+    }
+    if (existingState?.requestedAt && now - existingState.requestedAt < OTP_REQUEST_COOLDOWN_MS) {
+      return genericForgotPasswordResponse(res);
+    }
+
+    const otp = randomInt(100000, 1000000).toString();
+    const otpExpiry = new Date(now + OTP_TTL_MS);
+    const otpHash = await bcrypt.hash(otp, 10);
 
     await sendEmail({
       to: email,
       subject: "School ERP - Password Reset OTP",
-      body: `Your password reset OTP is: ${otp}\n\nThis OTP will expire in 10 minutes. If you did not request a password reset, ignore this email.`,
+      body: `Your password reset OTP is: ${otp}\n\nThis OTP will expire in 10 minutes. You have a maximum of ${OTP_MAX_ATTEMPTS} verification attempts. If you did not request a password reset, ignore this email.`,
     });
 
-    return res.json({ success: true, message: "OTP sent to your registered email" });
+    const state: ResetOtpState = {
+      hash: otpHash,
+      attempts: 0,
+      requestedAt: now,
+    };
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetOtp: JSON.stringify(state),
+        resetOtpExpiry: otpExpiry,
+      },
+    });
+
+    return genericForgotPasswordResponse(res);
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message || "Failed to send OTP" });
+    console.error("Password reset request failed:", error?.message || error);
+    return genericForgotPasswordResponse(res);
   }
 };
 
@@ -148,14 +208,56 @@ export const resetPassword = async (req: Request, res: Response) => {
     let { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: "Email, OTP, and new password are required" });
     email = email.toLowerCase().trim();
+
+    if (newPassword.trim().length < 8) {
+      return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    if (user.resetOtp !== otp) return res.status(400).json({ success: false, message: "Invalid OTP" });
-    if (!user.resetOtpExpiry || new Date() > user.resetOtpExpiry) return res.status(400).json({ success: false, message: "OTP expired. Please request a new one" });
-    if (newPassword.trim().length < 8) return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    if (!user) return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+
+    const state = parseResetOtpState(user.resetOtp);
+    const now = Date.now();
+    if (!state || !user.resetOtpExpiry || user.resetOtpExpiry.getTime() <= now) {
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+    }
+
+    if (state.lockedUntil && state.lockedUntil > now) {
+      return res.status(429).json({ success: false, message: "Too many OTP attempts. Please request a new OTP later" });
+    }
+
+    if (state.attempts >= OTP_MAX_ATTEMPTS) {
+      const lockedState: ResetOtpState = { ...state, lockedUntil: now + OTP_LOCK_MS };
+      await prisma.user.update({ where: { id: user.id }, data: { resetOtp: JSON.stringify(lockedState) } });
+      return res.status(429).json({ success: false, message: "Too many OTP attempts. Please request a new OTP later" });
+    }
+
+    const validOtp = await bcrypt.compare(String(otp).trim(), state.hash);
+    if (!validOtp) {
+      const nextAttempts = state.attempts + 1;
+      const lockedUntil = nextAttempts >= OTP_MAX_ATTEMPTS ? now + OTP_LOCK_MS : undefined;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetOtp: JSON.stringify({ ...state, attempts: nextAttempts, lockedUntil }),
+        },
+      });
+      return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
+    }
 
     const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
-    await prisma.user.update({ where: { email }, data: { password: hashedPassword, resetOtp: null, resetOtpExpiry: null, isFirstLogin: false } });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetOtp: null,
+        resetOtpExpiry: null,
+        isFirstLogin: false,
+      },
+    });
+
     return res.json({ success: true, message: "Password reset successful" });
-  } catch (error: any) { return res.status(500).json({ success: false, message: error.message || "Password reset failed" }); }
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || "Password reset failed" });
+  }
 };

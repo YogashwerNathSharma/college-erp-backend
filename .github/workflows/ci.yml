@@ -23,7 +23,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install shared dependencies
-        run: cd shared && npm ci
+        run: cd shared && npm install
 
       - name: Install backend dependencies
         run: cd backend && npm ci

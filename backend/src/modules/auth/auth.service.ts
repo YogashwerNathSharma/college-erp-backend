@@ -1,16 +1,23 @@
-
-
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/jwt";
 
 /////////////////////////
-// REGISTER SERVICE (FIXED)
+// REGISTER SERVICE
 /////////////////////////
 export const registerService = async (data: any) => {
   let { name, email, password, tenantId, role } = data;
 
+  if (!name || !email || !password) {
+    throw new Error("Name, email and password are required");
+  }
+
   email = email.toLowerCase().trim();
+  const cleanPassword = password.trim();
+
+  if (cleanPassword.length < 8) {
+    throw new Error("Password must be at least 8 characters long");
+  }
 
   const existingUser = await prisma.user.findUnique({
     where: { email },
@@ -25,9 +32,7 @@ export const registerService = async (data: any) => {
     role = "ADMIN";
   }
 
-  const finalPassword = (password || "123456").trim();
-
-  const hashed = await bcrypt.hash(finalPassword, 10);
+  const hashed = await bcrypt.hash(cleanPassword, 10);
 
   const user = await prisma.user.create({
     data: {
@@ -41,12 +46,11 @@ export const registerService = async (data: any) => {
   });
 
   const { password: _, ...safeUser } = user;
-
   return safeUser;
 };
 
 /////////////////////////
-// LOGIN SERVICE (WITH SUBSCRIPTION CHECK — FIXED)
+// LOGIN SERVICE
 /////////////////////////
 export const loginService = async (email: string, password: string) => {
   const normalizedEmail = email.toLowerCase().trim();
@@ -59,13 +63,10 @@ export const loginService = async (email: string, password: string) => {
   if (!user) throw new Error("Invalid credentials");
 
   const isMatch = await bcrypt.compare(cleanPassword, user.password);
-
   if (!isMatch) throw new Error("Invalid credentials");
 
-  // ✅ SUBSCRIPTION CHECK (Skip for SUPER_ADMIN)
+  // SUBSCRIPTION CHECK (Skip for SUPER_ADMIN)
   if (user.role !== "SUPER_ADMIN") {
-
-    // 🔥 FIX: query by tenantId field, NOT by id
     const activeSubscription = await prisma.tenantSubscription.findFirst({
       where: {
         tenantId: user.tenantId!,
@@ -74,9 +75,7 @@ export const loginService = async (email: string, password: string) => {
       },
     });
 
-    // Check if subscription exists and is not expired
     if (!activeSubscription || new Date(activeSubscription.endDate) < new Date()) {
-      // If subscription exists but expired, mark it
       if (activeSubscription) {
         await prisma.tenantSubscription.update({
           where: { id: activeSubscription.id },
@@ -87,13 +86,11 @@ export const loginService = async (email: string, password: string) => {
         });
       }
 
-      // Get tenant info for the expiry page
       const tenant = await prisma.tenant.findUnique({
         where: { id: user.tenantId as string },
         select: { id: true, name: true },
       });
 
-      // Still generate token (needed for payment page API calls)
       const token = generateToken({
         userId: user.id,
         tenantId: user.tenantId,
@@ -118,12 +115,21 @@ export const loginService = async (email: string, password: string) => {
 
   const { password: _, ...safeUser } = user;
 
-  // Fetch tenant info for frontend (logo, name, etc.)
   let tenant = null;
   if (user.tenantId) {
     tenant = await prisma.tenant.findUnique({
       where: { id: user.tenantId },
-      select: { id: true, name: true, type: true, logoUrl: true, backgroundUrl: true, address: true, phone: true, email: true, primaryColor: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        logoUrl: true,
+        backgroundUrl: true,
+        address: true,
+        phone: true,
+        email: true,
+        primaryColor: true,
+      },
     });
   }
 
@@ -135,4 +141,3 @@ export const loginService = async (email: string, password: string) => {
     tenant,
   };
 };
-

@@ -1,65 +1,62 @@
-// ══════════════════════════════════════════════════════════════════
-// SIMPLE IN-MEMORY CACHE (for dashboard performance)
-// TTL-based, per-key. No external dependency.
-// ══════════════════════════════════════════════════════════════════
-
-interface CacheEntry<T> {
-  data: T;
-  expiry: number;
-}
-
-const store = new Map<string, CacheEntry<any>>();
+import { cacheGetJSON, cacheSetJSON, cacheDel, cacheDelPattern } from "../config/redis";
+import logger from "../config/logger";
 
 /**
- * Get or compute a value with TTL caching.
- * @param key - Unique cache key (e.g. "dashboard:tenantId")
- * @param ttlMs - Time-to-live in milliseconds (default 30s)
- * @param compute - Async function to compute the value if cache miss
+ * Cache-aside pattern helper
+ * 
+ * Usage:
+ *   const data = await cacheAside(
+ *     `dashboard:${tenantId}`,
+ *     () => heavyDbQuery(),
+ *     300 // 5 min TTL
+ *   );
  */
-export async function cached<T>(
+export const cacheAside = async <T>(
   key: string,
-  ttlMs: number,
-  compute: () => Promise<T>
-): Promise<T> {
-  const now = Date.now();
-  const existing = store.get(key);
-  
-  if (existing && existing.expiry > now) {
-    return existing.data as T;
+  fetcher: () => Promise<T>,
+  ttlSeconds: number = 300
+): Promise<T> => {
+  // Try cache first
+  const cached = await cacheGetJSON<T>(key);
+  if (cached !== null) {
+    logger.debug("Cache HIT", { key });
+    return cached;
   }
 
-  const data = await compute();
-  store.set(key, { data, expiry: now + ttlMs });
+  // Cache miss — fetch from DB
+  logger.debug("Cache MISS", { key });
+  const data = await fetcher();
+
+  // Store in cache (non-blocking)
+  cacheSetJSON(key, data, ttlSeconds).catch((err) => {
+    logger.warn("Cache write failed", { key, error: err.message });
+  });
+
   return data;
-}
+};
 
 /**
- * Invalidate a specific cache key or all keys matching a prefix.
+ * Cache invalidation helpers
  */
-export function invalidateCache(keyOrPrefix: string): void {
-  if (store.has(keyOrPrefix)) {
-    store.delete(keyOrPrefix);
-  } else {
-    // Prefix match — invalidate all keys starting with this string
-    for (const key of store.keys()) {
-      if (key.startsWith(keyOrPrefix)) {
-        store.delete(key);
-      }
-    }
-  }
-}
+export const invalidateCache = async (key: string) => {
+  await cacheDel(key);
+};
+
+export const invalidateTenantCache = async (tenantId: string, prefix?: string) => {
+  const pattern = prefix
+    ? `${prefix}:${tenantId}:*`
+    : `*:${tenantId}:*`;
+  await cacheDelPattern(pattern);
+};
 
 /**
- * Clear entire cache.
+ * Common cache key builders
  */
-export function clearCache(): void {
-  store.clear();
-}
-
-// Auto-cleanup expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store.entries()) {
-    if (entry.expiry < now) store.delete(key);
-  }
-}, 5 * 60 * 1000);
+export const CacheKeys = {
+  dashboardStats: (tenantId: string) => `dashboard:stats:${tenantId}`,
+  studentList: (tenantId: string, classId: string, page: number) => `students:${tenantId}:${classId}:page${page}`,
+  teacherList: (tenantId: string) => `teachers:${tenantId}`,
+  feesSummary: (tenantId: string, yearId: string) => `fees:summary:${tenantId}:${yearId}`,
+  attendanceReport: (tenantId: string, date: string) => `attendance:${tenantId}:${date}`,
+  timetable: (tenantId: string, classId: string) => `timetable:${tenantId}:${classId}`,
+};

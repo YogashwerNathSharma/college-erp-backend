@@ -31,6 +31,8 @@ import settingsRoutes from "./modules/settings/settings.routes";
 import { securityHeaders, corsConfig } from "./middleware/security.middleware";
 import { sanitizeInput } from "./middleware/sanitize.middleware";
 import { swaggerSpec } from "./config/swagger";
+import { requestLogger } from "./middleware/requestLogger.middleware";
+import healthRoutes from "./routes/health.routes";
 import { rateLimiter } from "./middleware/rateLimit";
 import { authLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
@@ -190,6 +192,12 @@ app.use(sanitizeInput);
 app.use(rateLimiter);
 
 //////////////////////////////////////////////////////
+// REQUEST LOGGER (structured Winston logging)
+//////////////////////////////////////////////////////
+
+app.use(requestLogger);
+
+//////////////////////////////////////////////////////
 // STATIC FILES (Protected — requires auth token)
 //////////////////////////////////////////////////////
 
@@ -203,6 +211,9 @@ app.use(
 // 🔓 ROUTES THAT SKIP SUBSCRIPTION CHECK
 // (Auth, Subscriptions, Payments, Settings, SuperAdmin)
 //////////////////////////////////////////////////////
+
+// Health check (no auth required — used by Render/load balancers)
+app.use("/api", healthRoutes);
 
 app.use("/api", siteRoutes);
 app.use("/api/auth", authLimiter, authRoutes);

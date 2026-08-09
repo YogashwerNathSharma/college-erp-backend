@@ -2,25 +2,53 @@ import dotenv from "dotenv";
 dotenv.config();
 import app from "./app";
 import prisma from "./utils/prisma";
+import logger from "./config/logger";
 import { initializeBackupSchedules } from "./modules/backup/backup.service";
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  logger.info(`🚀 Server running on port ${PORT}`, { port: PORT, env: process.env.NODE_ENV });
   
-  // Warm up Prisma/MongoDB connection pool (eliminates cold-start delay on first request)
+  // Warm up Prisma/MongoDB connection pool
   try {
     await prisma.$runCommandRaw({ ping: 1 });
-    console.log("✅ MongoDB connection warmed up");
+    logger.info("✅ MongoDB connection warmed up");
   } catch (err) {
-    console.warn("⚠️ MongoDB warmup failed:", (err as any)?.message);
+    logger.warn("⚠️ MongoDB warmup failed", { error: (err as any)?.message });
   }
 
- // Initialize backup cron jobs for all tenants (non-blocking)
+  // Initialize backup cron jobs (non-blocking)
   try {
     await initializeBackupSchedules();
   } catch (error) {
-    console.warn("[Backup] Scheduler init skipped (run 'npx prisma generate' if needed):", (error as any)?.message);
+    logger.warn("[Backup] Scheduler init skipped", { error: (error as any)?.message });
   }
+});
+
+// Graceful shutdown
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`${signal} received. Shutting down gracefully...`);
+  
+  try {
+    await prisma.$disconnect();
+    logger.info("Database disconnected");
+  } catch (err) {
+    logger.error("Error during shutdown", { error: (err as any)?.message });
+  }
+
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// Catch unhandled errors
+process.on("unhandledRejection", (reason: any) => {
+  logger.error("Unhandled Promise Rejection", { reason: reason?.message || reason });
+});
+
+process.on("uncaughtException", (error: Error) => {
+  logger.error("Uncaught Exception", { error: error.message, stack: error.stack });
+  process.exit(1);
 });

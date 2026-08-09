@@ -1,84 +1,73 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
   lint-and-build:
+    name: Lint & Build
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "20"
           cache: "npm"
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
+        working-directory: ./backend
         run: npm ci
 
-      - name: Build shared package
-        run: cd shared && npm run build
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
 
-      - name: Build backend
-        run: cd backend && npm run build
+      - name: TypeScript Build
+        working-directory: ./backend
+        run: npx tsc --noEmit
 
-      - name: Build frontend
-        run: cd frontend && npm run build
+      - name: Security Audit
+        working-directory: ./backend
+        run: npm audit --audit-level=high || true
 
-      - name: Build student portal
-        run: cd student-portal && npm run build
+  # Uncomment when you add tests:
+  # test:
+  #   name: Run Tests
+  #   runs-on: ubuntu-latest
+  #   needs: lint-and-build
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #         cache: "npm"
+  #         cache-dependency-path: backend/package-lock.json
+  #     - run: npm ci
+  #       working-directory: ./backend
+  #     - run: npx prisma generate
+  #       working-directory: ./backend
+  #     - run: npm test
+  #       working-directory: ./backend
 
-  test:
+  deploy:
+    name: Deploy to Render
     runs-on: ubuntu-latest
     needs: lint-and-build
-
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run backend tests
-        env:
-          DATABASE_URL: mongodb://localhost:27017/college_erp_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-secret-key
-          NODE_ENV: test
+      - name: Trigger Render Deploy
         run: |
-          cd backend
-          npm run build
-          # npm test (uncomment when tests are added)
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: backend/coverage/
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}

@@ -68,6 +68,9 @@ export const resolveTenant = (
   res: Response,
   next: NextFunction
 ) => {
+  // Inject tenantId directly on req for route handlers that read req.tenantId
+  (req as any).tenantId = req.user?.tenantId || null;
+
   // For authenticated users, tenantId already comes from JWT (set by authMiddleware)
   // This middleware ensures it's also available in req.body for downstream services
   if (req.user?.tenantId && req.body && typeof req.body === "object") {

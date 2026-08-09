@@ -238,9 +238,6 @@ export const getDashboard = async (
 
     // 🚀 CACHED DASHBOARD DATA (30s TTL — instant on repeated loads)
     const dashData = await cached(`dashboard:${tenantId}`, 30000, async () => {
-    // ══════════════════════════════════════════════════════
-    // 🚀 PARALLEL QUERY EXECUTION (all independent queries at once)
-    // ══════════════════════════════════════════════════════
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -251,31 +248,36 @@ export const getDashboard = async (
     const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const todayDay = dayNames[new Date().getDay()] as any;
 
-    // ─── BATCH 1: All counts + aggregates (independent) ───
+    // ─── BATCH 1: Essential counts (5 queries max) ───
     const [
       totalStudents,
       totalClasses,
       totalTeachers,
-      totalAttendanceToday,
-      presentToday,
-      maleCount,
-      femaleCount,
-      classStrength,
-      classRecords,
       fees,
       tenant,
     ] = await Promise.all([
       prisma.student.count({ where: { tenantId, isDeleted: false } }),
       prisma.class.count({ where: { tenantId, isDeleted: false } }),
       prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
+    ]);
+
+    // ─── BATCH 2: Secondary counts ───
+    const [
+      totalAttendanceToday,
+      presentToday,
+      maleCount,
+      femaleCount,
+      classStrength,
+      classRecords,
+    ] = await Promise.all([
       prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
       prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
       prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
       prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
       prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
       prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
-      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
-      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
     ]);
 
     // ─── BATCH 2: Data-heavy queries (also parallel) ───

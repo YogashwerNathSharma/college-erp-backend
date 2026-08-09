@@ -8,15 +8,6 @@ export const getDashboard = async (
 ) => {
 
   try {
-    // ═══ TIMEOUT GUARD: Prevent infinite hang on cold MongoDB ═══
-    const TIMEOUT_MS = 25000; // 25 seconds max
-    const timeoutId = setTimeout(() => {
-      if (!res.headersSent) {
-        console.error("Dashboard API TIMEOUT after 25s");
-        res.status(504).json({ success: false, message: "Dashboard loading timeout. Please refresh the page." });
-      }
-    }, TIMEOUT_MS);
-
     const _startTime = Date.now();
 
     const {
@@ -248,36 +239,31 @@ export const getDashboard = async (
     const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const todayDay = dayNames[new Date().getDay()] as any;
 
-    // ─── BATCH 1: Essential counts (5 queries max) ───
+    // ─── BATCH 1: All counts + aggregates (independent) ───
     const [
       totalStudents,
       totalClasses,
       totalTeachers,
-      fees,
-      tenant,
-    ] = await Promise.all([
-      prisma.student.count({ where: { tenantId, isDeleted: false } }),
-      prisma.class.count({ where: { tenantId, isDeleted: false } }),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
-      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
-    ]);
-
-    // ─── BATCH 2: Secondary counts ───
-    const [
       totalAttendanceToday,
       presentToday,
       maleCount,
       femaleCount,
       classStrength,
       classRecords,
+      fees,
+      tenant,
     ] = await Promise.all([
+      prisma.student.count({ where: { tenantId, isDeleted: false } }),
+      prisma.class.count({ where: { tenantId, isDeleted: false } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
       prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
       prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
       prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
       prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
       prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
       prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
+      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
     ]);
 
     // ─── BATCH 2: Data-heavy queries (also parallel) ───
@@ -420,7 +406,6 @@ export const getDashboard = async (
     };
     });
 
-    clearTimeout(timeoutId);
     return res.json({ success: true, data: dashData });
 
   } catch (err: any) {

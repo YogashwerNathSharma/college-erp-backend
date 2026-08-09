@@ -2,10 +2,21 @@
 
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
-import { generateToken } from "../../utils/jwt";
+import { generateToken, generateRefreshToken } from "../../utils/jwt";
+import { z } from "zod";
 
 /////////////////////////
-// REGISTER SERVICE (FIXED)
+// PASSWORD STRENGTH VALIDATION
+/////////////////////////
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+/////////////////////////
+// REGISTER SERVICE (SECURED)
 /////////////////////////
 export const registerService = async (data: any) => {
   let { name, email, password, tenantId, role } = data;
@@ -25,9 +36,18 @@ export const registerService = async (data: any) => {
     role = "ADMIN";
   }
 
-  const finalPassword = (password || "123456").trim();
+  // Password is required — no default fallback
+  if (!password || !password.trim()) {
+    throw new Error("Password is required");
+  }
 
-  const hashed = await bcrypt.hash(finalPassword, 10);
+  const finalPassword = password.trim();
+
+  // Validate password strength
+  passwordSchema.parse(finalPassword);
+
+  // bcrypt cost factor 12 (stronger hashing)
+  const hashed = await bcrypt.hash(finalPassword, 12);
 
   const user = await prisma.user.create({
     data: {
@@ -46,7 +66,7 @@ export const registerService = async (data: any) => {
 };
 
 /////////////////////////
-// LOGIN SERVICE (WITH SUBSCRIPTION CHECK — FIXED)
+// LOGIN SERVICE (WITH SUBSCRIPTION CHECK — SECURED)
 /////////////////////////
 export const loginService = async (email: string, password: string) => {
   const normalizedEmail = email.toLowerCase().trim();
@@ -65,7 +85,7 @@ export const loginService = async (email: string, password: string) => {
   // ✅ SUBSCRIPTION CHECK (Skip for SUPER_ADMIN)
   if (user.role !== "SUPER_ADMIN") {
 
-    // 🔥 FIX: query by tenantId field, NOT by id
+    // query by tenantId field
     const activeSubscription = await prisma.tenantSubscription.findFirst({
       where: {
         tenantId: user.tenantId!,
@@ -110,7 +130,14 @@ export const loginService = async (email: string, password: string) => {
     }
   }
 
+  // Generate short-lived access token (15 min) + refresh token
   const token = generateToken({
+    userId: user.id,
+    tenantId: user.tenantId,
+    role: user.role,
+  });
+
+  const refreshToken = generateRefreshToken({
     userId: user.id,
     tenantId: user.tenantId,
     role: user.role,
@@ -130,9 +157,9 @@ export const loginService = async (email: string, password: string) => {
   return {
     user: safeUser,
     token,
+    refreshToken,
     forcePasswordChange: user.isFirstLogin || false,
     subscriptionExpired: false,
     tenant,
   };
 };
-

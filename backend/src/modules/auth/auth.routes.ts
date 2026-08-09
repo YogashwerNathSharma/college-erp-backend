@@ -6,6 +6,7 @@ import {
   changePassword, forgotPassword, resetPassword,
 } from "./auth.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { refreshTokenHandler } from "./auth.refresh";
 
 const router = Router();
 
@@ -14,6 +15,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Public
 router.post("/login", login);
+
+// Refresh token endpoint
+router.post("/refresh-token", refreshTokenHandler);
 
 // 🔥 WITH multer — logo + background upload support
 router.post(

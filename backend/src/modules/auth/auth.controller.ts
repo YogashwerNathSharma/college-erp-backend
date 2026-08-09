@@ -30,6 +30,7 @@ export const login = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       token: result.token,
+      refreshToken: result.refreshToken,
       forcePasswordChange: result.forcePasswordChange,
       subscriptionExpired: result.subscriptionExpired || false,
       tenant: (result as any).tenant || null,
@@ -129,7 +130,7 @@ export const registerTenant = async (req: Request, res: Response) => {
       const defaultPassword = "123456";
       const cleanPassword = defaultPassword.trim();
 
-      const hashedPassword = await bcrypt.hash(cleanPassword, 10);
+      const hashedPassword = await bcrypt.hash(cleanPassword, 12);
 
       // 🔥 DEBUG 1: HASH CHECK
       console.log("STEP 1 - HASH CREATED:", {
@@ -260,7 +261,7 @@ export const changePassword = async (req: Request, res: Response) => {
       });
     }
 
-    const hashed = await bcrypt.hash(newPassword.trim(), 10);
+    const hashed = await bcrypt.hash(newPassword.trim(), 12);
 
     await prisma.user.update({
       where: { id: userId },
@@ -310,7 +311,7 @@ export const registerSuperAdmin = async (req: Request, res: Response) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
+    const hashedPassword = await bcrypt.hash(password.trim(), 12);
 
     const user = await prisma.user.create({
       data: {
@@ -387,7 +388,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 return res.json({
   success: true,
   message: "OTP sent to your email",
-  otp: otp,  // 🔥 ADD THIS — sirf development ke liye
+  // otp removed from response for security (check server logs in dev)
 });
   } catch (error: any) {
     return res.status(500).json({
@@ -441,7 +442,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     // ✅ Hash new password & update
-    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 12);
 
     await prisma.user.update({
       where: { email },

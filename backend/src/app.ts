@@ -34,6 +34,7 @@ import { swaggerSpec } from "./config/swagger";
 import { rateLimiter } from "./middleware/rateLimit";
 import { authLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
+import { authMiddleware } from "./middleware/auth.middleware";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 
 //////////////////////////////////////////////////////
@@ -168,7 +169,7 @@ app.use(corsConfig);
 // BODY PARSER
 //////////////////////////////////////////////////////
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 //////////////////////////////////////////////////////
 // SECURITY HEADERS
@@ -189,11 +190,12 @@ app.use(sanitizeInput);
 app.use(rateLimiter);
 
 //////////////////////////////////////////////////////
-// STATIC FILES
+// STATIC FILES (Protected — requires auth token)
 //////////////////////////////////////////////////////
 
 app.use(
   "/uploads",
+  authMiddleware,
   express.static(path.join(__dirname, "../uploads"))
 );
 

@@ -4,6 +4,9 @@ import env from "./env";
 /**
  * CORS configuration
  * Supports multiple origins from comma-separated CORS_ORIGIN env var
+ * 
+ * SECURITY: No-origin requests (Postman, mobile, curl) are only allowed
+ * in development. In production, origin must be in the whitelist.
  */
 const getAllowedOrigins = (): string[] => {
   const origins = env.CORS_ORIGIN.split(",").map((o) => o.trim());
@@ -14,8 +17,12 @@ export const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = getAllowedOrigins();
 
-    // Allow requests with no origin (mobile apps, Postman, etc.)
+    // In production, reject requests with no origin (prevents CSRF via non-browser clients)
     if (!origin) {
+      if (env.NODE_ENV === "production") {
+        return callback(new Error("Origin required in production"));
+      }
+      // Allow no-origin in development (Postman, mobile apps, etc.)
       return callback(null, true);
     }
 
@@ -32,7 +39,7 @@ export const corsOptions: CorsOptions = {
     "Authorization",
     "X-Requested-With",
     "X-Tenant-ID",
-    "X-Custom-Header",
+    "X-Device-Fingerprint",
   ],
   exposedHeaders: ["Content-Disposition", "X-Total-Count"],
   maxAge: 86400, // 24 hours preflight cache

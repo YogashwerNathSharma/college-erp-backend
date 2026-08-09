@@ -6,6 +6,7 @@ import {
   changePassword, forgotPassword, resetPassword,
 } from "./auth.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { allowInitialSuperAdminSetup } from "./super-admin-bootstrap.middleware";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Public
 router.post("/login", login);
 
-// 🔥 WITH multer — logo + background upload support
+// WITH multer — logo + background upload support
 router.post(
   "/register-tenant",
   upload.fields([
@@ -25,7 +26,8 @@ router.post(
   registerTenant
 );
 
-router.post("/super-admin", registerSuperAdmin);
+// One-time bootstrap only: once a SUPER_ADMIN exists, this endpoint is closed.
+router.post("/super-admin", allowInitialSuperAdminSetup, registerSuperAdmin);
 router.post("/register", register);
 
 // Protected

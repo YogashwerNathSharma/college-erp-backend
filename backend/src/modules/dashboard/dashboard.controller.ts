@@ -8,6 +8,16 @@ export const getDashboard = async (
 ) => {
 
   try {
+    // ═══ TIMEOUT GUARD: Prevent infinite hang on cold MongoDB ═══
+    const TIMEOUT_MS = 25000; // 25 seconds max
+    const timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+    clearTimeout(timeoutId);
+    console.error(
+        res.status(504).json({ success: false, message: "Dashboard loading timeout. Please refresh the page." });
+      }
+    }, TIMEOUT_MS);
+
     const _startTime = Date.now();
 
     const {
@@ -409,7 +419,8 @@ export const getDashboard = async (
     };
     });
 
-    return res.json({ success: true, data: dashData });;
+    clearTimeout(timeoutId);
+    return res.json({ success: true, data: dashData });
 
   } catch (err: any) {
 

@@ -6,8 +6,20 @@ export * from "./types/fee.types";
 export * from "./types/exam.types";
 
 // Validators
-export * from "./validators/student.validator";
-export * from "./validators/fee.validator";
+// Export schemas explicitly so validator-inferred input type aliases do not
+// collide with the canonical public input interfaces exported above.
+export {
+  addressSchema,
+  studentCreateSchema,
+  studentUpdateSchema,
+  studentFilterSchema,
+} from "./validators/student.validator";
+export {
+  feeHeadCreateSchema,
+  feeStructureCreateSchema,
+  feeCollectionSchema,
+  feeDiscountCreateSchema,
+} from "./validators/fee.validator";
 export * from "./validators/common.validator";
 
 // Constants

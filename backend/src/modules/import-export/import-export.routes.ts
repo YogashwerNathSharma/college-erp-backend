@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
+import os from "os";
 import {
   uploadForImport,
   validateImport,
@@ -53,15 +55,30 @@ router.use(resolveTenant);
 router.get("/stats", getStats);
 
 // Safe real RMS/student-list import. Does not delete demo data.
-router.post("/real-student-import", allowRoles("ADMIN"), (req: any, res: any) => {
+router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
     if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded" });
     try {
       const { academicYearId } = req.body;
       if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required" });
-      const result = await importRealRmsExcel(req.tenantId, req.file.path, academicYearId, req.user.userId);
-      return res.json({ success: true, data: result });
+
+      // uploadDocument uses memory storage for documents. Persist the spreadsheet
+      // to a temporary file for ExcelJS without changing the existing upload helper.
+      let filePath = req.file.path;
+      if (!filePath && req.file.buffer) {
+        const safeName = String(req.file.originalname || "student-import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
+        filePath = path.join(os.tmpdir(), `erp-student-import-${Date.now()}-${safeName}`);
+        fs.writeFileSync(filePath, req.file.buffer);
+      }
+      if (!filePath) return res.status(400).json({ success: false, message: "Uploaded Excel file could not be prepared" });
+
+      try {
+        const result = await importRealRmsExcel(req.tenantId, filePath, academicYearId, req.user.userId);
+        return res.json({ success: true, data: result });
+      } finally {
+        try { if (filePath.startsWith(os.tmpdir())) fs.unlinkSync(filePath); } catch {}
+      }
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error?.message || "Real student import failed" });
     }

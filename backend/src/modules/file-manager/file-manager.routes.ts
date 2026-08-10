@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
-import { requireRole } from "../../middleware/role.middleware";
+import { allowRoles } from "../../middleware/role.middleware";
 import { fileManagerUpload } from "./file-manager-upload.middleware";
 import { uploadFiles, getFiles, getFileById, updateFile, deleteFile, moveFile, createFolder, getFolders, deleteFolder, getFileStats } from "./file-manager.controller";
 import { downloadFile } from "./file-download.controller";
@@ -14,8 +14,7 @@ router.get("/folders", getFolders);
 router.get("/:id/download", downloadFile);
 router.get("/:id", getFileById);
 
-// Mutating file-manager operations are restricted to administrators.
-const fileAdmin = requireRole("ADMIN", "SUPER_ADMIN");
+const fileAdmin = allowRoles("ADMIN", "SUPER_ADMIN");
 router.post("/upload", fileAdmin, fileManagerUpload.array("files", 10), uploadFiles);
 router.put("/:id", fileAdmin, updateFile);
 router.put("/:id/move", fileAdmin, moveFile);

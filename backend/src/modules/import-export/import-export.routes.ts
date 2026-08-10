@@ -103,10 +103,10 @@ const STUDENT_ALIASES: Record<string, string[]> = {
   gender: ["gender", "sex"],
   fatherName: ["fathername", "father", "fatherfullname", "fathersname"],
   motherName: ["mothername", "mother", "motherfullname", "mothersname"],
-  className: ["class", "classname", "standard", "std", "grade", "studyingclass", "classno", "classnumber"],
-  classSection: ["classsection", "classandsection", "classsectionname", "classwithsection", "standardsection"],
+  className: ["classname", "standard", "std", "grade", "studyingclass", "classno", "classnumber"],
+  classSection: ["class", "classsection", "classandsection", "classsectionname", "classwithsection", "standardsection"],
   sectionName: ["section", "sectionname", "sec", "division", "div"],
-  rollNumber: ["rollnumber", "rollno", "roll", "rollnum", "studentrollnumber"],
+  rollNumber: ["rollnumber", "rollno", "roll", "rollnum", "studentrollnumber", "rolenumber"],
   address: ["address", "fulladdress", "residentialaddress"],
   city: ["city", "town"],
   state: ["state", "statename"],
@@ -138,10 +138,10 @@ function inferStudentMapping(headers: string[], current: Record<string, string>)
   return mapping;
 }
 
-// The original UI only auto-maps exact labels. Real RMS sheets commonly use
-// headers such as Student Name, Admission No, Std, Sec, Mobile, etc. Normalize
-// those headers on the server so the existing import controller receives a
-// complete mapping without changing the existing UI or data model.
+// Normalize real RMS sheets before validation. In particular, the supplied
+// sheet uses a single "Class" column whose values are like "LKG A". The UI's
+// generic mapper used to map that column to className only, leaving the
+// required sectionName empty and producing 0 valid rows.
 const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => {
   try {
     const tenantId = req.tenantId as string;
@@ -157,29 +157,40 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
     const headers = Array.isArray(matrix[0]) ? matrix[0].map((v: any) => String(v ?? "").trim()).filter(Boolean) : [];
 
     const mapping = inferStudentMapping(headers, req.body?.mapping || {});
+    const cacheFile = `${job.fileUrl}.import-cache.json`;
+    let cached: any = null;
+    try { if (fs.existsSync(cacheFile)) cached = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
+
+    // The uploaded RMS file has "Class" values such as "LKG A". Treat that
+    // as a combined class+section source even if the frontend already sent
+    // Class -> className from its older exact-label mapper.
+    const classHeader = headers.find((header) => normalizeHeader(header) === "class");
+    const classValues = cached && Array.isArray(cached.rows) && classHeader
+      ? cached.rows.map((row: any) => String(row[classHeader] ?? "").trim()).filter(Boolean)
+      : [];
+    const hasCombinedClassSection = classValues.some((value: string) => /^(.*?)[\s_-]+([A-Za-z])$/.test(value));
+    if (classHeader && hasCombinedClassSection) {
+      delete mapping[classHeader];
+      mapping[classHeader] = "classSection";
+    }
 
     // If the sheet has a combined Class & Section column, create two synthetic
     // columns in the import cache. This lets the existing controller resolve
     // both class and section without changing its validation/processing code.
     const classSectionSource = Object.keys(mapping).find((source) => mapping[source] === "classSection");
-    if (classSectionSource) {
-      const cacheFile = `${job.fileUrl}.import-cache.json`;
-      let cached: any = null;
-      try { if (fs.existsSync(cacheFile)) cached = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
-      if (cached && Array.isArray(cached.rows)) {
-        const classKey = "__import_class_name";
-        const sectionKey = "__import_section_name";
-        cached.headers = Array.from(new Set([...(cached.headers || []), classKey, sectionKey]));
-        for (const row of cached.rows) {
-          const raw = String(row[classSectionSource] ?? "").trim();
-          const parts = raw.split(/\s+/).filter(Boolean);
-          row[classKey] = parts.length > 1 ? parts.slice(0, -1).join(" ") : raw;
-          row[sectionKey] = parts.length > 1 ? parts[parts.length - 1] : "";
-        }
-        try { fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8"); } catch {}
-        mapping[classKey] = "className";
-        mapping[sectionKey] = "sectionName";
+    if (classSectionSource && cached && Array.isArray(cached.rows)) {
+      const classKey = "__import_class_name";
+      const sectionKey = "__import_section_name";
+      cached.headers = Array.from(new Set([...(cached.headers || []), classKey, sectionKey]));
+      for (const row of cached.rows) {
+        const raw = String(row[classSectionSource] ?? "").trim();
+        const parts = raw.replace(/\s+/g, " ").trim().split(/[\s_-]+/).filter(Boolean);
+        row[classKey] = parts.length > 1 ? parts.slice(0, -1).join(" ") : raw;
+        row[sectionKey] = parts.length > 1 ? parts[parts.length - 1] : "";
       }
+      try { fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8"); } catch {}
+      mapping[classKey] = "className";
+      mapping[sectionKey] = "sectionName";
     }
 
     // If the sheet has separate first/last name columns, synthesize fullName
@@ -188,11 +199,10 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
       const firstSource = Object.keys(mapping).find((source) => mapping[source] === "firstName");
       const lastSource = Object.keys(mapping).find((source) => mapping[source] === "lastName");
       if (firstSource || lastSource) {
-        const cacheFile = `${job.fileUrl}.import-cache.json`;
         try {
-          const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+          const nameKey = "__import_full_name";
+          cached = cached || JSON.parse(fs.readFileSync(cacheFile, "utf8"));
           if (cached && Array.isArray(cached.rows)) {
-            const nameKey = "__import_full_name";
             cached.headers = Array.from(new Set([...(cached.headers || []), nameKey]));
             for (const row of cached.rows) row[nameKey] = [row[firstSource || ""], row[lastSource || ""]].filter(Boolean).join(" ").trim();
             fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8");

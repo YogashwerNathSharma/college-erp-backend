@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import {
   assignFeesToStudentController,
@@ -12,26 +11,25 @@ import {
   getAllPaymentsController,
 } from "./feeCollection.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { allowRoles } from "../../middleware/role.middleware";
 
 const router = Router();
-
-// All routes require authentication
 router.use(authMiddleware);
 
-// POST routes
-router.post("/assign/student", assignFeesToStudentController);
-router.post("/assign/class", assignFeesToClassController);
-router.post("/collect", collectPaymentController);
-router.post("/discount", applyDiscountController);
+// Fee assignment/discount changes are administrative operations.
+const feeAdmin = allowRoles("ADMIN", "SUPER_ADMIN");
+// Collection may be performed by designated accounting staff.
+const feeCollector = allowRoles("ADMIN", "SUPER_ADMIN", "ACCOUNTANT");
 
-// GET static routes (BEFORE dynamic /:id)
+router.post("/assign/student", feeAdmin, assignFeesToStudentController);
+router.post("/assign/class", feeAdmin, assignFeesToClassController);
+router.post("/collect", feeCollector, collectPaymentController);
+router.post("/discount", feeAdmin, applyDiscountController);
+
 router.get("/search", searchStudentFeesController);
 router.get("/defaulters", getDefaultersController);
 router.get("/daily-collection", getDailyCollectionController);
 router.get("/all-payments", getAllPaymentsController);
-
-// GET dynamic routes
 router.get("/student/:enrollmentId", getStudentFeesController);
 
 export default router;
-

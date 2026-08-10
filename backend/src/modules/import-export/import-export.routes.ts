@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import {
   uploadForImport,
   validateImport,
@@ -18,6 +19,10 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
 
 const router = Router({ mergeParams: true });
+
+// Ensure uploads/imports directory exists
+const uploadsDir = path.join(__dirname, "../../../uploads/imports");
+if (!fs.existsSync(uploadsDir)) { fs.mkdirSync(uploadsDir, { recursive: true }); }
 
 // ══════════════════════════════════════════════════════════
 // IMPORT/EXPORT ROUTES

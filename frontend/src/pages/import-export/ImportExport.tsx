@@ -142,23 +142,6 @@ export default function ImportExport() {
     if (!file) return;
     setUploadedFile(file);
 
-    // Simulate extracting column headers from file
-    // In production, you'd parse the first row of the Excel/CSV
-    const simulatedColumns = templateFields.map((f) => f.label);
-    setFileColumns(simulatedColumns);
-
-    // Auto-map columns by matching labels
-    const autoMapping: Record<string, string> = {};
-    simulatedColumns.forEach((col) => {
-      const matchedField = templateFields.find(
-        (f) => f.label.toLowerCase() === col.toLowerCase()
-      );
-      if (matchedField) {
-        autoMapping[col] = matchedField.field;
-      }
-    });
-    setColumnMapping(autoMapping);
-
     // Upload to server
     try {
       const formData = new FormData();
@@ -169,6 +152,24 @@ export default function ImportExport() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setJobId(res.data.data.id);
+
+      // Use actual file columns from backend response
+      const actualColumns: string[] = res.data.data.fileColumns || [];
+      setFileColumns(actualColumns);
+
+      // Auto-map columns by fuzzy matching labels
+      const autoMapping: Record<string, string> = {};
+      actualColumns.forEach((col) => {
+        const colLower = col.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const matchedField = templateFields.find((f) => {
+          const fieldLower = f.label.toLowerCase().replace(/[^a-z0-9]/g, "");
+          return fieldLower === colLower || f.field.toLowerCase() === colLower;
+        });
+        if (matchedField) {
+          autoMapping[col] = matchedField.field;
+        }
+      });
+      setColumnMapping(autoMapping);
       setStep(3);
     } catch (err: any) {
       alert(err.response?.data?.message || "Upload failed");

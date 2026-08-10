@@ -92,7 +92,7 @@ export const uploadForImport = async (req: Request, res: Response) => {
 export const validateImport = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
-    const { jobId, mapping, previewRows = 10 } = req.body;
+    const { jobId, mapping, previewRows = 100 } = req.body;
     if (!jobId || !mapping) return res.status(400).json({ success: false, message: "jobId and mapping are required" });
     const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
     if (!job) return res.status(404).json({ success: false, message: "Import job not found" });
@@ -100,11 +100,12 @@ export const validateImport = async (req: Request, res: Response) => {
     if (!fields) return res.status(400).json({ success: false, message: "Unknown module" });
     if (!job.fileUrl || !fs.existsSync(job.fileUrl)) return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
     const parsed = getCachedImportRows(job.fileUrl);
-    const validationResults = parsed.rows.slice(0, Number(previewRows) || 10).map((row: any, index: number) => { const result = validateRow(row, fields, mapping); return { row: index + 2, data: row, isValid: result.isValid, errors: result.errors }; });
+    const validationResults = parsed.rows.map((row: any, index: number) => { const result = validateRow(row, fields, mapping); return { row: index + 2, data: row, isValid: result.isValid, errors: result.errors }; });
     await prisma.importJob.update({ where: { id: jobId }, data: { mapping, totalRows: parsed.rows.length } });
     const validCount = validationResults.filter((r: any) => r.isValid).length;
     const invalidCount = validationResults.filter((r: any) => !r.isValid).length;
-    return res.json({ success: true, data: { totalRows: parsed.rows.length, previewResults: validationResults, validCount, invalidCount, canProceed: invalidCount === 0 || validCount > 0 } });
+    const limit = Math.max(1, Math.min(Number(previewRows) || 100, 100));
+    return res.json({ success: true, data: { totalRows: parsed.rows.length, previewResults: validationResults.slice(0, limit), validCount, invalidCount, canProceed: invalidCount === 0 || validCount > 0 } });
   } catch (error: any) { console.error("Error validating import:", error); return res.status(500).json({ success: false, message: error?.message || "Import validation failed" }); }
 };
 

@@ -11,13 +11,22 @@ function text(value: unknown): string {
 
 function excelDate(value: unknown): Date | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // Excel serial date (1900 date system).
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   const s = text(value);
   if (!s) return null;
   const parts = s.split(/[\\/.\-]/).map(Number);
   if (parts.length === 3 && parts.every(Number.isFinite)) {
-    const [d, m, y] = parts;
-    const date = new Date(y, m - 1, d);
-    if (date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d) return date;
+    let [a, b, c] = parts;
+    // Prefer DD/MM/YYYY for RMS exports, but also accept YYYY-MM-DD.
+    if (a >= 1000) {
+      [c, b, a] = parts;
+    }
+    const date = new Date(c, b - 1, a);
+    if (date.getFullYear() === c && date.getMonth() === b - 1 && date.getDate() === a) return date;
   }
   const parsed = new Date(s);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -30,11 +39,15 @@ function normalizeGender(value: string): string {
   return "Other";
 }
 
-function splitClass(value: string): { className: string; sectionName: string } {
-  const s = value.replace(/\s+/g, " ").trim();
-  const match = s.match(/^(.*?)(?:\s+)([A-Za-z])$/);
+function splitClass(value: string, explicitSection = ""): { className: string; sectionName: string } {
+  const raw = value.replace(/\s+/g, " ").trim();
+  const section = explicitSection.replace(/\s+/g, " ").trim();
+  if (section) return { className: raw, sectionName: section };
+
+  // Accept common RMS formats: "LKG A", "LKG-A", "LKG_A".
+  const match = raw.match(/^(.*?)[\s_-]+([A-Za-z])$/);
   if (match) return { className: match[1].trim(), sectionName: match[2].trim() };
-  return { className: s, sectionName: "" };
+  return { className: raw, sectionName: "" };
 }
 
 export async function importRealRmsExcel(
@@ -50,9 +63,10 @@ export async function importRealRmsExcel(
 
   const headers: Record<string, number> = {};
   sheet.getRow(1).eachCell((cell, col) => {
-    headers[text(cell.value).toLowerCase()] = col;
+    const key = text(cell.value).replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (key) headers[key] = col;
   });
-  const col = (...names: string[]) => names.map(n => headers[n.toLowerCase()]).find(Boolean);
+  const col = (...names: string[]) => names.map(n => headers[n.replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim().toLowerCase()]).find(Boolean);
   const get = (row: ExcelJS.Row, ...names: string[]) => {
     const n = col(...names);
     return n ? text(row.getCell(n).value) : "";
@@ -70,15 +84,16 @@ export async function importRealRmsExcel(
 
   for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
     const row = sheet.getRow(rowNum);
-    const name = get(row, "Name");
-    const classValue = get(row, "Class");
+    const name = get(row, "Name", "Student Name", "StudentName", "Full Name");
+    const classValue = get(row, "Class", "Class Name", "ClassName");
+    const sectionValue = get(row, "Section", "Section Name", "SectionName");
     if (!name && !classValue) continue;
 
     try {
       if (!name) throw new Error("Name is required");
       if (!classValue) throw new Error("Class is required");
-      const { className, sectionName } = splitClass(classValue);
-      if (!className || !sectionName) throw new Error(`Class must include section, e.g. LKG A (received: ${classValue})`);
+      const { className, sectionName } = splitClass(classValue, sectionValue);
+      if (!className || !sectionName) throw new Error(`Class and Section are required (e.g. LKG / A or LKG A). Received: ${classValue}${sectionValue ? ` / ${sectionValue}` : ""}`);
 
       const cacheKey = `${className.toLowerCase()}|${academicYearId}`;
       let classId = classCache.get(cacheKey);
@@ -103,25 +118,25 @@ export async function importRealRmsExcel(
       }
 
       const parts = name.trim().split(/\s+/);
-      const firstName = get(row, "First Name") || parts[0];
-      const lastName = get(row, "Last Name") || (parts.length > 1 ? parts[parts.length - 1] : "");
-      const middleName = get(row, "Middle Name");
-      const gender = normalizeGender(get(row, "Gender"));
-      const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)"));
+      const firstName = get(row, "First Name", "FirstName") || parts[0];
+      const lastName = get(row, "Last Name", "LastName") || (parts.length > 1 ? parts[parts.length - 1] : "");
+      const middleName = get(row, "Middle Name", "MiddleName");
+      const gender = normalizeGender(get(row, "Gender", "Sex"));
+      const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date"));
       if (!dob) throw new Error("Valid DOB is required");
 
-      const admissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number");
-      const srNo = get(row, "SRN Number", "SR No", "SR Number");
-      const rollNumber = get(row, "roleNumber", "Roll Number", "Roll No");
-      const fatherName = get(row, "Father", "Father Name") || "N/A";
-      const motherName = get(row, "Mother", "Mother Name") || "N/A";
-      const phone = get(row, "Mobile", "Phone");
-      const motherPhone = get(row, "SmsNo", "Mother Phone");
+      const admissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo");
+      const srNo = get(row, "SRN Number", "SR No", "SR Number", "SRN");
+      const rollNumber = get(row, "roleNumber", "Roll Number", "Roll No", "RollNumber");
+      const fatherName = get(row, "Father", "Father Name", "FatherName") || "N/A";
+      const motherName = get(row, "Mother", "Mother Name", "MotherName") || "N/A";
+      const phone = get(row, "Mobile", "Phone", "Mobile Number", "MobileNo");
+      const motherPhone = get(row, "SmsNo", "Mother Phone", "Mother Mobile");
       const address = get(row, "Present Address", "Address") || "N/A";
       const nationality = get(row, "Nationality") || "Indian";
       const religion = get(row, "Religion") || null;
       const category = get(row, "Category") || null;
-      const aadharNo = get(row, "Aadhaar No", "Aadhar No", "Child ID").replace(/\s/g, "") || null;
+      const aadharNo = get(row, "Aadhaar No", "Aadhar No", "Child ID", "Aadhaar", "Aadhar").replace(/\s/g, "") || null;
 
       const result = await prisma.$transaction(async tx => {
         let student = admissionNo

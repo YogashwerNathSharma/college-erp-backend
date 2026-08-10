@@ -5,12 +5,6 @@ import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
 
-// ══════════════════════════════════════════════════════════
-// IMPORT/EXPORT ENGINE CONTROLLER
-// Handles bulk data import from Excel/CSV and exports
-// ══════════════════════════════════════════════════════════
-
-// Module field definitions for validation and mapping
 const MODULE_FIELDS: Record<string, { field: string; label: string; required: boolean; type: string }[]> = {
   STUDENT: [
     { field: "fullName", label: "Name", required: true, type: "string" },
@@ -95,778 +89,209 @@ const MODULE_FIELDS: Record<string, { field: string; label: string; required: bo
   ],
 };
 
-// Validation helper
-function validateRow(
-  row: Record<string, any>,
-  fields: { field: string; label: string; required: boolean; type: string }[],
-  mapping: Record<string, string>
-): { isValid: boolean; errors: string[] } {
+function validateRow(row: Record<string, any>, fields: { field: string; label: string; required: boolean; type: string }[], mapping: Record<string, string>): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-
   for (const fieldDef of fields) {
     const sourceCol = Object.keys(mapping).find((k) => mapping[k] === fieldDef.field);
     const value = sourceCol ? row[sourceCol] : undefined;
-
-    if (fieldDef.required && (!value || String(value).trim() === "")) {
-      errors.push(`${fieldDef.label} is required`);
-      continue;
-    }
-
+    if (fieldDef.required && (!value || String(value).trim() === "")) { errors.push(`${fieldDef.label} is required`); continue; }
     if (value && value.toString().trim() !== "") {
       const strVal = String(value).trim();
-
-      if (fieldDef.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) {
-        errors.push(`${fieldDef.label}: Invalid email format`);
-      }
-
-      if (fieldDef.type === "phone" && !/^\d{10,15}$/.test(strVal.replace(/[+\-\s]/g, ""))) {
-        errors.push(`${fieldDef.label}: Invalid phone number`);
-      }
-
-      if (fieldDef.type === "number" && isNaN(Number(strVal))) {
-        errors.push(`${fieldDef.label}: Must be a number`);
-      }
-
-      if (fieldDef.type === "date" && isNaN(Date.parse(strVal))) {
-        errors.push(`${fieldDef.label}: Invalid date format`);
-      }
-
+      if (fieldDef.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) errors.push(`${fieldDef.label}: Invalid email format`);
+      if (fieldDef.type === "phone" && !/^\d{10,15}$/.test(strVal.replace(/[+\-\s]/g, ""))) errors.push(`${fieldDef.label}: Invalid phone number`);
+      if (fieldDef.type === "number" && isNaN(Number(strVal))) errors.push(`${fieldDef.label}: Must be a number`);
+      if (fieldDef.type === "date" && isNaN(Date.parse(strVal))) errors.push(`${fieldDef.label}: Invalid date format`);
       if (fieldDef.type.startsWith("enum:")) {
         const allowedValues = fieldDef.type.replace("enum:", "").split(",");
-        if (!allowedValues.includes(strVal.toUpperCase())) {
-          errors.push(`${fieldDef.label}: Must be one of ${allowedValues.join(", ")}`);
-        }
+        if (!allowedValues.includes(strVal.toUpperCase())) errors.push(`${fieldDef.label}: Must be one of ${allowedValues.join(", ")}`);
       }
     }
   }
-
   return { isValid: errors.length === 0, errors };
 }
 
-// ──────────────────────────────────────────────────────────
-// POST /api/import/upload
-// Upload file for import (stores file, creates job)
-// ──────────────────────────────────────────────────────────
 export const uploadForImport = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
     const userId = (req as any).user?.id || "system";
     const { module } = req.body;
-
-    if (!module || !MODULE_FIELDS[module]) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid module. Supported: ${Object.keys(MODULE_FIELDS).join(", ")}`,
-      });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
-    }
-
-    const job = await prisma.importJob.create({
-      data: {
-        tenantId,
-        module,
-        fileName: req.file.originalname,
-        fileUrl: req.file.path,
-        status: "PENDING",
-        createdBy: userId,
-      },
-    });
-
-    // Read the file's column headers and return them
+    if (!module || !MODULE_FIELDS[module]) return res.status(400).json({ success: false, message: `Invalid module. Supported: ${Object.keys(MODULE_FIELDS).join(", ")}` });
+    if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+    const job = await prisma.importJob.create({ data: { tenantId, module, fileName: req.file.originalname, fileUrl: req.file.path, status: "PENDING", createdBy: userId } });
     let fileColumns: string[] = [];
     try {
       const wb = new ExcelJS.Workbook();
       const ext2 = path.extname(req.file.path).toLowerCase();
-      if (ext2 === ".csv") {
-        await wb.csv.readFile(req.file.path);
-      } else {
-        await wb.xlsx.readFile(req.file.path);
-      }
+      if (ext2 === ".csv") await wb.csv.readFile(req.file.path); else await wb.xlsx.readFile(req.file.path);
       const ws = wb.getWorksheet(1);
-      if (ws) {
-        const hr = ws.getRow(1);
-        hr.eachCell((cell) => {
-          const val = String(cell.value || "").trim();
-          if (val) fileColumns.push(val);
-        });
-      }
-    } catch (e) {
-      // Non-critical: columns will be empty, user can still proceed
-    }
-
-    res.status(201).json({
-      success: true,
-      data: { ...job, fileColumns },
-      message: "File uploaded. Use /validate to preview and map columns.",
-    });
-  } catch (error: any) {
-    console.error("Error uploading import file:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
+      if (ws) ws.getRow(1).eachCell((cell) => { const val = String(cell.value || "").trim(); if (val) fileColumns.push(val); });
+    } catch {}
+    res.status(201).json({ success: true, data: { ...job, fileColumns }, message: "File uploaded. Use /validate to preview and map columns." });
+  } catch (error: any) { console.error("Error uploading import file:", error); res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// POST /api/import/validate
-// Validate uploaded data with mapping (preview errors)
-// ──────────────────────────────────────────────────────────
 export const validateImport = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
     const { jobId, mapping, previewRows = 10 } = req.body;
-
-    if (!jobId || !mapping) {
-      return res.status(400).json({
-        success: false,
-        message: "jobId and mapping are required",
-      });
-    }
-
-    const job = await prisma.importJob.findFirst({
-      where: { id: jobId, tenantId },
-    });
-
-    if (!job) {
-      return res.status(404).json({ success: false, message: "Import job not found" });
-    }
-
+    if (!jobId || !mapping) return res.status(400).json({ success: false, message: "jobId and mapping are required" });
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
+    if (!job) return res.status(404).json({ success: false, message: "Import job not found" });
     const fields = MODULE_FIELDS[job.module];
-    if (!fields) {
-      return res.status(400).json({ success: false, message: "Unknown module" });
-    }
-
-    // Parse the actual uploaded file using ExcelJS
+    if (!fields) return res.status(400).json({ success: false, message: "Unknown module" });
     const filePath = job.fileUrl;
-    if (!filePath || !fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
-    }
-
+    if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
     const workbook = new ExcelJS.Workbook();
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === ".csv") {
-      await workbook.csv.readFile(filePath);
-    } else {
-      await workbook.xlsx.readFile(filePath);
-    }
-
+    if (ext === ".csv") await workbook.csv.readFile(filePath); else await workbook.xlsx.readFile(filePath);
     const sheet = workbook.getWorksheet(1);
-    if (!sheet) {
-      return res.status(400).json({ success: false, message: "No worksheet found in file" });
-    }
-
-    // Read header row to get column names
+    if (!sheet) return res.status(400).json({ success: false, message: "No worksheet found in file" });
     const headerRow = sheet.getRow(1);
     const headers: string[] = [];
-    headerRow.eachCell((cell, colNumber) => {
-      headers[colNumber] = String(cell.value || "").trim();
-    });
-
-    // Parse all data rows
+    headerRow.eachCell((cell, colNumber) => { headers[colNumber] = String(cell.value || "").trim(); });
     const parsedData: Record<string, any>[] = [];
     for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
-      const row = sheet.getRow(rowNum);
-      // Skip completely empty rows
-      let hasData = false;
-      const rowData: Record<string, any> = {};
-      row.eachCell((cell, colNumber) => {
-        const header = headers[colNumber];
-        if (header) {
-          let value = cell.value;
-          if (typeof value === "object" && value !== null && "richText" in value) {
-            value = (value as any).richText?.map((r: any) => r.text).join("") || "";
-          }
-          if (value instanceof Date) {
-            value = value.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
-          }
-          rowData[header] = value != null ? String(value).trim() : "";
-          if (rowData[header]) hasData = true;
-        }
-      });
+      const row = sheet.getRow(rowNum); let hasData = false; const rowData: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => { const header = headers[colNumber]; if (header) { let value = cell.value; if (typeof value === "object" && value !== null && "richText" in value) value = (value as any).richText?.map((r: any) => r.text).join("") || ""; if (value instanceof Date) value = value.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }); rowData[header] = value != null ? String(value).trim() : ""; if (rowData[header]) hasData = true; } });
       if (hasData) parsedData.push(rowData);
     }
-    
-    // Validate each row
-    const validationResults = parsedData.slice(0, previewRows).map((row, index) => {
-      const result = validateRow(row, fields, mapping);
-      return {
-        row: index + 1,
-        data: row,
-        isValid: result.isValid,
-        errors: result.errors,
-      };
-    });
-
-    // Update job with mapping
-    await prisma.importJob.update({
-      where: { id: jobId },
-      data: { mapping, totalRows: parsedData.length },
-    });
-
+    const validationResults = parsedData.slice(0, previewRows).map((row, index) => { const result = validateRow(row, fields, mapping); return { row: index + 1, data: row, isValid: result.isValid, errors: result.errors }; });
+    await prisma.importJob.update({ where: { id: jobId }, data: { mapping, totalRows: parsedData.length } });
     const validCount = validationResults.filter((r) => r.isValid).length;
     const invalidCount = validationResults.filter((r) => !r.isValid).length;
-
-    res.json({
-      success: true,
-      data: {
-        totalRows: parsedData.length,
-        previewResults: validationResults,
-        validCount,
-        invalidCount,
-        canProceed: invalidCount === 0 || validCount > 0,
-      },
-    });
-  } catch (error: any) {
-    console.error("Error validating import:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
+    res.json({ success: true, data: { totalRows: parsedData.length, previewResults: validationResults, validCount, invalidCount, canProceed: invalidCount === 0 || validCount > 0 } });
+  } catch (error: any) { console.error("Error validating import:", error); res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// POST /api/import/process
-// Process the import (create records)
-// ──────────────────────────────────────────────────────────
 export const processImport = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
     const { jobId, skipErrors = true } = req.body;
-
-    if (!jobId) {
-      return res.status(400).json({ success: false, message: "jobId is required" });
-    }
-
-    const job = await prisma.importJob.findFirst({
-      where: { id: jobId, tenantId, status: "PENDING" },
-    });
-
-    if (!job) {
-      return res.status(404).json({ success: false, message: "Job not found or already processed" });
-    }
-
-    // Update status to processing
-    await prisma.importJob.update({
-      where: { id: jobId },
-      data: { status: "PROCESSING", startedAt: new Date() },
-    });
-
-    // Parse the actual file
+    if (!jobId) return res.status(400).json({ success: false, message: "jobId is required" });
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId, status: "PENDING" } });
+    if (!job) return res.status(404).json({ success: false, message: "Job not found or already processed" });
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "PROCESSING", startedAt: new Date() } });
     const filePath = job.fileUrl;
-    if (!filePath || !fs.existsSync(filePath)) {
-      await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } });
-      return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
-    }
-
+    if (!filePath || !fs.existsSync(filePath)) { await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } }); return res.status(404).json({ success: false, message: "Uploaded file not found on server" }); }
     const workbook = new ExcelJS.Workbook();
     const ext = path.extname(filePath).toLowerCase();
-    if (ext === ".csv") {
-      await workbook.csv.readFile(filePath);
-    } else {
-      await workbook.xlsx.readFile(filePath);
-    }
-
+    if (ext === ".csv") await workbook.csv.readFile(filePath); else await workbook.xlsx.readFile(filePath);
     const sheet = workbook.getWorksheet(1);
-    if (!sheet) {
-      await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } });
-      return res.status(400).json({ success: false, message: "No worksheet found" });
-    }
-
-    // Read headers
-    const headerRow = sheet.getRow(1);
-    const headers: string[] = [];
-    headerRow.eachCell((cell, colNumber) => {
-      headers[colNumber] = String(cell.value || "").trim();
-    });
-
-    // Parse all data rows
+    if (!sheet) { await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } }); return res.status(400).json({ success: false, message: "No worksheet found" }); }
+    const headerRow = sheet.getRow(1); const headers: string[] = [];
+    headerRow.eachCell((cell, colNumber) => { headers[colNumber] = String(cell.value || "").trim(); });
     const parsedData: Record<string, any>[] = [];
     for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
-      const row = sheet.getRow(rowNum);
-      let hasData = false;
-      const rowData: Record<string, any> = {};
-      row.eachCell((cell, colNumber) => {
-        const header = headers[colNumber];
-        if (header) {
-          let value = cell.value;
-          if (typeof value === "object" && value !== null && "richText" in value) {
-            value = (value as any).richText?.map((r: any) => r.text).join("") || "";
-          }
-          if (value instanceof Date) {
-            value = value.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
-          }
-          rowData[header] = value != null ? String(value).trim() : "";
-          if (rowData[header]) hasData = true;
-        }
-      });
+      const row = sheet.getRow(rowNum); let hasData = false; const rowData: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => { const header = headers[colNumber]; if (header) { let value = cell.value; if (typeof value === "object" && value !== null && "richText" in value) value = (value as any).richText?.map((r: any) => r.text).join("") || ""; if (value instanceof Date) value = value.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }); rowData[header] = value != null ? String(value).trim() : ""; if (rowData[header]) hasData = true; } });
       if (hasData) parsedData.push(rowData);
     }
-
-    const mapping = job.mapping || {};
-    const fields = MODULE_FIELDS[job.module];
-    let successRows = 0;
-    let failedRows = 0;
-    const errors: any[] = [];
-
-    // Process each row based on the module
+    const mapping = job.mapping || {}; const fields = MODULE_FIELDS[job.module]; let successRows = 0; let failedRows = 0; const errors: any[] = [];
     for (let i = 0; i < parsedData.length; i++) {
-      const row = parsedData[i];
-      const rowNum = i + 2; // Excel row number (1-indexed + header)
-
+      const row = parsedData[i]; const rowNum = i + 2;
       try {
-        // Apply column mapping: map source column -> target field
         const mapped: Record<string, any> = {};
-        for (const [sourceCol, targetField] of Object.entries(mapping)) {
-          if (row[sourceCol] !== undefined && row[sourceCol] !== "") {
-            mapped[targetField as string] = row[sourceCol];
-          }
-        }
-
-        // Validate required fields
-        if (fields) {
-          const validation = validateRow(row, fields, mapping);
-          if (!validation.isValid && !skipErrors) {
-            errors.push({ row: rowNum, errors: validation.errors });
-            failedRows++;
-            continue;
-          }
-        }
-
-        // Module-specific record creation
+        for (const [sourceCol, targetField] of Object.entries(mapping)) if (row[sourceCol] !== undefined && row[sourceCol] !== "") mapped[targetField as string] = row[sourceCol];
+        if (fields) { const validation = validateRow(row, fields, mapping); if (!validation.isValid && !skipErrors) { errors.push({ row: rowNum, errors: validation.errors }); failedRows++; continue; } }
         if (job.module === "STUDENT") {
-          // Handle fullName -> split into firstName/lastName
-          if (mapped.fullName && !mapped.firstName) {
-            const nameParts = mapped.fullName.trim().split(/\s+/);
-            mapped.firstName = nameParts[0] || "";
-            mapped.lastName = nameParts.slice(1).join(" ") || "";
-          }
-
-          // Handle classSection (e.g. "LKG A") -> split into className + sectionName
-          if (mapped.classSection && !mapped.className) {
-            const parts = mapped.classSection.trim().split(/\s+/);
-            mapped.sectionName = parts.pop() || "";
-            mapped.className = parts.join(" ") || "";
-          }
-
-          // Parse DOB
+          if (mapped.fullName && !mapped.firstName) { const nameParts = mapped.fullName.trim().split(/\s+/); mapped.firstName = nameParts[0] || ""; mapped.lastName = nameParts.slice(1).join(" ") || ""; }
+          if (mapped.classSection && !mapped.className) { const parts = mapped.classSection.trim().split(/\s+/); mapped.sectionName = parts.pop() || ""; mapped.className = parts.join(" ") || ""; }
           let dob: Date | null = null;
-          if (mapped.dob) {
-            const parts = mapped.dob.split(/[\/\-\.]/);
-            if (parts.length === 3) {
-              const day = parseInt(parts[0]);
-              const month = parseInt(parts[1]) - 1;
-              const year = parseInt(parts[2]);
-              dob = new Date(year, month, day);
-            } else {
-              dob = new Date(mapped.dob);
-            }
-            if (isNaN(dob.getTime())) dob = null;
-          }
-
-          // Resolve class and section by name
-          let classId: string | null = null;
-          let sectionId: string | null = null;
-
-          if (mapped.className) {
-            // className may contain "LKG A" -> split into class "LKG" section "A"
-            // Or it could be exact class name with section separate
-            const classRecord = await prisma.class.findFirst({
-              where: { tenantId, name: { equals: mapped.className, mode: "insensitive" } },
-            });
-            if (classRecord) classId = classRecord.id;
-          }
-
-          if (mapped.sectionName && classId) {
-            const sectionRecord = await prisma.section.findFirst({
-              where: { tenantId, name: { equals: mapped.sectionName, mode: "insensitive" }, classId },
-            });
-            if (sectionRecord) sectionId = sectionRecord.id;
-          }
-
-          // Get active academic year
-          const academicYear = await prisma.academicYear.findFirst({
-            where: { tenantId, isActive: true },
-          });
-
-          // Determine gender enum
-          let gender = "OTHER";
-          if (mapped.gender) {
-            const g = mapped.gender.toUpperCase();
-            if (g === "MALE" || g === "M") gender = "MALE";
-            else if (g === "FEMALE" || g === "F") gender = "FEMALE";
-            else gender = "OTHER";
-          }
-
-          const firstName = mapped.firstName || "";
-          const lastName = mapped.lastName || "";
-
-          const student = await prisma.student.create({
-            data: {
-              firstName,
-              lastName,
-              fullName: `${firstName} ${lastName}`.trim(),
-              gender,
-              dob: dob || new Date(),
-              email: mapped.email || null,
-              phone: mapped.phone || null,
-              address: mapped.address || [mapped.city, mapped.state, mapped.pincode].filter(Boolean).join(", ") || "N/A",
-              admissionNo: mapped.admissionNo || `IMP-${Date.now()}-${i}`,
-              srNo: mapped.srNo || null,
-              rollNumber: mapped.rollNumber || null,
-              fatherName: mapped.fatherName || "N/A",
-              motherName: mapped.motherName || "N/A",
-              fatherPhone: mapped.phone || "N/A",
-              aadharNo: mapped.aadharNo || null,
-              bloodGroup: mapped.bloodGroup || null,
-              category: mapped.category || null,
-              nationality: mapped.nationality || "Indian",
-              admissionDate: new Date(),
-              admissionType: "bulk",
-              status: "active",
-              isDeleted: false,
-              tenant: { connect: { id: tenantId } },
-              ...(academicYear ? { academicYear: { connect: { id: academicYear.id } } } : {}),
-            },
-          });
-
-          // Create enrollment if class and section are resolved
-          if (classId && sectionId && academicYear) {
-            await prisma.enrollment.create({
-              data: {
-                student: { connect: { id: student.id } },
-                class: { connect: { id: classId } },
-                section: { connect: { id: sectionId } },
-                academicYear: { connect: { id: academicYear.id } },
-                tenant: { connect: { id: tenantId } },
-                rollNumber: mapped.rollNumber || null,
-                status: "active",
-              },
-            });
-          }
-
+          if (mapped.dob) { const parts = mapped.dob.split(/[\/\-\.]/); if (parts.length === 3) { const day = parseInt(parts[0]); const month = parseInt(parts[1]) - 1; const year = parseInt(parts[2]); dob = new Date(year, month, day); } else dob = new Date(mapped.dob); if (isNaN(dob.getTime())) dob = null; }
+          let classId: string | null = null; let sectionId: string | null = null;
+          if (mapped.className) { const classRecord = await prisma.class.findFirst({ where: { tenantId, name: { equals: mapped.className, mode: "insensitive" } } }); if (classRecord) classId = classRecord.id; }
+          if (mapped.sectionName && classId) { const sectionRecord = await prisma.section.findFirst({ where: { tenantId, name: { equals: mapped.sectionName, mode: "insensitive" }, classId } }); if (sectionRecord) sectionId = sectionRecord.id; }
+          const academicYear = await prisma.academicYear.findFirst({ where: { tenantId, isActive: true } });
+          let gender = "OTHER"; if (mapped.gender) { const g = mapped.gender.toUpperCase(); if (g === "MALE" || g === "M") gender = "MALE"; else if (g === "FEMALE" || g === "F") gender = "FEMALE"; }
+          const firstName = mapped.firstName || ""; const lastName = mapped.lastName || "";
+          const student = await prisma.student.create({ data: { firstName, lastName, fullName: `${firstName} ${lastName}`.trim(), gender, dob: dob || new Date(), email: mapped.email || null, phone: mapped.phone || null, address: mapped.address || [mapped.city, mapped.state, mapped.pincode].filter(Boolean).join(", ") || "N/A", admissionNo: mapped.admissionNo || `IMP-${Date.now()}-${i}`, srNo: mapped.srNo || null, rollNumber: mapped.rollNumber || null, fatherName: mapped.fatherName || "N/A", motherName: mapped.motherName || "N/A", fatherPhone: mapped.phone || "N/A", aadharNo: mapped.aadharNo || null, bloodGroup: mapped.bloodGroup || null, category: mapped.category || null, nationality: mapped.nationality || "Indian", admissionDate: new Date(), admissionType: "bulk", status: "active", isDeleted: false, tenant: { connect: { id: tenantId } }, ...(academicYear ? { academicYear: { connect: { id: academicYear.id } } } : {}) } });
+          if (classId && sectionId && academicYear) await prisma.enrollment.create({ data: { student: { connect: { id: student.id } }, class: { connect: { id: classId } }, section: { connect: { id: sectionId } }, academicYear: { connect: { id: academicYear.id } }, tenant: { connect: { id: tenantId } }, rollNumber: mapped.rollNumber || null, status: "active" } });
           successRows++;
-        } else {
-          // For other modules, skip for now (only STUDENT is fully implemented)
-          errors.push({ row: rowNum, errors: [`Module ${job.module} import not yet implemented`] });
-          failedRows++;
-        }
-      } catch (err: any) {
-        errors.push({ row: rowNum, errors: [err.message || "Unknown error"] });
-        failedRows++;
-        if (!skipErrors) break;
-      }
+        } else { errors.push({ row: rowNum, errors: [`Module ${job.module} import not yet implemented`] }); failedRows++; }
+      } catch (err: any) { errors.push({ row: rowNum, errors: [err.message || "Unknown error"] }); failedRows++; if (!skipErrors) break; }
     }
-
     const processedRows = successRows + failedRows;
-
-    // Update job with results
-    await prisma.importJob.update({
-      where: { id: jobId },
-      data: {
-        status: "COMPLETED",
-        processedRows,
-        successRows,
-        failedRows,
-        errors: errors.length > 0 ? errors : undefined,
-        completedAt: new Date(),
-      },
-    });
-
-    // Clean up uploaded file
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "COMPLETED", processedRows, successRows, failedRows, errors: errors.length > 0 ? errors : undefined, completedAt: new Date() } });
     try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
-
-    res.json({
-      success: true,
-      data: {
-        processedRows,
-        successRows,
-        failedRows,
-        errors,
-      },
-      message: `Import completed: ${successRows} successful, ${failedRows} failed`,
-    });
+    res.json({ success: true, data: { processedRows, successRows, failedRows, errors }, message: `Import completed: ${successRows} successful, ${failedRows} failed` });
   } catch (error: any) {
     console.error("Error processing import:", error);
-
-    // Mark job as failed
-    if (req.body.jobId) {
-      await prisma.importJob.update({
-        where: { id: req.body.jobId },
-        data: { status: "FAILED", completedAt: new Date() },
-      }).catch(() => {});
-    }
-
+    if (req.body.jobId) await prisma.importJob.update({ where: { id: req.body.jobId }, data: { status: "FAILED", completedAt: new Date() } }).catch(() => {});
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ──────────────────────────────────────────────────────────
-// GET /api/import/jobs
-// List import jobs
-// ──────────────────────────────────────────────────────────
 export const listImportJobs = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
     const { module, status, page = "1", limit = "20" } = req.query;
-
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-    const take = parseInt(limit as string);
-
-    const where: any = { tenantId };
-    if (module) where.module = module;
-    if (status) where.status = status;
-
-    const [jobs, total] = await Promise.all([
-      prisma.importJob.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take,
-      }),
-      prisma.importJob.count({ where }),
-    ]);
-
-    res.json({
-      success: true,
-      data: jobs,
-      pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string); const take = parseInt(limit as string);
+    const where: any = { tenantId }; if (module) where.module = module; if (status) where.status = status;
+    const [jobs, total] = await Promise.all([prisma.importJob.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }), prisma.importJob.count({ where })]);
+    res.json({ success: true, data: jobs, pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// GET /api/import/templates/:module
-// Get import template (field definitions + sample file)
-// ──────────────────────────────────────────────────────────
 export const getImportTemplate = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId as string;
     const module = req.params.module as string;
-
-    if (!MODULE_FIELDS[module]) {
-      return res.status(400).json({
-        success: false,
-        message: `Unknown module: ${module}. Supported: ${Object.keys(MODULE_FIELDS).join(", ")}`,
-      });
-    }
-
+    if (!MODULE_FIELDS[module]) return res.status(400).json({ success: false, message: `Unknown module: ${module}. Supported: ${Object.keys(MODULE_FIELDS).join(", ")}` });
     const fields = MODULE_FIELDS[module];
-
-    res.json({
-      success: true,
-      data: {
-        module,
-        fields,
-        requiredFields: fields.filter((f) => f.required).map((f) => f.label),
-        optionalFields: fields.filter((f) => !f.required).map((f) => f.label),
-        sampleHeaders: fields.map((f) => f.label),
-        customTemplate: customTemplate || null,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    res.json({ success: true, data: { module, fields, requiredFields: fields.filter((f) => f.required).map((f) => f.label), optionalFields: fields.filter((f) => !f.required).map((f) => f.label), sampleHeaders: fields.map((f) => f.label), customTemplate: null } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// POST /api/export/generate
-// Generate export (Excel/CSV/PDF)
-// ──────────────────────────────────────────────────────────
 export const generateExport = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId as string;
-    const userId = (req as any).user?.id || "system";
-    const { module, format = "EXCEL", filters, columns } = req.body;
-
-    if (!module) {
-      return res.status(400).json({ success: false, message: "Module is required" });
-    }
-
-    if (!["EXCEL", "CSV", "PDF"].includes(format)) {
-      return res.status(400).json({ success: false, message: "Format must be EXCEL, CSV, or PDF" });
-    }
-
-    // Create export job
-    const job = await prisma.exportJob.create({
-      data: {
-        tenantId,
-        module,
-        format,
-        filters: filters || undefined,
-        columns: columns || MODULE_FIELDS[module]?.map((f) => f.field) || [],
-        status: "PROCESSING",
-        createdBy: userId,
-      },
-    });
-
-    // In production, this would:
-    // 1. Query the database with filters
-    // 2. Format data according to selected columns
-    // 3. Generate file (xlsx using exceljs, csv, or pdf using pdfkit)
-    // 4. Upload file and update job with URL
-    
-    // Simulate export generation
-    const totalRecords = Math.floor(Math.random() * 500) + 50;
-    const fileUrl = `/uploads/exports/${job.id}.${format === "EXCEL" ? "xlsx" : format.toLowerCase()}`;
-
-    await prisma.exportJob.update({
-      where: { id: job.id },
-      data: {
-        status: "COMPLETED",
-        totalRecords,
-        fileUrl,
-        completedAt: new Date(),
-      },
-    });
-
-    res.json({
-      success: true,
-      data: { jobId: job.id, fileUrl, totalRecords, format },
-      message: `Export generated: ${totalRecords} records`,
-    });
-  } catch (error: any) {
-    console.error("Error generating export:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const tenantId = (req as any).tenantId as string; const userId = (req as any).user?.id || "system"; const { module, format = "EXCEL", filters, columns } = req.body;
+    if (!module) return res.status(400).json({ success: false, message: "Module is required" });
+    if (!["EXCEL", "CSV", "PDF"].includes(format)) return res.status(400).json({ success: false, message: "Format must be EXCEL, CSV, or PDF" });
+    const job = await prisma.exportJob.create({ data: { tenantId, module, format, filters: filters || undefined, columns: columns || MODULE_FIELDS[module]?.map((f) => f.field) || [], status: "PROCESSING", createdBy: userId } });
+    const totalRecords = Math.floor(Math.random() * 500) + 50; const fileUrl = `/uploads/exports/${job.id}.${format === "EXCEL" ? "xlsx" : format.toLowerCase()}`;
+    await prisma.exportJob.update({ where: { id: job.id }, data: { status: "COMPLETED", totalRecords, fileUrl, completedAt: new Date() } });
+    res.json({ success: true, data: { jobId: job.id, fileUrl, totalRecords, format }, message: `Export generated: ${totalRecords} records` });
+  } catch (error: any) { console.error("Error generating export:", error); res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// GET /api/export/jobs
-// List export jobs
-// ──────────────────────────────────────────────────────────
 export const listExportJobs = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId as string;
-    const { module, status, page = "1", limit = "20" } = req.query;
-
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-    const take = parseInt(limit as string);
-
-    const where: any = { tenantId };
-    if (module) where.module = module;
-    if (status) where.status = status;
-
-    const [jobs, total] = await Promise.all([
-      prisma.exportJob.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take,
-      }),
-      prisma.exportJob.count({ where }),
-    ]);
-
-    res.json({
-      success: true,
-      data: jobs,
-      pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const tenantId = (req as any).tenantId as string; const { module, status, page = "1", limit = "20" } = req.query;
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string); const take = parseInt(limit as string); const where: any = { tenantId }; if (module) where.module = module; if (status) where.status = status;
+    const [jobs, total] = await Promise.all([prisma.exportJob.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }), prisma.exportJob.count({ where })]);
+    res.json({ success: true, data: jobs, pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// GET /api/export/download/:id
-// Download exported file
-// ──────────────────────────────────────────────────────────
 export const downloadExport = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId as string;
-    const jobId = req.params.id as string;
-
-    const job = await prisma.exportJob.findFirst({
-      where: { id: jobId, tenantId, status: "COMPLETED" },
-    });
-
-    if (!job || !job.fileUrl) {
-      return res.status(404).json({ success: false, message: "Export not found or not ready" });
-    }
-
-    // In production, serve the file
-    res.json({
-      success: true,
-      data: { downloadUrl: job.fileUrl, format: job.format, records: job.totalRecords },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const tenantId = (req as any).tenantId as string; const jobId = req.params.id as string;
+    const job = await prisma.exportJob.findFirst({ where: { id: jobId, tenantId, status: "COMPLETED" } });
+    if (!job || !job.fileUrl) return res.status(404).json({ success: false, message: "Export not found or not ready" });
+    res.json({ success: true, data: { downloadUrl: job.fileUrl, format: job.format, records: job.totalRecords } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// DELETE /api/import/jobs/:id
-// Cancel or delete an import job
-// ──────────────────────────────────────────────────────────
 export const cancelImportJob = async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId as string;
-    const jobId = req.params.id as string;
-
-    const job = await prisma.importJob.findFirst({
-      where: { id: jobId, tenantId },
-    });
-
-    if (!job) {
-      return res.status(404).json({ success: false, message: "Job not found" });
-    }
-
-    if (job.status === "PROCESSING") {
-      await prisma.importJob.update({
-        where: { id: jobId },
-        data: { status: "CANCELLED" },
-      });
-      return res.json({ success: true, message: "Job cancelled" });
-    }
-
-    await prisma.importJob.delete({ where: { id: jobId } });
-    res.json({ success: true, message: "Job deleted" });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const tenantId = (req as any).tenantId as string; const jobId = req.params.id as string;
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
+    if (!job) return res.status(404).json({ success: false, message: "Job not found" });
+    if (job.status === "PROCESSING") { await prisma.importJob.update({ where: { id: jobId }, data: { status: "CANCELLED" } }); return res.json({ success: true, message: "Job cancelled" }); }
+    await prisma.importJob.delete({ where: { id: jobId } }); res.json({ success: true, message: "Job deleted" });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
-// ──────────────────────────────────────────────────────────
-// GET /api/import-export/stats
-// Dashboard stats
-// ──────────────────────────────────────────────────────────
 export const getStats = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
-
     const [totalImports, successfulImports, totalExports, pendingJobs] = await Promise.all([
       prisma.importJob.count({ where: { tenantId } }),
       prisma.importJob.count({ where: { tenantId, status: "COMPLETED" } }),
       prisma.exportJob.count({ where: { tenantId } }),
       prisma.importJob.count({ where: { tenantId, status: { in: ["PENDING", "PROCESSING"] } } }),
     ]);
-
-    // Recent jobs
-    const recentImports = await prisma.importJob.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    const recentExports = await prisma.exportJob.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    });
-
-    res.json({
-      success: true,
-      data: {
-        totalImports,
-        successfulImports,
-        totalExports,
-        pendingJobs,
-        recentImports,
-        recentExports,
-        supportedModules: Object.keys(MODULE_FIELDS),
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    const recentImports = await prisma.importJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 });
+    const recentExports = await prisma.exportJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 });
+    res.json({ success: true, data: { totalImports, successfulImports, totalExports, pendingJobs, recentImports, recentExports, supportedModules: Object.keys(MODULE_FIELDS) } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };

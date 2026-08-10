@@ -24,16 +24,9 @@ import { importRealRmsExcel } from '../students/real-excel-import.service';
 
 const router = Router({ mergeParams: true });
 
-// Ensure uploads/imports directory exists
 const uploadsDir = path.join(__dirname, "../../../uploads/imports");
 if (!fs.existsSync(uploadsDir)) { fs.mkdirSync(uploadsDir, { recursive: true }); }
 
-// ══════════════════════════════════════════════════════════════════
-// IMPORT/EXPORT ROUTES
-// Base: /api/import-export
-// ══════════════════════════════════════════════════════════════════
-
-// Multer config for file uploads
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, path.join(__dirname, "../../../uploads/imports")),
   filename: (_req, file, cb) => {
@@ -65,7 +58,9 @@ router.use(resolveTenant);
 router.get("/stats", getStats);
 
 // Safe real RMS/student-list import. Does not delete demo data.
-router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
+// ADMIN is included because the normal student-operations module uses ADMIN
+// for tenant-level student management, while tenant/super admins remain supported.
+router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
     if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded" });
@@ -73,8 +68,6 @@ router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (
       const { academicYearId } = req.body;
       if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required" });
 
-      // uploadDocument uses memory storage for documents. Persist the spreadsheet
-      // to a temporary file for ExcelJS without changing the existing upload helper.
       let filePath = req.file.path;
       if (!filePath && req.file.buffer) {
         const safeName = String(req.file.originalname || "student-import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");

@@ -3,6 +3,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import * as XLSX from "xlsx";
+import prisma from "../../utils/prisma";
 import {
   uploadForImport,
   validateImport,
@@ -88,8 +90,128 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
   });
 });
 
+const normalizeHeader = (value: any) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const STUDENT_ALIASES: Record<string, string[]> = {
+  fullName: ["name", "studentname", "studentfullname", "fullname", "nameofstudent", "candidatename"],
+  firstName: ["firstname", "studentfirstname", "givenname"],
+  lastName: ["lastname", "studentlastname", "surname", "familyname"],
+  admissionNo: ["admissionnumber", "admissionno", "admno", "admissionid", "registrationnumber", "registrationno", "regno", "enrollmentnumber", "enrollmentno", "enrolmentno"],
+  email: ["email", "emailid", "mail"],
+  phone: ["phone", "phonenumber", "mobile", "mobilenumber", "contactnumber", "contactno"],
+  dob: ["dob", "dateofbirth", "birthdate", "datebirth"],
+  gender: ["gender", "sex"],
+  fatherName: ["fathername", "father", "fatherfullname", "fathersname"],
+  motherName: ["mothername", "mother", "motherfullname", "mothersname"],
+  className: ["class", "classname", "standard", "std", "grade", "studyingclass", "classno", "classnumber"],
+  classSection: ["classsection", "classandsection", "classsectionname", "classwithsection", "standardsection"],
+  sectionName: ["section", "sectionname", "sec", "division", "div"],
+  rollNumber: ["rollnumber", "rollno", "roll", "rollnum", "studentrollnumber"],
+  address: ["address", "fulladdress", "residentialaddress"],
+  city: ["city", "town"],
+  state: ["state", "statename"],
+  pincode: ["pincode", "pin", "zipcode", "postalcode"],
+  bloodGroup: ["bloodgroup", "bloodtype"],
+  category: ["category", "castecategory", "studentcategory"],
+  religion: ["religion", "religionname"],
+  nationality: ["nationality", "nation"],
+  aadharNo: ["aadhar", "aadharno", "aadharnumber", "aadhaar", "aadhaarno", "aadhaarnumber"],
+};
+
+function inferStudentMapping(headers: string[], current: Record<string, string>) {
+  const mapping: Record<string, string> = { ...(current || {}) };
+  const usedTargets = new Set(Object.values(mapping));
+  const aliases = new Map<string, string>();
+  for (const [target, names] of Object.entries(STUDENT_ALIASES)) {
+    for (const name of names) aliases.set(normalizeHeader(name), target);
+  }
+
+  for (const header of headers) {
+    if (mapping[header]) continue;
+    const normalized = normalizeHeader(header);
+    const target = aliases.get(normalized);
+    if (target && !usedTargets.has(target)) {
+      mapping[header] = target;
+      usedTargets.add(target);
+    }
+  }
+  return mapping;
+}
+
+// The original UI only auto-maps exact labels. Real RMS sheets commonly use
+// headers such as Student Name, Admission No, Std, Sec, Mobile, etc. Normalize
+// those headers on the server so the existing import controller receives a
+// complete mapping without changing the existing UI or data model.
+const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => {
+  try {
+    const tenantId = req.tenantId as string;
+    const jobId = req.body?.jobId as string;
+    if (!jobId) return next();
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
+    if (!job || job.module !== "STUDENT" || !job.fileUrl || !fs.existsSync(job.fileUrl)) return next();
+
+    const workbook = XLSX.read(fs.readFileSync(job.fileUrl), { type: "buffer", raw: false });
+    const sheetName = workbook.SheetNames?.[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+    const matrix: any[][] = sheet ? (XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false }) as any[][]) : [];
+    const headers = Array.isArray(matrix[0]) ? matrix[0].map((v: any) => String(v ?? "").trim()).filter(Boolean) : [];
+
+    const mapping = inferStudentMapping(headers, req.body?.mapping || {});
+
+    // If the sheet has a combined Class & Section column, create two synthetic
+    // columns in the import cache. This lets the existing controller resolve
+    // both class and section without changing its validation/processing code.
+    const classSectionSource = Object.keys(mapping).find((source) => mapping[source] === "classSection");
+    if (classSectionSource) {
+      const cacheFile = `${job.fileUrl}.import-cache.json`;
+      let cached: any = null;
+      try { if (fs.existsSync(cacheFile)) cached = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
+      if (cached && Array.isArray(cached.rows)) {
+        const classKey = "__import_class_name";
+        const sectionKey = "__import_section_name";
+        cached.headers = Array.from(new Set([...(cached.headers || []), classKey, sectionKey]));
+        for (const row of cached.rows) {
+          const raw = String(row[classSectionSource] ?? "").trim();
+          const parts = raw.split(/\s+/).filter(Boolean);
+          row[classKey] = parts.length > 1 ? parts.slice(0, -1).join(" ") : raw;
+          row[sectionKey] = parts.length > 1 ? parts[parts.length - 1] : "";
+        }
+        try { fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8"); } catch {}
+        mapping[classKey] = "className";
+        mapping[sectionKey] = "sectionName";
+      }
+    }
+
+    // If the sheet has separate first/last name columns, synthesize fullName
+    // for the existing required Name field.
+    if (!Object.values(mapping).includes("fullName")) {
+      const firstSource = Object.keys(mapping).find((source) => mapping[source] === "firstName");
+      const lastSource = Object.keys(mapping).find((source) => mapping[source] === "lastName");
+      if (firstSource || lastSource) {
+        const cacheFile = `${job.fileUrl}.import-cache.json`;
+        try {
+          const cached = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+          if (cached && Array.isArray(cached.rows)) {
+            const nameKey = "__import_full_name";
+            cached.headers = Array.from(new Set([...(cached.headers || []), nameKey]));
+            for (const row of cached.rows) row[nameKey] = [row[firstSource || ""], row[lastSource || ""]].filter(Boolean).join(" ").trim();
+            fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8");
+            mapping[nameKey] = "fullName";
+          }
+        } catch {}
+      }
+    }
+
+    req.body.mapping = mapping;
+    return next();
+  } catch (error) {
+    console.warn("[Student Import] Mapping normalization skipped:", error);
+    return next();
+  }
+};
+
 router.post("/import/upload", upload.single("file"), uploadForImport);
-router.post("/import/validate", validateImport);
+router.post("/import/validate", normalizeStudentImportMapping, validateImport);
 router.post("/import/process", processImport);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);

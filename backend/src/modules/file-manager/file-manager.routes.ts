@@ -12,6 +12,7 @@ import {
   deleteFolder,
   getFileStats,
 } from "./file-manager.controller";
+import { downloadFile } from "./file-download.controller";
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.post("/upload", uploadFiles);
 router.get("/", getFiles);
 router.get("/stats", getFileStats);
 router.get("/folders", getFolders);
+router.get("/:id/download", downloadFile);
 router.get("/:id", getFileById);
 router.put("/:id", updateFile);
 router.put("/:id/move", moveFile);

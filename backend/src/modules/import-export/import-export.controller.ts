@@ -651,11 +651,6 @@ export const getImportTemplate = async (req: Request, res: Response) => {
       });
     }
 
-    // Check for custom template
-    const customTemplate = await prisma.importTemplate.findFirst({
-      where: { tenantId, module, isActive: true },
-    });
-
     const fields = MODULE_FIELDS[module];
 
     res.json({

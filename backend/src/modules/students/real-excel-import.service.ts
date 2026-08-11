@@ -9,10 +9,13 @@ function text(value: unknown): string {
   return String(value).trim();
 }
 
+function headerKey(value: unknown): string {
+  return text(value).replace(/^\uFEFF/, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
 function excelDate(value: unknown): Date | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   if (typeof value === "number" && Number.isFinite(value)) {
-    // Excel serial date (1900 date system).
     const date = new Date(Math.round((value - 25569) * 86400 * 1000));
     return Number.isNaN(date.getTime()) ? null : date;
   }
@@ -21,10 +24,7 @@ function excelDate(value: unknown): Date | null {
   const parts = s.split(/[\\/.\-]/).map(Number);
   if (parts.length === 3 && parts.every(Number.isFinite)) {
     let [a, b, c] = parts;
-    // Prefer DD/MM/YYYY for RMS exports, but also accept YYYY-MM-DD.
-    if (a >= 1000) {
-      [c, b, a] = parts;
-    }
+    if (a >= 1000) [c, b, a] = parts;
     const date = new Date(c, b - 1, a);
     if (date.getFullYear() === c && date.getMonth() === b - 1 && date.getDate() === a) return date;
   }
@@ -43,30 +43,32 @@ function splitClass(value: string, explicitSection = ""): { className: string; s
   const raw = value.replace(/\s+/g, " ").trim();
   const section = explicitSection.replace(/\s+/g, " ").trim();
   if (section) return { className: raw, sectionName: section };
-
-  // Accept common RMS formats: "LKG A", "LKG-A", "LKG_A".
   const match = raw.match(/^(.*?)[\s_-]+([A-Za-z])$/);
   if (match) return { className: match[1].trim(), sectionName: match[2].trim() };
   return { className: raw, sectionName: "" };
 }
+
+type ImportOptions = { dryRun?: boolean; maxRows?: number };
 
 export async function importRealRmsExcel(
   tenantId: string,
   filePath: string,
   academicYearId: string,
   userId: string,
+  options: ImportOptions = {},
 ) {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
+  const ext = filePath.toLowerCase().endsWith(".csv") ? ".csv" : ".xlsx";
+  if (ext === ".csv") await workbook.csv.readFile(filePath); else await workbook.xlsx.readFile(filePath);
   const sheet = workbook.getWorksheet("Student_List") || workbook.worksheets[0];
   if (!sheet) throw new Error("No worksheet found");
 
   const headers: Record<string, number> = {};
   sheet.getRow(1).eachCell((cell, col) => {
-    const key = text(cell.value).replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim().toLowerCase();
+    const key = headerKey(cell.value);
     if (key) headers[key] = col;
   });
-  const col = (...names: string[]) => names.map(n => headers[n.replace(/^\uFEFF/, "").replace(/\s+/g, " ").trim().toLowerCase()]).find(Boolean);
+  const col = (...names: string[]) => names.map(headerKey).map(k => headers[k]).find(Boolean);
   const get = (row: ExcelJS.Row, ...names: string[]) => {
     const n = col(...names);
     return n ? text(row.getCell(n).value) : "";
@@ -81,26 +83,25 @@ export async function importRealRmsExcel(
   const imported: string[] = [];
   let successCount = 0;
   let failedCount = 0;
+  const lastRow = options.maxRows ? Math.min(sheet.rowCount, options.maxRows + 1) : sheet.rowCount;
 
-  for (let rowNum = 2; rowNum <= sheet.rowCount; rowNum++) {
+  for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
     const row = sheet.getRow(rowNum);
-    const name = get(row, "Name", "Student Name", "StudentName", "Full Name");
-    const classValue = get(row, "Class", "Class Name", "ClassName");
-    const sectionValue = get(row, "Section", "Section Name", "SectionName");
+    const name = get(row, "Name", "Student Name", "StudentName", "Full Name", "FullName");
+    const classValue = get(row, "Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
+    const sectionValue = get(row, "Section", "Section Name", "SectionName", "Sec");
     if (!name && !classValue) continue;
 
     try {
       if (!name) throw new Error("Name is required");
       if (!classValue) throw new Error("Class is required");
       const { className, sectionName } = splitClass(classValue, sectionValue);
-      if (!className || !sectionName) throw new Error(`Class and Section are required (e.g. LKG / A or LKG A). Received: ${classValue}${sectionValue ? ` / ${sectionValue}` : ""}`);
+      if (!className || !sectionName) throw new Error(`Class and Section are required. Received: ${classValue}${sectionValue ? ` / ${sectionValue}` : ""}`);
 
       const cacheKey = `${className.toLowerCase()}|${academicYearId}`;
       let classId = classCache.get(cacheKey);
       if (!classId) {
-        const cls = await prisma.class.findFirst({
-          where: { tenantId, academicYearId, name: { equals: className, mode: "insensitive" } as any, isDeleted: false },
-        });
+        const cls = await prisma.class.findFirst({ where: { tenantId, academicYearId, name: { equals: className, mode: "insensitive" } as any, isDeleted: false } });
         if (!cls) throw new Error(`Class "${className}" not found for selected academic year`);
         classId = cls.id;
         classCache.set(cacheKey, classId);
@@ -109,9 +110,7 @@ export async function importRealRmsExcel(
       const sectionKey = `${classId}|${sectionName.toLowerCase()}`;
       let sectionId = sectionCache.get(sectionKey);
       if (!sectionId) {
-        const section = await prisma.section.findFirst({
-          where: { tenantId, academicYearId, classId, name: { equals: sectionName, mode: "insensitive" } as any },
-        });
+        const section = await prisma.section.findFirst({ where: { tenantId, academicYearId, classId, name: { equals: sectionName, mode: "insensitive" } as any } });
         if (!section) throw new Error(`Section "${sectionName}" not found for class "${className}"`);
         sectionId = section.id;
         sectionCache.set(sectionKey, sectionId);
@@ -122,11 +121,11 @@ export async function importRealRmsExcel(
       const lastName = get(row, "Last Name", "LastName") || (parts.length > 1 ? parts[parts.length - 1] : "");
       const middleName = get(row, "Middle Name", "MiddleName");
       const gender = normalizeGender(get(row, "Gender", "Sex"));
-      const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date"));
+      const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date", "BirthDate"));
       if (!dob) throw new Error("Valid DOB is required");
 
-      const admissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo");
-      const srNo = get(row, "SRN Number", "SR No", "SR Number", "SRN");
+      const admissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
+      const srNo = get(row, "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
       const rollNumber = get(row, "roleNumber", "Roll Number", "Roll No", "RollNumber");
       const fatherName = get(row, "Father", "Father Name", "FatherName") || "N/A";
       const motherName = get(row, "Mother", "Mother Name", "MotherName") || "N/A";
@@ -138,49 +137,23 @@ export async function importRealRmsExcel(
       const category = get(row, "Category") || null;
       const aadharNo = get(row, "Aadhaar No", "Aadhar No", "Child ID", "Aadhaar", "Aadhar").replace(/\s/g, "") || null;
 
+      if (options.dryRun) {
+        successCount++;
+        continue;
+      }
+
       const result = await prisma.$transaction(async tx => {
-        let student = admissionNo
-          ? await tx.student.findFirst({ where: { tenantId, admissionNo, isDeleted: false } })
-          : null;
-
+        let student = admissionNo ? await tx.student.findFirst({ where: { tenantId, admissionNo, isDeleted: false } }) : null;
         if (student) {
-          student = await tx.student.update({
-            where: { id: student.id },
-            data: {
-              firstName, middleName: middleName || null, lastName,
-              fullName: name.trim(), gender, dob,
-              phone: phone || null, address, fatherName, fatherPhone: phone || null,
-              motherName, motherPhone: motherPhone || null, religion, category,
-              nationality, aadharNo, status: "active", updatedAt: new Date(),
-            },
-          });
+          student = await tx.student.update({ where: { id: student.id }, data: { firstName, middleName: middleName || null, lastName, fullName: name.trim(), gender, dob, phone: phone || null, address, fatherName, fatherPhone: phone || null, motherName, motherPhone: motherPhone || null, religion, category, nationality, aadharNo, status: "active", updatedAt: new Date() } });
         } else {
-          student = await tx.student.create({
-            data: {
-              firstName, middleName: middleName || null, lastName,
-              fullName: name.trim(), gender, dob,
-              phone: phone || null, address, fatherName, fatherPhone: phone || "N/A",
-              motherName, motherPhone: motherPhone || null, religion, category,
-              nationality, aadharNo, admissionNo: admissionNo || undefined,
-              srNo: srNo || undefined, admissionDate: new Date(), admissionType: "bulk",
-              status: "active", isDeleted: false, createdBy: userId,
-              tenant: { connect: { id: tenantId } },
-              academicYear: { connect: { id: academicYearId } },
-            },
-          });
+          student = await tx.student.create({ data: { firstName, middleName: middleName || null, lastName, fullName: name.trim(), gender, dob, phone: phone || null, address, fatherName, fatherPhone: phone || "N/A", motherName, motherPhone: motherPhone || null, religion, category, nationality, aadharNo, admissionNo: admissionNo || undefined, srNo: srNo || undefined, admissionDate: new Date(), admissionType: "bulk", status: "active", isDeleted: false, createdBy: userId, tenant: { connect: { id: tenantId } }, academicYear: { connect: { id: academicYearId } } } });
         }
-
-        const existingEnrollment = await tx.enrollment.findFirst({
-          where: { tenantId, studentId: student.id, academicYearId },
-        });
-        if (existingEnrollment) {
-          await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active", isDeleted: false } });
-        } else {
-          await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } });
-        }
+        const existingEnrollment = await tx.enrollment.findFirst({ where: { tenantId, studentId: student.id, academicYearId } });
+        if (existingEnrollment) await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active", isDeleted: false } });
+        else await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } });
         return student;
       });
-
       imported.push(result.id);
       successCount++;
     } catch (error: any) {
@@ -189,5 +162,9 @@ export async function importRealRmsExcel(
     }
   }
 
-  return { totalRows: sheet.rowCount - 1, successCount, failedCount, errors, importedStudentIds: imported };
+  return { totalRows: sheet.rowCount - 1, checkedRows: lastRow - 1, successCount, failedCount, errors, importedStudentIds: imported };
+}
+
+export async function validateRealRmsExcel(tenantId: string, filePath: string, academicYearId: string, limit?: number) {
+  return importRealRmsExcel(tenantId, filePath, academicYearId, "system", { dryRun: true, maxRows: limit });
 }

@@ -19,6 +19,7 @@ import {
   getStats,
 } from "./import-export.controller";
 import { processStudentImportFast } from "../students/student-import-fast.controller";
+import { validateStudentImport } from "../students/student-import-validation.controller";
 
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
@@ -62,8 +63,6 @@ router.use(resolveTenant);
 router.get("/stats", getStats);
 
 // Safe real RMS/student-list import. Does not delete demo data.
-// ADMIN is included because the normal student-operations module uses ADMIN
-// for tenant-level student management, while tenant/super admins remain supported.
 router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
@@ -133,8 +132,6 @@ function inferStudentMapping(headers: string[], current: Record<string, string>)
   return mapping;
 }
 
-// Normalize real RMS sheets before validation. In particular, the supplied
-// sheet uses a single "Class" column whose values are like "LKG A".
 const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => {
   try {
     const tenantId = req.tenantId as string;
@@ -201,9 +198,7 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
 };
 
 router.post("/import/upload", upload.single("file"), uploadForImport);
-router.post("/import/validate", normalizeStudentImportMapping, validateImport);
-// Final unified student processor. It keeps the existing API contract but avoids
-// the old per-row master lookups that made large imports time out on Render.
+router.post("/import/validate", normalizeStudentImportMapping, validateStudentImport);
 router.post("/import/process", processStudentImportFast);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);

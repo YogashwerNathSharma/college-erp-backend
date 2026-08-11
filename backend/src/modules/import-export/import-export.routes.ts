@@ -55,7 +55,6 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error?.message || "Real student import failed" });
     } finally {
-      // Direct real-student imports are not import jobs, so always remove the temporary upload.
       if (filePath) {
         try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
       }
@@ -74,8 +73,9 @@ router.post("/import/real-validate", async (req: any, res: any) => {
     if (!job.fileUrl || !fs.existsSync(job.fileUrl)) return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
     const academicYear = await prisma.academicYear.findFirst({ where: { tenantId, isActive: true } });
     if (!academicYear) return res.status(400).json({ success: false, message: "No active academic year found for this school" });
-    const result = await validateRealRmsExcel(tenantId, job.fileUrl, academicYear.id, limit);
-    await prisma.importJob.update({ where: { id: jobId }, data: { totalRows: result.totalRows, mapping: { realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } });
+    const mapping = (job.mapping && typeof job.mapping === "object" && !Array.isArray(job.mapping)) ? job.mapping as Record<string, string> : undefined;
+    const result = await validateRealRmsExcel(tenantId, job.fileUrl, academicYear.id, limit, mapping);
+    await prisma.importJob.update({ where: { id: jobId }, data: { totalRows: result.totalRows, mapping: { ...(mapping || {}), realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } } });
     return res.json({ success: true, data: { ...result, validCount: result.successCount, invalidCount: result.failedCount, canProceed: result.successCount > 0, testLimit: limit || null } });
   } catch (error: any) { return res.status(400).json({ success: false, message: error?.message || "Real student validation failed" }); }
 });
@@ -87,9 +87,10 @@ const validateExistingImport = async (req: any, res: any) => {
     if (!job.fileUrl || !fs.existsSync(job.fileUrl)) return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
     const academicYear = await prisma.academicYear.findFirst({ where: { tenantId: req.tenantId, isActive: true } });
     if (!academicYear) return res.status(400).json({ success: false, message: "No active academic year found for this school" });
-    const result = await validateRealRmsExcel(req.tenantId, job.fileUrl, academicYear.id);
+    const mapping = (job.mapping && typeof job.mapping === "object" && !Array.isArray(job.mapping)) ? job.mapping as Record<string, string> : undefined;
+    const result = await validateRealRmsExcel(req.tenantId, job.fileUrl, academicYear.id, undefined, mapping);
     const previewResults = result.errors.slice(0, 10).map((e: any) => ({ row: e.row, data: {}, isValid: false, errors: [e.message] }));
-    await prisma.importJob.update({ where: { id: job.id }, data: { totalRows: result.totalRows, mapping: { realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } } });
+    await prisma.importJob.update({ where: { id: job.id }, data: { totalRows: result.totalRows, mapping: { ...(mapping || {}), realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } } });
     return res.json({ success: true, data: { totalRows: result.totalRows, previewResults, validCount: result.successCount, invalidCount: result.failedCount, canProceed: result.successCount > 0 } });
   } catch (error: any) { return res.status(400).json({ success: false, message: error?.message || "Validation failed" }); }
 };
@@ -105,13 +106,15 @@ const processExistingImportJob = async (req: any, res: any) => {
   if (!academicYear) { await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } }); return res.status(400).json({ success: false, message: "No active academic year found for this school" }); }
   try {
     await prisma.importJob.update({ where: { id: jobId }, data: { status: "PROCESSING", startedAt: new Date() } });
-    const result = await importRealRmsExcel(tenantId, job.fileUrl, academicYear.id, req.user.userId);
+    const mapping = (job.mapping && typeof job.mapping === "object" && !Array.isArray(job.mapping)) ? job.mapping as Record<string, string> : undefined;
+    const result = await importRealRmsExcel(tenantId, job.fileUrl, academicYear.id, req.user.userId, { mapping });
     await prisma.importJob.update({ where: { id: jobId }, data: { status: "COMPLETED", processedRows: result.totalRows, successRows: result.successCount, failedRows: result.failedCount, errors: result.errors?.length ? result.errors : undefined, completedAt: new Date() } });
     try { fs.unlinkSync(job.fileUrl); } catch {}
     return res.json({ success: true, data: { processedRows: result.totalRows, successRows: result.successCount, failedRows: result.failedCount, errors: result.errors || [], importedStudentIds: result.importedStudentIds || [] }, message: `Import completed: ${result.successCount} successful, ${result.failedCount} failed` });
   } catch (error: any) {
-    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED", completedAt: new Date(), errors: [{ row: 0, message: error?.message || "Real student import failed" }] } }).catch(() => {});
-    return res.status(400).json({ success: false, message: error?.message || "Real student import failed" });
+    const message = error?.message || "Real student import failed";
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED", completedAt: new Date(), errors: [{ row: 0, field: "general", message }] }).catch(() => {});
+    return res.status(400).json({ success: false, message });
   }
 };
 

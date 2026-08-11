@@ -65,11 +65,11 @@ router.get("/stats", getStats);
 // Safe real RMS/student-list import. Does not delete demo data.
 router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
-    if (err) return res.status(400).json({ success: false, message: err.message });
-    if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded" });
+    if (err) return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded. Make sure you send field name 'file' or 'document'." });
     try {
       const { academicYearId } = req.body;
-      if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required" });
+      if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required in form data" });
 
       let filePath = req.file.path;
       if (!filePath && req.file.buffer) {
@@ -77,7 +77,12 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
         filePath = path.join(os.tmpdir(), `erp-student-import-${Date.now()}-${safeName}`);
         fs.writeFileSync(filePath, req.file.buffer);
       }
-      if (!filePath) return res.status(400).json({ success: false, message: "Uploaded Excel file could not be prepared" });
+      if (!filePath) return res.status(400).json({ success: false, message: "File has no path and no buffer — upload may have failed silently" });
+
+      // Verify the file actually exists on disk before proceeding
+      if (!fs.existsSync(filePath)) {
+        return res.status(400).json({ success: false, message: `File not found at ${filePath} — temp storage issue` });
+      }
 
       try {
         const result = await importRealRmsExcel(req.tenantId, filePath, academicYearId, req.user.userId);

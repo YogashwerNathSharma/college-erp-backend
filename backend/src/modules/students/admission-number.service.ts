@@ -14,7 +14,7 @@ export const generateAdmissionNumber = async (
 
   let yearPart = new Date().getFullYear().toString();
   if (academicYear?.name) {
-    const match = academicYear.name.match(/(\\d{4})/);
+    const match = academicYear.name.match(/(\d{4})/);
     if (match) yearPart = match[1];
   }
 
@@ -61,7 +61,7 @@ export const generateSrNumber = async (tenantId: string, admissionNo?: string): 
   // ADM/2025/302 → SR/0302
   let nextSr = 1;
   if (admissionNo) {
-    const match = admissionNo.match(/(\\d+)$/);
+    const match = admissionNo.match(/(\d+)$/);
     if (match) {
       nextSr = parseInt(match[1]);
     }
@@ -91,7 +91,7 @@ export const syncAdmissionCounter = async (
   let maxSerial = 0;
   for (const s of students) {
     if (s.admissionNo) {
-      const match = s.admissionNo.match(/(\\d+)$/);
+      const match = s.admissionNo.match(/(\d+)$/);
       if (match) {
         const num = parseInt(match[1]);
         if (num > maxSerial) maxSerial = num;

@@ -122,6 +122,19 @@ export async function importRealRmsExcel(
       const religion = get(row, "Religion") || null;
       const category = get(row, "Category") || null;
       const aadharNo = get(row, "Aadhaar No", "Aadhar No", "Child ID").replace(/\s/g, "") || null;
+      const permanentAddress = get(row, "Permanent Address") || null;
+      const studentType = get(row, "StudentType", "Student Type") || null;
+      const samagraId = get(row, "Samagra ID", "SamagraID") || null;
+      const employmentCategory = get(row, "Employment Category") || null;
+      const statusRaw = get(row, "Status");
+      const status = statusRaw && statusRaw.toLowerCase() === "inactive" ? "inactive" : "active";
+
+      // Custom fields JSON for extra data not in schema
+      const customFields: Record<string, string> = {};
+      if (studentType) customFields.studentType = studentType;
+      if (samagraId) customFields.samagraId = samagraId;
+      if (employmentCategory) customFields.employmentCategory = employmentCategory;
+      if (permanentAddress) customFields.permanentAddress = permanentAddress;
 
       const result = await prisma.$transaction(async tx => {
         let student = admissionNo
@@ -136,7 +149,8 @@ export async function importRealRmsExcel(
               fullName: name.trim(), gender, dob,
               phone: phone || null, address, fatherName, fatherPhone: phone || null,
               motherName, motherPhone: motherPhone || null, religion, category,
-              nationality, aadharNo, status: "active", updatedAt: new Date(),
+              nationality, aadharNo, status, updatedAt: new Date(),
+              ...(Object.keys(customFields).length > 0 && { customFields }),
             },
           });
         } else {
@@ -148,7 +162,8 @@ export async function importRealRmsExcel(
               motherName, motherPhone: motherPhone || null, religion, category,
               nationality, aadharNo, admissionNo: admissionNo || undefined,
               srNo: srNo || undefined, admissionDate: new Date(), admissionType: "bulk",
-              status: "active", isDeleted: false, createdBy: userId,
+              status, isDeleted: false, createdBy: userId,
+              ...(Object.keys(customFields).length > 0 && { customFields }),
               tenant: { connect: { id: tenantId } },
               academicYear: { connect: { id: academicYearId } },
             },

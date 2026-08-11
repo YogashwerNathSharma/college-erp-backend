@@ -39,11 +39,16 @@ export const uploadDocument = (req: any, res: any, next: any) => {
     if (err) return next(err);
     const files = req.files || {};
     req.file = (files.document?.[0] || files.file?.[0]) as Express.Multer.File | undefined;
-    if (req.file && req.originalUrl?.includes("/api/students/operations/excel/import")) {
-      const safeName = String(req.file.originalname || "student-import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
-      const filePath = path.join(os.tmpdir(), `erp-student-import-${Date.now()}-${safeName}`);
-      fs.writeFileSync(filePath, req.file.buffer);
-      req.file.path = filePath;
+    // Persist spreadsheet uploads to a temp file so ExcelJS (and other readers)
+    // can read from disk. Applies to ALL routes that use uploadDocument for Excel/CSV.
+    if (req.file && req.file.buffer) {
+      const ext = path.extname(req.file.originalname || "").toLowerCase();
+      if ([".xlsx", ".xls", ".csv"].includes(ext) || req.file.mimetype?.includes("spreadsheet") || req.file.mimetype?.includes("excel") || req.file.mimetype === "text/csv") {
+        const safeName = String(req.file.originalname || "import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = path.join(os.tmpdir(), `erp-import-${Date.now()}-${safeName}`);
+        fs.writeFileSync(filePath, req.file.buffer);
+        req.file.path = filePath;
+      }
     }
     next();
   });

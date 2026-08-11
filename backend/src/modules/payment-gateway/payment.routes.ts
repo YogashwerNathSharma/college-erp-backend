@@ -13,6 +13,7 @@ import {
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import { validatePaymentTenantReferences } from "../../middleware/payment-tenant-reference.middleware";
 
 const router = Router();
 
@@ -24,11 +25,11 @@ router.use(authMiddleware);
 router.use(resolveTenant);
 
 // Payment operations
-router.post("/create-order", createOrder);
+router.post("/create-order", validatePaymentTenantReferences, createOrder);
 router.post("/verify", verifyPayment);
 router.post("/refund/:id", allowRoles("ADMIN", "SUPER_ADMIN"), initiateRefund);
 router.get("/transactions", getTransactions);
-router.post("/link", generatePaymentLink);
+router.post("/link", validatePaymentTenantReferences, generatePaymentLink);
 router.get("/stats", getPaymentStats);
 
 // Configuration (admin only)

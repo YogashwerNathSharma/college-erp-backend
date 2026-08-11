@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import {
   assignFeesToStudentController,
@@ -12,11 +11,13 @@ import {
   getAllPaymentsController,
 } from "./feeCollection.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 
 const router = Router();
 
-// All routes require authentication
+// All fee routes require both authentication and an authoritative tenant context.
 router.use(authMiddleware);
+router.use(resolveTenant);
 
 // POST routes
 router.post("/assign/student", assignFeesToStudentController);
@@ -34,4 +35,3 @@ router.get("/all-payments", getAllPaymentsController);
 router.get("/student/:enrollmentId", getStudentFeesController);
 
 export default router;
-

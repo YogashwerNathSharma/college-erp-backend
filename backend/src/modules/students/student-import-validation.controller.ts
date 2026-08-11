@@ -1,9 +1,9 @@
-// Student-specific validation for the existing import UI.
-// Preview should reject only data that cannot become a student record.
-// Optional phone/email/date formatting must not turn a usable row red.
+// Student-specific validation for the existing Import/Export UI.
+// Preview must use the same minimum requirements as the real student importer.
+// Admission Number is optional; the real importer can create students without it.
 // @ts-nocheck
 import { Request, Response } from "express";
-import prisma from "../../utils/prisma";
+import prisma from "../..//utils/prisma";
 import * as XLSX from "xlsx";
 import fs from "fs";
 import { validateImport } from "../import-export/import-export.controller";
@@ -25,7 +25,9 @@ function parseRows(filePath: string) {
     } catch {}
   }
   const workbook = XLSX.read(fs.readFileSync(filePath), { type: "buffer", raw: false });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const sheetName = workbook.SheetNames?.[0];
+  const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+  if (!sheet) throw new Error("No worksheet found");
   const matrix: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false }) as any[][];
   const headers = (matrix[0] || []).map((v: any) => clean(v)).filter(Boolean);
   const rows = matrix.slice(1).map((values: any[]) => {
@@ -38,6 +40,12 @@ function parseRows(filePath: string) {
   return { headers, rows };
 }
 
+function splitClass(value: any) {
+  const raw = clean(value).replace(/[–—]/g, "-").replace(/\s*-\s*/g, " ").replace(/\s+/g, " ").trim();
+  const match = raw.match(/^(.*?)(?:\s+)([A-Za-z])$/);
+  return match ? { className: clean(match[1]), sectionName: clean(match[2]) } : { className: raw, sectionName: "" };
+}
+
 export async function validateStudentImport(req: Request, res: Response) {
   try {
     const tenantId = (req as any).tenantId as string;
@@ -46,19 +54,28 @@ export async function validateStudentImport(req: Request, res: Response) {
     const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
     if (!job) return res.status(404).json({ success: false, message: "Import job not found" });
 
-    // Keep the generic validator for every module except students.
     if (job.module !== "STUDENT") return validateImport(req, res);
     if (!job.fileUrl || !fs.existsSync(job.fileUrl)) return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
 
     const parsed = parseRows(job.fileUrl);
     const validationResults = parsed.rows.map((row: any, index: number) => {
-      const admissionNo = clean(mappedValue(row, mapping, "admissionNo"));
-      const fullName = clean(mappedValue(row, mapping, "fullName"));
+      const name = clean(mappedValue(row, mapping, "fullName"));
       const firstName = clean(mappedValue(row, mapping, "firstName"));
       const lastName = clean(mappedValue(row, mapping, "lastName"));
+      const classSection = clean(mappedValue(row, mapping, "classSection"));
+      const className = clean(mappedValue(row, mapping, "className"));
+      const sectionName = clean(mappedValue(row, mapping, "sectionName"));
+      const dob = clean(mappedValue(row, mapping, "dob"));
       const errors: string[] = [];
-      if (!admissionNo) errors.push("Admission Number is required");
-      if (!firstName && !fullName && !lastName) errors.push("Name or First Name is required");
+
+      if (!name && !firstName && !lastName) errors.push("Name is required");
+      if (!className && !classSection) errors.push("Class is required");
+      else if (classSection && !className) {
+        const split = splitClass(classSection);
+        if (!split.className || !split.sectionName) errors.push("Class must include section, e.g. LKG A");
+      } else if (className && !sectionName) errors.push("Section is required");
+      if (!dob) errors.push("DOB is required");
+
       return { row: index + 2, data: row, isValid: errors.length === 0, errors };
     });
 

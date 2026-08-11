@@ -93,8 +93,7 @@ export async function importRealRmsExcel(
     return n ? text(row.getCell(n).value) : "";
   };
 
-  // The normal Import/Export screen lets the user map arbitrary Excel headers to ERP fields.
-  // Honour that mapping here instead of requiring the Excel header text to match our aliases.
+  // Import/Export stores mapping as source-header -> ERP-field. Keep that contract here.
   const mapping = options.mapping || {};
   const mappedSource = (target: string) => Object.keys(mapping).find(source => mapping[source] === target);
   const get = (row: ExcelJS.Row, target: string, ...aliases: string[]) => {
@@ -109,10 +108,16 @@ export async function importRealRmsExcel(
   const academicYear = await prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } });
   if (!academicYear) throw new Error("Academic year not found for this school");
 
+  // Support both a single Full Name column and First Name + Last Name mappings.
   const nameColumn = mappedSource("fullName") || col("Name", "Student Name", "StudentName", "Full Name", "FullName", "name");
+  const firstNameColumn = mappedSource("firstName") || col("First Name", "FirstName", "FName");
+  const lastNameColumn = mappedSource("lastName") || col("Last Name", "LastName", "LName", "Surname");
+
+  // Support Class + Section as separate columns or one Class & Section column.
   const classColumn = mappedSource("className") || col("Class", "Class Name", "ClassName", "Class & Section", "ClassSection", "class");
-  if (!nameColumn) throw new Error("Student Name column not found. Map a column to Name/Full Name.");
-  if (!classColumn) throw new Error("Class column not found. Map a column to Class.");
+  const classSectionColumn = mappedSource("classSection") || col("Class & Section", "ClassSection", "Class and Section", "Class_Section");
+  if (!nameColumn && !firstNameColumn && !lastNameColumn) throw new Error("Student Name column not found. Map Name/Full Name or First Name/Last Name.");
+  if (!classColumn && !classSectionColumn) throw new Error("Class column not found. Map Class or Class & Section.");
 
   const classCache = new Map<string, string>();
   const sectionCache = new Map<string, string>();
@@ -124,13 +129,18 @@ export async function importRealRmsExcel(
 
   for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
     const row = sheet.getRow(rowNum);
-    const name = get(row, "fullName", "Name", "Student Name", "StudentName", "Full Name", "FullName");
-    const classValue = get(row, "className", "Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
+    const firstNameValue = get(row, "firstName", "First Name", "FirstName", "FName");
+    const lastNameValue = get(row, "lastName", "Last Name", "LastName", "LName", "Surname");
+    const fullNameValue = get(row, "fullName", "Name", "Student Name", "StudentName", "Full Name", "FullName") || [firstNameValue, lastNameValue].filter(Boolean).join(" ");
+
+    let classValue = get(row, "className", "Class", "Class Name", "ClassName", "class");
+    const classSectionValue = get(row, "classSection", "Class & Section", "ClassSection", "Class and Section", "Class_Section");
+    if (!classValue) classValue = classSectionValue;
     const sectionValue = get(row, "sectionName", "Section", "Section Name", "SectionName", "Sec");
-    if (!name && !classValue) continue;
+    if (!fullNameValue && !classValue) continue;
 
     try {
-      if (!name) throw new Error("Name is required");
+      if (!fullNameValue) throw new Error("Name is required");
       if (!classValue) throw new Error("Class is required");
 
       const { className, sectionName } = splitClass(classValue, sectionValue);
@@ -166,9 +176,9 @@ export async function importRealRmsExcel(
         sectionCache.set(sectionKey, sectionId);
       }
 
-      const parts = name.trim().split(/\s+/);
-      const firstName = get(row, "firstName", "First Name", "FirstName") || parts[0];
-      const lastName = get(row, "lastName", "Last Name", "LastName") || (parts.length > 1 ? parts[parts.length - 1] : "");
+      const parts = fullNameValue.trim().split(/\s+/);
+      const firstName = firstNameValue || parts[0];
+      const lastName = lastNameValue || (parts.length > 1 ? parts[parts.length - 1] : "");
       const middleName = get(row, "middleName", "Middle Name", "MiddleName") || (parts.length > 2 ? parts.slice(1, -1).join(" ") : "");
       const gender = normalizeGender(get(row, "gender", "Gender", "Sex"));
       const dob = excelDate(get(row, "dob", "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date", "BirthDate"));
@@ -212,7 +222,7 @@ export async function importRealRmsExcel(
           firstName,
           middleName: middleName || null,
           lastName,
-          fullName: name.trim(),
+          fullName: fullNameValue.trim(),
           gender,
           dob,
           email: email || "N/A",

@@ -1,4 +1,4 @@
-// Fast, production-safe student import path. Keeps the existing import UI/API contract.
+// Fast, production-safe student import path. Keeps the existing Import/Export UI/API contract.
 // @ts-nocheck
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
@@ -121,7 +121,6 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
     const mapping = (job.mapping || {}) as Record<string, string>;
     const normalizedRows = parsed.rows.map((row: any, index: number) => ({ row, rowNum: index + 2, data: normalizeStudent(row, mapping) }));
 
-    // Load academic/class/section masters once. The old path queried these for every row.
     const academicYear = await prisma.academicYear.findFirst({ where: { tenantId, isActive: true } });
     const [classes, sections] = await Promise.all([
       prisma.class.findMany({ where: { tenantId } }),
@@ -144,7 +143,6 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
       const { rowNum, data: mapped } = item;
       try {
         if (!mapped.firstName) throw new Error("Name or First Name is required");
-        if (!mapped.admissionNo) throw new Error("Admission Number is required");
 
         let classRecord: any = null;
         let sectionRecord: any = null;
@@ -161,8 +159,8 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
           email: mapped.email || null,
           phone: mapped.phone || null,
           address: mapped.address || [mapped.city, mapped.state, mapped.pincode].filter(Boolean).join(", ") || "N/A",
-          admissionNo: mapped.admissionNo,
-          srNo: mapped.srNo || null,
+          ...(mapped.admissionNo ? { admissionNo: mapped.admissionNo } : {}),
+          ...(mapped.srNo ? { srNo: mapped.srNo } : {}),
           rollNumber: mapped.rollNumber || null,
           fatherName: mapped.fatherName || "N/A",
           motherName: mapped.motherName || "N/A",
@@ -179,13 +177,14 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
           ...(academicYear ? { academicYear: { connect: { id: academicYear.id } } } : {}),
         };
 
-        let student = studentByAdmission.get(mapped.admissionNo);
-        if (student) student = await prisma.student.update({ where: { id: student.id }, data: studentData });
-        else student = await prisma.student.create({ data: studentData });
-        studentByAdmission.set(mapped.admissionNo, student);
+        const student = mapped.admissionNo ? studentByAdmission.get(mapped.admissionNo) : null;
+        let savedStudent: any;
+        if (student) savedStudent = await prisma.student.update({ where: { id: student.id }, data: studentData });
+        else savedStudent = await prisma.student.create({ data: studentData });
+        if (mapped.admissionNo) studentByAdmission.set(mapped.admissionNo, savedStudent);
 
         if (classRecord && sectionRecord && academicYear) {
-          const existingEnrollment = await prisma.enrollment.findFirst({ where: { tenantId, studentId: student.id, academicYearId: academicYear.id } });
+          const existingEnrollment = await prisma.enrollment.findFirst({ where: { tenantId, studentId: savedStudent.id, academicYearId: academicYear.id } });
           const enrollmentData: any = {
             class: { connect: { id: classRecord.id } },
             section: { connect: { id: sectionRecord.id } },
@@ -195,7 +194,7 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
             status: "active",
           };
           if (existingEnrollment) await prisma.enrollment.update({ where: { id: existingEnrollment.id }, data: enrollmentData });
-          else await prisma.enrollment.create({ data: { student: { connect: { id: student.id } }, ...enrollmentData } });
+          else await prisma.enrollment.create({ data: { student: { connect: { id: savedStudent.id } }, ...enrollmentData } });
         }
         return { ok: true };
       } catch (error: any) {
@@ -203,7 +202,6 @@ export const processStudentImportFast = async (req: Request, res: Response) => {
       }
     };
 
-    // Bounded concurrency is much faster than the old strictly-serial 1,700+ row loop.
     const concurrency = 12;
     for (let i = 0; i < normalizedRows.length; i += concurrency) {
       const results = await Promise.all(normalizedRows.slice(i, i + concurrency).map(processOne));

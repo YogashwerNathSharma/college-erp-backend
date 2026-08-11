@@ -3,6 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import prisma from "../../utils/prisma";
 import {
   uploadForImport,
   validateImport,
@@ -88,9 +89,91 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
   });
 });
 
+// Keep the existing Import/Export UI flow, but route STUDENT jobs through the
+// already-existing real RMS importer. Other modules remain on the generic processor.
+const processExistingImportJob = async (req: any, res: any) => {
+  const tenantId = req.tenantId as string;
+  const jobId = req.body?.jobId as string;
+  if (!jobId) return res.status(400).json({ success: false, message: "jobId is required" });
+
+  const job = await prisma.importJob.findFirst({
+    where: { id: jobId, tenantId, status: "PENDING" },
+  });
+  if (!job) return res.status(404).json({ success: false, message: "Job not found or already processed" });
+
+  if (job.module !== "STUDENT") return processImport(req, res);
+
+  if (!job.fileUrl || !fs.existsSync(job.fileUrl)) {
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } });
+    return res.status(404).json({ success: false, message: "Uploaded file not found on server" });
+  }
+
+  const academicYear = await prisma.academicYear.findFirst({
+    where: { tenantId, isActive: true },
+  });
+  if (!academicYear) {
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED" } });
+    return res.status(400).json({ success: false, message: "No active academic year found for this school" });
+  }
+
+  try {
+    await prisma.importJob.update({
+      where: { id: jobId },
+      data: { status: "PROCESSING", startedAt: new Date() },
+    });
+
+    const result = await importRealRmsExcel(
+      tenantId,
+      job.fileUrl,
+      academicYear.id,
+      req.user.userId,
+    );
+
+    await prisma.importJob.update({
+      where: { id: jobId },
+      data: {
+        status: "COMPLETED",
+        processedRows: result.totalRows,
+        successRows: result.successCount,
+        failedRows: result.failedCount,
+        errors: result.errors?.length ? result.errors : undefined,
+        completedAt: new Date(),
+      },
+    });
+
+    try { fs.unlinkSync(job.fileUrl); } catch {}
+
+    return res.json({
+      success: true,
+      data: {
+        processedRows: result.totalRows,
+        successRows: result.successCount,
+        failedRows: result.failedCount,
+        errors: result.errors || [],
+        importedStudentIds: result.importedStudentIds || [],
+      },
+      message: `Import completed: ${result.successCount} successful, ${result.failedCount} failed`,
+    });
+  } catch (error: any) {
+    await prisma.importJob.update({
+      where: { id: jobId },
+      data: {
+        status: "FAILED",
+        completedAt: new Date(),
+        errors: [{ row: 0, message: error?.message || "Real student import failed" }],
+      },
+    }).catch(() => {});
+
+    return res.status(400).json({
+      success: false,
+      message: error?.message || "Real student import failed",
+    });
+  }
+};
+
 router.post("/import/upload", upload.single("file"), uploadForImport);
 router.post("/import/validate", validateImport);
-router.post("/import/process", processImport);
+router.post("/import/process", processExistingImportJob);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);
 router.delete("/import/jobs/:id", cancelImportJob);

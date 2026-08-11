@@ -97,7 +97,7 @@ function validateRow(row: Record<string, any>, fields: { field: string; label: s
     if (fieldDef.required && (!value || String(value).trim() === "")) { errors.push(`${fieldDef.label} is required`); continue; }
     if (value && value.toString().trim() !== "") {
       const strVal = String(value).trim();
-      if (fieldDef.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(strVal)) errors.push(`${fieldDef.label}: Invalid email format`);
+      if (fieldDef.type === "email" && !/^([^\s@]+)@([^\s@]+)\.[^\s@]+$/.test(strVal)) errors.push(`${fieldDef.label}: Invalid email format`);
       if (fieldDef.type === "phone" && !/^\d{10,15}$/.test(strVal.replace(/[+\-\s]/g, ""))) errors.push(`${fieldDef.label}: Invalid phone number`);
       if (fieldDef.type === "number" && isNaN(Number(strVal))) errors.push(`${fieldDef.label}: Must be a number`);
       if (fieldDef.type === "date" && isNaN(Date.parse(strVal))) errors.push(`${fieldDef.label}: Invalid date format`);
@@ -196,8 +196,7 @@ export const processImport = async (req: Request, res: Response) => {
         if (job.module === "STUDENT") {
           if (mapped.fullName && !mapped.firstName) { const nameParts = mapped.fullName.trim().split(/\s+/); mapped.firstName = nameParts[0] || ""; mapped.lastName = nameParts.slice(1).join(" ") || ""; }
           if (mapped.classSection && !mapped.className) { const parts = mapped.classSection.trim().split(/\s+/); mapped.sectionName = parts.pop() || ""; mapped.className = parts.join(" ") || ""; }
-          let dob: Date | null = null;
-          if (mapped.dob) { const parts = mapped.dob.split(/[\/\-\.]/); if (parts.length === 3) { const day = parseInt(parts[0]); const month = parseInt(parts[1]) - 1; const year = parseInt(parts[2]); dob = new Date(year, month, day); } else dob = new Date(mapped.dob); if (isNaN(dob.getTime())) dob = null; }
+          let dob: Date | null = null; if (mapped.dob) { const parts = mapped.dob.split(/[\/\-\.]/); if (parts.length === 3) { const day = parseInt(parts[0]); const month = parseInt(parts[1]) - 1; const year = parseInt(parts[2]); dob = new Date(year, month, day); } else dob = new Date(mapped.dob); if (isNaN(dob.getTime())) dob = null; }
           let classId: string | null = null; let sectionId: string | null = null;
           if (mapped.className) { const classRecord = await prisma.class.findFirst({ where: { tenantId, name: { equals: mapped.className, mode: "insensitive" } } }); if (classRecord) classId = classRecord.id; }
           if (mapped.sectionName && classId) { const sectionRecord = await prisma.section.findFirst({ where: { tenantId, name: { equals: mapped.sectionName, mode: "insensitive" }, classId } }); if (sectionRecord) sectionId = sectionRecord.id; }
@@ -221,14 +220,28 @@ export const processImport = async (req: Request, res: Response) => {
   }
 };
 
+const validatedImportWhere = (tenantId: string) => ({ tenantId, totalRows: { gt: 0 } });
+const unvalidatedImportWhere = (tenantId: string) => ({ tenantId, totalRows: 0, status: { not: "PROCESSING" } });
+
 export const listImportJobs = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
     const { module, status, page = "1", limit = "20" } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string); const take = parseInt(limit as string);
-    const where: any = { tenantId }; if (module) where.module = module; if (status) where.status = status;
+    const where: any = validatedImportWhere(tenantId); if (module) where.module = module; if (status) where.status = status;
     const [jobs, total] = await Promise.all([prisma.importJob.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }), prisma.importJob.count({ where })]);
     res.json({ success: true, data: jobs, pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) } });
+  } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
+};
+
+export const clearUnvalidatedImportJobs = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const where = unvalidatedImportWhere(tenantId);
+    const jobs = await prisma.importJob.findMany({ where, select: { id: true, fileUrl: true } });
+    for (const job of jobs) { try { if (job.fileUrl && fs.existsSync(job.fileUrl)) fs.unlinkSync(job.fileUrl); } catch {} }
+    const result = await prisma.importJob.deleteMany({ where });
+    res.json({ success: true, data: { deleted: result.count }, message: `${result.count} unvalidated import job(s) deleted` });
   } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
@@ -258,7 +271,7 @@ export const listExportJobs = async (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId as string; const { module, status, page = "1", limit = "20" } = req.query;
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string); const take = parseInt(limit as string); const where: any = { tenantId }; if (module) where.module = module; if (status) where.status = status;
     const [jobs, total] = await Promise.all([prisma.exportJob.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }), prisma.exportJob.count({ where })]);
-    res.json({ success: true, data: jobs, pagination: { total, page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) } });
+    res.json({ success: true, data: jobs, pagination: { total: parseInt(total as any), page: parseInt(page as string), limit: take, totalPages: Math.ceil(total / take) } });
   } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
 
@@ -277,6 +290,7 @@ export const cancelImportJob = async (req: Request, res: Response) => {
     const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
     if (!job) return res.status(404).json({ success: false, message: "Job not found" });
     if (job.status === "PROCESSING") { await prisma.importJob.update({ where: { id: jobId }, data: { status: "CANCELLED" } }); return res.json({ success: true, message: "Job cancelled" }); }
+    try { if (job.fileUrl && fs.existsSync(job.fileUrl)) fs.unlinkSync(job.fileUrl); } catch {}
     await prisma.importJob.delete({ where: { id: jobId } }); res.json({ success: true, message: "Job deleted" });
   } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };
@@ -284,14 +298,17 @@ export const cancelImportJob = async (req: Request, res: Response) => {
 export const getStats = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId as string;
-    const [totalImports, successfulImports, totalExports, pendingJobs] = await Promise.all([
-      prisma.importJob.count({ where: { tenantId } }),
-      prisma.importJob.count({ where: { tenantId, status: "COMPLETED" } }),
+    const validatedWhere = validatedImportWhere(tenantId);
+    const unvalidatedWhere = unvalidatedImportWhere(tenantId);
+    const [totalImports, successfulImports, totalExports, pendingJobs, unvalidatedImports] = await Promise.all([
+      prisma.importJob.count({ where: validatedWhere }),
+      prisma.importJob.count({ where: { ...validatedWhere, status: "COMPLETED" } }),
       prisma.exportJob.count({ where: { tenantId } }),
-      prisma.importJob.count({ where: { tenantId, status: { in: ["PENDING", "PROCESSING"] } } }),
+      prisma.importJob.count({ where: { ...validatedWhere, status: { in: ["PENDING", "PROCESSING"] } } }),
+      prisma.importJob.count({ where: unvalidatedWhere }),
     ]);
-    const recentImports = await prisma.importJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 });
+    const recentImports = await prisma.importJob.findMany({ where: validatedWhere, orderBy: { createdAt: "desc" }, take: 5 });
     const recentExports = await prisma.exportJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 });
-    res.json({ success: true, data: { totalImports, successfulImports, totalExports, pendingJobs, recentImports, recentExports, supportedModules: Object.keys(MODULE_FIELDS) } });
+    res.json({ success: true, data: { totalImports, successfulImports, totalExports, pendingJobs, unvalidatedImports, recentImports, recentExports, supportedModules: Object.keys(MODULE_FIELDS) } });
   } catch (error: any) { res.status(500).json({ success: false, message: error.message }); }
 };

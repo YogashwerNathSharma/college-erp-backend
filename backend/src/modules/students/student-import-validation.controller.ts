@@ -1,9 +1,9 @@
 // Student-specific validation for the existing Import/Export UI.
-// Preview must use the same minimum requirements as the real student importer.
-// Admission Number is optional; the real importer can create students without it.
+// Preview uses the same minimum requirement as the fast processor: a student name.
+// Admission number, class/section and DOB may be missing and are handled by the processor.
 // @ts-nocheck
 import { Request, Response } from "express";
-import prisma from "../..//utils/prisma";
+import prisma from "../../utils/prisma";
 import * as XLSX from "xlsx";
 import fs from "fs";
 import { validateImport } from "../import-export/import-export.controller";
@@ -40,12 +40,6 @@ function parseRows(filePath: string) {
   return { headers, rows };
 }
 
-function splitClass(value: any) {
-  const raw = clean(value).replace(/[–—]/g, "-").replace(/\s*-\s*/g, " ").replace(/\s+/g, " ").trim();
-  const match = raw.match(/^(.*?)(?:\s+)([A-Za-z])$/);
-  return match ? { className: clean(match[1]), sectionName: clean(match[2]) } : { className: raw, sectionName: "" };
-}
-
 export async function validateStudentImport(req: Request, res: Response) {
   try {
     const tenantId = (req as any).tenantId as string;
@@ -59,23 +53,11 @@ export async function validateStudentImport(req: Request, res: Response) {
 
     const parsed = parseRows(job.fileUrl);
     const validationResults = parsed.rows.map((row: any, index: number) => {
-      const name = clean(mappedValue(row, mapping, "fullName"));
+      const fullName = clean(mappedValue(row, mapping, "fullName"));
       const firstName = clean(mappedValue(row, mapping, "firstName"));
       const lastName = clean(mappedValue(row, mapping, "lastName"));
-      const classSection = clean(mappedValue(row, mapping, "classSection"));
-      const className = clean(mappedValue(row, mapping, "className"));
-      const sectionName = clean(mappedValue(row, mapping, "sectionName"));
-      const dob = clean(mappedValue(row, mapping, "dob"));
       const errors: string[] = [];
-
-      if (!name && !firstName && !lastName) errors.push("Name is required");
-      if (!className && !classSection) errors.push("Class is required");
-      else if (classSection && !className) {
-        const split = splitClass(classSection);
-        if (!split.className || !split.sectionName) errors.push("Class must include section, e.g. LKG A");
-      } else if (className && !sectionName) errors.push("Section is required");
-      if (!dob) errors.push("DOB is required");
-
+      if (!firstName && !fullName && !lastName) errors.push("Name is required");
       return { row: index + 2, data: row, isValid: errors.length === 0, errors };
     });
 

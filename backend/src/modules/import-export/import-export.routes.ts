@@ -16,10 +16,11 @@ const uploadsDir = path.join(__dirname, "../../../uploads/imports");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 const storage = multer.diskStorage({ destination: (_req, _file, cb) => cb(null, uploadsDir), filename: (_req, file, cb) => cb(null, `import-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`) });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_req, file, cb) => {
-  const allowedTypes = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel", "text/csv", "application/csv"];
-  const allowedExtensions = [".xlsx", ".xls", ".csv"];
+  const allowedTypes = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "application/csv"];
+  const allowedExtensions = [".xlsx", ".csv"];
   const ext = path.extname(file.originalname).toLowerCase();
-  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) cb(null, true); else cb(new Error("Only Excel (.xlsx, .xls) and CSV (.csv) files are allowed"));
+  if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) cb(null, true);
+  else cb(new Error("Only .xlsx and .csv files are supported. Please save legacy .xls files as .xlsx first."));
 } });
 
 router.use(authMiddleware);
@@ -29,20 +30,36 @@ router.get("/stats", getStats);
 router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
-    if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded" });
+    if (!req.file) return res.status(400).json({ success: false, message: "No Excel/CSV file uploaded" });
+
+    let filePath = "";
     try {
       const { academicYearId } = req.body;
       if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required" });
-      let filePath = req.file.path;
+
+      const originalName = String(req.file.originalname || "").toLowerCase();
+      if (!originalName.endsWith(".xlsx") && !originalName.endsWith(".csv")) {
+        return res.status(400).json({ success: false, message: "Only .xlsx and .csv files are supported. Please save legacy .xls files as .xlsx first." });
+      }
+
+      filePath = req.file.path;
       if (!filePath && req.file.buffer) {
         const safeName = String(req.file.originalname || "student-import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
         filePath = path.join(os.tmpdir(), `erp-student-import-${Date.now()}-${safeName}`);
         fs.writeFileSync(filePath, req.file.buffer);
       }
       if (!filePath) return res.status(400).json({ success: false, message: "Uploaded Excel file could not be prepared" });
-      try { const result = await importRealRmsExcel(req.tenantId, filePath, academicYearId, req.user.userId); return res.json({ success: true, data: result }); }
-      finally { try { if (filePath.startsWith(os.tmpdir())) fs.unlinkSync(filePath); } catch {} }
-    } catch (error: any) { return res.status(400).json({ success: false, message: error?.message || "Real student import failed" }); }
+
+      const result = await importRealRmsExcel(req.tenantId, filePath, academicYearId, req.user.userId);
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error?.message || "Real student import failed" });
+    } finally {
+      // Direct real-student imports are not import jobs, so always remove the temporary upload.
+      if (filePath) {
+        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
+      }
+    }
   });
 });
 
@@ -58,7 +75,7 @@ router.post("/import/real-validate", async (req: any, res: any) => {
     const academicYear = await prisma.academicYear.findFirst({ where: { tenantId, isActive: true } });
     if (!academicYear) return res.status(400).json({ success: false, message: "No active academic year found for this school" });
     const result = await validateRealRmsExcel(tenantId, job.fileUrl, academicYear.id, limit);
-    await prisma.importJob.update({ where: { id: jobId }, data: { totalRows: result.totalRows, mapping: { realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } } });
+    await prisma.importJob.update({ where: { id: jobId }, data: { totalRows: result.totalRows, mapping: { realExcel: true, checkedRows: result.checkedRows, validation: "real-student-import" } });
     return res.json({ success: true, data: { ...result, validCount: result.successCount, invalidCount: result.failedCount, canProceed: result.successCount > 0, testLimit: limit || null } });
   } catch (error: any) { return res.status(400).json({ success: false, message: error?.message || "Real student validation failed" }); }
 });

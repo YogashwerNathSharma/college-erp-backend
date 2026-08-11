@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import prisma from "../../utils/prisma";
+import { generateAdmissionNumber, generateSrNumber } from "./admission-number.service";
 
 function text(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -33,9 +34,9 @@ function excelDate(value: unknown): Date | null {
 }
 
 function normalizeGender(value: string): string {
-  const v = value.toLowerCase();
-  if (["m", "male", "boy"].includes(v)) return "Male";
-  if (["f", "female", "girl"].includes(v)) return "Female";
+  const v = value.trim().toLowerCase();
+  if (["m", "male", "boy", "man"].includes(v)) return "Male";
+  if (["f", "female", "girl", "woman"].includes(v)) return "Female";
   return "Other";
 }
 
@@ -58,17 +59,21 @@ export async function importRealRmsExcel(
   options: ImportOptions = {},
 ) {
   const workbook = new ExcelJS.Workbook();
-  const ext = filePath.toLowerCase().endsWith(".csv") ? ".csv" : ".xlsx";
-  if (ext === ".csv") await workbook.csv.readFile(filePath); else await workbook.xlsx.readFile(filePath);
-  const sheet = workbook.getWorksheet("Student_List") || workbook.worksheets[0];
-  if (!sheet) throw new Error("No worksheet found");
+  const lowerPath = filePath.toLowerCase();
+  if (lowerPath.endsWith(".csv")) await workbook.csv.readFile(filePath);
+  else if (lowerPath.endsWith(".xlsx")) await workbook.xlsx.readFile(filePath);
+  else throw new Error("Only .xlsx and .csv files are supported. Please save the Excel file as .xlsx.");
+
+  const sheet = workbook.getWorksheet("Student_List") || workbook.getWorksheet("Students") || workbook.worksheets[0];
+  if (!sheet) throw new Error("No worksheet found in the uploaded file");
 
   const headers: Record<string, number> = {};
   sheet.getRow(1).eachCell((cell, col) => {
     const key = headerKey(cell.value);
-    if (key) headers[key] = col;
+    if (key && headers[key] === undefined) headers[key] = col;
   });
-  const col = (...names: string[]) => names.map(headerKey).map(k => headers[k]).find(Boolean);
+
+  const col = (...names: string[]) => names.map(headerKey).map(k => headers[k]).find((n): n is number => !!n);
   const get = (row: ExcelJS.Row, ...names: string[]) => {
     const n = col(...names);
     return n ? text(row.getCell(n).value) : "";
@@ -76,6 +81,16 @@ export async function importRealRmsExcel(
 
   const academicYear = await prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } });
   if (!academicYear) throw new Error("Academic year not found for this school");
+
+  // Fail before touching the database if the essential columns are absent.
+  const nameColumn = col("Name", "Student Name", "StudentName", "Full Name", "FullName");
+  const classColumn = col("Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
+  const sectionColumn = col("Section", "Section Name", "SectionName", "Sec");
+  if (!nameColumn) throw new Error("Student Name column not found. Expected Name / Student Name / Full Name.");
+  if (!classColumn) throw new Error("Class column not found. Expected Class / Class Name / Class & Section.");
+  if (!sectionColumn) {
+    // Section may be embedded in Class (e.g. "Class 5 A"), so do not fail here.
+  }
 
   const classCache = new Map<string, string>();
   const sectionCache = new Map<string, string>();
@@ -101,7 +116,10 @@ export async function importRealRmsExcel(
       const cacheKey = `${className.toLowerCase()}|${academicYearId}`;
       let classId = classCache.get(cacheKey);
       if (!classId) {
-        const cls = await prisma.class.findFirst({ where: { tenantId, academicYearId, name: { equals: className, mode: "insensitive" } as any, isDeleted: false } });
+        const cls = await prisma.class.findFirst({
+          where: { tenantId, academicYearId, name: { equals: className, mode: "insensitive" } as any, isDeleted: false },
+          select: { id: true },
+        });
         if (!cls) throw new Error(`Class "${className}" not found for selected academic year`);
         classId = cls.id;
         classCache.set(cacheKey, classId);
@@ -110,7 +128,10 @@ export async function importRealRmsExcel(
       const sectionKey = `${classId}|${sectionName.toLowerCase()}`;
       let sectionId = sectionCache.get(sectionKey);
       if (!sectionId) {
-        const section = await prisma.section.findFirst({ where: { tenantId, academicYearId, classId, name: { equals: sectionName, mode: "insensitive" } as any } });
+        const section = await prisma.section.findFirst({
+          where: { tenantId, academicYearId, classId, name: { equals: sectionName, mode: "insensitive" } as any },
+          select: { id: true },
+        });
         if (!section) throw new Error(`Section "${sectionName}" not found for class "${className}"`);
         sectionId = section.id;
         sectionCache.set(sectionKey, sectionId);
@@ -124,8 +145,8 @@ export async function importRealRmsExcel(
       const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date", "BirthDate"));
       if (!dob) throw new Error("Valid DOB is required");
 
-      const admissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
-      const srNo = get(row, "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
+      const suppliedAdmissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
+      const suppliedSrNo = get(row, "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
       const rollNumber = get(row, "roleNumber", "Roll Number", "Roll No", "RollNumber");
       const fatherName = get(row, "Father", "Father Name", "FatherName") || "N/A";
       const motherName = get(row, "Mother", "Mother Name", "MotherName") || "N/A";
@@ -143,17 +164,85 @@ export async function importRealRmsExcel(
       }
 
       const result = await prisma.$transaction(async tx => {
-        let student = admissionNo ? await tx.student.findFirst({ where: { tenantId, admissionNo, isDeleted: false } }) : null;
-        if (student) {
-          student = await tx.student.update({ where: { id: student.id }, data: { firstName, middleName: middleName || null, lastName, fullName: name.trim(), gender, dob, phone: phone || null, address, fatherName, fatherPhone: phone || null, motherName, motherPhone: motherPhone || null, religion, category, nationality, aadharNo, status: "active", updatedAt: new Date() } });
-        } else {
-          student = await tx.student.create({ data: { firstName, middleName: middleName || null, lastName, fullName: name.trim(), gender, dob, phone: phone || null, address, fatherName, fatherPhone: phone || "N/A", motherName, motherPhone: motherPhone || null, religion, category, nationality, aadharNo, admissionNo: admissionNo || undefined, srNo: srNo || undefined, admissionDate: new Date(), admissionType: "bulk", status: "active", isDeleted: false, createdBy: userId, tenant: { connect: { id: tenantId } }, academicYear: { connect: { id: academicYearId } } } });
+        // Existing admission number = update, so re-importing the same file is safe.
+        let student = suppliedAdmissionNo
+          ? await tx.student.findFirst({ where: { tenantId, admissionNo: suppliedAdmissionNo, isDeleted: false } })
+          : null;
+
+        let admissionNo = suppliedAdmissionNo;
+        let srNo = suppliedSrNo;
+        if (!student && !admissionNo) {
+          admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+          srNo = srNo || await generateSrNumber(tenantId, admissionNo);
+        } else if (student && !srNo) {
+          srNo = student.srNo || await generateSrNumber(tenantId, admissionNo || undefined);
         }
+
+        if (student) {
+          student = await tx.student.update({
+            where: { id: student.id },
+            data: {
+              firstName,
+              middleName: middleName || null,
+              lastName,
+              fullName: name.trim(),
+              gender,
+              dob,
+              phone: phone || null,
+              address,
+              fatherName,
+              fatherPhone: phone || "N/A",
+              motherName,
+              motherPhone: motherPhone || null,
+              religion,
+              category,
+              nationality,
+              aadharNo,
+              status: "active",
+              updatedAt: new Date(),
+            },
+          });
+        } else {
+          student = await tx.student.create({
+            data: {
+              firstName,
+              middleName: middleName || null,
+              lastName,
+              fullName: name.trim(),
+              gender,
+              dob,
+              phone: phone || null,
+              address,
+              fatherName,
+              fatherPhone: phone || "N/A",
+              motherName,
+              motherPhone: motherPhone || null,
+              religion,
+              category,
+              nationality,
+              aadharNo,
+              admissionNo: admissionNo || undefined,
+              srNo: srNo || undefined,
+              admissionDate: new Date(),
+              admissionType: "bulk",
+              status: "active",
+              isDeleted: false,
+              createdBy: userId,
+              tenant: { connect: { id: tenantId } },
+              academicYear: { connect: { id: academicYearId } },
+            },
+          });
+        }
+
         const existingEnrollment = await tx.enrollment.findFirst({ where: { tenantId, studentId: student.id, academicYearId } });
-        if (existingEnrollment) await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active", isDeleted: false } });
-        else await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } });
+        if (existingEnrollment) {
+          await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active", isDeleted: false } });
+        } else {
+          await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } });
+        }
         return student;
       });
+
       imported.push(result.id);
       successCount++;
     } catch (error: any) {
@@ -162,7 +251,7 @@ export async function importRealRmsExcel(
     }
   }
 
-  return { totalRows: sheet.rowCount - 1, checkedRows: lastRow - 1, successCount, failedCount, errors, importedStudentIds: imported };
+  return { totalRows: Math.max(0, sheet.rowCount - 1), checkedRows: Math.max(0, lastRow - 1), successCount, failedCount, errors, importedStudentIds: imported };
 }
 
 export async function validateRealRmsExcel(tenantId: string, filePath: string, academicYearId: string, limit?: number) {

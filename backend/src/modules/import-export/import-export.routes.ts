@@ -131,9 +131,23 @@ router.get("/stats", getStats);
 
 router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
 
+  console.log("\n🚀 REAL-STUDENT-IMPORT HIT");
+
   uploadDocument(req, res, async (err: any) => {
 
-    if (err) return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+    if (err) {
+
+      console.error("❌ Upload middleware error:", err.message);
+
+      return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+
+    }
+
+    console.log("📂 File received:", req.file ? { name: req.file.originalname, size: req.file.size, hasBuffer: !!req.file.buffer, hasPath: !!req.file.path } : "NO FILE");
+
+    console.log("📂 Body keys:", Object.keys(req.body || {}));
+
+    console.log("📂 tenantId:", req.tenantId, "| user:", req.user?.userId, "| role:", req.user?.role);
 
     if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded. Make sure you send field name 'file' or 'document'." });
 
@@ -142,6 +156,8 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
       const { academicYearId } = req.body;
 
       if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required in form data" });
+
+      console.log("📂 academicYearId:", academicYearId);
 
 
 
@@ -153,11 +169,17 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
 
         fileInput = req.file.buffer;
 
+        console.log("📂 Using BUFFER input, size:", req.file.buffer.length);
+
       } else if (req.file.path && fs.existsSync(req.file.path)) {
 
         fileInput = req.file.path;
 
+        console.log("📂 Using FILE PATH input:", req.file.path);
+
       } else {
+
+        console.error("❌ No buffer or valid path!");
 
         return res.status(400).json({ success: false, message: "File upload failed: no buffer or valid path available" });
 
@@ -167,7 +189,9 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
 
       try {
 
-        const result = await importRealRmsExcel(req.tenantId, fileInput, academicYearId, req.user.userId);
+        const result = await importRealRmsExcel(req.tenantId, fileInput, academicYearId, req.user?.userId || "system");
+
+        console.log("✅ Import complete:", { success: result.successCount, failed: result.failedCount, errors: result.errors.length });
 
         return res.json({ success: true, data: result });
 
@@ -180,6 +204,10 @@ router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_A
       }
 
     } catch (error: any) {
+
+      console.error("❌ IMPORT FAILED:", error?.message);
+
+      console.error("❌ STACK:", error?.stack);
 
       return res.status(400).json({ success: false, message: error?.message || "Real student import failed" });
 

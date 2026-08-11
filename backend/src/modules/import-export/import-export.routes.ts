@@ -14,6 +14,7 @@ import {
   listExportJobs,
   downloadExport,
   cancelImportJob,
+  clearUnvalidatedImportJobs,
   getStats,
 } from "./import-export.controller";
 
@@ -177,6 +178,7 @@ router.post("/import/process", processExistingImportJob);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);
 router.delete("/import/jobs/:id", cancelImportJob);
+router.delete("/import/jobs/unvalidated/clear", clearUnvalidatedImportJobs);
 
 router.post("/export/generate", generateExport);
 router.get("/export/jobs", listExportJobs);

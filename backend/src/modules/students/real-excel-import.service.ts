@@ -44,7 +44,8 @@ function splitClass(value: string, explicitSection = ""): { className: string; s
   const raw = value.replace(/\s+/g, " ").trim();
   const section = explicitSection.replace(/\s+/g, " ").trim();
   if (section) {
-    const trailing = raw.match(new RegExp(`^(.*?)[\\s_-]+${section.replace(/[.*+?^${}()|[\\]\\]/g, "\\\\$&")}$`, "i"));
+    const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const trailing = raw.match(new RegExp(`^(.*?)[\\s_-]+${escaped}$`, "i"));
     return { className: (trailing ? trailing[1] : raw).trim(), sectionName: section };
   }
   const match = raw.match(/^(.*?)[\s_-]+([A-Za-z])$/);
@@ -58,7 +59,11 @@ function classCandidates(value: string): string[] {
   return Array.from(new Set([raw, stripped].filter(Boolean)));
 }
 
-type ImportOptions = { dryRun?: boolean; maxRows?: number };
+type ImportOptions = {
+  dryRun?: boolean;
+  maxRows?: number;
+  mapping?: Record<string, string>;
+};
 
 export async function importRealRmsExcel(
   tenantId: string,
@@ -71,7 +76,7 @@ export async function importRealRmsExcel(
   const lowerPath = filePath.toLowerCase();
   if (lowerPath.endsWith(".csv")) await workbook.csv.readFile(filePath);
   else if (lowerPath.endsWith(".xlsx")) await workbook.xlsx.readFile(filePath);
-  else throw new Error("Only .xlsx and .csv files are supported. Please save the Excel file as .xlsx.");
+  else throw new Error("Only .xlsx and .csv files are supported. Please save legacy .xls files as .xlsx first.");
 
   const sheet = workbook.getWorksheet("Student_List") || workbook.getWorksheet("Students") || workbook.worksheets[0];
   if (!sheet) throw new Error("No worksheet found in the uploaded file");
@@ -83,18 +88,31 @@ export async function importRealRmsExcel(
   });
 
   const col = (...names: string[]) => names.map(headerKey).map(k => headers[k]).find((n): n is number => !!n);
-  const get = (row: ExcelJS.Row, ...names: string[]) => {
+  const getRaw = (row: ExcelJS.Row, ...names: string[]) => {
     const n = col(...names);
     return n ? text(row.getCell(n).value) : "";
+  };
+
+  // The normal Import/Export screen lets the user map arbitrary Excel headers to ERP fields.
+  // Honour that mapping here instead of requiring the Excel header text to match our aliases.
+  const mapping = options.mapping || {};
+  const mappedSource = (target: string) => Object.keys(mapping).find(source => mapping[source] === target);
+  const get = (row: ExcelJS.Row, target: string, ...aliases: string[]) => {
+    const source = mappedSource(target);
+    if (source) {
+      const n = col(source);
+      if (n) return text(row.getCell(n).value);
+    }
+    return getRaw(row, target, ...aliases);
   };
 
   const academicYear = await prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } });
   if (!academicYear) throw new Error("Academic year not found for this school");
 
-  const nameColumn = col("Name", "Student Name", "StudentName", "Full Name", "FullName");
-  const classColumn = col("Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
-  if (!nameColumn) throw new Error("Student Name column not found. Expected Name / Student Name / Full Name.");
-  if (!classColumn) throw new Error("Class column not found. Expected Class / Class Name / Class & Section.");
+  const nameColumn = mappedSource("fullName") || col("Name", "Student Name", "StudentName", "Full Name", "FullName", "name");
+  const classColumn = mappedSource("className") || col("Class", "Class Name", "ClassName", "Class & Section", "ClassSection", "class");
+  if (!nameColumn) throw new Error("Student Name column not found. Map a column to Name/Full Name.");
+  if (!classColumn) throw new Error("Class column not found. Map a column to Class.");
 
   const classCache = new Map<string, string>();
   const sectionCache = new Map<string, string>();
@@ -106,9 +124,9 @@ export async function importRealRmsExcel(
 
   for (let rowNum = 2; rowNum <= lastRow; rowNum++) {
     const row = sheet.getRow(rowNum);
-    const name = get(row, "Name", "Student Name", "StudentName", "Full Name", "FullName");
-    const classValue = get(row, "Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
-    const sectionValue = get(row, "Section", "Section Name", "SectionName", "Sec");
+    const name = get(row, "fullName", "Name", "Student Name", "StudentName", "Full Name", "FullName");
+    const classValue = get(row, "className", "Class", "Class Name", "ClassName", "Class & Section", "ClassSection");
+    const sectionValue = get(row, "sectionName", "Section", "Section Name", "SectionName", "Sec");
     if (!name && !classValue) continue;
 
     try {
@@ -149,33 +167,27 @@ export async function importRealRmsExcel(
       }
 
       const parts = name.trim().split(/\s+/);
-      const suppliedFirstName = get(row, "First Name", "FirstName");
-      const suppliedMiddleName = get(row, "Middle Name", "MiddleName");
-      const suppliedLastName = get(row, "Last Name", "LastName");
-      const firstName = suppliedFirstName || parts[0];
-      const lastName = suppliedLastName || (parts.length > 1 ? parts[parts.length - 1] : "");
-      const middleName = suppliedMiddleName || (parts.length > 2 ? parts.slice(1, -1).join(" ") : "");
-      const gender = normalizeGender(get(row, "Gender", "Sex"));
-      const dob = excelDate(get(row, "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date", "BirthDate"));
+      const firstName = get(row, "firstName", "First Name", "FirstName") || parts[0];
+      const lastName = get(row, "lastName", "Last Name", "LastName") || (parts.length > 1 ? parts[parts.length - 1] : "");
+      const middleName = get(row, "middleName", "Middle Name", "MiddleName") || (parts.length > 2 ? parts.slice(1, -1).join(" ") : "");
+      const gender = normalizeGender(get(row, "gender", "Gender", "Sex"));
+      const dob = excelDate(get(row, "dob", "DOB", "Date of Birth", "Date of Birth (DD/MM/YYYY)", "Birth Date", "BirthDate"));
       if (!dob) throw new Error("Valid DOB is required");
 
-      const suppliedAdmissionNo = get(row, "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
-      const suppliedSrNo = get(row, "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
-      const rollNumber = get(row, "Roll Number", "Roll No", "RollNumber", "roleNumber");
-      const fatherName = get(row, "Father", "Father Name", "FatherName") || "N/A";
-      const fatherPhone = get(row, "Father Phone", "Father Mobile", "Father Mobile No", "FatherPhone", "FatherMobile");
-      const motherName = get(row, "Mother", "Mother Name", "MotherName") || "N/A";
-      const motherPhone = get(row, "Mother Phone", "Mother Mobile", "Mother Mobile No", "MotherPhone", "MotherMobile", "SmsNo");
-      const phone = get(row, "Mobile", "Phone", "Mobile Number", "MobileNo", "Student Mobile");
-      const address = get(row, "Present Address", "Address", "Permanent Address") || "N/A";
-      const nationality = get(row, "Nationality") || "Indian";
-      const religion = get(row, "Religion") || null;
-      const category = get(row, "Category") || null;
-      const bloodGroup = get(row, "Blood Group", "BloodGroup");
-      const email = get(row, "Email", "Email Address");
-      const previousSchool = get(row, "Previous School", "PreviousSchool");
-      const previousClass = get(row, "Previous Class", "PreviousClass");
-      const aadharNo = get(row, "Aadhaar No", "Aadhar No", "Child ID", "Aadhaar", "Aadhar").replace(/\s/g, "") || null;
+      const suppliedAdmissionNo = get(row, "admissionNo", "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
+      const suppliedSrNo = get(row, "srNo", "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
+      const rollNumber = get(row, "rollNumber", "Roll Number", "Roll No", "RollNumber");
+      const fatherName = get(row, "fatherName", "Father", "Father Name", "FatherName") || "N/A";
+      const fatherPhone = get(row, "fatherPhone", "Father Phone", "Father Mobile", "Father Mobile No", "FatherPhone", "FatherMobile");
+      const motherName = get(row, "motherName", "Mother", "Mother Name", "MotherName") || "N/A";
+      const motherPhone = get(row, "motherPhone", "Mother Phone", "Mother Mobile", "Mother Mobile No", "MotherPhone", "MotherMobile", "SmsNo");
+      const phone = get(row, "phone", "Mobile", "Phone", "Mobile Number", "MobileNo", "Student Mobile");
+      const address = get(row, "address", "Present Address", "Address", "Permanent Address") || "N/A";
+      const nationality = get(row, "nationality", "Nationality") || "Indian";
+      const religion = get(row, "religion", "Religion");
+      const category = get(row, "category", "Category");
+      const aadharNo = get(row, "aadharNo", "Aadhaar No", "Aadhar No", "Child ID", "Aadhaar", "Aadhar").replace(/\s/g, "");
+      const email = get(row, "email", "Email", "Email Address");
 
       if (options.dryRun) {
         successCount++;
@@ -187,19 +199,14 @@ export async function importRealRmsExcel(
           ? await tx.student.findFirst({ where: { tenantId, admissionNo: suppliedAdmissionNo, isDeleted: false } })
           : null;
 
-        // If Admission Number is absent, Aadhaar is the safest available natural key.
         if (!student && !suppliedAdmissionNo && aadharNo) {
           student = await tx.student.findFirst({ where: { tenantId, aadharNo, isDeleted: false } });
         }
 
         let admissionNo = suppliedAdmissionNo;
         let srNo = suppliedSrNo;
-        if (!student && !admissionNo) {
-          admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
-        }
-        if (!srNo) {
-          srNo = student?.srNo || await generateSrNumber(tenantId, admissionNo || undefined);
-        }
+        if (!student && !admissionNo) admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
+        if (!srNo) srNo = student?.srNo || await generateSrNumber(tenantId, admissionNo || undefined);
 
         const studentData: any = {
           firstName,
@@ -208,24 +215,22 @@ export async function importRealRmsExcel(
           fullName: name.trim(),
           gender,
           dob,
-          email: email || null,
-          phone: phone || null,
+          email: email || "N/A",
+          phone: phone || "N/A",
           address,
+          admissionNo: admissionNo || undefined,
+          srNo: srNo || undefined,
+          rollNumber: rollNumber || null,
           fatherName,
           fatherPhone: fatherPhone || "N/A",
           motherName,
           motherPhone: motherPhone || null,
-          religion,
-          category,
+          religion: religion || null,
+          category: category || null,
           nationality,
-          aadharNo,
+          aadharNo: aadharNo || null,
           status: "active",
-          updatedAt: new Date(),
         };
-
-        if (bloodGroup) studentData.bloodGroup = bloodGroup;
-        if (previousSchool) studentData.previousSchool = previousSchool;
-        if (previousClass) studentData.previousClass = previousClass;
 
         if (student) {
           student = await tx.student.update({ where: { id: student.id }, data: studentData });
@@ -233,12 +238,9 @@ export async function importRealRmsExcel(
           student = await tx.student.create({
             data: {
               ...studentData,
-              admissionNo: admissionNo || undefined,
-              srNo: srNo || undefined,
               admissionDate: new Date(),
               admissionType: "bulk",
               isDeleted: false,
-              createdBy: userId,
               tenant: { connect: { id: tenantId } },
               academicYear: { connect: { id: academicYearId } },
             },
@@ -247,9 +249,10 @@ export async function importRealRmsExcel(
 
         const existingEnrollment = await tx.enrollment.findFirst({ where: { tenantId, studentId: student.id, academicYearId } });
         if (existingEnrollment) {
-          await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active", isDeleted: false } });
+          // Enrollment has no soft-delete field in the active ERP model; only update supported fields.
+          await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active" } as any });
         } else {
-          await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } });
+          await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } as any });
         }
         return student;
       });
@@ -258,7 +261,8 @@ export async function importRealRmsExcel(
       successCount++;
     } catch (error: any) {
       failedCount++;
-      errors.push({ row: rowNum, field: "general", message: error?.message || "Import failed" });
+      const message = error?.message || error?.error?.message || String(error) || "Import failed";
+      errors.push({ row: rowNum, field: "general", message });
     }
   }
 
@@ -272,6 +276,6 @@ export async function importRealRmsExcel(
   };
 }
 
-export async function validateRealRmsExcel(tenantId: string, filePath: string, academicYearId: string, limit?: number) {
-  return importRealRmsExcel(tenantId, filePath, academicYearId, "system", { dryRun: true, maxRows: limit });
+export async function validateRealRmsExcel(tenantId: string, filePath: string, academicYearId: string, limit?: number, mapping?: Record<string, string>) {
+  return importRealRmsExcel(tenantId, filePath, academicYearId, "system", { dryRun: true, maxRows: limit, mapping });
 }

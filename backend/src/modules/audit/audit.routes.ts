@@ -8,15 +8,17 @@ import {
   getAuditStats,
 } from "./audit.controller";
 
-import { authMiddleware } from '../../middleware/auth.middleware';
-import { resolveTenant } from '../../middleware/tenant.middleware';
+import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
+import { allowRoles } from "../../middleware/role.middleware";
 
 const router = Router({ mergeParams: true });
 
-// Dashboard stats
+// All audit endpoints require an authenticated tenant context.
 router.use(authMiddleware);
 router.use(resolveTenant);
 
+// Dashboard stats
 router.get("/stats", getAuditStats);
 
 // Login history
@@ -29,7 +31,11 @@ router.get("/logs/:id", getAuditLogDetail);
 // User activity
 router.get("/user/:userId", getUserActivity);
 
-// Rollback action
-router.post("/rollback/:id", rollbackChange);
+// Rollback is a destructive administrative operation.
+router.post(
+  "/rollback/:id",
+  allowRoles("ADMIN", "SUPER_ADMIN"),
+  rollbackChange
+);
 
 export default router;

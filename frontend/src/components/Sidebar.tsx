@@ -129,6 +129,7 @@ const tenantMenu: SectionGroup[] = [
           { name: "Quick Admission", icon: <UserCheck size={16} />, path: "/students/quick-admission" },
           { name: "Admission Approval", icon: <FileText size={16} />, path: "/students/admission-approval" },
           { name: "Old Student Entry", icon: <FileText size={16} />, path: "/students/old-entry" },
+          { name: "Bulk Import (Excel)", icon: <FileText size={16} />, path: "/students/bulk-admission" },
           { name: "Promotion", icon: <GraduationCap size={16} />, path: "/students/promotion" },
           { name: "Transfer", icon: <FileText size={16} />, path: "/students/transfer" },
           { name: "Certificates", icon: <FileText size={16} />, path: "/students/certificates" },

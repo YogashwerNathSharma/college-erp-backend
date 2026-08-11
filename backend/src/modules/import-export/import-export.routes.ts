@@ -1,8 +1,11 @@
+// UNIFIED IMPORT ENGINE: keep AWS/local work on main and deploy the same baseline.
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import * as XLSX from "xlsx";
+import prisma from "../../utils/prisma";
 import {
   uploadForImport,
   validateImport,
@@ -15,6 +18,8 @@ import {
   cancelImportJob,
   getStats,
 } from "./import-export.controller";
+import { processStudentImportFast } from "../students/student-import-fast.controller";
+import { validateStudentImport } from "../students/student-import-validation.controller";
 
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
@@ -24,16 +29,9 @@ import { importRealRmsExcel } from '../students/real-excel-import.service';
 
 const router = Router({ mergeParams: true });
 
-// Ensure uploads/imports directory exists
 const uploadsDir = path.join(__dirname, "../../../uploads/imports");
 if (!fs.existsSync(uploadsDir)) { fs.mkdirSync(uploadsDir, { recursive: true }); }
 
-// ══════════════════════════════════════════════════════════════════
-// IMPORT/EXPORT ROUTES
-// Base: /api/import-export
-// ══════════════════════════════════════════════════════════════════
-
-// Multer config for file uploads
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, path.join(__dirname, "../../../uploads/imports")),
   filename: (_req, file, cb) => {
@@ -65,7 +63,7 @@ router.use(resolveTenant);
 router.get("/stats", getStats);
 
 // Safe real RMS/student-list import. Does not delete demo data.
-router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
+router.post("/real-student-import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
     if (!req.file) return res.status(400).json({ success: false, message: "No Excel file uploaded" });
@@ -73,8 +71,6 @@ router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (
       const { academicYearId } = req.body;
       if (!academicYearId) return res.status(400).json({ success: false, message: "academicYearId is required" });
 
-      // uploadDocument uses memory storage for documents. Persist the spreadsheet
-      // to a temporary file for ExcelJS without changing the existing upload helper.
       let filePath = req.file.path;
       if (!filePath && req.file.buffer) {
         const safeName = String(req.file.originalname || "student-import.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -95,9 +91,115 @@ router.post("/real-student-import", allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), (
   });
 });
 
+const normalizeHeader = (value: any) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const STUDENT_ALIASES: Record<string, string[]> = {
+  fullName: ["name", "studentname", "studentfullname", "fullname", "nameofstudent", "candidatename"],
+  firstName: ["firstname", "studentfirstname", "givenname"],
+  lastName: ["lastname", "studentlastname", "surname", "familyname"],
+  admissionNo: ["admissionnumber", "admissionno", "admno", "admissionid", "registrationnumber", "registrationno", "regno", "enrollmentnumber", "enrollmentno", "enrolmentno"],
+  email: ["email", "emailid", "mail"],
+  phone: ["phone", "phonenumber", "mobile", "mobilenumber", "contactnumber", "contactno"],
+  dob: ["dob", "dateofbirth", "birthdate", "datebirth"],
+  gender: ["gender", "sex"],
+  fatherName: ["fathername", "father", "fatherfullname", "fathersname"],
+  motherName: ["mothername", "mother", "motherfullname", "mothersname"],
+  className: ["classname", "standard", "std", "grade", "studyingclass", "classno", "classnumber"],
+  classSection: ["class", "classsection", "classandsection", "classsectionname", "classwithsection", "standardsection"],
+  sectionName: ["section", "sectionname", "sec", "division", "div"],
+  rollNumber: ["rollnumber", "rollno", "roll", "rollnum", "studentrollnumber", "rolenumber"],
+  address: ["address", "fulladdress", "residentialaddress"],
+  city: ["city", "town"],
+  state: ["state", "statename"],
+  pincode: ["pincode", "pin", "zipcode", "postalcode"],
+  bloodGroup: ["bloodgroup", "bloodtype"],
+  category: ["category", "castecategory", "studentcategory"],
+  religion: ["religion", "religionname"],
+  nationality: ["nationality", "nation"],
+  aadharNo: ["aadhar", "aadharno", "aadharnumber", "aadhaar", "aadhaarno", "aadhaarnumber"],
+};
+
+function inferStudentMapping(headers: string[], current: Record<string, string>) {
+  const mapping: Record<string, string> = { ...(current || {}) };
+  const usedTargets = new Set(Object.values(mapping));
+  const aliases = new Map<string, string>();
+  for (const [target, names] of Object.entries(STUDENT_ALIASES)) for (const name of names) aliases.set(normalizeHeader(name), target);
+  for (const header of headers) {
+    if (mapping[header]) continue;
+    const target = aliases.get(normalizeHeader(header));
+    if (target && !usedTargets.has(target)) { mapping[header] = target; usedTargets.add(target); }
+  }
+  return mapping;
+}
+
+const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => {
+  try {
+    const tenantId = req.tenantId as string;
+    const jobId = req.body?.jobId as string;
+    if (!jobId) return next();
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
+    if (!job || job.module !== "STUDENT" || !job.fileUrl || !fs.existsSync(job.fileUrl)) return next();
+
+    const workbook = XLSX.read(fs.readFileSync(job.fileUrl), { type: "buffer", raw: false });
+    const sheetName = workbook.SheetNames?.[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+    const matrix: any[][] = sheet ? (XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false }) as any[][]) : [];
+    const headers = Array.isArray(matrix[0]) ? matrix[0].map((v: any) => String(v ?? "").trim()).filter(Boolean) : [];
+
+    const mapping = inferStudentMapping(headers, req.body?.mapping || {});
+    const cacheFile = `${job.fileUrl}.import-cache.json`;
+    let cached: any = null;
+    try { if (fs.existsSync(cacheFile)) cached = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
+
+    const classHeader = headers.find((header) => normalizeHeader(header) === "class");
+    const classValues = cached && Array.isArray(cached.rows) && classHeader ? cached.rows.map((row: any) => String(row[classHeader] ?? "").trim()).filter(Boolean) : [];
+    const hasCombinedClassSection = classValues.some((value: string) => /^(.*?)[\s_-]+([A-Za-z])$/.test(value));
+    if (classHeader && hasCombinedClassSection) { delete mapping[classHeader]; mapping[classHeader] = "classSection"; }
+
+    const classSectionSource = Object.keys(mapping).find((source) => mapping[source] === "classSection");
+    if (classSectionSource && cached && Array.isArray(cached.rows)) {
+      const classKey = "__import_class_name";
+      const sectionKey = "__import_section_name";
+      cached.headers = Array.from(new Set([...(cached.headers || []), classKey, sectionKey]));
+      for (const row of cached.rows) {
+        const raw = String(row[classSectionSource] ?? "").trim();
+        const parts = raw.replace(/\s+/g, " ").trim().split(/[\s_-]+/).filter(Boolean);
+        row[classKey] = parts.length > 1 ? parts.slice(0, -1).join(" ") : raw;
+        row[sectionKey] = parts.length > 1 ? parts[parts.length - 1] : "";
+      }
+      try { fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8"); } catch {}
+      mapping[classKey] = "className";
+      mapping[sectionKey] = "sectionName";
+    }
+
+    if (!Object.values(mapping).includes("fullName")) {
+      const firstSource = Object.keys(mapping).find((source) => mapping[source] === "firstName");
+      const lastSource = Object.keys(mapping).find((source) => mapping[source] === "lastName");
+      if (firstSource || lastSource) {
+        try {
+          const nameKey = "__import_full_name";
+          cached = cached || JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+          if (cached && Array.isArray(cached.rows)) {
+            cached.headers = Array.from(new Set([...(cached.headers || []), nameKey]));
+            for (const row of cached.rows) row[nameKey] = [row[firstSource || ""], row[lastSource || ""]].filter(Boolean).join(" ").trim();
+            fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf8");
+            mapping[nameKey] = "fullName";
+          }
+        } catch {}
+      }
+    }
+
+    req.body.mapping = mapping;
+    return next();
+  } catch (error) {
+    console.warn("[Student Import] Mapping normalization skipped:", error);
+    return next();
+  }
+};
+
 router.post("/import/upload", upload.single("file"), uploadForImport);
-router.post("/import/validate", validateImport);
-router.post("/import/process", processImport);
+router.post("/import/validate", normalizeStudentImportMapping, validateStudentImport);
+router.post("/import/process", processStudentImportFast);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);
 router.delete("/import/jobs/:id", cancelImportJob);

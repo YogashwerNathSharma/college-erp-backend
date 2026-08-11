@@ -7,7 +7,7 @@
     "dev:student": "cd student-portal && npm run dev",
     "dev:udp": "cd yn-udp/server && npm run dev",
     "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
+    "build:backend": "cd backend && npm install && npm run build",
     "build": "cd frontend && npm run build",
     "seed": "cd backend && npm run seed",
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../student-portal && npm install"

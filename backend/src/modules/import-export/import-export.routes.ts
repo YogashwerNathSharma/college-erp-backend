@@ -18,6 +18,7 @@ import {
   cancelImportJob,
   getStats,
 } from "./import-export.controller";
+import { processStudentImportFast } from "../students/student-import-fast.controller";
 
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
@@ -123,26 +124,17 @@ function inferStudentMapping(headers: string[], current: Record<string, string>)
   const mapping: Record<string, string> = { ...(current || {}) };
   const usedTargets = new Set(Object.values(mapping));
   const aliases = new Map<string, string>();
-  for (const [target, names] of Object.entries(STUDENT_ALIASES)) {
-    for (const name of names) aliases.set(normalizeHeader(name), target);
-  }
-
+  for (const [target, names] of Object.entries(STUDENT_ALIASES)) for (const name of names) aliases.set(normalizeHeader(name), target);
   for (const header of headers) {
     if (mapping[header]) continue;
-    const normalized = normalizeHeader(header);
-    const target = aliases.get(normalized);
-    if (target && !usedTargets.has(target)) {
-      mapping[header] = target;
-      usedTargets.add(target);
-    }
+    const target = aliases.get(normalizeHeader(header));
+    if (target && !usedTargets.has(target)) { mapping[header] = target; usedTargets.add(target); }
   }
   return mapping;
 }
 
 // Normalize real RMS sheets before validation. In particular, the supplied
-// sheet uses a single "Class" column whose values are like "LKG A". The UI's
-// generic mapper used to map that column to className only, leaving the
-// required sectionName empty and producing 0 valid rows.
+// sheet uses a single "Class" column whose values are like "LKG A".
 const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => {
   try {
     const tenantId = req.tenantId as string;
@@ -162,22 +154,11 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
     let cached: any = null;
     try { if (fs.existsSync(cacheFile)) cached = JSON.parse(fs.readFileSync(cacheFile, "utf8")); } catch {}
 
-    // The uploaded RMS file has "Class" values such as "LKG A". Treat that
-    // as a combined class+section source even if the frontend already sent
-    // Class -> className from its older exact-label mapper.
     const classHeader = headers.find((header) => normalizeHeader(header) === "class");
-    const classValues = cached && Array.isArray(cached.rows) && classHeader
-      ? cached.rows.map((row: any) => String(row[classHeader] ?? "").trim()).filter(Boolean)
-      : [];
+    const classValues = cached && Array.isArray(cached.rows) && classHeader ? cached.rows.map((row: any) => String(row[classHeader] ?? "").trim()).filter(Boolean) : [];
     const hasCombinedClassSection = classValues.some((value: string) => /^(.*?)[\s_-]+([A-Za-z])$/.test(value));
-    if (classHeader && hasCombinedClassSection) {
-      delete mapping[classHeader];
-      mapping[classHeader] = "classSection";
-    }
+    if (classHeader && hasCombinedClassSection) { delete mapping[classHeader]; mapping[classHeader] = "classSection"; }
 
-    // If the sheet has a combined Class & Section column, create two synthetic
-    // columns in the import cache. This lets the existing controller resolve
-    // both class and section without changing its validation/processing code.
     const classSectionSource = Object.keys(mapping).find((source) => mapping[source] === "classSection");
     if (classSectionSource && cached && Array.isArray(cached.rows)) {
       const classKey = "__import_class_name";
@@ -194,8 +175,6 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
       mapping[sectionKey] = "sectionName";
     }
 
-    // If the sheet has separate first/last name columns, synthesize fullName
-    // for the existing required Name field.
     if (!Object.values(mapping).includes("fullName")) {
       const firstSource = Object.keys(mapping).find((source) => mapping[source] === "firstName");
       const lastSource = Object.keys(mapping).find((source) => mapping[source] === "lastName");
@@ -223,7 +202,9 @@ const normalizeStudentImportMapping = async (req: any, _res: any, next: any) => 
 
 router.post("/import/upload", upload.single("file"), uploadForImport);
 router.post("/import/validate", normalizeStudentImportMapping, validateImport);
-router.post("/import/process", processImport);
+// Final unified student processor. It keeps the existing API contract but avoids
+// the old per-row master lookups that made large imports time out on Render.
+router.post("/import/process", processStudentImportFast);
 router.get("/import/jobs", listImportJobs);
 router.get("/import/templates/:module", getImportTemplate);
 router.delete("/import/jobs/:id", cancelImportJob);

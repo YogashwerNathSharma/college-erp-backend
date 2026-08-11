@@ -93,7 +93,6 @@ export async function importRealRmsExcel(
     return n ? text(row.getCell(n).value) : "";
   };
 
-  // Import/Export stores mapping as source-header -> ERP-field. Keep that contract here.
   const mapping = options.mapping || {};
   const mappedSource = (target: string) => Object.keys(mapping).find(source => mapping[source] === target);
   const get = (row: ExcelJS.Row, target: string, ...aliases: string[]) => {
@@ -108,13 +107,10 @@ export async function importRealRmsExcel(
   const academicYear = await prisma.academicYear.findFirst({ where: { id: academicYearId, tenantId } });
   if (!academicYear) throw new Error("Academic year not found for this school");
 
-  // Support both a single Full Name column and First Name + Last Name mappings.
   const nameColumn = mappedSource("fullName") || col("Name", "Student Name", "StudentName", "Full Name", "FullName", "name");
   const firstNameColumn = mappedSource("firstName") || col("First Name", "FirstName", "FName");
   const lastNameColumn = mappedSource("lastName") || col("Last Name", "LastName", "LName", "Surname");
-
-  // Support Class + Section as separate columns or one Class & Section column.
-  const classColumn = mappedSource("className") || col("Class", "Class Name", "ClassName", "Class & Section", "ClassSection", "class");
+  const classColumn = mappedSource("className") || col("Class", "Class Name", "ClassName", "class");
   const classSectionColumn = mappedSource("classSection") || col("Class & Section", "ClassSection", "Class and Section", "Class_Section");
   if (!nameColumn && !firstNameColumn && !lastNameColumn) throw new Error("Student Name column not found. Map Name/Full Name or First Name/Last Name.");
   if (!classColumn && !classSectionColumn) throw new Error("Class column not found. Map Class or Class & Section.");
@@ -144,9 +140,7 @@ export async function importRealRmsExcel(
       if (!classValue) throw new Error("Class is required");
 
       const { className, sectionName } = splitClass(classValue, sectionValue);
-      if (!className || !sectionName) {
-        throw new Error(`Class and Section are required. Received: ${classValue}${sectionValue ? ` / ${sectionValue}` : ""}`);
-      }
+      if (!className || !sectionName) throw new Error(`Class and Section are required. Received: ${classValue}${sectionValue ? ` / ${sectionValue}` : ""}`);
 
       const cacheKey = `${className.toLowerCase()}|${academicYearId}`;
       let classId = classCache.get(cacheKey);
@@ -186,7 +180,7 @@ export async function importRealRmsExcel(
 
       const suppliedAdmissionNo = get(row, "admissionNo", "AdmissionNumber", "Admission No", "Admission Number", "AdmissionNo", "Admission No.");
       const suppliedSrNo = get(row, "srNo", "SRN Number", "SR No", "SR Number", "SRN", "SR No.");
-      const rollNumber = get(row, "rollNumber", "Roll Number", "Roll No", "RollNumber");
+      const rollNumber = get(row, "rollNumber", "Roll Number", "Roll No", "RollNumber", "roleNumber", "Role Number", "Role No");
       const fatherName = get(row, "fatherName", "Father", "Father Name", "FatherName") || "N/A";
       const fatherPhone = get(row, "fatherPhone", "Father Phone", "Father Mobile", "Father Mobile No", "FatherPhone", "FatherMobile");
       const motherName = get(row, "motherName", "Mother", "Mother Name", "MotherName") || "N/A";
@@ -208,7 +202,6 @@ export async function importRealRmsExcel(
         let student = suppliedAdmissionNo
           ? await tx.student.findFirst({ where: { tenantId, admissionNo: suppliedAdmissionNo, isDeleted: false } })
           : null;
-
         if (!student && !suppliedAdmissionNo && aadharNo) {
           student = await tx.student.findFirst({ where: { tenantId, aadharNo, isDeleted: false } });
         }
@@ -218,6 +211,8 @@ export async function importRealRmsExcel(
         if (!student && !admissionNo) admissionNo = await generateAdmissionNumber(tenantId, academicYearId);
         if (!srNo) srNo = student?.srNo || await generateSrNumber(tenantId, admissionNo || undefined);
 
+        // Do not use shared placeholder values such as "N/A" for contact fields.
+        // They can violate unique indexes and make every later row fail.
         const studentData: any = {
           firstName,
           middleName: middleName || null,
@@ -225,14 +220,14 @@ export async function importRealRmsExcel(
           fullName: fullNameValue.trim(),
           gender,
           dob,
-          email: email || "N/A",
-          phone: phone || "N/A",
+          email: email || null,
+          phone: phone || null,
           address,
           admissionNo: admissionNo || undefined,
           srNo: srNo || undefined,
           rollNumber: rollNumber || null,
           fatherName,
-          fatherPhone: fatherPhone || "N/A",
+          fatherPhone: fatherPhone || null,
           motherName,
           motherPhone: motherPhone || null,
           religion: religion || null,
@@ -274,18 +269,11 @@ export async function importRealRmsExcel(
     } catch (error: any) {
       failedCount++;
       const message = error?.message || error?.error?.message || String(error) || "Import failed";
-      errors.push({ row: rowNum, field: "general", message });
+      errors.push({ row: rowNum, field: "general", message, code: error?.code || null });
     }
   }
 
-  return {
-    totalRows: Math.max(0, sheet.rowCount - 1),
-    checkedRows: Math.max(0, lastRow - 1),
-    successCount,
-    failedCount,
-    errors,
-    importedStudentIds: imported,
-  };
+  return { totalRows: Math.max(0, sheet.rowCount - 1), checkedRows: Math.max(0, lastRow - 1), successCount, failedCount, errors, importedStudentIds: imported };
 }
 
 export async function validateRealRmsExcel(tenantId: string, filePath: string, academicYearId: string, limit?: number, mapping?: Record<string, string>) {

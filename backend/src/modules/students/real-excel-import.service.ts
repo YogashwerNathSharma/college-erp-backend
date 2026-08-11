@@ -180,7 +180,7 @@ export async function importRealRmsExcel(
       const fatherName = get(row, "fatherName", "Father", "Father Name", "FatherName") || "N/A";
       const fatherPhone = get(row, "fatherPhone", "Father Phone", "Father Mobile", "Father Mobile No", "FatherPhone", "FatherMobile");
       const motherName = get(row, "motherName", "Mother", "Mother Name", "MotherName") || "N/A";
-      const motherPhone = get(row, "motherPhone", "Mother Phone", "Mother Mobile", "Mother Mobile No", "MotherPhone", "MotherMobile", "SmsNo");
+      const motherPhone = get(row, "motherPhone", "Mother Mobile", "Mother Mobile No", "MotherPhone", "MotherMobile", "SmsNo");
       const phone = get(row, "phone", "Mobile", "Phone", "Mobile Number", "MobileNo", "Student Mobile");
       const address = get(row, "address", "Present Address", "Address", "Permanent Address") || "N/A";
       const nationality = get(row, "nationality", "Nationality") || "Indian";
@@ -230,6 +230,9 @@ export async function importRealRmsExcel(
           nationality,
           aadharNo: aadharNo || null,
           status: "active",
+          medicalConditions: [],
+          allergies: [],
+          medications: [],
         };
 
         if (student) {
@@ -249,7 +252,6 @@ export async function importRealRmsExcel(
 
         const existingEnrollment = await tx.enrollment.findFirst({ where: { tenantId, studentId: student.id, academicYearId } });
         if (existingEnrollment) {
-          // Enrollment has no soft-delete field in the active ERP model; only update supported fields.
           await tx.enrollment.update({ where: { id: existingEnrollment.id }, data: { classId, sectionId, rollNumber: rollNumber || null, status: "active" } as any });
         } else {
           await tx.enrollment.create({ data: { studentId: student.id, classId, sectionId, academicYearId, tenantId, rollNumber: rollNumber || null, status: "active" } as any });

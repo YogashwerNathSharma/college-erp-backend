@@ -66,13 +66,21 @@ export const createSubjectService = async (data: any, tenantId: string) => {
 // GET SUBJECTS
 /////////////////////////
 export const getSubjectsService = async (tenantId: string) => {
-  return prisma.subject.findMany({
+  const subjects = await prisma.subject.findMany({
     where: { tenantId },
-    include: {
-      class: true,
-    },
     orderBy: { createdAt: "desc" },
   });
+
+  // Resolve class names separately to avoid relation errors
+  const classIds = [...new Set(subjects.map((s) => s.classId))];
+  const classes = classIds.length > 0
+    ? await prisma.class.findMany({ where: { id: { in: classIds } } })
+    : [];
+
+  return subjects.map((s) => ({
+    ...s,
+    class: classes.find((c) => c.id === s.classId) || { id: s.classId, name: "Unknown" },
+  }));
 };
 // UPDATE SUBJECT
 export const updateSubjectService = async (id: string, data: any, tenantId: string) => {

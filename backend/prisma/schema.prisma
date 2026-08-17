@@ -2262,11 +2262,10 @@ model ExamSchedule {
   examDate  DateTime
   startTime String
   endTime   String
-  roomId    String?  @db.ObjectId
-  shift     String?  @default("1")
+  roomId    String   @db.ObjectId
   exam      Exam     @relation(fields: [examId], references: [id])
   subject   Subject  @relation(fields: [subjectId], references: [id])
-  room      ExamRoom? @relation(fields: [roomId], references: [id])
+  room      ExamRoom @relation(fields: [roomId], references: [id])
   seatingArrangements    SeatingArrangement[]
   invigilatorAssignments InvigilatorAssignment[]
   isDeleted Boolean   @default(false)

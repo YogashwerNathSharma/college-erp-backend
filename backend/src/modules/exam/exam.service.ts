@@ -945,8 +945,16 @@ export const createExamScheduleService = async (
       examDate: new Date(data.examDate),
       startTime: data.startTime || "",
       endTime: data.endTime || "",
-      roomId: data.roomId || null,
-      ...(data.shift && { shift: data.shift }),
+      roomId: data.roomId || await (async () => {
+        // Get or create a default room for this tenant
+        let defaultRoom = await prisma.examRoom.findFirst({ where: { tenantId, name: "Default" } });
+        if (!defaultRoom) {
+          defaultRoom = await prisma.examRoom.create({
+            data: { name: "Default", capacity: 100, tenantId },
+          });
+        }
+        return defaultRoom.id;
+      })(),
       isDeleted: false,
     },
   });
@@ -2321,7 +2329,15 @@ export const bulkCreateExamService = async (
             examDate: new Date(sched.examDate),
             startTime: sched.startTime || "",
             endTime: sched.endTime || "",
-            ...(sched.shift && { shift: sched.shift }),
+            roomId: await (async () => {
+              let defaultRoom = await prisma.examRoom.findFirst({ where: { tenantId, name: "Default" } });
+              if (!defaultRoom) {
+                defaultRoom = await prisma.examRoom.create({
+                  data: { name: "Default", capacity: 100, tenantId },
+                });
+              }
+              return defaultRoom.id;
+            })(),
             isDeleted: false,
           },
         });

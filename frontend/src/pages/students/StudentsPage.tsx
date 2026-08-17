@@ -206,7 +206,7 @@ const GENDER_OPTIONS = [
 
 
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 500];
 
 
 
@@ -464,7 +464,7 @@ export default function StudentsPage() {
 
   const [page, setPage] = useState(1);
 
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
 
   const [sortKey, setSortKey] = useState<string>("fullName");
 
@@ -512,7 +512,7 @@ export default function StudentsPage() {
 
       setLoading(true);
 
-      const res = await axios.get(getFullUrl("/api/students?limit=500"), authHeaders());
+      const res = await axios.get(getFullUrl("/api/students?limit=2000"), authHeaders());
 
       const payload = res.data?.data;
 

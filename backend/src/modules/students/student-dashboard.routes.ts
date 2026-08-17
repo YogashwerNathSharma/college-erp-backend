@@ -26,24 +26,39 @@ import {
 const router = Router();
 router.use(authMiddleware, resolveTenant);
 
+// ── Dashboard Cache (60 seconds) ────────────────────────────────────────────
+const dashboardCache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL = 60_000; // 60 seconds
+
 // ── Full Dashboard (single call) — with 20s timeout ──────────────────────────
 router.get("/full", async (req: any, res: Response) => {
   try {
     const _start = Date.now();
     const yearId = req.query.academicYearId as string || "";
 
-    // Race between actual data fetch and 20s timeout
+    // Check cache first
+    const cacheKey = `${req.tenantId}|${yearId}`;
+    const cached = dashboardCache.get(cacheKey);
+    if (cached && cached.expiry > Date.now()) {
+      console.log(`⚡ Dashboard CACHE HIT (${Date.now() - _start}ms)`);
+      return res.json({ success: true, data: cached.data, _cached: true });
+    }
+
+    // Race between actual data fetch and 30s timeout
     const timeoutPromise = new Promise((resolve) => {
-      setTimeout(() => resolve("TIMEOUT"), 20000);
+      setTimeout(() => resolve("TIMEOUT"), 30000);
     });
 
     const dataPromise = getFullDashboardData(req.tenantId, req.query.academicYearId as string);
     const result = await Promise.race([dataPromise, timeoutPromise]);
 
     if (result === "TIMEOUT") {
-      console.warn("⏱️ Student Dashboard TIMEOUT after 20s");
+      console.warn("⏱️ Student Dashboard TIMEOUT after 30s");
       return res.json({ success: true, data: { stats: { totalStudents: 0, activeStudents: 0, inactiveStudents: 0, newAdmissions: 0, leavingStudents: 0, boys: 0, girls: 0, transportStudents: 0, hostelStudents: 0, scholarshipStudents: 0, feeDefaulters: 0, birthdayTodayCount: 0 }, birthdayStudents: [], classStrength: [], sectionStrength: [], categoryDistribution: [], genderRatio: { male: 0, female: 0, other: 0, total: 0 }, monthlyAdmission: [], studentGrowth: [], admissionTrend: [], recentAdmissions: [], feeDefaultersList: [], _timeout: true } });
     }
+
+    // Store in cache
+    dashboardCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
 
     console.log(`⚡ Student Dashboard loaded in ${Date.now() - _start}ms`);
     res.json({ success: true, data: result });

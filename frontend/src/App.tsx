@@ -203,6 +203,7 @@ import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 import { getFullUrl } from "./utils/url";
 
 const ExamSchedule = lazyWithRetry(() => import("./pages/exams/ExamSchedule"));
+const ExamSchedulePrint = lazyWithRetry(() => import("./pages/exams/ExamSchedulePrint"));
 const SeatingArrangement = lazyWithRetry(() => import("./pages/exams/SeatingArrangement"));
 // REMOVED: Old AdmitCard page (replaced by AdmitCardPage)
 const QuestionPaper = lazyWithRetry(() => import("./pages/exams/QuestionPaper"));
@@ -865,6 +866,7 @@ export default function App() {
               <Route path="/exams" element={<ExamList />} />
               <Route path="/exam-dashboard" element={<ExamDashboard />} />
               <Route path="/exam-schedule/:id" element={<ExamSchedule />} />
+              <Route path="/exam-schedule-print" element={<ExamSchedulePrint />} />
               <Route path="/exam-seating/:id" element={<SeatingArrangement />} />
               <Route path="/exam-seating-plan" element={<SeatingArrangementPage />} />
               <Route path="/exam-admit-card" element={<AdmitCardPage />} />

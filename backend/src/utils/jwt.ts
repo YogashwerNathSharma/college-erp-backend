@@ -1,9 +1,9 @@
 import jwt from "jsonwebtoken";
 
-// Short-lived access token (15 minutes)
+// Short-lived access token (30 minutes)
 export const generateToken = (payload: any) => {
   return jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: "15m",
+    expiresIn: "30m",
   });
 };
 

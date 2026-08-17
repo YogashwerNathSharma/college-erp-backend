@@ -275,7 +275,7 @@ export const getSectionStrength = async (
     orderBy: [{ class: { name: "asc" } }, { name: "asc" }],
   });
 
-  return sections.map((s) => ({
+  return sections.filter((s) => s.class != null).map((s) => ({
     classId: s.class?.id || "",
     className: s.class?.name || "N/A",
     sectionId: s.id,

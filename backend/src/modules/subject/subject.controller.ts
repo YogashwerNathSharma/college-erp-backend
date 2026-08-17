@@ -4,6 +4,7 @@ import {
   getSubjectsService,
   updateSubjectService,
   toggleSubjectService,
+  bulkCreateSubjectsService,
 } from "./subject.service";
 
 /////////////////////////
@@ -65,6 +66,7 @@ export const getSubjects = async (req: Request, res: Response) => {
 
     const subjects = await getSubjectsService(tenantId);
 
+    console.log(`GET SUBJECTS: tenantId=${tenantId}, found ${subjects.length} subjects`);
     return res.json({
       success: true,
       data: subjects,
@@ -115,5 +117,32 @@ export const toggleSubject = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/////////////////////////
+// BULK CREATE SUBJECTS
+/////////////////////////
+export const bulkCreateSubjects = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const { names, classIds, academicYearId } = req.body;
+    if (!names || !classIds || !academicYearId) {
+      return res.status(400).json({ success: false, message: "names, classIds, academicYearId are required" });
+    }
+
+    const result = await bulkCreateSubjectsService({ names, classIds, academicYearId }, tenantId);
+    return res.status(201).json({
+      success: true,
+      data: result,
+      message: `${result.created} subjects created, ${result.skipped} duplicates skipped`,
+    });
+  } catch (error: any) {
+    console.error("BULK CREATE SUBJECTS ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to bulk create subjects" });
   }
 };

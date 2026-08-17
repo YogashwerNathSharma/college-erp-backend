@@ -57,7 +57,8 @@ export interface ExamScheduleInput {
   examDate: string;
   startTime: string;
   endTime: string;
-  roomId: string;
+  roomId?: string;
+  shift?: string;
 }
 
 export interface UpdateExamScheduleInput {
@@ -111,6 +112,25 @@ export interface CustomSeatingInput {
   mixClasses: boolean;
   aiInstruction?: string;
   copyToScheduleIds?: string[];
+}
+
+// ─────────────────────── BULK CREATE EXAM (NEW) ───────────────────────
+
+export interface BulkCreateExamInput {
+  name: string;
+  type?: string;
+  classIds: string[]; // Multiple classes at once
+  academicYearId: string;
+  startDate?: string;
+  endDate?: string;
+  resultType?: string;
+  schedules?: {
+    subjectName: string;
+    examDate: string;
+    startTime: string;
+    endTime: string;
+    shift: string;
+  }[];
 }
 
 

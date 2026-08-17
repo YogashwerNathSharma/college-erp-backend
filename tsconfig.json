@@ -12,9 +12,6 @@
     "declarationMap": true,
     "composite": true
   },
-  "references": [
-    { "path": "./backend" },
-    { "path": "./frontend" }
-  ],
+  "references": [],
   "exclude": ["node_modules", "**/node_modules", "**/dist"]
 }

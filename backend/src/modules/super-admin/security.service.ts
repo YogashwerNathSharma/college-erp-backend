@@ -185,7 +185,7 @@ export const removeWhitelistIP = (ip: string) => {
 //////////////////////////////////////////////////////
 
 let securityConfig: SecurityConfig = {
-  jwtExpiresIn: "15m",
+  jwtExpiresIn: "30m",
   jwtRefreshExpiresIn: "7d",
   sessionTimeout: 30,
   maxLoginAttempts: 5,

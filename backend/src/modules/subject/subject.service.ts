@@ -92,3 +92,44 @@ export const toggleSubjectService = async (id: string, tenantId: string) => {
     data: { isActive: !subject.isActive },
   });
 };
+
+/////////////////////////
+// BULK CREATE SUBJECTS (All classes at once)
+/////////////////////////
+export const bulkCreateSubjectsService = async (
+  data: { names: string[]; classIds: string[]; academicYearId: string },
+  tenantId: string
+) => {
+  console.log("BULK CREATE SUBJECTS:", { names: data.names, classIds: data.classIds, academicYearId: data.academicYearId, tenantId });
+  const { names, classIds, academicYearId } = data;
+
+  if (!names || names.length === 0) throw new Error("At least one subject name is required");
+  if (!classIds || classIds.length === 0) throw new Error("At least one class is required");
+  if (!academicYearId) throw new Error("Academic year is required");
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const classId of classIds) {
+    for (const name of names) {
+      const trimmed = name.trim();
+      if (!trimmed) continue;
+
+      // Check duplicate
+      const existing = await prisma.subject.findFirst({
+        where: { tenantId, name: trimmed, classId, academicYearId },
+      });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      await prisma.subject.create({
+        data: { name: trimmed, classId, academicYearId, tenantId },
+      });
+      created++;
+    }
+  }
+
+  return { created, skipped, total: names.length * classIds.length };
+};

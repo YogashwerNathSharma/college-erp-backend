@@ -119,8 +119,8 @@ export const CERTIFICATE_TYPES = [
 
 // ─── PAGINATION ──────────────────────────────────────────────────
 
-export const DEFAULT_PAGE_SIZE = 50;
-export const MAX_PAGE_SIZE = 500;
+export const DEFAULT_PAGE_SIZE = 500;
+export const MAX_PAGE_SIZE = 2000;
 export const MAX_EXPORT_RECORDS = 10000;
 export const MAX_BULK_OPERATION = 500;
 

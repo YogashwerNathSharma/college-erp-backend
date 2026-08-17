@@ -536,6 +536,25 @@ export const generateCustomSeating = async (req: any, res: Response) => {
 };
 
 /////////////////////////
+// BULK CREATE EXAM (All Classes + Schedule)
+/////////////////////////
+import { bulkCreateExamService } from "./exam.service";
+
+export const bulkCreateExam = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const result = await bulkCreateExamService(req.body, tenantId);
+    return res.status(201).json({
+      success: true,
+      data: result,
+      message: `Exam created for ${result.examsCreated} classes with ${result.schedulesCreated} schedules`,
+    });
+  } catch (error: any) {
+    console.error("BULK CREATE EXAM ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error in bulk exam creation" });
+  }
+};
+/////////////////////////
 // AI AUTO-ARRANGE SEATING
 /////////////////////////
 export const aiArrangeSeating = async (req: any, res: Response) => {

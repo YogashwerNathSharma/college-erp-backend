@@ -12,6 +12,7 @@ import {
   AddExamSubjectInput,
   EnterMarksInput,
   CustomSeatingInput,
+  BulkCreateExamInput,
 } from "./exam.types";
 
 // ─────────────────────────────────────────────────────
@@ -913,15 +914,39 @@ export const createExamScheduleService = async (
   data: ExamScheduleInput,
   tenantId: string
 ) => {
+  // Resolve subjectId — either from data.subjectId or by finding/creating from subjectName
+  let subjectId = data.subjectId;
+  if (!subjectId && (data as any).subjectName) {
+    // Find the exam to get classId
+    const exam = await prisma.exam.findFirst({ where: { id: data.examId, tenantId } });
+    if (!exam) throw new Error("Exam not found");
+
+    let subject = await prisma.subject.findFirst({
+      where: { name: (data as any).subjectName, classId: exam.classId, tenantId },
+    });
+    if (!subject) {
+      subject = await prisma.subject.create({
+        data: {
+          name: (data as any).subjectName,
+          classId: exam.classId,
+          academicYearId: exam.academicYearId,
+          tenantId,
+        },
+      });
+    }
+    subjectId = subject.id;
+  }
+
   return prisma.examSchedule.create({
     data: {
       examId: data.examId,
-      subjectId: data.subjectId,
+      subjectId: subjectId!,
       tenantId,
       examDate: new Date(data.examDate),
-      startTime: data.startTime,
-      endTime: data.endTime,
-      roomId: data.roomId,
+      startTime: data.startTime || "",
+      endTime: data.endTime || "",
+      roomId: data.roomId || null,
+      ...(data.shift && { shift: data.shift }),
       isDeleted: false,
     },
   });
@@ -940,7 +965,7 @@ export const getExamScheduleService = async (
   });
 
   const subjectIds = [...new Set(schedules.map((s) => s.subjectId))];
-  const roomIds = [...new Set(schedules.map((s) => s.roomId))];
+  const roomIds = [...new Set(schedules.map((s) => s.roomId).filter(Boolean))];
 
   const [subjects, rooms] = await Promise.all([
     subjectIds.length > 0 ? prisma.subject.findMany({ where: { id: { in: subjectIds } } }) : [],
@@ -2237,3 +2262,79 @@ export const aiArrangeSeatingService = async (
   return generateCustomSeatingService(data, tenantId);
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// BULK CREATE EXAM — Create exam for ALL selected classes + schedule
+// ═══════════════════════════════════════════════════════════════════
+
+export const bulkCreateExamService = async (
+  data: BulkCreateExamInput,
+  tenantId: string
+) => {
+  const { classIds, schedules, ...examBase } = data;
+
+  if (!classIds || classIds.length === 0) {
+    throw new Error("At least one class must be selected");
+  }
+
+  const createdExams: any[] = [];
+  let schedulesCreated = 0;
+
+  for (const classId of classIds) {
+    // 1. Create Exam for this class
+    const exam = await prisma.exam.create({
+      data: {
+        name: examBase.name,
+        type: examBase.type || null,
+        classId,
+        sectionId: null,
+        academicYearId: examBase.academicYearId,
+        startDate: examBase.startDate ? new Date(examBase.startDate) : null,
+        endDate: examBase.endDate ? new Date(examBase.endDate) : null,
+        resultType: examBase.resultType || "BOTH",
+        tenantId,
+      },
+    });
+
+    // 2. If schedules provided, create ExamSchedule entries for this exam
+    if (schedules && schedules.length > 0) {
+      for (const sched of schedules) {
+        // Resolve subject by name — find existing or create new for this class
+        let subject = await prisma.subject.findFirst({
+          where: { name: sched.subjectName, classId, tenantId },
+        });
+        if (!subject) {
+          subject = await prisma.subject.create({
+            data: {
+              name: sched.subjectName,
+              classId,
+              academicYearId: examBase.academicYearId,
+              tenantId,
+            },
+          });
+        }
+
+        await prisma.examSchedule.create({
+          data: {
+            examId: exam.id,
+            subjectId: subject.id,
+            tenantId,
+            examDate: new Date(sched.examDate),
+            startTime: sched.startTime || "",
+            endTime: sched.endTime || "",
+            ...(sched.shift && { shift: sched.shift }),
+            isDeleted: false,
+          },
+        });
+        schedulesCreated++;
+      }
+    }
+
+    createdExams.push(exam);
+  }
+
+  return {
+    examsCreated: createdExams.length,
+    schedulesCreated,
+    exams: createdExams,
+  };
+};

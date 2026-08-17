@@ -158,6 +158,13 @@ const ExamList: React.FC = () => {
             <Plus className="w-4 h-4 mr-2" />
             Create Exam
           </button>
+          <button
+            onClick={() => navigate("/exam-schedule-print")}
+            className="mt-4 sm:mt-0 ml-2 inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Print Schedule
+          </button>
         </div>
 
         {/* Filters */}

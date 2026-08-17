@@ -37,6 +37,7 @@ import {
   getExamReports,
   generateCustomSeating,
   aiArrangeSeating,
+  bulkCreateExam,
 } from "./exam.controller";
 import {
   generateInterleavedSeatingService,
@@ -58,6 +59,9 @@ router.get("/", authMiddleware, getExams);
 router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExam);
 
 router.get("/dashboard", authMiddleware, getExamDashboard);
+
+// Bulk Create Exam (All Classes + Schedule at once)
+router.post("/bulk-create", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), bulkCreateExam);
 router.get("/reports", authMiddleware, getExamReports);
 
 router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), addExamSubjects);

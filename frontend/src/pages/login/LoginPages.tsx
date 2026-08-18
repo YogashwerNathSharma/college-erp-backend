@@ -176,6 +176,7 @@ export default function LoginPage() {
           outline: none;
           box-sizing: border-box;
           background: #f8fafc;
+          color: #1e293b;
           transition: border-color 0.2s;
         }
         .form-input:focus {

@@ -45,6 +45,14 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
       getBirthdayTodayData(tenantId),
     ]);
 
+    // ─── BATCH 4: Recent admissions list ───
+    const recentStudents = await prisma.student.findMany({
+      where: { tenantId, isDeleted: false },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { id: true, firstName: true, lastName: true, admissionNo: true, createdAt: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } },
+    });
+
     const data = {
       stats: {
         totalStudents, activeStudents, inactiveStudents,
@@ -60,6 +68,11 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
       categoryDistribution,
       monthlyAdmission: [], // Lazy load via separate endpoint
       genderRatio,
+      recentAdmissions: recentStudents.map((s: any) => ({
+        id: s.id, name: `${s.firstName} ${s.lastName}`.trim(),
+        admNo: s.admissionNo || "", class: s.enrollments?.[0]?.class?.name || "",
+        section: s.enrollments?.[0]?.section?.name || "", date: s.createdAt,
+      })),
     };
 
     res.json({ success: true, data });

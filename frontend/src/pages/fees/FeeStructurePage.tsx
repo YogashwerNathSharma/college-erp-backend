@@ -166,10 +166,14 @@ const FeeStructurePage: React.FC = () => {
 
   // Fetch dropdown data
   useEffect(() => {
-    fetchClasses();
     fetchAcademicYears();
     fetchFeeHeads();
   }, []);
+
+  // Re-fetch classes when academic year changes
+  useEffect(() => {
+    fetchClasses(filterAcademicYear);
+  }, [filterAcademicYear]);
 
   // Fetch fee structures when filters change
   useEffect(() => {
@@ -194,9 +198,11 @@ const FeeStructurePage: React.FC = () => {
     }
   };
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (yearId?: string) => {
     try {
-      const response = await axios.get(getFullUrl("/api/class"));
+      const params: any = {};
+      if (yearId) params.academicYearId = yearId;
+      const response = await axios.get(getFullUrl("/api/class"), { params });
       if (response.data.success) {
         setClasses(response.data.data);
       }
@@ -210,6 +216,9 @@ const FeeStructurePage: React.FC = () => {
       const response = await axios.get(getFullUrl("/api/academic"));
       if (response.data.success) {
         setAcademicYears(response.data.data);
+        // Auto-select active academic year
+        const active = response.data.data.find((y: any) => y.isActive);
+        if (active && !filterAcademicYear) setFilterAcademicYear(active.id);
       }
     } catch (error) {
       console.error("Failed to fetch academic years:", error);

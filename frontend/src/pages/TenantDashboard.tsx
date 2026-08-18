@@ -136,10 +136,6 @@ const quickActions = [
   { label: "Fee Receipt", icon: Receipt, route: "/fees/receipts", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
   { label: "Attendance", icon: CalendarCheck, route: "/attendance", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
   { label: "Exams", icon: ClipboardList, route: "/exams", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
-  { label: "Fee Reports", icon: BarChart3, route: "/fees/reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
-  { label: "Teacher Reports", icon: BarChart3, route: "/teacher-reports", color: "bg-violet-500", lightBg: "bg-violet-50 dark:bg-violet-950/50" },
-  { label: "Attend Reports", icon: BarChart3, route: "/attendance-report", color: "bg-fuchsia-500", lightBg: "bg-fuchsia-50 dark:bg-fuchsia-950/50" },
-  { label: "Exam Reports", icon: BarChart3, route: "/exam-reports", color: "bg-pink-500", lightBg: "bg-pink-50 dark:bg-pink-950/50" },
   { label: "Timetable", icon: Clock, route: "/timeTable", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
   { label: "Transport", icon: Bus, route: "/transport", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
   { label: "Library", icon: BookOpen, route: "/library", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
@@ -522,7 +518,7 @@ export default function Dashboard() {
                   ...(data.notifications || []).map((n: any) => ({ type: "notification", text: n.message || n.title || "New notification", icon: "🔔", route: "/communication" })),
                   ...(data.events || []).map((e: any) => ({ type: "event", text: `${e.title || e.name || "Event"} — ${e.date || ""}`, icon: "📅", route: "/events" })),
                   ...(data.upcomingExams || []).map((ex: any) => ({ type: "exam", text: `${ex.name || ex.subject || "Exam"} — ${ex.date || ""}`, icon: "📊", route: "/exams" })),
-                  ...(data.birthdays || []).map((b: any) => ({ type: "birthday", text: `${b.name || b.studentName || "Student"} — ${b.className || b.role || ""}`, icon: "🎂", route: "/students" })),
+                  ...(data.birthdays || []).map((b: any) => ({ type: "birthday", text: `${b.name || b.studentName || "Student"} — ${[b.className, b.section].filter(Boolean).join(" / ") || ""}`, icon: "🎂", route: "/students" })),
                   ...(data.announcements || []).map((a: any) => ({ type: "announcement", text: a.title || a.message || "Announcement", icon: "📢", route: "/communication" })),
                 ];
                 if (allItems.length === 0) {

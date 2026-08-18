@@ -102,7 +102,7 @@ export const getDashboard = async (
       prisma.payment.findMany({ where: { tenantId, isDeleted: false }, orderBy: { paymentDate: "desc" }, take: 5, select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } }),
       prisma.studentFee.findMany({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 }, enrollment: { status: "active" } }, orderBy: { balanceAmount: "desc" }, take: 5, select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } }),
       prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
-      prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true } }),
+      prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
     ]);
 
     // ─── PROCESS RESULTS ───
@@ -134,7 +134,13 @@ export const getDashboard = async (
       if (!s.dob) return false;
       const d = new Date(s.dob);
       return d.getDate() === todayDate.getDate() && d.getMonth() === todayDate.getMonth();
-    }).map((s: any) => ({ name: `${s.firstName} ${s.lastName}`.trim() })).slice(0, 10);
+    }).map((s: any) => {
+      const enrollment = s.enrollments?.[0];
+      const className = enrollment?.class?.name || "";
+      const section = enrollment?.section?.name || "";
+      const name = s.firstName?.toLowerCase() === s.lastName?.toLowerCase() ? s.firstName : `${s.firstName} ${s.lastName}`.trim();
+      return { name, className, section };
+    }).slice(0, 10);
 
     const insights = {
       growth: "0%",

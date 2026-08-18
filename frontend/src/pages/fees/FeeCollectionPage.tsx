@@ -122,10 +122,24 @@ const FeeCollectionPage: React.FC = () => {
   const [lastReceipt, setLastReceipt] = useState<any>(null);
   const [assigning, setAssigning] = useState(false);
   const [discounts, setDiscounts] = useState<FeeDiscountOption[]>([]);
+  const [academicYearId, setAcademicYearId] = useState("");
 
   useEffect(() => {
     fetchDiscounts();
-    fetchClasses();
+    // Fetch active academic year first, then classes for that year
+    (async () => {
+      try {
+        const res = await axios.get(`${API}/academic`);
+        const years = res.data?.data || [];
+        const active = years.find((y: any) => y.isActive) || years[0];
+        if (active) {
+          setAcademicYearId(active.id);
+          fetchClasses(active.id);
+        } else {
+          fetchClasses();
+        }
+      } catch { fetchClasses(); }
+    })();
     const params = new URLSearchParams(window.location.search);
     const studentParam = params.get("student");
     if (studentParam) {
@@ -141,9 +155,9 @@ const FeeCollectionPage: React.FC = () => {
     else setSections([]);
   }, [selectedClass]);
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (yearId?: string) => {
     try {
-      const res = await axios.get(`${API}/class`);
+      const res = await axios.get(`${API}/class`, { params: yearId ? { academicYearId: yearId } : {} });
       if (res.data.success) setClasses(res.data.data || []);
     } catch (e) { console.error(e); }
   };
@@ -171,7 +185,7 @@ const FeeCollectionPage: React.FC = () => {
         params: { 
           classId: selectedClass, 
           ...(selectedSection && { sectionId: selectedSection }),
-          limit: 100 
+          limit: 500
         },
       });
       const students = res.data?.data?.students || res.data?.data || [];

@@ -44,8 +44,8 @@ interface DashboardData {
   genderRatio: { male: number; female: number; other: number };
   monthlyAdmission: Array<{ month: string; count: number }>;
   studentGrowth: Array<{ year: string; count: number }>;
-  recentAdmissions: Array<{ id: string; name: string; admNo: string; class: string; date: string }>;
-  birthdayStudents: Array<{ id: string; name: string; class: string; photoUrl?: string; dob: string }>;
+  recentAdmissions: Array<{ id: string; name: string; admNo: string; class: string; section?: string; date: string }>;
+  birthdayStudents: Array<{ id: string; name: string; class: string; section?: string; photoUrl?: string; dob: string }>;
   feeDefaultersList: Array<{ id: string; name: string; class: string; pendingAmount: number }>;
 }
 
@@ -81,6 +81,12 @@ const animationCSS = `
 .stagger-8 { animation-delay: 0.24s; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+@keyframes marqueeVertical {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.animate-marquee-vertical { animation: marqueeVertical 12s linear infinite; }
+.animate-marquee-vertical:hover { animation-play-state: paused; }
 `;
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -104,7 +110,12 @@ export default function AdminStudentDashboard() {
         params, ...authHeaders(),
       });
       if (res.data.success) {
-        setData(res.data.data);
+        const d = res.data.data;
+        setData({
+          ...d,
+          birthdayStudents: d.birthdayStudents || d.birthdayToday || [],
+          stats: { ...d.stats, birthdayToday: d.stats?.birthdayTodayCount ?? d.stats?.birthdayToday ?? 0 },
+        });
       }
     } catch (err: any) {
       // Fallback: fetch individual endpoints if /full doesn't exist yet
@@ -356,6 +367,7 @@ export default function AdminStudentDashboard() {
                       <th className="text-left py-1.5 font-medium">Name</th>
                       <th className="text-left py-1.5 font-medium">Adm No</th>
                       <th className="text-left py-1.5 font-medium">Class</th>
+                      <th className="text-left py-1.5 font-medium">Section</th>
                       <th className="text-left py-1.5 font-medium">Date</th>
                     </tr>
                   </thead>
@@ -365,6 +377,7 @@ export default function AdminStudentDashboard() {
                         <td className="py-1.5 font-medium text-slate-800 dark:text-white">{s.name}</td>
                         <td className="py-1.5 text-slate-500 dark:text-slate-400">{s.admNo}</td>
                         <td className="py-1.5 text-slate-500 dark:text-slate-400">{s.class}</td>
+                        <td className="py-1.5 text-slate-500 dark:text-slate-400">{s.section}</td>
                         <td className="py-1.5 text-slate-400">{new Date(s.date).toLocaleDateString("en-IN")}</td>
                       </tr>
                     ))}
@@ -380,23 +393,35 @@ export default function AdminStudentDashboard() {
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all">
               <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                 <Cake className="w-3.5 h-3.5 text-pink-500" /> Birthday Today
-              </h3>
-              <div className="space-y-2 max-h-52 overflow-y-auto no-scrollbar">
-                {data.birthdayStudents?.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
-                    <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-[10px] font-bold flex-shrink-0">
-                      {s.photoUrl ? <img src={s.photoUrl} className="w-7 h-7 rounded-full object-cover" /> : s.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-slate-800 dark:text-white truncate">{s.name}</p>
-                      <p className="text-[9px] text-slate-500">{s.class}</p>
-                    </div>
-                    <span className="ml-auto text-sm">🎂</span>
-                  </div>
-                ))}
-                {(!data.birthdayStudents || data.birthdayStudents.length === 0) && (
-                  <p className="text-[10px] text-slate-400 text-center py-4">No birthdays today</p>
+                {data.birthdayStudents?.length > 0 && (
+                  <span className="ml-auto bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    {data.birthdayStudents.length}
+                  </span>
                 )}
+              </h3>
+              <div className="relative h-52 overflow-hidden">
+                {(!data.birthdayStudents || data.birthdayStudents.length === 0) && (
+                  <p className="text-[10px] text-slate-400 text-center py-16">No birthdays today</p>
+                )}
+                {data.birthdayStudents?.length > 0 && (() => {
+                  const doubled = [...data.birthdayStudents, ...data.birthdayStudents];
+                  return (
+                    <div className="animate-marquee-vertical absolute w-full" style={{ animationDuration: `${Math.max(data.birthdayStudents.length * 4, 12)}s` }}>
+                      {doubled.map((s, i) => (
+                        <div key={`${s.id}-${i}`} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-pink-50 dark:hover:bg-pink-950/30 cursor-pointer transition-colors" onClick={() => navigate(`/students/${s.id}`)}>
+                          <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-[10px] font-bold flex-shrink-0">
+                            {s.photoUrl ? <img src={s.photoUrl} className="w-7 h-7 rounded-full object-cover" /> : s.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-medium text-slate-800 dark:text-white truncate">{s.name}</p>
+                            <p className="text-[9px] text-slate-500 dark:text-slate-400">{[s.class, s.section].filter(Boolean).join(" / ")}</p>
+                          </div>
+                          <span className="text-sm flex-shrink-0">🎂</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

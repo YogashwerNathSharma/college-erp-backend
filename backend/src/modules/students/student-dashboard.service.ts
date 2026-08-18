@@ -186,7 +186,7 @@ export const getBirthdayToday = async (tenantId: string): Promise<BirthdayStuden
 
     return {
       id: s.id,
-      name: `${s.firstName} ${s.lastName}`,
+      name: s.firstName?.toLowerCase() === s.lastName?.toLowerCase() ? s.firstName : `${s.firstName} ${s.lastName}`.trim(),
       admissionNo: s.admissionNo,
       className: enrollment?.class?.name || "N/A",
       sectionName: enrollment?.section?.name || "N/A",
@@ -222,6 +222,7 @@ export const getClassStrength = async (
           status: "active",
           isDeleted: false,
           ...(academicYearId ? { academicYearId } : {}),
+          student: { isNot: null },
         },
         include: {
           student: { select: { gender: true } },
@@ -638,7 +639,7 @@ const getRecentAdmissions = async (
     const enrollment = s.enrollments[0];
     return {
       id: s.id,
-      name: `${s.firstName} ${s.lastName}`,
+      name: s.firstName?.toLowerCase() === s.lastName?.toLowerCase() ? s.firstName : `${s.firstName} ${s.lastName}`.trim(),
       admissionNo: s.admissionNo,
       className: enrollment?.class?.name || "N/A",
       sectionName: enrollment?.section?.name || "N/A",

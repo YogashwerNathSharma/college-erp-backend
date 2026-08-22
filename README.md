@@ -1,7 +1,37 @@
-# 🏫 College ERP — Complete System Documentation
+# 🏫 College ERP — Multi-Tenant SaaS Platform
 
-> **RMS Academy, Bareilly, Uttar Pradesh**  
-> Enterprise Resource Planning System — Full Stack (MongoDB + Express + React + Node.js)
+> **Production Deployment: RMS Academy, Bareilly, UP** **1,790+ Real Students** | **50+ Teachers** | **2 Active Tenants** Full-Stack Enterprise Resource Planning — MongoDB + Express + React + Node.js (TypeScript)
+
+
+
+![License](https://img.shields.io/badge/License-Private-red)
+
+
+
+![Stack](https://img.shields.io/badge/Stack-MERN-blue)
+
+
+
+![Students](https://img.shields.io/badge/Students-1790+-green)
+
+
+
+![Tenants](https://img.shields.io/badge/Multi--Tenant-SaaS-purple)
+
+---
+
+## 📊 Platform Statistics (Live)
+
+| Metric | Value |
+| --- | --- |
+| Total Students (Real Data) | **1,790+** |
+| Total Teachers | **50+** |
+| Active Tenants | **2** (RMS Academy, Ashvi Coaching) |
+| Backend Modules | **55** |
+| Frontend Pages | **49** |
+| API Routes | **200+** |
+| Super Admin Sub-Modules | **16** |
+| Prisma Models | **110+** |
 
 ---
 
@@ -9,488 +39,521 @@
 
 ```
 college-erp-clean/
-├── backend/                 # Express + Prisma + MongoDB
+├── backend/                    # Express + Prisma + MongoDB (TypeScript)
 │   ├── src/
-│   │   ├── app.ts          # Express app setup + all route registrations
-│   │   ├── server.ts       # Server entry point
-│   │   ├── config/         # Swagger, DB config
-│   │   ├── middleware/     # auth, tenant, security, rate-limit, error
-│   │   ├── modules/        # 55 feature modules (routes + controllers)
-│   │   ├── routes/         # Public site routes
-│   │   ├── types/          # TypeScript interfaces
-│   │   └── utils/          # Prisma client, helpers
+│   │   ├── app.ts             # Express app + route registration
+│   │   ├── server.ts          # Entry point
+│   │   ├── config/            # Cloudinary, Logger, CORS, Queue, Swagger
+│   │   ├── middleware/        # Auth, Tenant, Subscription, Rate-Limit, Error
+│   │   ├── modules/           # 55 feature modules (see below)
+│   │   ├── routes/            # Public site routes
+│   │   ├── types/             # TypeScript interfaces (express.d.ts)
+│   │   └── utils/             # Prisma client, Cache, Audit helpers
 │   ├── prisma/
-│   │   ├── schema.prisma   # ★ SINGLE SOURCE OF TRUTH for all models
-│   │   ├── masters/        # Reference files (NOT compiled — for documentation only)
-│   │   ├── seed-masters.ts # Seeds 110 master tables
-│   │   ├── seed-enterprise.ts  # Seeds operational data (students, fees, etc.)
-│   │   └── seed-full-erp.ts   # ★ Combined full seed (masters + operational)
-│   └── uploads/            # File uploads storage
+│   │   ├── schema.prisma      # ★ Single source of truth — all models
+│   │   ├── masters/           # 18 reference schema files (documentation)
+│   │   ├── migrations/        # Prisma migrate history
+│   │   ├── seed.ts            # Base seed
+│   │   ├── seed-superadmin.ts # Super admin bootstrap
+│   │   ├── seed-classes.ts    # Class/section seed
+│   │   └── seed-classes-2026-27.ts  # Current session seed
+│   └── scripts/               # Utility scripts (debug, cleanup, counters)
 │
-├── frontend/               # React + Vite + TypeScript + Tailwind
+├── frontend/                   # React + Vite + TypeScript + Tailwind CSS
 │   ├── src/
-│   │   ├── App.tsx         # Router + 142 routes
-│   │   ├── pages/          # 40+ page modules
-│   │   ├── components/     # Shared components (Sidebar, Navbar, Print, etc.)
-│   │   ├── context/        # AuthContext (JWT management)
-│   │   ├── hooks/          # usePrint, custom hooks
-│   │   ├── services/       # yn-udp service, API helpers
-│   │   ├── utils/          # url helper, print utilities
-│   │   └── config/         # API base URL config
-│   └── dist/               # Production build
+│   │   ├── App.tsx            # Router (150+ routes)
+│   │   ├── pages/             # 49 page modules (see below)
+│   │   ├── components/        # Shared: Sidebar, Navbar, DataTable, Charts
+│   │   ├── context/           # AuthContext (JWT), ThemeContext
+│   │   ├── hooks/             # usePrint, useDebounce, custom hooks
+│   │   ├── services/          # API service helpers
+│   │   └── utils/             # URL helper, print utilities
+│   └── dist/                  # Production build
 │
-└── yn-udp/                 # Template engine service (print templates)
-    ├── client/             # Template editor UI
-    └── server/             # Template rendering server
+├── student-portal/             # Separate React app — Student self-service
+│   └── src/                   # Auth, Dashboard, Results, Attendance, Fees
+│
+├── shared/                     # Shared TypeScript types & constants
+│   └── src/
+│       ├── types/             # student, teacher, fee, exam, common types
+│       └── constants/         # roles, permissions
+│
+├── yn-udp/                     # Template Engine (Print/PDF system)
+│   ├── client/                # Template editor UI (React)
+│   └── server/                # Template rendering server (Express)
+│
+├── convex/                     # Real-time backend (Convex)
+├── scripts/                    # deploy.sh, seed.sh
+├── security/                   # Security documentation
+├── docs/                       # API docs, Testing checklist, Deployment guides
+├── docker-compose.yml          # MongoDB 7 + Redis 7 + Mongo Express
+├── package.json                # Monorepo workspace scripts
+└── tsconfig.json               # Root TypeScript config
+
 ```
 
 ---
 
-## 🔐 Authentication Flow
+## 🏗️ Architecture Overview
 
 ```
-[Frontend]                          [Backend]
-    │                                   │
-    ├─ Login Form ───────────────────►  POST /api/auth/login
-    │                                   │ verify credentials
-    │  ◄─── { token, user } ────────── │ sign JWT { userId, tenantId, role }
-    │                                   │
-    │  axios.defaults.headers          │
-    │  Authorization = "Bearer {token}" │
-    │                                   │
-    ├─ Any API Call ─────────────────►  authMiddleware
-    │                                   │ verify JWT → req.user = { userId, tenantId, role }
-    │                                   │
-    │                                   resolveTenant
-    │                                   │ req.user.tenantId → (req as any).tenantId
-    │                                   │
-    │                                   subscriptionCheckMiddleware
-    │                                   │ check subscription not expired
-    │                                   │
-    │                                   Controller
-    │  ◄─── Response ───────────────── │ uses (req as any).tenantId for all queries
-```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          SUPER ADMIN LAYER                               │
+│  Dashboard │ Tenant Mgmt │ IAM │ Monitoring │ Billing │ Module Control  │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                         MULTI-TENANT SaaS LAYER                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                    │
+│  │ RMS Academy │  │Ashvi Coaching│  │  Tenant N   │                    │
+│  │ 1702 students│  │ 0 students  │  │    ...      │                    │
+│  └─────────────┘  └─────────────┘  └─────────────┘                    │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                            BACKEND (Express + TypeScript)                 │
+│                                                                          │
+│  Auth → Tenant Resolver → Subscription Check → Module Routes             │
+│                                                                          │
+│  Middleware Stack:                                                        │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ CORS → Rate-Limit → Auth(JWT) → TenantResolve → SubscriptionCheck │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  55 Modules │ Prisma ORM │ MongoDB │ Redis (Queue/Cache)                │
+│  Cloudinary (uploads) │ Razorpay (payments) │ BullMQ (jobs)             │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────┐
+│                          FRONTEND APPS                                    │
+│                                                                          │
+│  ┌──────────────────┐  ┌─────────────────┐  ┌──────────────────┐      │
+│  │  Admin Panel      │  │  Student Portal  │  │  YN-UDP Editor   │      │
+│  │  (React + Vite)   │  │  (React + Vite)  │  │  (Print Engine)  │      │
+│  │  Port: 5174       │  │  Port: 5175      │  │  Port: 5176      │      │
+│  └──────────────────┘  └─────────────────┘  └──────────────────┘      │
+└─────────────────────────────────────────────────────────────────────────┘
 
-### User Roles:
-| Role | Access Level |
-|------|-------------|
-| `SUPER_ADMIN` | All tenants, system management |
-| `ADMIN` | Full institution management |
-| `TEACHER` | Attendance, marks, own classes |
-| `STUDENT` | View own data via Student Portal |
-| `PARENT` | View ward data |
-
----
-
-## 🏗️ Module Architecture
-
-Every backend module follows this pattern:
-
-```
-modules/{module-name}/
-├── {module}.routes.ts       # Express routes + middleware
-├── {module}.controller.ts   # Request handlers + business logic
-└── {module}.service.ts      # (optional) Reusable logic
-```
-
-### Standard Route File Pattern:
-```typescript
-import { Router } from 'express';
-import { authMiddleware } from '../../middleware/auth.middleware';
-import { resolveTenant } from '../../middleware/tenant.middleware';
-import { getAll, create, update, remove } from './module.controller';
-
-const router = Router();
-router.use(authMiddleware);    // ← Every module must have this
-router.use(resolveTenant);     // ← Every module must have this
-
-router.get('/', getAll);
-router.post('/', create);
-router.put('/:id', update);
-router.delete('/:id', remove);
-
-export default router;
-```
-
-### Standard Controller Pattern:
-```typescript
-export const getAll = async (req: Request, res: Response) => {
-  const tenantId = (req as any).tenantId;  // ← ALWAYS from middleware
-  const data = await prisma.model.findMany({ where: { tenantId } });
-  res.json({ success: true, data });
-};
 ```
 
 ---
 
-## 📋 All 55 Modules
+## 🔐 Authentication & Authorization
+
+### Multi-Level Auth System
+
+| Role | Access | Description |
+| --- | --- | --- |
+| `SUPER_ADMIN` | Platform-wide | All tenants, system settings, billing, monitoring |
+| `ADMIN` | Tenant-scoped | Full institution management |
+| `TEACHER` | Role-scoped | Attendance, marks, own classes, leave, salary |
+| `STUDENT` | Self-scoped | View own data via Student Portal |
+| `PARENT` | Ward-scoped | View ward data |
+
+### Auth Flow
+
+```
+Login → JWT (userId, tenantId, role) → Every API → authMiddleware → resolveTenant → Controller
+
+```
+
+### Tenant Registration
+
+- **Super Admin creates tenant** → Auto-creates admin user → Shows credentials
+- **Self-registration** → Creates tenant + admin → Default password=[REDACTED_PASSWORD] first login → Force password change
+
+### Security Features
+
+- Login rate limiting (10 failures → 15min lockout)
+- OTP-based password reset
+- IP tracking + device fingerprinting (fraud prevention for free plans)
+- Subscription expiry check on every request
+- JWT refresh tokens
+
+---
+
+## 📋 All 55 Backend Modules
 
 ### Core Academic
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| academic | `/api/academic` | Academic year management |
-| class | `/api/class` | Class CRUD (Nursery–12) |
-| Section | `/api/section` | Sections (A, B, C) per class |
-| subject | `/api/subjects` | Subject management |
-| timetable | `/api/timetable` | Timetable scheduling |
-| room | `/api/room` | Room/classroom management |
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| academic | `modules/academic/` | Academic year & session management |
+| class | `modules/class/` | Class CRUD (Nursery–12) |
+| Section | `modules/Section/` | Sections (A, B, C) per class |
+| subject | `modules/subject/` | Subject management |
+| timetable | `modules/timetable/` | Timetable scheduling |
+| room | `modules/room/` | Room/classroom management |
 
 ### Student Management
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| students | `/api/students` | Student CRUD, profiles |
-| admission | `/api/admission` | New admission workflow |
-| enrollment | `/api/enrollment` | Class-section enrollment |
-| student-portal | `/api/student-portal` | Student self-service portal |
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| students | `modules/students/` | Student CRUD, profiles, bulk import (1790+ real records) |
+| admission | `modules/admission/` | Admission workflow with auto-counter |
+| enrollment | `modules/enrollment/` | Class-section enrollment |
+| student-portal | `modules/student-portal/` | Student self-service (separate app) |
 
 ### Staff / Teacher
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| teacher | `/api/teacher` | Teacher profiles, assignments |
-| teacher-leave | `/api/teacher-leave` | Leave management |
-| teacher-salary | `/api/teacher-salary` | Salary management |
-| teacher-performance | `/api/teacher-performance` | Performance tracking |
-| teacher-document | `/api/teacher-document` | Document management |
 
-### Fee Management
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| fees | `/api/fees` | Fee structure, collection, receipts |
-| payment-gateway | `/api/payment-gateway` | Online payment integration |
-| subscription | `/api/subscriptions` | SaaS subscription plans |
-| subscription-payment | `/api/subscription-payments` | Subscription billing |
+| Module | Path | Purpose |
+| --- | --- | --- |
+| teacher | `modules/teacher/` | Profiles, assignments, dashboard, communication |
+| teacher (leave) | `modules/teacher/leave.*` | Leave management |
+| teacher (salary) | `modules/teacher/salary.*` | Salary/payroll |
+| teacher (performance) | `modules/teacher/performance.*` | Performance tracking |
+| teacher (document) | `modules/teacher/document.*` | Document management |
+| teacher (settings) | `modules/teacher/settings.*` | Per-teacher settings |
+| teacher (report) | `modules/teacher/report.*` | Teacher reports |
+
+### Fee & Payments
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| fees | `modules/fees/` | Fee structure, collection, receipts, concessions |
+| payment-gateway | `modules/payment-gateway/` | Razorpay integration |
+| subscription | `modules/subscription/` | SaaS plans (Free trial + Paid) |
+| subscription-payment | `modules/subscription-payment/` | Subscription billing & Razorpay orders |
 
 ### Exam & Assessment
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| exam | `/api/exam` | Exam schedule, marks entry |
-| grade | `/api/grade` | Grade settings, GPA calculation |
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| exam | `modules/exam/` | Exam schedule, marks entry, report cards |
+| grade | `modules/grade/` | Grade settings, GPA calculation |
 
 ### Attendance
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| attendance | `/api/attendance` | Daily attendance marking |
-| attendance-report | `/api/attendance/report` | Attendance analytics |
 
-### Library
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| libraryManagement | `/api/library` | Books, issues, returns, fines |
+| Module | Path | Purpose |
+| --- | --- | --- |
+| attendance | `modules/attendance/` | Daily marking, reports, analytics |
 
-### Transport
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| transport | `/api/transport` | Vehicles, routes, tracking |
+### Library, Transport, Hostel
 
-### Hostel
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| hostel | `/api/hostel` | Rooms, allocation, mess |
+| Module | Path | Purpose |
+| --- | --- | --- |
+| libraryManagement | `modules/libraryManagement/` | Books, issues, returns, fines |
+| transport | `modules/transport/` | Vehicles, routes, GPS tracking |
+| hostel | `modules/hostel/` | Rooms, allocation, mess management |
 
-### HR & Payroll
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| hr | `/api/hr` | Staff attendance, leaves, payroll |
+### HR & Staff
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| hr | `modules/hr/` | Staff attendance, leaves, payroll, recruitment |
 
 ### Communication
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| communication | `/api/communication` | Notices, circulars |
-| notifications | `/api/notifications` | Push/SMS/Email notifications |
-| notification-engine | `/api/notification-engine` | Template-based delivery |
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| communication | `modules/communication/` | SMS, Email, WhatsApp helpers |
+| notifications | `modules/notifications/` | Push notifications |
+| notification-engine | `modules/notification-engine/` | Template-based delivery |
 
 ### Enterprise Modules
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| masters | `/api/masters` | 110 master tables CRUD |
-| workflow | `/api/workflows` | Approval workflows |
-| form-builder | `/api/forms` | Dynamic form creation |
-| report-builder | `/api/report-builder` | Custom report generation |
-| dashboard-builder | `/api/dashboard-builder` | Custom dashboards |
-| file-manager | `/api/files` | File upload/management |
-| import-export | `/api/import-export` | Bulk data import/export |
-| scheduler | `/api/scheduler` | Cron job scheduling |
-| queue | `/api/queue` | Background job processing |
-| search | `/api/search` | Global search |
-| audit | `/api/audit` | Activity audit trail |
 
-### Certificates & Cards
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| certificate | `/api/certificate` | TC, Character, Bonafide |
-| signature | `/api/signature` | Digital signatures |
-| qr-barcode | `/api/qr` | QR/Barcode generation |
+| Module | Path | Purpose |
+| --- | --- | --- |
+| masters | `modules/masters/` | 110 master tables — generic CRUD |
+| workflow | `modules/workflow/` | Approval workflows |
+| form-builder | `modules/form-builder/` | Dynamic form creation |
+| report-builder | `modules/report-builder/` | Custom report generation |
+| dashboard-builder | `modules/dashboard-builder/` | Custom dashboards |
+| file-manager | `modules/file-manager/` | File upload/management |
+| import-export | `modules/import-export/` | Bulk data import/export (Excel) |
+| scheduler | `modules/scheduler/` | Cron job scheduling |
+| queue | `modules/queue/` | Background jobs (BullMQ + Redis) |
+| search | `modules/search/` | Global search |
+| audit | `modules/audit/` | Activity audit trail |
+| reports | `modules/reports/` | Pre-built report templates |
+| events | `modules/events/` | Event management |
+| gate-pass | `modules/gate-pass/` | Visitor gate pass system |
+| helpdesk | `modules/helpdesk/` | Ticket/support system |
+| inventory | `modules/inventory/` | Inventory management |
 
-### System
-| Module | API Base | Purpose |
-|--------|----------|---------|
-| settings | `/api/settings` | School settings |
-| theme | `/api/theme` | UI theme management |
-| backup | `/api/backup` | Database backups |
-| permissions | `/api/permissions` | Role-based access |
-| ai-assistant | `/api/ai` | AI chat, predictions, insights |
-| i18n | `/api/i18n` | Multi-language support |
-| tenant | `/api/tenant` | Multi-tenant management |
-| super-admin | `/api/super-admin` | Platform admin |
+### Certificates & ID Cards
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| certificate | `modules/certificate/` | TC, Character, Bonafide, Migration |
+| digital-signature | `modules/digital-signature/` | Digital signatures |
+| signature | `modules/signature/` | Signature management |
+| qr-barcode | `modules/qr-barcode/` | QR/Barcode generation for ID cards |
+
+### System & Platform
+
+| Module | Path | Purpose |
+| --- | --- | --- |
+| auth | `modules/auth/` | Login, Register, Password Reset, Super Admin bootstrap |
+| settings | `modules/settings/` | School/institution settings |
+| theme | `modules/theme/` | UI theme (per-tenant customization) |
+| tenant | `modules/tenant/` | Tenant CRUD, subscription, images |
+| permissions | `modules/permissions/` | Role-based access control |
+| i18n | `modules/i18n/` | Multi-language support |
+| dashboard | `modules/dashboard/` | Admin dashboard stats |
+| ai-assistant | `modules/ai-assistant/` | AI chat, predictions, insights |
+| backup | `modules/backup/` | Database backup management |
 
 ---
 
-## 🗄️ Master Module (110 Tables)
+## 🛡️ Super Admin Panel (16 Sub-Modules)
 
-The Master Module is a **generic CRUD system** that handles all reference/configuration data.
+| Module | Backend File | Frontend Page | Purpose |
+| --- | --- | --- | --- |
+| Dashboard | `superAdmin.controller.ts` | `SuperAdminDashboard.tsx` | Platform stats, revenue |
+| Tenant Management | `superAdmin.controller.ts` | `TenantsPage.tsx` | CRUD, clone, impersonate, toggle |
+| Subscription & Billing | `subscription-management.*` | `SubscriptionManagement.tsx` | Plans, invoices, revenue |
+| User Management | `user-management.*` | `UserManagement.tsx` | Cross-tenant user ops |
+| IAM & Permissions | `iam.*` | `IAMPage.tsx` | Roles, permissions, policies |
+| Module Management | `module-management.*` | `ModuleManagement.tsx` | Enable/disable per tenant |
+| Plugin Management | `plugin-management.*` | `PluginManagement.tsx` | Plugin marketplace |
+| Monitoring | `monitoring.*` | `MonitoringPage.tsx` | System health, logs |
+| Audit Center | `audit-center.*` | `AuditCenter.tsx` | Activity audit trail |
+| Report Center | `report-center.*` | `ReportCenter.tsx` | Platform-wide reports |
+| Notification Center | `notification-center.*` | `NotificationCenter.tsx` | Push/SMS/Email management |
+| Security Center | `security.*` | `SecurityCenter.tsx` | Threats, firewall, sessions |
+| Support Center | `support-center.*` | `SupportCenter.tsx` | Help desk, tickets |
+| Theme Management | `theme-management.*` | `ThemeManagement.tsx` | Global themes |
+| Database Management | `database.*` | `DatabaseManagement.tsx` | DB ops, backups |
+| System Settings | `settings.routes.ts` | `SystemSettings.tsx` | Platform config |
 
-### How It Works:
+---
+
+## 🖥️ Frontend Pages (49 Modules)
+
 ```
-Frontend (MasterModule.tsx)
-    │
-    ├─ GET /api/masters/categories → Lists 20 categories with models
-    │
-    ├─ User clicks "School Master"
-    │
-    ├─ GET /api/masters/school-master → Lists entries with pagination
-    │
-    ├─ User clicks "Add"
-    │
-    ├─ POST /api/masters/school-master → Creates entry
-    │      Body: { name, code, address, ... }
-    │      Controller auto-adds: tenantId, isActive: true
-    │
-    └─ All field definitions come from master.config.ts
-```
+pages/
+├── superAdmin/          # 19 pages (Super Admin panel)
+├── students/            # Student CRUD, ID cards, profiles
+├── teachers/            # Teacher management
+├── admission/           # Admission workflow
+├── fees/                # Fee structure, collection, receipts
+├── exams/               # Exam management, marks, report cards
+├── AttendancePage/      # Attendance marking & reports
+├── classes/             # Class management
+├── Sections/            # Section management
+├── Subjects/            # Subject management
+├── timeTable/           # Timetable management
+├── academic-year/       # Academic year management
+├── certificates/        # TC, Character, Migration certificates
+├── communication/       # Notices, circulars
+├── transport/           # Vehicle tracking
+├── hostel/              # Hostel management
+├── library/             # Library management
+├── hr/                  # HR & Payroll
+├── events/              # Event management
+├── gate-pass/           # Visitor management
+├── helpdesk/            # Ticket system
+├── inventory/           # Stock management
+├── masters/             # 110 master tables CRUD UI
+├── reports/             # Reports & analytics
+├── workflow/            # Approval workflows
+├── form-builder/        # Dynamic forms
+├── report-builder/      # Custom reports
+├── dashboard-builder/   # Custom dashboards
+├── file-manager/        # File management
+├── import-export/       # Bulk import/export
+├── scheduler/           # Cron scheduling
+├── queue/               # Job queue monitoring
+├── notifications/       # Notification center
+├── subscriptions/       # Subscription management
+├── payment-gateway/     # Payment processing
+├── settings/            # Institution settings
+├── principal/           # Principal dashboard
+├── designer/            # Template designer
+├── digital-signature/   # Digital signature
+├── qr-barcode/          # QR/Barcode generation
+├── ai-assistant/        # AI chat interface
+├── audit/               # Audit trail viewer
+├── backup/              # Backup management
+├── i18n/                # Language management
+├── login/               # Login, Register, Forgot Password
+├── yn-udp/              # Template editor
+└── TenantDashboard.tsx  # Tenant admin dashboard
 
-### 20 Master Categories:
-1. **Organization** — School, Branch, Campus, Session, Shift, Working Days, Holidays, Houses, Timings
-2. **Academic** — Stream, Subject Groups, Medium, Board, Course, Period
-3. **Student** — Admission Type, Category, Religion, Caste, Nationality, Blood Group, Mother Tongue, Status
-4. **Staff** — Department, Designation, Employment Type, Qualification, Leave Type, Salary Grade, Bank
-5. **Fee** — Fee Group, Fee Type, Concession, Scholarship, Payment Mode, Receipt Series
-6. **Exam** — Exam Type, Result Type, Marking Scheme, Assessment
-7. **Attendance** — Status, Late Fine, Leave Reason, Shift
-8. **Library** — Publisher, Author, Language, Rack, Shelf, Book Condition
-9. **Hostel** — Block, Floor, Bed Type, Hostel Type
-10. **Transport** — Driver, Conductor, Fuel Type, GPS Device
-11. **Inventory** — Item Category, Item Group, Unit, Brand, Supplier, Warehouse, Store, Stock Type
-12. **Payroll** — Payroll Head, Salary Component, PF, ESI, Tax Slab, Increment Type
-13. **Communication** — SMS Template, Email Template, WhatsApp Template, Notification Template, Notice Category
-14. **Certificate** — Certificate Template, ID Card Template
-15. **Security** — Role, Permission, User Type, Module, Menu, API Permission
-16. **Document** — Document Type, Document Category, Approval Workflow
-17. **Event** — Event Category, Venue, Event Type, Visitor Type, Purpose, Gate
-18. **AI** — AI Prompt, Prediction Rule, Analytics Rule
-19. **System** — Theme, Currency, TimeZone, Backup Policy, Audit Type, API Provider, Settings
+```
 
 ---
 
 ## 🖨️ Print / PDF / Card System
 
-### Architecture:
+### Architecture
+
 ```
-[Page Component]
-    │
-    ├─ usePrint() hook → manages print state
-    │
-    ├─ <PrintLayout> wrapper → A4 sizing, headers, footers
-    │
-    ├─ printViaIframe() → opens hidden iframe for print
-    │
-    └─ YN-UDP Templates → custom print templates (optional)
+Page Component → usePrint() hook → PrintLayout wrapper → printViaIframe()
+                                                      → YN-UDP Templates (custom layouts)
+
 ```
 
-### Print-Enabled Features:
-| Feature | File | Method |
-|---------|------|--------|
-| Report Card | `exams/ReportCard.tsx` | Print + PDF |
-| Bulk Report Card | `exams/BulkReportCard.tsx` | Print + PDF |
-| Consolidated Report | `exams/ConsolidatedReportCard.tsx` | Print + PDF |
-| Admit Card | `exams/AdmitCard.tsx` | Print + PDF |
-| Fee Receipt | `fees/FeeReceiptPrint.tsx` | Print |
-| Student ID Card | `students/StudentIdCard.tsx` | Print + Card |
-| Teacher ID Card | `teachers/TeacherIdCard.tsx` | Print + Card |
-| Transfer Certificate | `certificates/TCGenerate.tsx` | Print |
-| Character Certificate | `certificates/CharacterCert.tsx` | Print |
-| Migration Certificate | `certificates/MigrationCert.tsx` | Print |
-| Timetable | `timeTable/TimetablePrint.tsx` | Print |
-| Attendance Report | `AttendancePage/AttendanceReportPage.tsx` | Print |
-| Student List | `students/PrintStudents.tsx` | Print + PDF |
-| Certificate Generator | `reports/CertificateGenerator.tsx` | Print |
+### Print-Enabled Features
 
-### How Print Works:
-```javascript
-// In any component:
-import { usePrint } from '../../hooks/usePrint';
-
-const { handlePrint, handlePDF, isPrinting } = usePrint({
-  templateSlot: 'report-card',    // Optional: YN-UDP template
-  orientation: 'portrait',
-});
-
-// Trigger print
-<button onClick={() => handlePrint(contentRef)}>Print</button>
-<button onClick={() => handlePDF(contentRef)}>Download PDF</button>
-```
+- Report Cards (Single + Bulk + Consolidated)
+- Admit Cards
+- Fee Receipts
+- Student & Teacher ID Cards
+- Transfer Certificate, Character Certificate, Migration Certificate
+- Timetable Print
+- Attendance Reports
+- Student Lists (Print + PDF)
+- Custom Certificate Generator
 
 ---
 
-## 🤖 AI Assistant Module
+## 🤖 AI Assistant
 
-### Endpoints:
-| API | Purpose |
-|-----|---------|
-| `POST /api/ai/chat` | Natural language queries (student count, fee status, etc.) |
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/ai/chat` | Natural language queries |
 | `POST /api/ai/analyze/performance` | Student performance analysis |
-| `POST /api/ai/predict/attendance` | Attendance prediction + at-risk students |
-| `POST /api/ai/predict/defaulters` | Fee defaulter risk assessment |
-| `GET /api/ai/insights` | Auto-generated alerts & recommendations |
-| `GET /api/ai/conversations` | Chat history |
+| `POST /api/ai/predict/attendance` | At-risk students (< 75%) |
+| `POST /api/ai/predict/defaulters` | Fee defaulter prediction |
+| `GET /api/ai/insights` | Auto-generated alerts |
 
-### How AI Chat Works:
+Rule-based NL parser — works offline, no API costs, deterministic results.
+
+---
+
+## 💰 Subscription & Billing
+
+### SaaS Model
+
 ```
-User: "How many students are there?"
+Free Trial (auto-assigned on registration, fraud-checked)
     ↓
-NL Parser (rule-based keywords)
+Paid Plans (via Razorpay)
     ↓
-prisma.student.count({ where: { tenantId } })
-    ↓
-Response: "There are 300 students in the system."
+Subscription Check Middleware → Block expired tenants
+
 ```
 
-### Supported Queries:
-- Student/Teacher counts
-- Pending fee amounts
-- Today's attendance rate
-- Upcoming exams
-- Performance analysis (per student)
-- Fee defaulter prediction
+### Features
+
+- Multiple plans with resource limits (students, teachers, admins, storage)
+- Razorpay order creation + webhook verification
+- Subscription expiry enforcement on every API call
+- Free trial fraud detection (IP + device fingerprint + email/phone matching)
 
 ---
 
-## 💰 Fee Flow
+## 🐳 Infrastructure
 
-```
-1. Admin creates FeeHeads (Tuition, Transport, Lab, etc.)
-       ↓
-2. Admin creates FeeStructure (links FeeHead → Class → Amount → Installments)
-       ↓
-3. System generates StudentFee records for each enrolled student
-       ↓
-4. Parent/Admin makes Payment
-       ↓
-5. Receipt generated (printable)
-       ↓
-6. Dashboard shows collection stats
-```
+### Docker Compose Services
 
----
+| Service | Image | Port | Purpose |
+| --- | --- | --- | --- |
+| MongoDB | `mongo:7` | 27017 | Primary database |
+| Redis | `redis:7-alpine` | 6379 | Queue, caching, sessions |
+| Mongo Express | `mongo-express` | 8081 | DB admin UI |
 
-## 📝 Exam Flow
+### Tech Stack
 
-```
-1. Admin creates Exam (Unit Test, Mid Term, Final)
-       ↓
-2. ExamSubjects assigned (Math, Science per exam per class)
-       ↓
-3. ExamSchedule set (date + room + invigilator)
-       ↓
-4. Admit Cards generated (printable)
-       ↓
-5. Teacher enters Marks (MarksEntry per student per subject)
-       ↓
-6. System calculates grades (GradeSetting)
-       ↓
-7. Report Card generated (print + PDF)
-       ↓
-8. Results published to Student Portal
-```
+| Layer | Technology |
+| --- | --- |
+| Runtime | Node.js 18+ |
+| Language | TypeScript (strict) |
+| Backend Framework | Express.js |
+| ORM | Prisma (MongoDB connector) |
+| Database | MongoDB 7 (Atlas / Local) |
+| Cache/Queue | Redis + BullMQ |
+| Frontend | React 18 + Vite + Tailwind CSS |
+| Auth | JWT (Access + Refresh tokens) |
+| File Storage | Cloudinary |
+| Payments | Razorpay |
+| Print Engine | YN-UDP (custom iframe-based) |
 
 ---
 
-## 📋 Attendance Flow
+## 🚀 Quick Start
 
-```
-1. Teacher opens class attendance page
-       ↓
-2. Selects Date + Class + Section
-       ↓
-3. Student list loaded from Enrollment
-       ↓
-4. Marks each: Present / Absent / Late / Half Day
-       ↓
-5. POST /api/attendance/mark (bulk save)
-       ↓
-6. Reports: Daily / Monthly / Student-wise
-       ↓
-7. AI: Predicts at-risk students (< 75% attendance)
-```
+### Prerequisites
 
----
-
-## 🚀 Setup & Run
-
-### Prerequisites:
 - Node.js 18+
 - MongoDB (local or Atlas)
-- npm/yarn
+- Redis (for queue/cache)
 
-### Quick Start:
+### Installation
+
 ```bash
-# 1. Install dependencies
-cd backend && npm install
-cd ../frontend && npm install
+# Clone
+git clone https://github.com/YogashwerNathSharma/college-erp-backend.git
+cd college-erp-clean
 
-# 2. Configure environment
+# Install all dependencies
+npm run install:all
+
+# Configure backend
 cd backend
 cp .env.example .env
-# Set: DATABASE_URL=mongodb+srv://...
-# Set: JWT_SECRET=your-secret-key
+# Set: DATABASE_URL, JWT_SECRET, CLOUDINARY_*, RAZORPAY_*
 
-# 3. Generate Prisma Client
+# Generate Prisma Client
 npx prisma generate
 
-# 4. Seed database (optional — for demo data)
-npx ts-node prisma/seed-full-erp.ts
+# Seed Super Admin
+npx ts-node prisma/seed-superadmin.ts
 
-# 5. Start backend
-npm run dev
-# → Server running on http://localhost:5000
+# Seed Classes (required before student import)
+npx ts-node prisma/seed-classes-2026-27.ts
 
-# 6. Start frontend (new terminal)
-cd frontend
-npm run dev
-# → App running on http://localhost:5173
 ```
 
-### Available Seed Commands:
+### Run Development
+
 ```bash
-npm run seed-masters    # Only master tables (110 tables)
-npm run seed-erp        # Full ERP (masters + 300 students + fees + exams + everything)
+# Terminal 1: Backend (port 5000)
+npm run dev:backend
+
+# Terminal 2: Frontend (port 5174)
+npm run dev:frontend
+
+# Terminal 3: Student Portal (port 5175)
+npm run dev:student
+
+# Terminal 4: Template Engine (port 5176)
+npm run dev:udp
+
 ```
+
+### Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev:backend` | Start backend in dev mode |
+| `npm run dev:frontend` | Start admin frontend |
+| `npm run dev:student` | Start student portal |
+| `npm run dev:udp` | Start template engine |
+| `npm run build` | Build frontend for production |
+| `npm run seed` | Run database seed |
+| `npm run install:all` | Install deps for all packages |
 
 ---
 
 ## 🔧 Key Technical Decisions
 
 | Decision | Reason |
-|----------|--------|
-| MongoDB (not SQL) | Flexible schema, JSON-native, multi-tenant via tenantId field |
-| Prisma ORM | Type-safe, auto-generated client, great DX |
-| JWT Auth | Stateless, includes tenantId for multi-tenant isolation |
+| --- | --- |
+| MongoDB (not SQL) | Flexible schema, JSON-native, multi-tenant via tenantId |
+| Prisma ORM | Type-safe, auto-generated client, excellent DX |
+| JWT Auth (30min expiry) | Stateless, includes tenantId for tenant isolation |
 | Generic Master CRUD | 110 tables managed by single controller + config |
-| Rule-based AI (not LLM) | Works offline, no API costs, fast, deterministic |
-| iframe-based Print | Works on mobile, avoids CSP issues, reliable |
-| YN-UDP Templates | Customizable print layouts per school |
+| Rule-based AI (not LLM) | Offline, no API cost, fast, deterministic |
+| iframe-based Print | Mobile-friendly, no CSP issues |
+| YN-UDP Templates | Per-school customizable print layouts |
 | Multi-tenant by field | All data has `tenantId` — simple, no DB switching |
+| Separate Student Portal | Dedicated UX for students, isolated codebase |
+| Docker Compose | One-command infra setup for dev |
+| Monorepo (workspace) | Shared types, single git history |
 
 ---
 
 ## 🌐 API Response Format
 
-All APIs follow this standard:
 ```json
 // Success
 {
   "success": true,
   "data": { ... },
-  "pagination": { "page": 1, "limit": 25, "total": 300, "totalPages": 12 }
+  "pagination": { "page": 1, "limit": 25, "total": 1790, "totalPages": 72 }
 }
 
 // Error
@@ -498,47 +561,32 @@ All APIs follow this standard:
   "success": false,
   "message": "Error description"
 }
+
 ```
 
 ---
 
-## 📂 Frontend Route Map
+## 📂 Documentation
 
-| Route | Page | Module |
-|-------|------|--------|
-| `/dashboard` | Main Dashboard | Overview stats |
-| `/students` | Student List | CRUD + filters |
-| `/students/new-admission` | Admission Form | New student entry |
-| `/students/id-card` | ID Card Generator | Print cards |
-| `/teachers` | Teacher List | CRUD |
-| `/fees` | Fee Dashboard | Collection overview |
-| `/fees/collect` | Fee Collection | Payment entry |
-| `/attendance` | Mark Attendance | Daily marking |
-| `/attendance-report` | Attendance Reports | Analytics |
-| `/exams` | Exam List | Manage exams |
-| `/exams/marks-entry` | Marks Entry | Enter marks |
-| `/exams/report-card` | Report Card | Print/PDF |
-| `/library` | Library | Books + Issues |
-| `/transport` | Transport | Vehicles + Routes |
-| `/hostel` | Hostel | Rooms + Allocation |
-| `/hr` | HR Dashboard | Staff + Payroll |
-| `/masters` | Master Module | 110 tables CRUD |
-| `/settings` | Settings | School config |
-| `/certificates` | Certificates | TC, CC, etc. |
-| `/reports` | Reports Menu | All report links |
-| `/ai` | AI Assistant | Chat + Insights |
+| File | Purpose |
+| --- | --- |
+| `docs/API.md` | API endpoint documentation |
+| `docs/FEE_MODULE_DEPLOYMENT_GUIDE.md` | Fee module deployment |
+| `docs/TESTING_CHECKLIST.md` | QA testing checklist |
+| `docs/seed-data-note.md` | Seed data notes |
+| `security/p0-07-payment-idempotency.md` | Payment security |
+| `INTEGRATION_GUIDE.md` | Integration guide |
 
 ---
 
-## ⚡ Performance Notes
+## 👨‍💻 Developer
 
-- **Compression**: gzip enabled (60-80% response size reduction)
-- **Pagination**: All list APIs paginated (default 25 per page)
-- **Indexing**: All tenantId fields indexed in MongoDB
-- **Rate Limiting**: Global + per-route limits
-- **Lazy Loading**: Frontend uses React.lazy() for code splitting
-- **Chunked Inserts**: Seed uses batch createMany (500 records/batch)
+**YogashwerNath Sharma**
+
+- GitHub: [YogashwerNathSharma](https://github.com/YogashwerNathSharma)
+- Deployed for: RMS Academy, Bareilly, Uttar Pradesh
 
 ---
 
-*Last Updated: June 2026*
+> **Note**: This is a production system with **1,790+ real student records**. Handle data with care. All API access is tenant-isolated and subscription-gated.
+

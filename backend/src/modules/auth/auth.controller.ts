@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { randomBytes, randomInt } from "crypto";
+import { randomInt } from "crypto";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
@@ -123,7 +123,7 @@ export const registerTenant = async (req: Request, res: Response) => {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return res.status(400).json({ success: false, message: "Email already registered" });
 
-    const initialPassword = randomBytes(12).toString("base64url");
+    const initialPassword = "123456";
     const result = await prisma.$transaction(async (tx) => {
       const files = (req as any).files || {};
       const logoFile = files?.logo?.[0] || null;

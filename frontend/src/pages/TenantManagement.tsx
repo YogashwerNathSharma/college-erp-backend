@@ -121,7 +121,7 @@ const createTenant = async () => {
 ` +
         `📧 Admin Email: ${adminInfo.email}
 ` +
-        `🔑 Admin Password: ${adminInfo.password}
+        `🔑 Admin Password: ${adminInfo.defaultPassword}
 
 ` +
         `⚠️ Please note down these credentials!`

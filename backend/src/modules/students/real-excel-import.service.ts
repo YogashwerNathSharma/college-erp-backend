@@ -548,13 +548,11 @@ export async function importRealRmsExcel(
 
 
 
-      // ─── Prisma transaction: create/update student + enrollment ─────
+      // ─── Create/update student + enrollment (no transaction for speed) ─────
 
-      const result = await prisma.$transaction(async (tx) => {
+      // Check if student already exists by admissionNo + tenantId
 
-        // Check if student already exists by admissionNo + tenantId
-
-        let student = await tx.student.findFirst({
+      let student = await prisma.student.findFirst({
 
           where: { tenantId, admissionNo, isDeleted: false },
 
@@ -602,7 +600,7 @@ export async function importRealRmsExcel(
 
           // UPDATE existing student
 
-          student = await tx.student.update({
+          student = await prisma.student.update({
 
             where: { id: student.id },
 
@@ -622,7 +620,7 @@ export async function importRealRmsExcel(
 
           // CREATE new student
 
-          student = await tx.student.create({
+          student = await prisma.student.create({
 
             data: {
 
@@ -654,7 +652,7 @@ export async function importRealRmsExcel(
 
         // Enrollment: create or update
 
-        const existingEnrollment = await tx.enrollment.findFirst({
+        const existingEnrollment = await prisma.enrollment.findFirst({
 
           where: { tenantId, studentId: student.id, academicYearId },
 
@@ -664,7 +662,7 @@ export async function importRealRmsExcel(
 
         if (existingEnrollment) {
 
-          await tx.enrollment.update({
+          await prisma.enrollment.update({
 
             where: { id: existingEnrollment.id },
 
@@ -674,7 +672,7 @@ export async function importRealRmsExcel(
 
         } else {
 
-          await tx.enrollment.create({
+          await prisma.enrollment.create({
 
             data: {
 
@@ -700,13 +698,11 @@ export async function importRealRmsExcel(
 
 
 
-        return student;
-
-      });
+      // student processed successfully
 
 
 
-      imported.push(result.id);
+      imported.push(student.id);
 
       successCount++;
 

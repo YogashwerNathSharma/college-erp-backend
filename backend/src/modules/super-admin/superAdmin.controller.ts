@@ -72,11 +72,11 @@ export const createTenant = async (req: any, res: Response) => {
     let backgroundUrl: string | null = null;
 
     if (files?.logo?.[0]) {
-      logoUrl = await uploadToCloudinary(files.logo[0].buffer, "tenants");
+      try { logoUrl = await uploadToCloudinary(files.logo[0].buffer, "tenants"); } catch (e: any) { console.warn("Logo upload failed (skipping):", e.message); }
     }
 
     if (files?.background?.[0]) {
-      backgroundUrl = await uploadToCloudinary(files.background[0].buffer, "tenants");
+      try { backgroundUrl = await uploadToCloudinary(files.background[0].buffer, "tenants"); } catch (e: any) { console.warn("Background upload failed (skipping):", e.message); }
     }
 
     const tenantData = {

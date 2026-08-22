@@ -176,8 +176,18 @@ function TenantFormModal({
         const res = await axios.post(getFullUrl("/api/super-admin/tenants"), formData, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
         });
-        const admin = res.data.admin;
-        toast.success(`Tenant created! Admin: ${admin?.email}`);
+        const admin = res.data?.admin;
+        if (admin) {
+          alert(
+            "✅ Tenant Created Successfully!\n\n" +
+            "🏫 School: " + form.name + "\n" +
+            "📧 Admin Email: " + admin.email + "\n" +
+            "🔑 Admin Password: " + admin.defaultPassword + "\n\n" +
+            "⚠️ Please note down these credentials!"
+          );
+        } else {
+          toast.success("Tenant created successfully!");
+        }
       }
       onSuccess();
       onClose();
@@ -739,7 +749,17 @@ function CloneDialog({
         { name: name.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(`Tenant cloned! Admin: ${res.data.admin?.email}`);
+      const admin = res.data?.admin;
+      if (admin) {
+        alert(
+          "✅ Tenant Cloned Successfully!\n\n" +
+          "📧 Admin Email: " + admin.email + "\n" +
+          "🔑 Admin Password: " + admin.defaultPassword + "\n\n" +
+          "⚠️ Please note down these credentials!"
+        );
+      } else {
+        toast.success("Tenant cloned successfully!");
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -1049,6 +1069,7 @@ export default function TenantsPage() {
         <div className="min-w-0">
           <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{row.email || "—"}</p>
           <p className="text-xs text-slate-400">{row.phone || ""}</p>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">🔑 Username: {row.email} | Pwd: 123456</p>
         </div>
       ),
     },

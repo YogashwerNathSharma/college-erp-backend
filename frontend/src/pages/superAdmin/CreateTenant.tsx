@@ -119,7 +119,7 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
         data.append("background", bgFile);
       }
 
-      await axios.post(getFullUrl("/api/super-admin/tenants"),
+      const res = await axios.post(getFullUrl("/api/super-admin/tenants"),
         data,
         {
           headers: {
@@ -129,7 +129,18 @@ export default function CreateTenant({ isOpen, onClose, onSuccess }: CreateTenan
         }
       );
 
-      toast.success("Tenant created successfully! 🎉");
+      const adminInfo = res.data?.admin;
+      if (adminInfo) {
+        alert(
+          `✅ Tenant Created Successfully!\n\n` +
+          `🏫 School: ${formData.name}\n` +
+          `📧 Admin Email: ${adminInfo.email}\n` +
+          `🔑 Admin Password=[REDACTED_PASSWORD]
+          `⚠️ Please note down these credentials!`
+        );
+      } else {
+        toast.success("Tenant created successfully! 🎉");
+      }
       onSuccess();
       onClose();
       resetForm();

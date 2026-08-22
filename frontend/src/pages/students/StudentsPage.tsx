@@ -540,7 +540,14 @@ export default function StudentsPage() {
 
     try {
 
-      const res = await axios.get(getFullUrl("/api/class"), authHeaders());
+      // Fetch active academic year first, then get classes for that year only
+      let yearParam = "";
+      try {
+        const yearRes = await axios.get(getFullUrl("/api/academic"), authHeaders());
+        const active = (yearRes.data?.data || []).find((y: any) => y.isActive);
+        if (active) yearParam = `?academicYearId=${active.id}`;
+      } catch {}
+      const res = await axios.get(getFullUrl(`/api/class${yearParam}`), authHeaders());
 
       const raw = res.data?.data ?? res.data;
 

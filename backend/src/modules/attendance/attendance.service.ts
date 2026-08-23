@@ -81,7 +81,7 @@ export const updateAttendanceService = async (
     },
   });
 
-  const existingMap = new Map(existingRecords.map(r => [r.studentId, r]));
+  const existingMap = new Map(existingRecords.map((r: any) => [r.studentId, r]));
 
   // ⚡ PERF: Batch updates and creates
   const updatePromises: Promise<any>[] = [];

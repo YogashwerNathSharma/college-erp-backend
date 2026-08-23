@@ -2,8 +2,8 @@ import jwt from "jsonwebtoken";
 
 // ⚡ Token expiry — configurable via environment variable
 // Default: 1 hour | Set JWT_EXPIRES_IN in .env to customize (e.g. "2h", "7d", "30m")
-const ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || "1h";
-const REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
+const ACCESS_TOKEN_EXPIRY = (process.env.JWT_EXPIRES_IN || "1h") as any;
+const REFRESH_TOKEN_EXPIRY = (process.env.JWT_REFRESH_EXPIRES_IN || "30d") as any;
 
 // Access token (default: 1 hour)
 export const generateToken = (payload: any) => {

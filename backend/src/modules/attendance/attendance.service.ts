@@ -88,7 +88,7 @@ export const updateAttendanceService = async (
   const createData: any[] = [];
 
   for (const s of students) {
-    const existing = existingMap.get(s.studentId);
+    const existing: any = existingMap.get(s.studentId);
     if (existing) {
       updatePromises.push(
         prisma.attendance.update({

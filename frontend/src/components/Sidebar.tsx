@@ -4,6 +4,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
 
 
+import { useThemeContext } from "../context/ThemeContext";
 import {
   LayoutDashboard,
   Users,
@@ -476,7 +477,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
       <aside
         className="sidebar-desktop hidden md:flex fixed left-0 top-0 h-screen z-40 flex-col print:hidden w-[260px]"
         style={{
-          background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+          background: "var(--sidebar-gradient, linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%))",
         }}
       >
         <div className="relative flex-shrink-0 border-b border-white/10">
@@ -495,12 +496,12 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               <img
                 src={sidebarLogo}
                 alt="Logo"
-                className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40 shadow-lg shadow-amber-900/20"
+                style={{ borderColor: "var(--sidebar-accent-border, rgba(251, 191, 36, 0.4))" }} className="w-11 h-11 object-contain rounded-lg flex-shrink-0 border-2 shadow-lg"
                 crossOrigin="anonymous"
                 onError={(e: any) => { e.target.style.display = "none"; }}
               />
             ) : (
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-400/50 shadow-lg shadow-amber-900/20 flex-shrink-0">
+              <div style={{ background: "var(--sidebar-active-bg, linear-gradient(to bottom right, #f59e0b, #b45309))", borderColor: "var(--sidebar-accent-border, rgba(251, 191, 36, 0.5))" }} className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg border-2 shadow-lg flex-shrink-0">
                 {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
               </div>
             )}
@@ -508,7 +509,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
               <h1 className="text-sm font-bold text-white leading-tight truncate">
                 {sidebarTitle}
               </h1>
-              <p className="text-[10px] text-amber-400/80 font-medium mt-0.5 truncate">
+              <p style={{ color: "var(--sidebar-accent-text, #fbbf24)" }} className="text-[10px] font-medium mt-0.5 truncate opacity-80">
                 {isSuperAdmin ? "System Control" : "Institution ERP"}
               </p>
             </div>
@@ -545,7 +546,7 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
         <aside
           className="sidebar-mobile md:hidden fixed left-0 top-0 h-full w-[75vw] max-w-[280px] z-[999] flex flex-col text-white border-r border-white/10 shadow-2xl print:hidden"
           style={{
-            background: "linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%)",
+            background: "var(--sidebar-gradient, linear-gradient(180deg, #1e2a4a 0%, #152038 50%, #0f1729 100%))",
           }}
         >
           {/* Header */}
@@ -555,12 +556,12 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
                 <img
                   src={sidebarLogo}
                   alt="Logo"
-                  className="w-9 h-9 object-contain rounded-lg flex-shrink-0 border-2 border-amber-400/40"
+                  style={{ borderColor: "var(--sidebar-accent-border, rgba(251, 191, 36, 0.4))" }} className="w-9 h-9 object-contain rounded-lg flex-shrink-0 border-2"
                   crossOrigin="anonymous"
                   onError={(e: any) => { e.target.style.display = "none"; }}
                 />
               ) : (
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-sm">
+                <div style={{ background: "var(--sidebar-active-bg, linear-gradient(to bottom right, #f59e0b, #b45309))" }} className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                   {isSuperAdmin ? "S" : safeTenant?.name?.charAt(0) || "T"}
                 </div>
               )}
@@ -612,10 +613,15 @@ function NavItem({ to, icon, label, badge, collapsed, onClick }: NavItemProps) {
     <NavLink
       to={to}
       onClick={onClick}
+      style={({ isActive }) =>
+        isActive
+          ? { background: "var(--sidebar-active-bg)", color: "var(--sidebar-active-text, #fff)" }
+          : {}
+      }
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group relative ${
           isActive
-            ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-600/15"
+            ? "shadow-lg"
             : "text-slate-400 hover:text-white hover:bg-white/5"
         }`
       }
@@ -623,7 +629,7 @@ function NavItem({ to, icon, label, badge, collapsed, onClick }: NavItemProps) {
       <div className="flex-shrink-0">{icon}</div>
       {!collapsed && <span className="truncate flex-1">{label}</span>}
       {!collapsed && badge !== undefined && badge > 0 && (
-        <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+        <span style={{ backgroundColor: "var(--badge-color, #f43f5e)" }} className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
           {badge}
         </span>
       )}
@@ -655,9 +661,10 @@ function ParentNavItem({ item, collapsed, isMobile, toggleSubMenu }: ParentNavIt
     <div className="space-y-1">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        style={isChildActive ? { color: "var(--sidebar-accent-text, #fbbf24)" } : {}}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
           isChildActive
-            ? "text-amber-400 bg-amber-500/5"
+            ? "bg-white/5"
             : "text-slate-400 hover:text-white hover:bg-white/5"
         }`}
       >
@@ -677,10 +684,13 @@ function ParentNavItem({ item, collapsed, isMobile, toggleSubMenu }: ParentNavIt
               key={idx}
               to={child.path}
               onClick={toggleSubMenu}
+              style={({ isActive }) =>
+                isActive ? { color: "var(--sidebar-accent-text, #fbbf24)" } : {}
+              }
               className={({ isActive }) =>
                 `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                   isActive
-                    ? "text-amber-400 bg-amber-500/10 font-semibold"
+                    ? "bg-white/10 font-semibold"
                     : "text-slate-400 hover:text-white hover:bg-white/5"
                 }`
               }

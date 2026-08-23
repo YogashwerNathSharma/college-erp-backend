@@ -10,6 +10,7 @@ import {
 import { useState, useEffect, lazy, Suspense, Component, ReactNode } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "./config/api";
+import { ThemeProvider } from "./context/ThemeContext";
 
 // ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
@@ -588,39 +589,6 @@ function Layout() {
     setSidebarOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("themeColor");
-    if (savedTheme) {
-      document.documentElement.style.setProperty("--primary-color", savedTheme);
-    }
-
-    // Initialize dark mode from localStorage
-    const savedDarkMode = localStorage.getItem("theme");
-    if (savedDarkMode === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (savedDarkMode === "light") {
-      document.documentElement.classList.remove("dark");
-    }
-
-    const fetchBranding = async () => {
-      try {
-        const user = JSON.parse(localStorage.getItem("user") || "{}");
-        const url = user?.role === "SUPER_ADMIN" ? "/api/super-admin/settings" : "/api/settings";
-
-        const res = await axios.get(url);
-        const data = res.data?.data;
-        const color = data?.platform?.primaryColor || data?.tenant?.primaryColor;
-        if (color) {
-          document.documentElement.style.setProperty("--primary-color", color);
-          localStorage.setItem("themeColor", color);
-        }
-      } catch (err) {
-        console.error("Branding fetch error", err);
-      }
-    };
-    fetchBranding();
-  }, []);
-
   return (
     <div className="flex min-h-screen min-h-[100dvh] relative bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
       {/* Sidebar Backdrop (mobile only) */}
@@ -693,9 +661,10 @@ export default function App() {
   // Clear chunk reload flag on successful app mount
   sessionStorage.removeItem("chunk_reload");
   return (
-    <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           {/* ===== PUBLIC ROUTES ===== */}
           <Route path="/" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -967,8 +936,9 @@ export default function App() {
 
           {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

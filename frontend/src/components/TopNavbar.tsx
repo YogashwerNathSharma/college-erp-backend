@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useThemeContext } from "../context/ThemeContext";
 import {
   LogOut,
   UserCircle,
@@ -167,9 +168,7 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    return document.documentElement.classList.contains("dark");
-  });
+  const { darkMode, toggleDarkMode } = useThemeContext();
   const searchRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -230,18 +229,6 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
     localStorage.removeItem("user");
     localStorage.removeItem("tenant");
     navigate("/");
-  };
-
-  const toggleDarkMode = () => {
-    const html = document.documentElement;
-    if (darkMode) {
-      html.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else {
-      html.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    }
-    setDarkMode(!darkMode);
   };
 
   const handleSearch = (e: React.FormEvent) => {

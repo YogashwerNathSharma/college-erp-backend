@@ -208,7 +208,7 @@ export default function Dashboard() {
   // ⚡ PERF: If we have cached data, skip loading state entirely (instant UI)
   const hasCachedData = !!localStorage.getItem("dashboard_cache");
   const [loading, setLoading] = useState(!hasCachedData);
-  const [refreshing, setRefreshing] = useState(hasCachedData); // subtle indicator while bg fetch
+  const [refreshing, setRefreshing] = useState(false); // only show when explicitly refreshing
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
     type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments";
@@ -240,6 +240,7 @@ export default function Dashboard() {
     (performance.getEntriesByType?.("navigation")?.[0] as any)?.type === "reload";
 
   const fetchAll = async (refresh: boolean = false) => {
+      if (refresh) setRefreshing(true);
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
@@ -490,21 +491,21 @@ export default function Dashboard() {
               {getGreetingEmoji()} {getGreeting()}, {user?.name?.split(" ")[0] || "Admin"}
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
-            <div className="flex sm:hidden items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b></span>
-              <span className="flex items-center gap-1"><Building2 size={10} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
+            <div className="flex sm:hidden items-center gap-3 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b></span>
+              <span className="flex items-center gap-1.5"><Building2 size={12} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
             </div>
           </div>
-          <div className="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <div className="hidden sm:flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b>
             </span>
-            <span className="flex items-center gap-1">
-              <Building2 size={11} /> Branch: <b className="text-slate-700 dark:text-slate-300">Main Campus</b>
+            <span className="flex items-center gap-1.5">
+              <Building2 size={13} /> Branch: <b className="text-slate-700 dark:text-slate-300">Main Campus</b>
             </span>
-            <span className="flex items-center gap-1">
-              <Clock size={11} /> Last Login: <b className="text-slate-700 dark:text-slate-300">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</b>
+            <span className="flex items-center gap-1.5">
+              <Clock size={13} /> Last Login: <b className="text-slate-700 dark:text-slate-300">{new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</b>
             </span>
             <span className="flex items-center gap-1">
               ☀️ <b className="text-slate-700 dark:text-slate-300">32°C</b>

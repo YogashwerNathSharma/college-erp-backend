@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
-import { cached, invalidateCache } from "../../utils/cache";
+import { cacheAside, invalidateCache } from "../../utils/cache";
+
+// ⚡ Cache TTL: 30 minutes (1800 seconds)
+const DASHBOARD_CACHE_TTL = 1800;
 
 export const getDashboard = async (
   req: Request,
@@ -15,30 +18,39 @@ export const getDashboard = async (
       role,
     } = req.user as any;
 
+    // ⚡ PERF: Support ?refresh=true to force cache invalidation
+    // Triggered by: refresh button click OR browser page refresh
+    const forceRefresh = req.query.refresh === "true";
+
     //////////////////////////////////////////////////////
     // 🧠 SUPER ADMIN DASHBOARD
     //////////////////////////////////////////////////////
 
     if (role === "SUPER_ADMIN") {
-      const [totalSchools, totalStudents, totalTeachers, activeTenants, inactiveTenants] = await Promise.all([
-        prisma.tenant.count(),
-        prisma.student.count(),
-        prisma.teacher.count(),
-        prisma.tenant.count({ where: { isActive: true } }),
-        prisma.tenant.count({ where: { isActive: false } }),
-      ]);
+      const cacheKey = `dashboard:superadmin`;
 
-      const [activeTenantList, inactiveTenantList, recentTenants] = await Promise.all([
-        prisma.tenant.findMany({ where: { isActive: true }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
-        prisma.tenant.findMany({ where: { isActive: false }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
-        prisma.tenant.findMany({ take: 5, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
-      ]);
+      if (forceRefresh) {
+        await invalidateCache(cacheKey).catch(() => {});
+      }
 
-      const growth = totalSchools > 0 ? ((activeTenants / totalSchools) * 100).toFixed(1) : "0";
+      const data = await cacheAside(cacheKey, async () => {
+        const [totalSchools, totalStudents, totalTeachers, activeTenants, inactiveTenants] = await Promise.all([
+          prisma.tenant.count(),
+          prisma.student.count(),
+          prisma.teacher.count(),
+          prisma.tenant.count({ where: { isActive: true } }),
+          prisma.tenant.count({ where: { isActive: false } }),
+        ]);
 
-      return res.json({
-        success: true,
-        data: {
+        const [activeTenantList, inactiveTenantList, recentTenants] = await Promise.all([
+          prisma.tenant.findMany({ where: { isActive: true }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
+          prisma.tenant.findMany({ where: { isActive: false }, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
+          prisma.tenant.findMany({ take: 5, orderBy: { updatedAt: "desc" }, select: { id: true, name: true, logoUrl: true, isActive: true, createdAt: true, updatedAt: true } }),
+        ]);
+
+        const growth = totalSchools > 0 ? ((activeTenants / totalSchools) * 100).toFixed(1) : "0";
+
+        return {
           totalSchools, totalStudents, totalTeachers,
           activeTenants, inactiveTenants,
           activeTenantList, inactiveTenantList, recentTenants,
@@ -46,8 +58,13 @@ export const getDashboard = async (
             growth: `${growth}%`,
             message: Number(growth) > 70 ? "Most tenants are active 🚀" : Number(growth) > 40 ? "Platform is growing steadily 📈" : "Need more active tenants ⚠️",
           },
-        },
-      });
+        };
+      }, DASHBOARD_CACHE_TTL);
+
+      const elapsed = Date.now() - _startTime;
+      console.log(`✅ Super Admin Dashboard loaded in ${elapsed}ms`);
+
+      return res.json({ success: true, data });
     }
 
     //////////////////////////////////////////////////////
@@ -59,116 +76,160 @@ export const getDashboard = async (
     }
 
     //////////////////////////////////////////////////////
-    // 🚀 TENANT DASHBOARD — LIGHTWEIGHT (max 5 queries per batch)
+    // 🚀 TENANT DASHBOARD — 30min CACHE + REFRESH SUPPORT
     //////////////////////////////////////////////////////
 
-    // ─── BATCH 1: Core counts (5 queries) ───
-    const [totalStudents, totalClasses, totalTeachers, fees, tenant] = await Promise.all([
-      prisma.student.count({ where: { tenantId, isDeleted: false } }),
-      prisma.class.count({ where: { tenantId, isDeleted: false } }),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-      prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
-      prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
-    ]);
+    const cacheKey = `dashboard:main:${tenantId}`;
 
-    const totalPaid = Math.round(fees._sum.paidAmount ?? 0);
-    const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
+    // ⚡ If refresh=true → delete old cache, new one will be created
+    if (forceRefresh) {
+      await invalidateCache(cacheKey).catch(() => {});
+      console.log(`🔄 Dashboard cache cleared for tenant: ${tenantId}`);
+    }
 
-    // ─── BATCH 2: Gender + attendance (5 queries) ───
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dashboardData = await cacheAside(cacheKey, async () => {
+      // ─── BATCH 1: Core counts (5 queries) ───
+      const [totalStudents, totalClasses, totalTeachers, fees, tenant] = await Promise.all([
+        prisma.student.count({ where: { tenantId, isDeleted: false } }),
+        prisma.class.count({ where: { tenantId, isDeleted: false } }),
+        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+        prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
+        prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
+      ]);
 
-    const [maleCount, femaleCount, totalAttendanceToday, presentToday, classRecords] = await Promise.all([
-      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
-      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
-      prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
-      prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
-      prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
-    ]);
+      const totalPaid = Math.round(fees._sum.paidAmount ?? 0);
+      const totalPending = Math.round(fees._sum.balanceAmount ?? 0);
 
-    const attendanceToday = totalAttendanceToday > 0 ? Math.round((presentToday / totalAttendanceToday) * 100) : null;
-    const otherGenderCount = totalStudents - maleCount - femaleCount;
-    const genderData = [
-      { name: "Boys", value: maleCount },
-      { name: "Girls", value: femaleCount },
-      { name: "Other", value: otherGenderCount > 0 ? otherGenderCount : 0 },
-    ];
+      // ─── BATCH 2: Gender + attendance (5 queries) ───
+      // ⚡ FIX: Calculate "today" in IST regardless of server timezone (UTC on Render, IST on local)
+      const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+      const nowUTC = Date.now();
+      const istMidnightUTC = new Date(nowUTC + IST_OFFSET_MS);
+      istMidnightUTC.setUTCHours(0, 0, 0, 0); // midnight of IST "today" in UTC terms
+      const today = new Date(istMidnightUTC.getTime() - IST_OFFSET_MS); // convert back to actual UTC
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-    // ─── BATCH 3: Enrollments + recent data (5 queries) ───
-    const [classStrength, recentPaymentsRaw, defaultersRaw, upcomingEvents, allStudents] = await Promise.all([
-      prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
-      prisma.payment.findMany({ where: { tenantId, isDeleted: false }, orderBy: { paymentDate: "desc" }, take: 5, select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } }),
-      prisma.studentFee.findMany({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 }, enrollment: { status: "active" } }, orderBy: { balanceAmount: "desc" }, take: 5, select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } }),
-      prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
-      prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
-    ]);
+      const [maleCount, femaleCount, totalAttendanceToday, presentToday, classRecords] = await Promise.all([
+        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
+        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
+        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
+        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
+        prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
+      ]);
 
-    // ─── PROCESS RESULTS ───
-    const classWiseStrength = classStrength.map((cs: any) => {
-      const cls = classRecords.find((c: any) => c.id === cs.classId);
-      return { name: cls?.name || "Unknown", students: cs._count.id };
-    }).sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const attendanceToday = totalAttendanceToday > 0 ? Math.round((presentToday / totalAttendanceToday) * 100) : null;
+      const otherGenderCount = totalStudents - maleCount - femaleCount;
 
-    const recentPayments = recentPaymentsRaw.map((p: any) => ({
-      amount: p.amount ?? 0,
-      studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
-      className: p.studentFee?.enrollment?.class?.name || "—",
-      sectionName: p.studentFee?.enrollment?.section?.name || "",
-      date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—",
-      method: p.method,
-      receiptNo: p.receiptNo,
-    }));
+      // ─── Attendance Trend (last 7 days) ───
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const defaulters = defaultersRaw.map((d: any) => ({
-      pendingAmount: d.balanceAmount ?? 0,
-      studentName: `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
-      className: d.enrollment?.class?.name || "—",
-      sectionName: d.enrollment?.section?.name || "",
-    }));
+      const weekRecords = await prisma.attendance.findMany({
+        where: { tenantId, isDeleted: false, date: { gte: sevenDaysAgo, lt: tomorrow } },
+        select: { date: true, status: true },
+      });
 
-    // Birthdays
-    const todayDate = new Date();
-    const birthdays = allStudents.filter((s: any) => {
-      if (!s.dob) return false;
-      const d = new Date(s.dob);
-      return d.getDate() === todayDate.getDate() && d.getMonth() === todayDate.getMonth();
-    }).map((s: any) => {
-      const enrollment = s.enrollments?.[0];
-      const className = enrollment?.class?.name || "";
-      const section = enrollment?.section?.name || "";
-      const name = s.firstName?.toLowerCase() === s.lastName?.toLowerCase() ? s.firstName : `${s.firstName} ${s.lastName}`.trim();
-      return { name, className, section };
-    }).slice(0, 10);
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const trendMap = new Map<string, { present: number; total: number }>();
+      for (const r of weekRecords) {
+        const key = r.date.toISOString().split("T")[0];
+        if (!trendMap.has(key)) trendMap.set(key, { present: 0, total: 0 });
+        const entry = trendMap.get(key)!;
+        entry.total++;
+        if (r.status === "PRESENT" || r.status === "LATE") entry.present++;
+      }
 
-    const insights = {
-      growth: "0%",
-      message: "Welcome to your dashboard",
-      totalTeachers,
-      attendanceToday,
-    };
+      const attendanceTrend = Array.from(trendMap.entries())
+        .map(([date, d]) => ({
+          day: dayNames[new Date(date).getDay()],
+          percentage: d.total > 0 ? Math.round((d.present / d.total) * 100) : 0,
+        }))
+        .sort((a, b) => dayNames.indexOf(a.day) - dayNames.indexOf(b.day));
 
-    const elapsed = Date.now() - _startTime;
-    console.log(`✅ Dashboard loaded in ${elapsed}ms (${totalStudents} students)`);
+      const genderData = [
+        { name: "Boys", value: maleCount },
+        { name: "Girls", value: femaleCount },
+        { name: "Other", value: otherGenderCount > 0 ? otherGenderCount : 0 },
+      ];
 
-    return res.json({
-      success: true,
-      data: {
+      // ─── BATCH 3: Enrollments + recent data (5 queries) ───
+      const [classStrength, recentPaymentsRaw, defaultersRaw, upcomingEvents, allStudents] = await Promise.all([
+        prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
+        prisma.payment.findMany({ where: { tenantId, isDeleted: false }, orderBy: { paymentDate: "desc" }, take: 5, select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } }),
+        prisma.studentFee.findMany({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 }, enrollment: { status: "active" } }, orderBy: { balanceAmount: "desc" }, take: 5, select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+        prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
+        prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+      ]);
+
+      // ─── PROCESS RESULTS ───
+      const classWiseStrength = classStrength.map((cs: any) => {
+        const cls = classRecords.find((c: any) => c.id === cs.classId);
+        return { name: cls?.name || "Unknown", students: cs._count.id };
+      }).sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+      const recentPayments = recentPaymentsRaw.map((p: any) => ({
+        amount: p.amount ?? 0,
+        studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+        className: p.studentFee?.enrollment?.class?.name || "—",
+        sectionName: p.studentFee?.enrollment?.section?.name || "",
+        date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—",
+        method: p.method,
+        receiptNo: p.receiptNo,
+      }));
+
+      const defaulters = defaultersRaw.map((d: any) => ({
+        pendingAmount: d.balanceAmount ?? 0,
+        studentName: `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+        className: d.enrollment?.class?.name || "—",
+        sectionName: d.enrollment?.section?.name || "",
+      }));
+
+      // Birthdays
+      const todayDate = new Date();
+      const birthdays = allStudents.filter((s: any) => {
+        if (!s.dob) return false;
+        const d = new Date(s.dob);
+        return d.getDate() === todayDate.getDate() && d.getMonth() === todayDate.getMonth();
+      }).map((s: any) => {
+        const enrollment = s.enrollments?.[0];
+        const className = enrollment?.class?.name || "";
+        const section = enrollment?.section?.name || "";
+        const name = s.firstName?.toLowerCase() === s.lastName?.toLowerCase() ? s.firstName : `${s.firstName} ${s.lastName}`.trim();
+        return { name, className, section };
+      }).slice(0, 10);
+
+      const insights = {
+        growth: "0%",
+        message: "Welcome to your dashboard",
+        totalTeachers,
+        // ⚡ If no attendance today (e.g., Sunday), show latest trend percentage
+        attendanceToday: attendanceToday ?? (attendanceTrend.length > 0
+          ? attendanceTrend[attendanceTrend.length - 1].percentage : null),
+      };
+
+      return {
         totalStudents, totalClasses, totalPaid, totalPending,
         totalTeachers, attendanceToday,
-        monthlyData: [], // Lazy load separately if needed
+        monthlyData: [],
         recentPayments, defaulters, insights,
         genderData, classWiseStrength,
-        attendanceTrend: [], // Lazy load
-        todayTimetable: [], // Lazy load
+        attendanceTrend,
+        todayTimetable: [],
         events: upcomingEvents,
         notifications: [],
         birthdays,
         announcements: [],
         upcomingExams: [],
         tenant,
-      },
+      };
+    }, DASHBOARD_CACHE_TTL);
+
+    const elapsed = Date.now() - _startTime;
+    console.log(`✅ Dashboard loaded in ${elapsed}ms`);
+
+    return res.json({
+      success: true,
+      data: dashboardData,
     });
 
   } catch (err: any) {

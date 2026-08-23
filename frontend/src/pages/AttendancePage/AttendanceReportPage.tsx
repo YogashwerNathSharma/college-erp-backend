@@ -147,61 +147,45 @@ const AttendanceReportPage = () => {
   // ─── Fetch Summary (Today's dashboard) ─────────────────
   const fetchSummary = async () => {
     try {
-      const month = new Date().getMonth() + 1;
-      const year = new Date().getFullYear();
-
-      // Fetch school report AND total students count in parallel
-      const [schoolRes, studentsRes] = await Promise.allSettled([
-        axios.get(`${API}/attendance/report/school`, { params: { month, year } }),
-        axios.get(`${API}/students`, { params: { limit: 1 } }), // Just to get total count
+      // ⚡ FIX: Use attendance dashboard API which has correct today's data
+      // Fetch today's live attendance + academic year
+      const [academicRes, studentsRes] = await Promise.allSettled([
+        axios.get(`${API}/academic`),
+        axios.get(`${API}/students`, { params: { limit: 1 } }),
       ]);
 
-      const data = schoolRes.status === "fulfilled" ? (schoolRes.value.data?.data || schoolRes.value.data) : null;
-
-      // Try to get total students from students API (more reliable)
+      // Get total students count
       let totalFromStudents = 0;
       if (studentsRes.status === "fulfilled") {
         const sData = studentsRes.value.data;
         totalFromStudents = sData?.total || sData?.data?.total || sData?.data?.students?.length || sData?.data?.length || 0;
       }
 
-      if (data) {
-        const total = data.totalStudents || totalFromStudents || 0;
-        // avgPresent is a percentage string like "94.3", not a count
-        const avgPresentPercent = parseFloat(data.avgPresent) || 0;
-        const avgAbsentPercent = parseFloat(data.avgAbsent) || 0;
-        
-        // Calculate approximate counts from classes array if available
-        let presentCount = 0;
-        let absentCount = 0;
-        if (data.classes && data.classes.length > 0) {
-          presentCount = data.classes.reduce((sum: number, c: any) => sum + (c.avgPresent || 0), 0);
-          absentCount = data.classes.reduce((sum: number, c: any) => sum + (c.avgAbsent || 0), 0);
-        }
-        
-        // If no class breakdown, estimate from total and percentage
-        if (presentCount === 0 && total > 0) {
-          presentCount = Math.round((avgPresentPercent / 100) * total);
-          absentCount = Math.round((avgAbsentPercent / 100) * total);
-        }
-        
-        setSummaryData({
-          totalStudents: total,
-          presentToday: presentCount,
-          absentToday: absentCount,
-          lateEntry: 0, // Late not tracked in current backend
-          attendancePercent: avgPresentPercent,
-          leaveStudents: 0, // Leave not tracked in attendance report
+      // Get current academic year
+      let academicYearId = "";
+      if (academicRes.status === "fulfilled") {
+        const years = academicRes.value.data?.data || [];
+        const current = years.find((y: any) => y.isCurrent);
+        if (current) academicYearId = current.id;
+      }
+
+      // ⚡ Fetch today's live attendance from dashboard API
+      if (academicYearId) {
+        const dashRes = await axios.get(`${API}/attendance/dashboard`, {
+          params: { academicYearId },
         });
-      } else if (totalFromStudents > 0) {
-        // School report failed but we have student count
+        const d = dashRes.data;
+        const total = d.totalStudents || totalFromStudents || 0;
+        const present = d.presentToday || 0;
+        const absent = d.absentToday || 0;
+        const late = d.lateToday || 0;
+        const leave = d.onLeave || 0;
+        const pct = parseFloat(d.attendancePercentage) || (total > 0 ? Math.round((present / total) * 100) : 0);
+
+        setSummaryData({ totalStudents: total, presentToday: present, absentToday: absent, lateEntry: late, attendancePercent: pct, leaveStudents: leave });
+      } else {
         setSummaryData({
-          totalStudents: totalFromStudents,
-          presentToday: 0,
-          absentToday: 0,
-          lateEntry: 0,
-          attendancePercent: 0,
-          leaveStudents: 0,
+          totalStudents: totalFromStudents, presentToday: 0, absentToday: 0, lateEntry: 0, attendancePercent: 0, leaveStudents: 0,
         });
       }
     } catch (err) {

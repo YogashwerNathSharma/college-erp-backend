@@ -186,7 +186,12 @@ export const dashboard = async (req: any, res: any) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const dashData = await cached(`teacher:dashboard:${tenantId}`, 30000, async () => {
+    // ⚡ PERF: 30-min cache + refresh support
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dashboard:${tenantId}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+
+    const dashData = await cached(cacheKey, 1800000, async () => {
       const now = new Date();
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 

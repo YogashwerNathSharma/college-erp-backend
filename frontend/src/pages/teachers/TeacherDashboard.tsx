@@ -89,16 +89,21 @@ export default function TeacherDashboard() {
   const [salaryData, setSalaryData] = useState<SalaryInfo[]>([]);
 
   useEffect(() => {
-    fetchDashboardData();
+    // ⚡ Detect page refresh to bust cache
+    const isPageRefresh = performance?.navigation?.type === 1 ||
+      (performance.getEntriesByType?.("navigation")?.[0] as any)?.type === "reload";
+    fetchDashboardData(isPageRefresh);
   }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (refresh: boolean = false) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const res = await axios.get(getFullUrl("/api/teacher/dashboard"), { headers });
+      // ⚡ PERF: Pass refresh=true to bust 30-min backend cache
+      const url = refresh ? "/api/teacher/dashboard?refresh=true" : "/api/teacher/dashboard";
+      const res = await axios.get(getFullUrl(url), { headers });
       const data = res.data?.data || res.data;
 
       setStats(data.stats || {
@@ -223,7 +228,7 @@ export default function TeacherDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchDashboardData}
+            onClick={() => fetchDashboardData(true)}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <RefreshCw className="w-5 h-5" />

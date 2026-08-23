@@ -1,6 +1,7 @@
 
 
 import { Request, Response } from "express";
+import { cacheAside, invalidateCache } from "../../utils/cache";
 import {
   markAttendanceService,
   updateAttendanceService,
@@ -11,6 +12,9 @@ import {
   getDashboardStatsService,
 } from "./attendance.service";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
+
+// ⚡ Cache TTL: 30 minutes
+const ATTENDANCE_DASH_CACHE_TTL = 1800;
 
 /////////////////////////
 // DASHBOARD STATS
@@ -28,9 +32,18 @@ export const getDashboardStats = async (
       return;
     }
 
-    const stats = await getDashboardStatsService(
-      tenantId,
-      academicYearId as string
+    // ⚡ PERF: 30-min cache + refresh support
+    const forceRefresh = (req.query as any).refresh === "true";
+    const cacheKey = `attendance:dash:${tenantId}:${academicYearId}`;
+
+    if (forceRefresh) {
+      await invalidateCache(cacheKey).catch(() => {});
+      console.log(`🔄 Attendance Dashboard cache cleared`);
+    }
+
+    const stats = await cacheAside(cacheKey, () =>
+      getDashboardStatsService(tenantId, academicYearId as string),
+      ATTENDANCE_DASH_CACHE_TTL
     );
 
     res.json(stats);

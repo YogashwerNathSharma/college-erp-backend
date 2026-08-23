@@ -27,8 +27,8 @@ const router = Router();
 router.use(authMiddleware, resolveTenant);
 
 // ── Dashboard Cache (60 seconds) ────────────────────────────────────────────
-const dashboardCache = new Map<string, { data: any; expiry: number }>();
-const CACHE_TTL = 60_000; // 60 seconds
+const dashboardCache = new Map<string, { data: any; expiry: number; createdAt: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // ⚡ 30 minutes (user preference)
 
 // ── Full Dashboard (single call) — with 20s timeout ──────────────────────────
 router.get("/full", async (req: any, res: Response) => {
@@ -36,8 +36,17 @@ router.get("/full", async (req: any, res: Response) => {
     const _start = Date.now();
     const yearId = req.query.academicYearId as string || "";
 
-    // Check cache first
+    // ⚡ PERF: Support ?refresh=true to force new data
+    const forceRefresh = req.query.refresh === "true";
     const cacheKey = `${req.tenantId}|${yearId}`;
+
+    // If refresh=true → delete old cache
+    if (forceRefresh) {
+      dashboardCache.delete(cacheKey);
+      console.log(`🔄 Student Dashboard cache cleared for: ${cacheKey}`);
+    }
+
+    // Check cache first
     const cached = dashboardCache.get(cacheKey);
     if (cached && cached.expiry > Date.now()) {
       console.log(`⚡ Dashboard CACHE HIT (${Date.now() - _start}ms)`);
@@ -58,7 +67,7 @@ router.get("/full", async (req: any, res: Response) => {
     }
 
     // Store in cache
-    dashboardCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+    dashboardCache.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL, createdAt: Date.now() });
 
     console.log(`⚡ Student Dashboard loaded in ${Date.now() - _start}ms`);
     res.json({ success: true, data: result });

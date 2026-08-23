@@ -6,10 +6,8 @@ import prisma from "../../utils/prisma";
 // GET DASHBOARD STATS
 //////////////////////////////////////////////////////
 export const getDashboardStats = async (tenantId: string) => {
-  const [total, active, male, female] = await Promise.all([
-    prisma.teacher.count({
-      where: { tenantId, isDeleted: false },
-    }),
+  // ⚡ PERF: Removed duplicate query (total === active was identical)
+  const [total, male, female] = await Promise.all([
     prisma.teacher.count({
       where: { tenantId, isDeleted: false },
     }),
@@ -25,7 +23,7 @@ export const getDashboardStats = async (tenantId: string) => {
     totalTeachers: total,
     maleTeachers: male,
     femaleTeachers: female,
-    activeTeachers: active,
+    activeTeachers: total,
   };
 };
 

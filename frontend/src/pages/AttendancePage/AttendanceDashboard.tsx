@@ -103,6 +103,10 @@ export default function AttendanceDashboard() {
   useEffect(() => { fetchAcademicYears(); }, []);
   useEffect(() => { if (selectedAcademicYear) fetchDashboard(); }, [selectedAcademicYear]);
 
+  // ⚡ Detect page refresh to bust cache
+  const isPageRefresh = performance?.navigation?.type === 1 ||
+    (performance.getEntriesByType?.("navigation")?.[0] as any)?.type === "reload";
+
   const fetchAcademicYears = async () => {
     try {
       const res = await axios.get(`${API}/academic`, { headers: getHeaders() });
@@ -113,11 +117,13 @@ export default function AttendanceDashboard() {
     } catch (err) { console.error("Error fetching academic years:", err); }
   };
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (refresh: boolean = false) => {
     setLoading(true);
     try {
+      // ⚡ PERF: Pass refresh=true to bust 30-min backend cache
+      const refreshParam = (refresh || isPageRefresh) ? "&refresh=true" : "";
       const res = await axios.get(`${API}/attendance/dashboard`, {
-        params: { academicYearId: selectedAcademicYear },
+        params: { academicYearId: selectedAcademicYear, ...(refresh || isPageRefresh ? { refresh: "true" } : {}) },
         headers: getHeaders(),
       });
       const data = res.data;
@@ -193,7 +199,7 @@ export default function AttendanceDashboard() {
               ))}
             </select>
             <button
-              onClick={fetchDashboard}
+              onClick={() => fetchDashboard(true)}
               className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               title="Refresh"
             >

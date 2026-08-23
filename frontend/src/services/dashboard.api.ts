@@ -20,10 +20,12 @@ const getAuthHeader = () => {
 
 //////////////////////////////////////////////////////
 // 📊 GET DASHBOARD DATA
+// ⚡ Supports refresh=true to bust cache on page reload or refresh btn
 //////////////////////////////////////////////////////
-export const getDashboardApi = async () => {
+export const getDashboardApi = async (refresh: boolean = false) => {
   try {
-    const res = await axios.get(`${API}/dashboard`, getAuthHeader());
+    const url = refresh ? `${API}/dashboard?refresh=true` : `${API}/dashboard`;
+    const res = await axios.get(url, getAuthHeader());
 
     return res.data.data;
   } catch (error: any) {

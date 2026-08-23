@@ -4,6 +4,7 @@ import app from "./app";
 import prisma from "./utils/prisma";
 import logger from "./config/logger";
 import { initializeBackupSchedules } from "./modules/backup/backup.service";
+import { startKeepAlive, stopKeepAlive } from "./utils/keep-alive";
 
 const PORT = process.env.PORT || 5000;
 
@@ -24,12 +25,16 @@ app.listen(PORT, async () => {
   } catch (error) {
     logger.warn("[Backup] Scheduler init skipped", { error: (error as any)?.message });
   }
+
+  // ⚡ Keep-Alive: Self-ping every 12 minutes to prevent Render free tier sleep
+  startKeepAlive();
 });
 
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
   logger.info(`${signal} received. Shutting down gracefully...`);
   
+  stopKeepAlive();
   try {
     await prisma.$disconnect();
     logger.info("Database disconnected");

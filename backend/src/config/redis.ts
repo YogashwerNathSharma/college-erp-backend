@@ -3,37 +3,85 @@ import { createClient, RedisClientType } from "redis";
 /**
  * Redis client configuration (optional caching layer)
  * Falls back gracefully if Redis is not available
+ * ⚡ PERF FIX: No retry spam — if Redis is unavailable, uses in-memory fallback
  */
 
 let redisClient: RedisClientType | null = null;
 let isConnected = false;
+let connectionFailed = false; // ⚡ Prevent repeated connection attempts
 
 export const getRedisClient = async (): Promise<RedisClientType | null> => {
+  // ⚡ If already connected, return immediately
   if (redisClient && isConnected) return redisClient;
+
+  // ⚡ If connection previously failed, don't retry (prevents spam)
+  // Will retry after 5 minutes
+  if (connectionFailed) return null;
 
   const redisUrl = process.env.REDIS_URL;
   const redisHost = process.env.REDIS_HOST || "localhost";
   const redisPort = parseInt(process.env.REDIS_PORT || "6379");
-  const redisPassword = process.env.REDIS_PASSWORD;
+  const redisPassword = process.env.REDIS_PASSWORD || "";
+
+  // ⚡ If no Redis URL/config explicitly set in production, skip entirely
+  if (!redisUrl && !process.env.REDIS_HOST) {
+    // Local dev without Redis — silently skip
+    if (!connectionFailed) {
+      console.log("ℹ️  [Redis] No REDIS_URL set — using in-memory cache fallback (this is fine for local dev)");
+      connectionFailed = true;
+
+      // Retry after 5 minutes in case Redis comes up later
+      setTimeout(() => { connectionFailed = false; }, 5 * 60 * 1000);
+    }
+    return null;
+  }
 
   try {
     if (redisUrl) {
-      redisClient = createClient({ url: redisUrl }) as RedisClientType;
+      redisClient = createClient({
+        url: redisUrl,
+        socket: {
+          reconnectStrategy: (retries) => {
+            // ⚡ Stop retrying after 3 attempts (prevents infinite spam)
+            if (retries > 3) {
+              connectionFailed = true;
+              setTimeout(() => { connectionFailed = false; }, 5 * 60 * 1000);
+              return new Error("Redis max retries reached");
+            }
+            return Math.min(retries * 500, 3000); // 500ms, 1s, 1.5s then stop
+          },
+        },
+      }) as RedisClientType;
     } else {
       redisClient = createClient({
-        socket: { host: redisHost, port: redisPort },
+        socket: {
+          host: redisHost,
+          port: redisPort,
+          reconnectStrategy: (retries) => {
+            if (retries > 3) {
+              connectionFailed = true;
+              setTimeout(() => { connectionFailed = false; }, 5 * 60 * 1000);
+              return new Error("Redis max retries reached");
+            }
+            return Math.min(retries * 500, 3000);
+          },
+        },
         password: redisPassword || undefined,
       }) as RedisClientType;
     }
 
     redisClient.on("error", (err) => {
-      console.warn("[Redis] Connection error:", err.message);
+      // ⚡ Only log ONCE, not every retry
+      if (isConnected) {
+        console.warn("[Redis] Connection lost:", err.message);
+      }
       isConnected = false;
     });
 
     redisClient.on("connect", () => {
       console.log("✅ Redis connected");
       isConnected = true;
+      connectionFailed = false;
     });
 
     redisClient.on("disconnect", () => {
@@ -43,14 +91,25 @@ export const getRedisClient = async (): Promise<RedisClientType | null> => {
     await redisClient.connect();
     return redisClient;
   } catch (error: any) {
-    console.warn("[Redis] Failed to connect:", error.message);
-    console.warn("[Redis] Falling back to no-cache mode");
+    console.warn("[Redis] Not available:", error.message || "Connection refused");
+    console.log("ℹ️  [Redis] Running without cache — dashboard uses in-memory fallback");
+    connectionFailed = true;
+
+    // Retry connection after 5 minutes
+    setTimeout(() => { connectionFailed = false; }, 5 * 60 * 1000);
+
+    // Cleanup failed client
+    if (redisClient) {
+      try { await redisClient.quit(); } catch {}
+      redisClient = null;
+    }
+
     return null;
   }
 };
 
 /**
- * Cache helper functions
+ * Cache helper functions — all gracefully return null/void if Redis unavailable
  */
 export const cacheGet = async (key: string): Promise<string | null> => {
   const client = await getRedisClient();

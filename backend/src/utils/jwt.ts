@@ -1,17 +1,22 @@
 import jwt from "jsonwebtoken";
 
-// Short-lived access token (30 minutes)
+// ⚡ Token expiry — configurable via environment variable
+// Default: 1 hour | Set JWT_EXPIRES_IN in .env to customize (e.g. "2h", "7d", "30m")
+const ACCESS_TOKEN_EXPIRY = process.env.JWT_EXPIRES_IN || "1h";
+const REFRESH_TOKEN_EXPIRY = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
+
+// Access token (default: 1 hour)
 export const generateToken = (payload: any) => {
   return jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: "30m",
+    expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 };
 
-// Long-lived refresh token (30 days) — falls back to JWT_SECRET if JWT_REFRESH_SECRET not set
+// Long-lived refresh token (default: 30 days)
 export const generateRefreshToken = (payload: any) => {
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET!;
   return jwt.sign(payload, secret, {
-    expiresIn: "30d",
+    expiresIn: REFRESH_TOKEN_EXPIRY,
   });
 };
 

@@ -1,6 +1,7 @@
 
 
 import prisma from "../../config/prisma";
+import { cacheAside, invalidateCache, CacheKeys } from "../../utils/cache";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
 
 // ========================================
@@ -14,21 +15,22 @@ export const markAttendanceService = async (
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
-  const attendanceData: any[] = [];
+  // ⚡ PERF: Single bulk query instead of N+1
+  const existingRecords = await prisma.attendance.findMany({
+    where: {
+      date: attendanceDate,
+      tenantId,
+      isDeleted: false,
+      studentId: { in: students.map(s => s.studentId) },
+    },
+    select: { studentId: true },
+  });
 
-  for (const s of students) {
-    const existing = await prisma.attendance.findFirst({
-      where: {
-        studentId: s.studentId,
-        date: attendanceDate,
-        tenantId,
-        isDeleted: false,
-      },
-    });
+  const existingIds = new Set(existingRecords.map(r => r.studentId));
 
-    if (existing) continue;
-
-    attendanceData.push({
+  const attendanceData = students
+    .filter(s => !existingIds.has(s.studentId))
+    .map(s => ({
       studentId: s.studentId,
       classId,
       sectionId,
@@ -36,14 +38,18 @@ export const markAttendanceService = async (
       tenantId,
       date: attendanceDate,
       status: s.status,
-    });
-  }
+    }));
 
   if (attendanceData.length > 0) {
     await prisma.attendance.createMany({
       data: attendanceData,
     });
   }
+
+  // ⚡ Invalidate attendance dashboard cache
+  await invalidateCache(CacheKeys.attendanceReport(tenantId, attendanceDate.toISOString().split("T")[0])).catch(() => {});
+  // Also invalidate the dashboard stats cache for this academic year
+  await invalidateCache(`attendance:dash:${tenantId}:${data.academicYearId}`).catch(() => {});
 
   return {
     message: "Attendance marked successfully",
@@ -63,41 +69,52 @@ export const updateAttendanceService = async (
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
-  let updatedCount = 0;
+  // ⚡ PERF: Single bulk query to find all existing records
+  const existingRecords = await prisma.attendance.findMany({
+    where: {
+      classId,
+      sectionId,
+      date: attendanceDate,
+      tenantId,
+      isDeleted: false,
+      studentId: { in: students.map(s => s.studentId) },
+    },
+  });
+
+  const existingMap = new Map(existingRecords.map(r => [r.studentId, r]));
+
+  // ⚡ PERF: Batch updates and creates
+  const updatePromises: Promise<any>[] = [];
+  const createData: any[] = [];
 
   for (const s of students) {
-    const existing = await prisma.attendance.findFirst({
-      where: {
-        studentId: s.studentId,
-        classId,
-        sectionId,
-        date: attendanceDate,
-        tenantId,
-        isDeleted: false,
-      },
-    });
-
+    const existing = existingMap.get(s.studentId);
     if (existing) {
-      await prisma.attendance.update({
-        where: { id: existing.id },
-        data: { status: s.status, updatedAt: new Date() },
-      });
-      updatedCount++;
+      updatePromises.push(
+        prisma.attendance.update({
+          where: { id: existing.id },
+          data: { status: s.status, updatedAt: new Date() },
+        })
+      );
     } else {
-      await prisma.attendance.create({
-        data: {
-          studentId: s.studentId,
-          classId,
-          sectionId,
-          academicYearId,
-          tenantId,
-          date: attendanceDate,
-          status: s.status,
-        },
+      createData.push({
+        studentId: s.studentId, classId, sectionId, academicYearId,
+        tenantId, date: attendanceDate, status: s.status,
       });
-      updatedCount++;
     }
   }
+
+  await Promise.all([
+    ...updatePromises,
+    createData.length > 0 ? prisma.attendance.createMany({ data: createData }) : Promise.resolve(),
+  ]);
+
+  const updatedCount = updatePromises.length + createData.length;
+
+  // ⚡ Invalidate attendance dashboard cache
+  await invalidateCache(CacheKeys.attendanceReport(tenantId, attendanceDate.toISOString().split("T")[0])).catch(() => {});
+  // Also invalidate the dashboard stats cache
+  await invalidateCache(`attendance:dash:${tenantId}:${data.academicYearId}`).catch(() => {});
 
   return {
     message: "Attendance updated successfully",
@@ -273,22 +290,27 @@ export const getDashboardStatsService = async (
   tenantId: string,
   academicYearId: string
 ) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // ⚡ FIX: Calculate "today" in IST regardless of server timezone
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const nowUTC = Date.now();
+  const istMidnightUTC = new Date(nowUTC + IST_OFFSET_MS);
+  istMidnightUTC.setUTCHours(0, 0, 0, 0);
+  const today = new Date(istMidnightUTC.getTime() - IST_OFFSET_MS);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
   // Total students (from enrollments for this academic year)
   const enrollments = await prisma.enrollment.findMany({
-    where: { tenantId, academicYearId, isDeleted: false },
+    where: { tenantId, academicYearId, isDeleted: false, status: "active" },
     select: { studentId: true, classId: true },
   });
   const totalStudents = enrollments.length;
   const studentIds = enrollments.map((e: any) => e.studentId);
 
-  // Today's attendance
+  // Today's attendance — use range query to handle timezone
   const todayRecords = await prisma.attendance.findMany({
     where: {
       tenantId,
-      date: today,
+      date: { gte: today, lt: tomorrow },
       isDeleted: false,
     },
   });
@@ -306,7 +328,7 @@ export const getDashboardStatsService = async (
     where: {
       tenantId,
       isDeleted: false,
-      date: { gte: sevenDaysAgo, lte: today },
+      date: { gte: sevenDaysAgo, lt: tomorrow },
     },
   });
 
@@ -385,21 +407,27 @@ export const getDashboardStatsService = async (
     const absentStudentIds = absentRecords.map((r) => r.studentId);
     const students = await prisma.student.findMany({
       where: { id: { in: absentStudentIds }, isDeleted: false },
-      select: { id: true, firstName: true, lastName: true, phone: true, classId: true, sectionId: true },
+      select: {
+        id: true, firstName: true, lastName: true, phone: true,
+        enrollments: {
+          where: { isDeleted: false, status: "active" },
+          select: {
+            class: { select: { id: true, name: true } },
+            section: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
     });
-    const sectionIds = [...new Set(students.map((s: any) => s.sectionId).filter(Boolean))];
-    const sections = sectionIds.length > 0
-      ? await prisma.section.findMany({ where: { id: { in: sectionIds } }, select: { id: true, name: true } })
-      : [];
 
     absentStudents = students.slice(0, 10).map((s: any) => {
-      const cls = classes.find((c: any) => c.id === s.classId);
-      const sec = sections.find((sec: any) => sec.id === s.sectionId);
+      const enrollment = s.enrollments?.[0];
       return {
         id: s.id,
         name: `${s.firstName} ${s.lastName || ""}`.trim(),
-        className: cls?.name || "",
-        section: sec?.name || "",
+        className: enrollment?.class?.name || "",
+        section: enrollment?.section?.name || "",
         contact: s.phone || "",
         daysAbsent: 1,
       };

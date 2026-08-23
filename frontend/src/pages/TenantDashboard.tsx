@@ -68,6 +68,14 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+function getCurrentSession(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  // Academic year: April to March (if month >= March, session = year-nextYear, else prevYear-year)
+  return month >= 3 ? `${year}-${(year + 1).toString().slice(-2)}` : `${year - 1}-${year.toString().slice(-2)}`;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ANIMATIONS
 // ═══════════════════════════════════════════════════════════════
@@ -136,10 +144,6 @@ const quickActions = [
   { label: "Fee Receipt", icon: Receipt, route: "/fees/receipts", color: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
   { label: "Attendance", icon: CalendarCheck, route: "/attendance", color: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
   { label: "Exams", icon: ClipboardList, route: "/exams", color: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
-  { label: "Fee Reports", icon: BarChart3, route: "/fees/reports", color: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
-  { label: "Teacher Reports", icon: BarChart3, route: "/teacher-reports", color: "bg-violet-500", lightBg: "bg-violet-50 dark:bg-violet-950/50" },
-  { label: "Attend Reports", icon: BarChart3, route: "/attendance-report", color: "bg-fuchsia-500", lightBg: "bg-fuchsia-50 dark:bg-fuchsia-950/50" },
-  { label: "Exam Reports", icon: BarChart3, route: "/exam-reports", color: "bg-pink-500", lightBg: "bg-pink-50 dark:bg-pink-950/50" },
   { label: "Timetable", icon: Clock, route: "/timeTable", color: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
   { label: "Transport", icon: Bus, route: "/transport", color: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
   { label: "Library", icon: BookOpen, route: "/library", color: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
@@ -164,29 +168,47 @@ export default function Dashboard() {
   const { setTenant }: any = useOutletContext();
   const navigate = useNavigate();
 
-  const [data, setData] = useState<any>({
-    totalStudents: 0, totalClasses: 0, totalPaid: 0,
-    totalPending: 0, monthlyData: [], recentPayments: [],
-    defaulters: [], insights: {},
-    genderData: [], classWiseStrength: [], attendanceTrend: [],
-    totalTeachers: 0,
-    // New fields
-    teachersPresent: 0, teachersOnLeave: 0,
-    totalVehicles: 0, activeRoutes: 0, totalDrivers: 0,
-    libraryBooks: 0, booksIssued: 0, booksOverdue: 0,
-    notifications: [], events: [], birthdays: [],
-    todayTimetable: [], upcomingExams: [],
-    assignments: [], announcements: [],
-    hostelOccupancy: 0, hostelCapacity: 0, hostelVacant: 0,
-    gatePasses: 0, visitorsToday: 0,
-    staffPresent: 0, staffTotal: 0,
-  });
+  // ⚡ PERF: Load cached tenant immediately (school name + logo show instantly)
+  useEffect(() => {
+    const savedTenant = localStorage.getItem("tenant");
+    if (savedTenant) try { setTenant(JSON.parse(savedTenant)); } catch {}
+  }, []);
+
+  // ⚡ PERF: Load cached dashboard from localStorage for INSTANT display
+  // User sees last known data immediately, then fresh data replaces it
+  const getInitialData = () => {
+    try {
+      const cached = localStorage.getItem("dashboard_cache");
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      totalStudents: 0, totalClasses: 0, totalPaid: 0,
+      totalPending: 0, monthlyData: [], recentPayments: [],
+      defaulters: [], insights: {},
+      genderData: [], classWiseStrength: [], attendanceTrend: [],
+      totalTeachers: 0,
+      teachersPresent: 0, teachersOnLeave: 0,
+      totalVehicles: 0, activeRoutes: 0, totalDrivers: 0,
+      libraryBooks: 0, booksIssued: 0, booksOverdue: 0,
+      notifications: [], events: [], birthdays: [],
+      todayTimetable: [], upcomingExams: [],
+      assignments: [], announcements: [],
+      hostelOccupancy: 0, hostelCapacity: 0, hostelVacant: 0,
+      gatePasses: 0, visitorsToday: 0,
+      staffPresent: 0, staffTotal: 0,
+    };
+  };
+
+  const [data, setData] = useState<any>(getInitialData);
 
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // ⚡ PERF: If we have cached data, skip loading state entirely (instant UI)
+  const hasCachedData = !!localStorage.getItem("dashboard_cache");
+  const [loading, setLoading] = useState(!hasCachedData);
+  const [refreshing, setRefreshing] = useState(hasCachedData); // subtle indicator while bg fetch
   const [detailModal, setDetailModal] = useState<{
     open: boolean;
     type: "students" | "classes" | "fees_collected" | "fees_pending" | "receipts" | "recent_payments";
@@ -205,25 +227,25 @@ export default function Dashboard() {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
 
-    if (!document.getElementById("razorpay-script")) {
-      const script = document.createElement("script");
-      script.id = "razorpay-script";
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
+    // ⚡ PERF: Razorpay script loading DEFERRED to payment trigger (saves ~200KB on dashboard load)
+    // Moved to buyPlan() function — loads only when user clicks "Buy Plan"
     axios.get(getFullUrl("/api/tenant/my-subscription"), { headers })
       .then((res) => setSubscriptionInfo(res.data?.data || res.data))
       .catch(() => { });
   }, []);
 
   // ─── Dashboard data fetch ────────────────────────────────────
-  useEffect(() => {
-    const fetchAll = async () => {
+  // ⚡ PERF: Detect page refresh → bust cache
+  const isPageRefresh = performance?.navigation?.type === 1 ||
+    (performance.getEntriesByType?.("navigation")?.[0] as any)?.type === "reload";
+
+  const fetchAll = async (refresh: boolean = false) => {
       try {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.get(getFullUrl("/api/dashboard"), { headers });
+        // ⚡ Pass refresh=true to bust backend cache
+        const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";
+        const res = await axios.get(getFullUrl(url), { headers });
         const d = res.data?.data;
 
         setData({
@@ -264,6 +286,20 @@ export default function Dashboard() {
           staffTotal: d?.staffTotal ?? 0,
         });
 
+        // ⚡ PERF: Cache dashboard data in localStorage for instant load next time
+        try {
+          localStorage.setItem("dashboard_cache", JSON.stringify({
+            totalStudents: d?.totalStudents ?? 0, totalClasses: d?.totalClasses ?? 0,
+            totalPaid: d?.totalPaid ?? 0, totalPending: d?.totalPending ?? 0,
+            totalTeachers: d?.totalTeachers ?? 0, genderData: d?.genderData ?? [],
+            classWiseStrength: d?.classWiseStrength ?? [], insights: d?.insights ?? {},
+            recentPayments: d?.recentPayments ?? [], defaulters: d?.defaulters ?? [],
+            events: d?.events ?? [], birthdays: d?.birthdays ?? [],
+            attendanceTrend: d?.attendanceTrend ?? [],
+            _cachedAt: Date.now(),
+          }));
+        } catch {}
+
         const tenantData = {
           name: d?.tenant?.name || "",
           schoolName: d?.tenant?.schoolName || d?.tenant?.name || "",
@@ -282,9 +318,12 @@ export default function Dashboard() {
         if (savedTenant) setTenant(JSON.parse(savedTenant));
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
-    };
-    fetchAll();
+  };
+
+  useEffect(() => {
+    fetchAll(isPageRefresh);
   }, []);
 
   // ─── Plan + Payment handlers ─────────────────────────────────
@@ -304,6 +343,18 @@ export default function Dashboard() {
   const buyPlan = async (planId: string) => {
     try {
       setPaymentLoading(true);
+
+      // ⚡ PERF: Lazy-load Razorpay script only when payment is triggered
+      if (!(window as any).Razorpay) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Razorpay"));
+          document.body.appendChild(script);
+        });
+      }
+
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       const res = await axios.post(getFullUrl("/api/tenant/self-subscribe"), { planId }, { headers });
@@ -400,6 +451,8 @@ export default function Dashboard() {
   const classStrength = data.classWiseStrength || data.insights?.classStrength || [];
 
   // ─── Loading state ───────────────────────────────────────────
+  // ⚡ Only shows full-page loader for FIRST TIME users (no cache)
+  // Returning users see cached data immediately with a subtle refresh indicator
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
@@ -423,6 +476,11 @@ export default function Dashboard() {
   return (
     <>
       <style>{animationCSS}</style>
+      {/* ⚡ Subtle top refresh indicator (when loading fresh data in background) */}
+      {refreshing && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-pulse" />
+      )}
+
       <div className="p-3 sm:p-5 space-y-2.5 sm:space-y-3 max-w-[1600px] mx-auto overflow-x-hidden pb-24 sm:pb-5">
 
         {/* ═══ GREETING HEADER + QUICK ACTIONS ═══ */}
@@ -433,14 +491,14 @@ export default function Dashboard() {
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
             <div className="flex sm:hidden items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">2025-26</b></span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b></span>
               <span className="flex items-center gap-1"><Building2 size={10} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
             </div>
           </div>
           <div className="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Session: <b className="text-slate-700 dark:text-slate-300">2025-26</b>
+              Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b>
             </span>
             <span className="flex items-center gap-1">
               <Building2 size={11} /> Branch: <b className="text-slate-700 dark:text-slate-300">Main Campus</b>
@@ -451,6 +509,14 @@ export default function Dashboard() {
             <span className="flex items-center gap-1">
               ☀️ <b className="text-slate-700 dark:text-slate-300">32°C</b>
             </span>
+            {/* ⚡ Refresh Button — busts 30-min cache */}
+            <button
+              onClick={() => fetchAll(true)}
+              className="ml-2 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              title="Refresh Dashboard (clear cache)"
+            >
+              <Zap size={12} className="text-indigo-500" />
+            </button>
           </div>
         </div>
 

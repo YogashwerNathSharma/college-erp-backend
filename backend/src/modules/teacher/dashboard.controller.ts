@@ -1,13 +1,16 @@
 import { Request, Response } from "express";
 import logger from "../../config/logger";
 import prisma from "../../utils/prisma";
-import { cached } from "../../utils/cache";
+import { cached, invalidateCache } from "../../utils/cache";
 import {
   getDashboardStats,
   getDepartmentChart,
   getMonthlyOverview,
   getRecentTeachers,
 } from "./dashboard.service";
+
+// ⚡ Cache TTL: 30 minutes (1800000ms)
+const TEACHER_CACHE_TTL = 1800000;
 
 // ✅ GET STATS (cached 60s)
 export const getStats = async (req: any, res: Response) => {
@@ -17,7 +20,11 @@ export const getStats = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const stats = await cached(`teacher:dash:stats:${tenantId}`, 60000, () => getDashboardStats(tenantId));
+    // ⚡ PERF: 30-min cache + refresh support
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:stats:${tenantId}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const stats = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDashboardStats(tenantId));
     return res.json({ success: true, data: stats });
   } catch (e: any) {
     logger.error("Dashboard stats error", { error: e.message, tenantId: req.user?.tenantId });
@@ -33,7 +40,11 @@ export const getDeptChart = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await cached(`teacher:dash:dept:${tenantId}`, 120000, () => getDepartmentChart(tenantId));
+    // ⚡ PERF: 30-min cache + refresh support
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:dept:${tenantId}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDepartmentChart(tenantId));
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("Department chart error", { error: e.message, tenantId: req.user?.tenantId });
@@ -49,7 +60,11 @@ export const getOverview = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await cached(`teacher:dash:overview:${tenantId}`, 300000, () => getMonthlyOverview(tenantId));
+    // ⚡ PERF: 30-min cache + refresh support
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:overview:${tenantId}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getMonthlyOverview(tenantId));
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("Monthly overview error", { error: e.message, tenantId: req.user?.tenantId });

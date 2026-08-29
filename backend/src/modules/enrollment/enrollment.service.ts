@@ -1,16 +1,12 @@
 import prisma from "../../utils/prisma";
+
 export const getEnrollments = async (user: any) => {
   return await prisma.enrollment.findMany({
-    where: {
-      tenantId: user.tenantId,
-    },
-    include: {
-      student: true,
-      class: true,
-      section: true,
-    },
+    where: { tenantId: user.tenantId, isDeleted: false },
+    include: { student: true, class: true, section: true },
   });
 };
+
 export const createEnrollment = async (body: any, user: any) => {
   const { studentId, classId, sectionId, academicYearId } = body;
   const tenantId = user?.tenantId;
@@ -19,100 +15,51 @@ export const createEnrollment = async (body: any, user: any) => {
     throw new Error("All fields are required");
   }
 
-  /////////////////////////
-  // FETCH DATA
-  /////////////////////////
+  // Every referenced record must belong to the same tenant. The student must
+  // also belong to the selected academic year; otherwise a valid student ID
+  // from the same tenant could be enrolled into the wrong session.
   const [student, classData, section, year] = await Promise.all([
     prisma.student.findFirst({
-      where: { id: studentId, tenantId, isDeleted: false },
+      where: { id: studentId, tenantId, academicYearId, isDeleted: false },
+      select: { id: true, tenantId: true, academicYearId: true },
     }),
-
     prisma.class.findFirst({
       where: { id: classId, tenantId },
+      select: { id: true, tenantId: true },
     }),
-
     prisma.section.findFirst({
-      where: {
-        id: sectionId,
-        classId,
-        academicYearId,
-        tenantId,
-      },
+      where: { id: sectionId, classId, academicYearId, tenantId, isDeleted: false },
+      select: { id: true, tenantId: true, classId: true, academicYearId: true },
     }),
-
     prisma.academicYear.findFirst({
       where: { id: academicYearId, tenantId },
+      select: { id: true, tenantId: true },
     }),
   ]);
 
-  /////////////////////////
-  // DEBUG LOGS 🔥
-  /////////////////////////
-  console.log("===== DEBUG START =====");
-  console.log("studentId:", studentId);
-  console.log("classId:", classId);
-  console.log("sectionId:", sectionId);
-  console.log("academicYearId:", academicYearId);
-  console.log("tenantId:", tenantId);
+  if (!student) throw new Error("Student not found or academic-year/tenant mismatch");
+  if (!classData) throw new Error("Class not found or tenant mismatch");
+  if (!section) throw new Error("Section does not belong to the selected class, academic year, or tenant");
+  if (!year) throw new Error("Academic year not found or tenant mismatch");
 
-  console.log("student:", student);
-  console.log("class:", classData);
-  console.log("section:", section);
-  console.log("year:", year);
-
-  /////////////////////////
-  // VALIDATION WITH CLEAR ERRORS
-  /////////////////////////
-  if (!student) throw new Error("❌ Student not found / deleted / tenant mismatch");
-
-  if (!classData) throw new Error("❌ Class not found / tenant mismatch");
-
-  if (!section)
-    throw new Error(
-      "❌ Section invalid → check classId + academicYearId + tenantId match"
-    );
-
-  if (!year) throw new Error("❌ Academic year not found");
-
-  /////////////////////////
-  // DUPLICATE CHECK
-  /////////////////////////
   const existing = await prisma.enrollment.findFirst({
-    where: {
-      studentId,
-      academicYearId,
-      tenantId,
-    },
+    where: { studentId, academicYearId, tenantId, isDeleted: false },
+    select: { id: true },
   });
 
   if (existing) {
-    console.log("existing enrollment:", existing);
-    throw new Error("❌ Student already enrolled in this academic year");
+    throw new Error("Student already enrolled in this academic year");
   }
 
-  /////////////////////////
-  // FEE STRUCTURE CHECK
-  /////////////////////////
   const feeStructure = await prisma.feeStructure.findFirst({
-    where: {
-      classId,
-      academicYearId,
-      tenantId,
-      isDeleted: false,
-    },
+    where: { classId, academicYearId, tenantId, isDeleted: false },
+    select: { id: true, totalAmount: true },
   });
 
-  console.log("feeStructure:", feeStructure);
-
   if (!feeStructure) {
-    throw new Error(
-      "❌ Fee structure not found → check classId + academicYearId + tenantId"
-    );
+    throw new Error("Fee structure not found for the selected class and academic year");
   }
 
-  /////////////////////////
-  // TRANSACTION
-  /////////////////////////
   return await prisma.$transaction(async (tx) => {
     const enrollment = await tx.enrollment.create({
       data: {
@@ -121,43 +68,36 @@ export const createEnrollment = async (body: any, user: any) => {
         section: { connect: { id: sectionId } },
         academicYear: { connect: { id: academicYearId } },
         tenant: { connect: { id: tenantId } },
+        status: "active",
       },
     });
 
     const totalAmount = Number(feeStructure.totalAmount);
-
     const studentFee = await tx.studentFee.create({
       data: {
         tenantId,
-
         enrollmentId: enrollment.id,
         feeStructureId: feeStructure.id,
-
         totalAmount,
         netAmount: totalAmount,
-
         paidAmount: 0,
         balanceAmount: totalAmount,
-
         installmentNo: 1,
-
         status: "PENDING",
         dueDate: new Date(),
-      }
+      },
     });
-
-    console.log("✅ Enrollment + StudentFee created");
 
     return { enrollment, studentFee };
   });
 };
 
-
-/////////////////////////
-// COUNT ENROLLMENTS BY CLASS
-/////////////////////////
-export const getEnrollmentCountByClass = async (classId: string, tenantId: string, academicYearId?: string) => {
-  const count = await prisma.enrollment.count({
+export const getEnrollmentCountByClass = async (
+  classId: string,
+  tenantId: string,
+  academicYearId?: string
+) => {
+  return prisma.enrollment.count({
     where: {
       classId,
       tenantId,
@@ -166,5 +106,4 @@ export const getEnrollmentCountByClass = async (classId: string, tenantId: strin
       ...(academicYearId && { academicYearId }),
     },
   });
-  return count;
 };

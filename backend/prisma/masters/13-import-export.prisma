@@ -27,6 +27,8 @@ model ImportJob {
 
   @@index([tenantId])
   @@index([status])
+  @@index([tenantId, totalRows, createdAt(sort: Desc)])
+  @@index([tenantId, totalRows, status, createdAt(sort: Desc)])
 }
 
 model ExportJob {
@@ -49,6 +51,7 @@ model ExportJob {
 
   @@index([tenantId])
   @@index([status])
+  @@index([tenantId, createdAt(sort: Desc)])
 }
 
 model ImportTemplate {

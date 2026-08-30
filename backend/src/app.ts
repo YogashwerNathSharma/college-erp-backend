@@ -37,6 +37,7 @@ import { rateLimiter } from "./middleware/rateLimit";
 import { authLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
 import { authMiddleware } from "./middleware/auth.middleware";
+import { allowRoles } from "./middleware/role.middleware";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 
 //////////////////////////////////////////////////////
@@ -218,25 +219,25 @@ app.use("/api", healthRoutes);
 app.use("/api", siteRoutes);
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tenant", tenantRoutes);
-app.use("/api/super-admin", superAdminRoutes);
-app.use("/api/reports", superadminreportsRoutes);
-app.use("/api/super-admin/system-settings", systemSettingsRoutes);
-app.use("/api/security", securityRoutes);
-app.use("/api/database", databaseRoutes);
-app.use("/api/monitoring", monitoringRoutes);
+app.use("/api/super-admin", authMiddleware, allowRoles("SUPER_ADMIN"), superAdminRoutes);
+app.use("/api/reports", authMiddleware, allowRoles("SUPER_ADMIN"), superadminreportsRoutes);
+app.use("/api/super-admin/system-settings", authMiddleware, allowRoles("SUPER_ADMIN"), systemSettingsRoutes);
+app.use("/api/security", authMiddleware, allowRoles("SUPER_ADMIN"), securityRoutes);
+app.use("/api/database", authMiddleware, allowRoles("SUPER_ADMIN"), databaseRoutes);
+app.use("/api/monitoring", authMiddleware, allowRoles("SUPER_ADMIN"), monitoringRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 
 // SUPER ADMIN - MODULE, PLUGIN, THEME MANAGEMENT
-app.use("/api/super-admin/modules", moduleManagementRoutes);
-app.use("/api/super-admin/plugins", pluginManagementRoutes);
-app.use("/api/super-admin/themes", themeManagementRoutes);
-app.use("/api/super-admin/audit", auditCenterRoutes);
-app.use("/api/super-admin/notifications", notificationCenterRoutes);
-app.use("/api/super-admin/reports", reportCenterRoutes);
-app.use("/api/super-admin/support", supportCenterRoutes);
-app.use("/api/super-admin/subscriptions", subscriptionMgmtRoutes);
-app.use("/api/super-admin/users", userManagementRoutes);
-app.use("/api/super-admin/iam", iamRoutes);
+app.use("/api/super-admin/modules", authMiddleware, allowRoles("SUPER_ADMIN"), moduleManagementRoutes);
+app.use("/api/super-admin/plugins", authMiddleware, allowRoles("SUPER_ADMIN"), pluginManagementRoutes);
+app.use("/api/super-admin/themes", authMiddleware, allowRoles("SUPER_ADMIN"), themeManagementRoutes);
+app.use("/api/super-admin/audit", authMiddleware, allowRoles("SUPER_ADMIN"), auditCenterRoutes);
+app.use("/api/super-admin/notifications", authMiddleware, allowRoles("SUPER_ADMIN"), notificationCenterRoutes);
+app.use("/api/super-admin/reports", authMiddleware, allowRoles("SUPER_ADMIN"), reportCenterRoutes);
+app.use("/api/super-admin/support", authMiddleware, allowRoles("SUPER_ADMIN"), supportCenterRoutes);
+app.use("/api/super-admin/subscriptions", authMiddleware, allowRoles("SUPER_ADMIN"), subscriptionMgmtRoutes);
+app.use("/api/super-admin/users", authMiddleware, allowRoles("SUPER_ADMIN"), userManagementRoutes);
+app.use("/api/super-admin/iam", authMiddleware, allowRoles("SUPER_ADMIN"), iamRoutes);
 
 
 //////////////////////////////////////////////////////
@@ -258,7 +259,7 @@ app.use(autoCacheMiddleware);
 
 app.use("/api/dashboard", dashboardRoutes);
 // Other app.use ke saath:
-app.use("/api/settings", settingsRoutes);
+app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), settingsRoutes);
 
 //////////////////////////////////////////////////////
 // AI ASSISTANT (ynAi)
@@ -332,7 +333,7 @@ app.use("/api/enrollment", enrollmentRoutes);
 // FEES MODULE
 //////////////////////////////////////////////////////
 
-app.use("/api/fees", feesRoutes);
+app.use("/api/fees", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN", "PRINCIPAL"), feesRoutes);
 
 
 //////////////////////////////////////////////////////
@@ -349,15 +350,15 @@ app.use("/api/room", roomRoutes);
 app.use("/api/permissions", permissionsRoutes);
 
 app.use("/api/signature", signatureRoutes);
-app.use("/api/backup", backupRoutes);
+app.use("/api/backup", authMiddleware, allowRoles("SUPER_ADMIN"), backupRoutes);
 
 //////////////////////////////////////////////////////
 // NEW MODULE ROUTES
 //////////////////////////////////////////////////////
 app.use("/api/hostel", hostelRoutes);
 app.use("/api/communication-new", communicationNewRoutes);
-app.use("/api/hr", hrRoutes);
-app.use("/api/inventory", inventoryRoutes);
+app.use("/api/hr", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), hrRoutes);
+app.use("/api/inventory", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), inventoryRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports-new", reportRoutes);

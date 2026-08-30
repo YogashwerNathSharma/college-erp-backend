@@ -224,7 +224,7 @@ export async function bulkDeleteLogs(filter: { ids?: string[]; olderThan?: strin
 // ─── Export Audit Logs ───────────────────────────────────
 export async function exportAuditLogs(filter: AuditLogFilter, format: "csv" | "excel" | "pdf") {
   // Get all matching logs without pagination for export
-  const { logs } = await getAuditLogs({ ...filter, page: 1, limit: 10000 });
+  const { logs } = await getAuditLogs({ ...filter, page: 1, limit: 2000 });
 
   if (format === "csv") {
     const headers = [

@@ -807,7 +807,7 @@ export const getCustomReportHandler = async (req: any, res: Response) => {
         }),
       },
       orderBy,
-      take: 5000, // Max records for custom report
+      take: 2000, // Max records for custom report
     });
 
     // Apply groupBy if requested

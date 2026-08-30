@@ -250,7 +250,8 @@ export function parseGeneratorCommand(command: string, type: string): any {
 
   // Extract academic year
   const yearMatch = lower.match(/(20\d{2}\s*-\s*\d{2})/);
-  const academicYear = yearMatch ? yearMatch[1] : "2025-26";
+  // Dynamic fallback: derive from current date (academic year starts April)
+  const academicYear = yearMatch ? yearMatch[1] : (() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return `${y}-${String(y + 1).slice(2)}`; })();
 
   switch (type) {
     case "question_paper":

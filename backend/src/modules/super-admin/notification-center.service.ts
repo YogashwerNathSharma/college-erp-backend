@@ -214,7 +214,7 @@ export async function sendBroadcast(input: {
   const users = await prisma.user.findMany({
     where: { ...userWhere, isActive: true },
     select: { id: true, email: true, phone: true, name: true },
-    take: 10000,
+    take: 2000,
   });
 
   const results: any[] = [];

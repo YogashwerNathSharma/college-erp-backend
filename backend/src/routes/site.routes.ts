@@ -4,16 +4,24 @@ import prisma from "../utils/prisma";
 const router = Router();
 
 // 👉 Dummy site content (abhi DB nahi, baad me connect karenge)
-router.get("/site-content", (req, res) => {
-  res.json({
-    schoolName: "RMS Academy",
-    addressLine1: "Divna Road, Bareilly",
-    heroSubtitle: "Building future leaders",
-    aboutHeading: "About Our School",
-    aboutBody: "We provide quality education with modern approach.",
-    principalName: "Mr. Sharma",
-    principalMessage: "Education is the key to success",
-  });
+router.get("/site-content", async (req, res) => {
+  try {
+    // Try to fetch from tenant settings first
+    const tenant = await prisma.tenant.findFirst({
+      select: { name: true, address: true, phone: true, email: true },
+    });
+    res.json({
+      schoolName: tenant?.name || "School Name",
+      addressLine1: tenant?.address || "",
+      heroSubtitle: "Building future leaders",
+      aboutHeading: "About Our School",
+      aboutBody: "We provide quality education with modern approach.",
+      principalName: "",
+      principalMessage: "Education is the key to success",
+    });
+  } catch {
+    res.json({ schoolName: "School Name", addressLine1: "", heroSubtitle: "Building future leaders", aboutHeading: "About Our School", aboutBody: "", principalName: "", principalMessage: "" });
+  }
 });
 
 // 👉 Dummy gallery

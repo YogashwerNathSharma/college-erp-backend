@@ -1077,7 +1077,7 @@ export const exportExcelHandler = async (req: any, res: Response) => {
         },
       },
       orderBy: { firstName: "asc" },
-      take: 5000,
+      take: 2000,
     });
 
     const workbook = new ExcelJS.Workbook();

@@ -388,7 +388,7 @@ export const exportToExcel = async (
       },
     },
     orderBy: { firstName: "asc" },
-    take: 10000,
+    take: 2000,
   });
 
   // Determine which columns to export

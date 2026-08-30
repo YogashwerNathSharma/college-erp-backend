@@ -236,7 +236,7 @@ export async function getLoginReport(filter: ReportFilter) {
       metadata: true,
     },
     orderBy: { createdAt: "desc" },
-    take: 5000,
+    take: 2000,
   }) as any[]
 
   const successful = loginLogs.filter((l) => l.action !== "LOGIN_FAILED").length;

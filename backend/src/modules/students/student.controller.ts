@@ -402,7 +402,7 @@ export const printStudentsHandler = async (req: any, res: any) => {
       status,
       search,
       page: 1,
-      limit: 9999,
+      limit: 2000,
     });
 
     res.json({ success: true, data: result.students, total: result.total, columns });

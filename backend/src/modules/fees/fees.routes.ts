@@ -14,7 +14,7 @@ import feeCollectionRoutes from "./feeCollection.routes";
 // Controllers
 import { getFeeDashboardController } from "./feeDashboard.controller";
 import { getDueSummaryController } from "./feeDue.controller";
-import { getAssignStudentsController, assignFeesToStudentsController } from "./feeAssign.controller";
+import { getAssignStudentsController, assignFeesToStudentsController, unassignFeesController } from "./feeAssign.controller";
 import { getFeeSettingsController, updateFeeSettingsController } from "./feeSettings.controller";
 
 // Report Controllers (21 reports)
@@ -147,6 +147,7 @@ router.get("/ledger/:enrollmentId", getStudentLedgerController);
 // ═══════════════════════════════════════════════════════════════════════════
 router.get("/assign/students", getAssignStudentsController);
 router.post("/assign/students", assignFeesToStudentsController);
+router.delete("/assign/students", unassignFeesController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FEE SETTINGS

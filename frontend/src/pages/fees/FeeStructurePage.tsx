@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 
@@ -10,6 +11,7 @@ interface FeeHead {
   id: string;
   name: string;
   code: string;
+  type?: "RECURRING" | "ONE_TIME";
 }
 
 interface FeeStructureItem {
@@ -54,8 +56,6 @@ interface FeeHeadConfig {
   code: string;
   selected: boolean;
   frequency: string;
-  installmentType: string;
-  totalInstallments: number;
 }
 
 // Per-class amount for each fee head
@@ -105,6 +105,8 @@ const FeeStructurePage: React.FC = () => {
     dueDay: 10,
   });
 
+  const [selectedInstallmentType, setSelectedInstallmentType] = useState("MONTHLY");
+  const [selectedTotalInstallments, setSelectedTotalInstallments] = useState(12);
   // Fee head config (common selections, frequency, installment type)
   const [feeHeadConfigs, setFeeHeadConfigs] = useState<FeeHeadConfig[]>([]);
 
@@ -135,9 +137,7 @@ const FeeStructurePage: React.FC = () => {
           name: head.name,
           code: head.code,
           selected: false,
-          frequency: "PER_INSTALLMENT",
-          installmentType: "MONTHLY",
-          totalInstallments: 12,
+          frequency: head.type === "ONE_TIME" ? "ONE_TIME" : "PER_INSTALLMENT",
         }))
       );
     }
@@ -252,18 +252,7 @@ const FeeStructurePage: React.FC = () => {
   // Update fee head config
   const updateFeeHeadConfig = (index: number, field: string, value: any) => {
     const updated = [...feeHeadConfigs];
-    if (field === "installmentType") {
-      const typeConfig = INSTALLMENT_TYPES.find((t) => t.value === value);
-      updated[index] = {
-        ...updated[index],
-        installmentType: value,
-        totalInstallments: typeConfig?.defaultInstallments || updated[index].totalInstallments,
-      };
-    } else if (field === "totalInstallments") {
-      updated[index] = { ...updated[index], totalInstallments: Number(value) };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
+    updated[index] = { ...updated[index], [field]: value };
     setFeeHeadConfigs(updated);
   };
 
@@ -353,6 +342,8 @@ const FeeStructurePage: React.FC = () => {
   // Open modal for edit
   const handleEdit = (structure: FeeStructure) => {
     setEditingStructure(structure);
+    setSelectedInstallmentType(structure.installmentType || "MONTHLY");
+    setSelectedTotalInstallments(structure.totalInstallments || 12);
     setApplyMode("single");
     setSelectedClassIds([]);
     setActiveClassTab("");
@@ -369,14 +360,13 @@ const FeeStructurePage: React.FC = () => {
         if (existingItem) {
           amounts[head.id] = existingItem.amount;
         }
+        const isOneTime = head.type === "ONE_TIME";
         return {
           feeHeadId: head.id,
           name: head.name,
           code: head.code,
           selected: !!existingItem,
-          frequency: existingItem?.frequency || "PER_INSTALLMENT",
-          installmentType: existingItem?.installmentType || structure.installmentType || "MONTHLY",
-          totalInstallments: existingItem?.totalInstallments || structure.totalInstallments || 12,
+          frequency: isOneTime ? "ONE_TIME" : (existingItem?.frequency || "PER_INSTALLMENT"),
         };
       })
     );
@@ -432,8 +422,6 @@ const FeeStructurePage: React.FC = () => {
             feeHeadId: head.feeHeadId,
             amount: Number(classData?.amounts[head.feeHeadId]) || 0,
             frequency: head.frequency,
-            installmentType: head.installmentType,
-            totalInstallments: head.totalInstallments,
           }));
 
           // Check if any amount is 0
@@ -446,9 +434,9 @@ const FeeStructurePage: React.FC = () => {
             return;
           }
 
-          const installmentTypes = [...new Set(selectedHeads.map((h) => h.installmentType))];
-          const overallInstallmentType = installmentTypes.length === 1 ? installmentTypes[0] : "CUSTOM";
-          const overallTotalInstallments = installmentTypes.length === 1 ? selectedHeads[0].totalInstallments : 1;
+          const hasRecurring = selectedHeads.some((h) => h.frequency === "PER_INSTALLMENT");
+          const overallInstallmentType = hasRecurring ? selectedInstallmentType : "ONE_TIME";
+          const overallTotalInstallments = hasRecurring ? (INSTALLMENT_TYPES.find(t => t.value === selectedInstallmentType)?.defaultInstallments || 12) : 1;
 
           const className = classes.find((c) => c.id === classId)?.name || "";
           const yearName = academicYears.find((y) => y.id === formData.academicYearId)?.name || "";
@@ -484,8 +472,6 @@ const FeeStructurePage: React.FC = () => {
           feeHeadId: head.feeHeadId,
           amount: Number(singleClassAmounts[head.feeHeadId]) || 0,
           frequency: head.frequency,
-          installmentType: head.installmentType,
-          totalInstallments: head.totalInstallments,
         }));
 
         const invalidItems = items.some((item) => item.amount <= 0);
@@ -495,9 +481,9 @@ const FeeStructurePage: React.FC = () => {
           return;
         }
 
-        const installmentTypes = [...new Set(selectedHeads.map((h) => h.installmentType))];
-        const overallInstallmentType = installmentTypes.length === 1 ? installmentTypes[0] : "CUSTOM";
-        const overallTotalInstallments = installmentTypes.length === 1 ? selectedHeads[0].totalInstallments : 1;
+        const hasRecurring = selectedHeads.some((h) => h.frequency === "PER_INSTALLMENT");
+        const overallInstallmentType = hasRecurring ? selectedInstallmentType : "ONE_TIME";
+        const overallTotalInstallments = hasRecurring ? (INSTALLMENT_TYPES.find(t => t.value === selectedInstallmentType)?.defaultInstallments || 12) : 1;
 
         const payload = {
           name: generateName(formData.classId, formData.academicYearId),
@@ -671,7 +657,7 @@ const FeeStructurePage: React.FC = () => {
 
       {/* ===== CREATE/EDIT MODAL ===== */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        createPortal(<div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-start justify-center min-h-screen px-4 pt-6 pb-20">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowModal(false)} />
 
@@ -778,84 +764,59 @@ const FeeStructurePage: React.FC = () => {
                     {/* Header */}
                     <div className="hidden md:grid md:grid-cols-12 gap-2 px-4 py-2 bg-gray-50 border-b text-xs font-medium text-gray-500 uppercase">
                       <div className="col-span-1"></div>
-                      <div className="col-span-3">Fee Head</div>
-                      <div className="col-span-2">{applyMode === "single" ? "Amount (₹)" : ""}</div>
-                      <div className="col-span-2">Frequency</div>
-                      <div className="col-span-2">Installment Type</div>
-                      <div className="col-span-2">Installments</div>
+                      <div className="col-span-5">Fee Head</div>
+                      <div className="col-span-3">{applyMode === "single" ? "Amount (₹)" : ""}</div>
+                      <div className="col-span-3">Type</div>
                     </div>
 
-                    <div className="divide-y divide-gray-100 max-h-[300px] overflow-y-auto">
+                    <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
                       {feeHeadConfigs.map((config, index) => (
-                        <div key={config.feeHeadId} className={`px-4 py-2.5 transition-colors ${config.selected ? "bg-primary-50/50" : "hover:bg-gray-50"}`}>
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                        <div
+                          key={config.feeHeadId}
+                          className={`px-4 py-3 transition-colors ${config.selected ? "bg-primary-50/50" : "hover:bg-gray-50"}`}
+                        >
+                          <div className="grid grid-cols-12 gap-2 items-center">
                             {/* Checkbox */}
-                            <div className="md:col-span-1">
-                              <input type="checkbox" checked={config.selected} onChange={() => toggleFeeHead(index)} className="w-4 h-4 text-primary-600 rounded" />
+                            <div className="col-span-1">
+                              <input
+                                type="checkbox"
+                                checked={config.selected}
+                                onChange={(e) => updateFeeHeadConfig(index, "selected", e.target.checked)}
+                                className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                              />
                             </div>
 
-                            {/* Name */}
-                            <div className="md:col-span-3">
+                            {/* Fee Head Name */}
+                            <div className="col-span-5">
                               <span className={`text-sm font-medium ${config.selected ? "text-gray-900" : "text-gray-500"}`}>
                                 {config.name}
                               </span>
-                              <span className="text-xs text-gray-400 ml-1">({config.code})</span>
+                              {config.code && <span className="ml-1 text-xs text-gray-400">({config.code})</span>}
                             </div>
 
-                            {/* Amount (only in single mode) */}
-                            <div className="md:col-span-2">
+                            {/* Amount (single mode only) */}
+                            <div className="col-span-3">
                               {applyMode === "single" && (
                                 <input
                                   type="number"
                                   value={singleClassAmounts[config.feeHeadId] || ""}
-                                  onChange={(e) => updateSingleAmount(config.feeHeadId, Number(e.target.value))}
+                                  onChange={(e) => setSingleClassAmounts((prev) => ({ ...prev, [config.feeHeadId]: Number(e.target.value) || 0 }))}
                                   placeholder="0"
-                                  min={0}
                                   disabled={!config.selected}
                                   className={`w-full border rounded-lg px-2 py-1.5 text-sm ${config.selected ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"}`}
                                 />
                               )}
                             </div>
 
-                            {/* Frequency */}
-                            <div className="md:col-span-2">
-                              <select
-                                value={config.frequency}
-                                onChange={(e) => updateFeeHeadConfig(index, "frequency", e.target.value)}
-                                disabled={!config.selected}
-                                className={`w-full border rounded-lg px-2 py-1.5 text-sm ${config.selected ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"}`}
-                              >
-                                {FREQUENCY_OPTIONS.map((freq) => (
-                                  <option key={freq.value} value={freq.value}>{freq.label}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Installment Type */}
-                            <div className="md:col-span-2">
-                              <select
-                                value={config.installmentType}
-                                onChange={(e) => updateFeeHeadConfig(index, "installmentType", e.target.value)}
-                                disabled={!config.selected}
-                                className={`w-full border rounded-lg px-2 py-1.5 text-sm ${config.selected ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"}`}
-                              >
-                                {INSTALLMENT_TYPES.map((type) => (
-                                  <option key={type.value} value={type.value}>{type.label}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Installments */}
-                            <div className="md:col-span-2">
-                              <input
-                                type="number"
-                                value={config.totalInstallments}
-                                onChange={(e) => updateFeeHeadConfig(index, "totalInstallments", e.target.value)}
-                                min={1}
-                                max={24}
-                                disabled={!config.selected}
-                                className={`w-full border rounded-lg px-2 py-1.5 text-sm ${config.selected ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"}`}
-                              />
+                            {/* Type Badge (auto from fee head) */}
+                            <div className="col-span-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                config.frequency === "ONE_TIME"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-green-100 text-green-700"
+                              }`}>
+                                {config.frequency === "ONE_TIME" ? "One-Time" : "Recurring"}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -967,8 +928,7 @@ const FeeStructurePage: React.FC = () => {
                                   </div>
                                   <div className="col-span-3">
                                     <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-medium">
-                                      {INSTALLMENT_TYPES.find((t) => t.value === head.installmentType)?.label || head.installmentType}
-                                      {head.totalInstallments > 1 && ` × ${head.totalInstallments}`}
+                                      {head.frequency === "ONE_TIME" ? "One-Time" : "Recurring"}
                                     </span>
                                   </div>
                                   <div className="col-span-3">
@@ -1027,7 +987,7 @@ const FeeStructurePage: React.FC = () => {
               </form>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

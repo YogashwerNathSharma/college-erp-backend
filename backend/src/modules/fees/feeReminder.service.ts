@@ -85,7 +85,7 @@ export const sendFeeReminders = async (params: SendReminderParams) => {
 
   for (const enrollment of students) {
     try {
-      const studentName = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
+      const studentName = (() => { const fn = enrollment.student.firstName ?? ""; const ln = enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })();
       const phone = enrollment.student.phone;
 
       // Simulate sending
@@ -127,7 +127,7 @@ export const getReminderPreview = async (
   return {
     totalStudents: students.length,
     students: students.slice(0, 10).map((e) => ({
-      name: `${e.student.firstName} ${e.student.lastName}`,
+      name: (() => { const fn = e.student.firstName ?? ""; const ln = e.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: e.student.admissionNo,
       phone: e.student.phone,
       class: e.class.name,

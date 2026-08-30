@@ -51,6 +51,9 @@ interface DashboardData {
     totalReceivable: number;
     totalCollected: number;
     outstanding: number;
+    overdueAmount: number;
+    totalDiscount: number;
+    totalFine: number;
   };
   monthlyCollection: { month: string; receivable: number; collected: number }[];
   classwiseOutstanding: { className: string; outstanding: number }[];
@@ -163,7 +166,7 @@ const StatCard: React.FC<StatCardProps> = ({
         <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
           {title}
         </p>
-        <p className="mt-1.5 text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
+        <p className="mt-1.5 text-base sm:text-lg lg:text-xl font-bold text-gray-900 dark:text-white break-all leading-tight">
           {value}
         </p>
         {trend !== undefined && (
@@ -278,9 +281,9 @@ const FeeDashboardPage: React.FC = () => {
   const feeStatusData = data
     ? [
         { name: "Collected", value: data.summary.totalCollected },
-        { name: "Partial", value: Math.round(data.summary.outstanding * 0.3) },
-        { name: "Overdue", value: Math.round(data.summary.outstanding * 0.4) },
-        { name: "Unpaid", value: Math.round(data.summary.outstanding * 0.3) },
+        { name: "Overdue", value: data.summary.overdueAmount || 0 },
+        { name: "Partial", value: Math.max(0, (data.summary.outstanding || 0) - (data.summary.overdueAmount || 0)) },
+        { name: "Unpaid", value: 0 },
       ]
     : [];
 
@@ -437,12 +440,10 @@ const FeeDashboardPage: React.FC = () => {
           />
           <StatCard
             title="Overdue Amount"
-            value={formatINR(Math.round(data.summary.outstanding * 0.4))}
+            value={formatINR(data.summary.overdueAmount || 0)}
             icon={<AlertTriangle size={20} />}
             iconBg="bg-red-50 dark:bg-red-900/30"
             iconColor="text-red-600 dark:text-red-400"
-            trend={-8}
-            trendLabel="improving"
             delay="stagger-3"
           />
           <StatCard
@@ -455,7 +456,7 @@ const FeeDashboardPage: React.FC = () => {
           />
           <StatCard
             title="Discounts Given"
-            value={formatINR(Math.round(data.summary.totalReceivable * 0.05))}
+            value={formatINR(data.summary.totalDiscount || 0)}
             icon={<Gift size={20} />}
             iconBg="bg-purple-50 dark:bg-purple-900/30"
             iconColor="text-purple-600 dark:text-purple-400"
@@ -463,12 +464,10 @@ const FeeDashboardPage: React.FC = () => {
           />
           <StatCard
             title="Fine Collected"
-            value={formatINR(Math.round(data.summary.totalCollected * 0.02))}
+            value={formatINR(data.summary.totalFine || 0)}
             icon={<Gavel size={20} />}
             iconBg="bg-cyan-50 dark:bg-cyan-900/30"
             iconColor="text-cyan-600 dark:text-cyan-400"
-            trend={3}
-            trendLabel="this month"
             delay="stagger-6"
           />
         </div>
@@ -677,7 +676,8 @@ const FeeDashboardPage: React.FC = () => {
                     data.recentCollections.slice(0, 8).map((item, idx) => (
                       <tr
                         key={item.receiptNo + idx}
-                        className="hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-slate-750 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/fees/collection?student=${encodeURIComponent(item.studentName)}`)}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">

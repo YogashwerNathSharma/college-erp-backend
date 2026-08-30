@@ -169,17 +169,18 @@ export const getDashboard = async (
 
       const recentPayments = recentPaymentsRaw.map((p: any) => ({
         amount: p.amount ?? 0,
-        studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+        studentName: (() => { const fn = p.studentFee?.enrollment?.student?.firstName ?? ""; const ln = p.studentFee?.enrollment?.student?.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })() || "Unknown",
         className: p.studentFee?.enrollment?.class?.name || "—",
         sectionName: p.studentFee?.enrollment?.section?.name || "",
         date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—",
+        paidAt: p.paymentDate ? new Date(p.paymentDate).toISOString() : null,
         method: p.method,
         receiptNo: p.receiptNo,
       }));
 
       const defaulters = defaultersRaw.map((d: any) => ({
         pendingAmount: d.balanceAmount ?? 0,
-        studentName: `${d.enrollment?.student?.firstName ?? ""} ${d.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+        studentName: (() => { const fn = d.enrollment?.student?.firstName ?? ""; const ln = d.enrollment?.student?.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })() || "Unknown",
         className: d.enrollment?.class?.name || "—",
         sectionName: d.enrollment?.section?.name || "",
       }));
@@ -198,6 +199,30 @@ export const getDashboard = async (
         return { name, className, section };
       }).slice(0, 10);
 
+      // ─── Monthly Fee Collection (grouped by month for current academic year) ───
+      const allPayments = await prisma.payment.findMany({
+        where: { tenantId, isDeleted: false },
+        select: { amount: true, paymentDate: true },
+      });
+      const monthNames = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
+      const monthlyMap: { [key: string]: number } = {};
+      monthNames.forEach((m) => { monthlyMap[m] = 0; });
+      allPayments.forEach((p: any) => {
+        if (!p.paymentDate) return;
+        const d = new Date(p.paymentDate);
+        const monthIdx = d.getMonth(); // 0=Jan
+        // Map to academic year: Apr(3)=0, May(4)=1, ..., Mar(2)=11
+        const academicMonthIdx = (monthIdx - 3 + 12) % 12;
+        const monthName = monthNames[academicMonthIdx];
+        if (monthlyMap[monthName] !== undefined) {
+          monthlyMap[monthName] += p.amount;
+        }
+      });
+      const monthlyData = monthNames.map((month) => ({
+        month,
+        amount: Math.round(monthlyMap[month]),
+      }));
+
       const insights = {
         growth: "0%",
         message: "Welcome to your dashboard",
@@ -210,7 +235,7 @@ export const getDashboard = async (
       return {
         totalStudents, totalClasses, totalPaid, totalPending,
         totalTeachers, attendanceToday,
-        monthlyData: [],
+        monthlyData,
         recentPayments, defaulters, insights,
         genderData, classWiseStrength,
         attendanceTrend,

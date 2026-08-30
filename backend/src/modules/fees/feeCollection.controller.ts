@@ -208,6 +208,7 @@ export const getAllPaymentsController = async (req: any, res: any) => {
                 student: { select: { firstName: true, lastName: true, admissionNo: true, fatherName: true, rollNumber: true } },
                 class: { select: { name: true } },
                 section: { select: { name: true } },
+                academicYear: { select: { name: true } },
               },
             },
             feeStructure: { select: { name: true } },
@@ -219,7 +220,7 @@ export const getAllPaymentsController = async (req: any, res: any) => {
 
     const data = payments.map((p: any) => ({
       id: p.id,
-      studentName: `${p.studentFee?.enrollment?.student?.firstName ?? ""} ${p.studentFee?.enrollment?.student?.lastName ?? ""}`.trim() || "Unknown",
+      studentName: (() => { const fn = p.studentFee?.enrollment?.student?.firstName ?? ""; const ln = p.studentFee?.enrollment?.student?.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })().trim() || "Unknown",
       admissionNo: p.studentFee?.enrollment?.student?.admissionNo || "",
       fatherName: p.studentFee?.enrollment?.student?.fatherName || "—",
       rollNumber: p.studentFee?.enrollment?.student?.rollNumber || p.studentFee?.enrollment?.rollNumber || "—",
@@ -234,7 +235,7 @@ export const getAllPaymentsController = async (req: any, res: any) => {
       feeItems: p.studentFee?.items?.length > 0
         ? p.studentFee.items.map((item: any) => ({ name: item.name, amount: item.amount }))
         : [],
-      session: "2025-26",
+      session: p.studentFee?.enrollment?.academicYear?.name || (() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return `${y}-${String(y + 1).slice(2)}`; })(),
       className: p.studentFee?.enrollment?.class?.name || "—",
       section: p.studentFee?.enrollment?.section?.name || "",
       amount: p.amount,

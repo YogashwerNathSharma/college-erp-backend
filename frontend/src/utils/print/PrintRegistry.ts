@@ -105,7 +105,7 @@ const numberToWords = (num: number): string => {
 };
 
 // ═══ GET FEE PERIOD TEXT ═══
-const getFeePeriod = (installmentNo: number, dueDate?: string): string => {
+const getFeePeriod = (installmentNo: number, dueDate?: string, session?: string): string => {
   const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   if (dueDate) {
     const d = new Date(dueDate);
@@ -113,8 +113,15 @@ const getFeePeriod = (installmentNo: number, dueDate?: string): string => {
     return `${monthName} (Installment #${installmentNo} of 12)`;
   }
   const monthIdx = ((installmentNo - 1) % 12);
-  const year = installmentNo <= 9 ? 2025 : 2026;
-  return `${months[monthIdx]} ${year} (Installment #${installmentNo} of 12)`;
+  let startYear: number;
+  if (session) {
+    startYear = parseInt(session.split("-")[0]) || new Date().getFullYear();
+  } else {
+    const now = new Date();
+    startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  }
+  const displayYear = monthIdx >= 9 ? startYear + 1 : startYear;
+  return `${months[monthIdx]} ${displayYear} (Installment #${installmentNo} of 12)`;
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -122,7 +129,26 @@ const getFeePeriod = (installmentNo: number, dueDate?: string): string => {
 // ═══════════════════════════════════════════════════════════════
 const feeReceiptTemplate = (data: any): string => {
   const school = getSchoolInfo();
-  const period = getFeePeriod(data.installmentNo || 1, data.dueDate);
+  const period = data.feePeriod || getFeePeriod(data.installmentNo || 1, data.dueDate, data.session);
+  // Installment total = sum of fee items (particulars) for this installment
+  const totalItemsAmount = data.feeItems?.length > 0 
+    ? data.feeItems.reduce((sum: number, item: any) => sum + (item.amount || 0), 0) 
+    : (data.amount || 0);
+  // Discount Amount
+  const discountAmount = data.discountAmount || 0;
+  // Net payable for this installment = total - discount
+  const installmentNet = data.installmentNet || (totalItemsAmount - discountAmount);
+  // Paid amount (this transaction)
+  const paidAmount = data.amount || 0;
+  // Balance for THIS installment (after this payment)
+  const installmentBalance = data.balance ?? Math.max(0, installmentNet - paidAmount);
+  // Annual totals
+  const annualFee = data.annualFee || data.totalDue || 0;
+  const annualDiscount = data.annualDiscount || 0;
+  const annualBalance = data.annualBalance ?? (annualFee - (data.totalPaidTillDate || paidAmount));
+  // Total paid till date (across all installments)
+  const totalPaidTillDate = data.totalPaidTillDate || paidAmount;
+  
   const payDate = data.paymentDate ? new Date(data.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
   const singleCopy = (copyType: string) => `
@@ -136,14 +162,15 @@ const feeReceiptTemplate = (data: any): string => {
       <div style="text-align:center;background:#000;color:#fff;padding:2px;font-size:10px;margin-bottom:5px;">
         FEE RECEIPT (${copyType})
       </div>
-      <div style="text-align:center;font-size:10px;margin-bottom:5px;">Session : ${data.session || "2025-26"}</div>
-      <table style="width:100%;font-size:10px;margin-bottom:5px;">
-        <tr><td><strong>Receipt No.</strong> ${data.receiptNo || "—"}</td><td style="text-align:right;"><strong>Date.</strong> ${payDate}</td></tr>
-        <tr><td><strong>Student Name.</strong></td><td>${data.studentName || "—"}</td></tr>
-        <tr><td><strong>Father's Name.</strong></td><td>${data.fatherName || "—"}</td></tr>
-        <tr><td><strong>Class.</strong></td><td>${data.className || "—"} ${data.section || ""}</td><td><strong>Adm.No.</strong></td><td>${data.admissionNo || "—"}</td></tr>
-        <tr><td><strong>Roll No.</strong></td><td>${data.rollNumber || "—"}</td><td><strong>Mode.</strong></td><td>${data.method || "CASH"}</td></tr>
-        <tr><td><strong>Month.</strong></td><td colspan="3">${period}</td></tr>
+      <div style="text-align:center;font-size:10px;margin-bottom:5px;">Session : ${data.session || (() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return y + "-" + String(y + 1).slice(2); })()}</div>
+      <table style="width:100%;font-size:10px;margin-bottom:5px;border-collapse:collapse;" cellpadding="2">
+        <col style="width:24%"/><col style="width:26%"/><col style="width:20%"/><col style="width:30%"/>
+        <tr><td style="padding:2px 0;"><strong>Receipt No.</strong></td><td style="padding:2px 0;">${data.receiptNo || "—"}</td><td style="padding:2px 0;text-align:right;"><strong>Date.</strong></td><td style="padding:2px 0;text-align:right;">${payDate}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>Student Name.</strong></td><td colspan="3" style="padding:2px 0;">${data.studentName || "—"}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>Father's Name.</strong></td><td colspan="3" style="padding:2px 0;">${data.fatherName || "—"}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>Class.</strong></td><td style="padding:2px 0;">${data.className || "—"} ${data.section || ""}</td><td style="padding:2px 0;text-align:right;"><strong>Adm.No.</strong></td><td style="padding:2px 0;text-align:right;">${data.admissionNo || "—"}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>Roll No.</strong></td><td style="padding:2px 0;">${data.rollNumber || "—"}</td><td style="padding:2px 0;text-align:right;"><strong>Mode.</strong></td><td style="padding:2px 0;text-align:right;">${data.method || "CASH"}</td></tr>
+        <tr><td style="padding:2px 0;"><strong>Month.</strong></td><td colspan="3" style="padding:2px 0;">${period}</td></tr>
       </table>
       <table style="width:100%;border-collapse:collapse;border:1px solid #000;margin-bottom:5px;">
         <thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">S.No</th><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">Particulars</th><th style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">Amount (Rs)</th></tr></thead>
@@ -152,19 +179,24 @@ const feeReceiptTemplate = (data: any): string => {
             ? data.feeItems.map((item: any, idx: number) =>
                 `<tr><td style="border:1px solid #000;padding:2px;font-size:10px;">${idx + 1}</td><td style="border:1px solid #000;padding:2px;font-size:10px;">${item.name || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">${(item.amount || 0).toLocaleString("en-IN")}</td></tr>`
               ).join("")
-            : `<tr><td style="border:1px solid #000;padding:2px;">1</td><td style="border:1px solid #000;padding:2px;">${data.feeHead || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>`
+            : `<tr><td style="border:1px solid #000;padding:2px;">1</td><td style="border:1px solid #000;padding:2px;">${data.feeHead || "Fee"}</td><td style="border:1px solid #000;padding:2px;text-align:right;">${totalItemsAmount.toLocaleString("en-IN")}</td></tr>`
           }
-          <tr style="background:#f9f9f9;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;font-size:10px;">Net Amount</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;font-size:10px;">${(data.totalFee || data.netAmount || data.amount || 0).toLocaleString("en-IN")}</td></tr>
-          <tr style="background:#d4edda;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:green;">Paid</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:green;">${(data.amount || 0).toLocaleString("en-IN")}</td></tr>
-          <tr style="background:#fff3cd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:red;">Balance</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:red;">${(data.balance || 0).toLocaleString("en-IN")}</td></tr>
+          <tr style="background:#f0f0f0;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;font-size:10px;">Total Amount</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;font-size:10px;">${totalItemsAmount.toLocaleString("en-IN")}</td></tr>
+          ${discountAmount > 0 ? `<tr style="background:#fef3c7;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:#92400e;font-size:10px;">Discount${data.discountName ? " (" + data.discountName + ")" : ""}</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:#92400e;font-size:10px;">- ${discountAmount.toLocaleString("en-IN")}</td></tr>` : ""}
+          ${discountAmount > 0 ? `<tr style="background:#f0f0f0;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;font-size:10px;">Net Payable</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;font-size:10px;">${(totalItemsAmount - discountAmount).toLocaleString("en-IN")}</td></tr>` : ""}
+          <tr style="background:#d4edda;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:green;font-size:10px;">Paid Amount (This Receipt)</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:green;font-size:10px;">${paidAmount.toLocaleString("en-IN")}</td></tr>
+          ${installmentBalance > 0 ? `<tr style="background:#fff3cd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:#b45309;font-size:10px;">Installment Balance</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:#b45309;font-size:10px;">${installmentBalance.toLocaleString("en-IN")}</td></tr>` : ""}
+          <tr style="border-top:2px solid #000;"><td style="border:1px solid #000;padding:2px;" colspan="3"><hr style="border:none;border-top:1px dashed #999;margin:0;"/></td></tr>
+          <tr style="background:#e8f4fd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;font-size:10px;">Annual Fee (Full Year)</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;font-size:10px;">${annualFee.toLocaleString("en-IN")}</td></tr>
+          ${annualDiscount > 0 ? `<tr style="background:#fef3c7;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-size:10px;color:#92400e;">Total Discount</td><td style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;color:#92400e;">- ${annualDiscount.toLocaleString("en-IN")}</td></tr>` : ""}
+          <tr style="background:#e8f4fd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-size:10px;">Total Paid Till Date</td><td style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">${totalPaidTillDate.toLocaleString("en-IN")}</td></tr>
+          <tr style="background:#fff3cd;"><td style="border:1px solid #000;padding:2px;"></td><td style="border:1px solid #000;padding:2px;font-weight:bold;color:red;font-size:10px;">Annual Balance Remaining</td><td style="border:1px solid #000;padding:2px;text-align:right;font-weight:bold;color:red;font-size:10px;">${annualBalance > 0 ? annualBalance.toLocaleString("en-IN") : "0"}</td></tr>
         </tbody>
       </table>
-      <p style="font-size:9px;"><strong>In Words:</strong> ${numberToWords(data.amount || 0)}</p>
-      <div style="margin-top:4px;font-size:9px;">
-        <strong>Total Paid Till Date:</strong> ₹${(data.totalPaidTillDate || data.amount || 0).toLocaleString("en-IN")}
-      </div>
-      <div style="margin-top:2px;font-size:9px;">
-        ${(data.balance || 0) === 0 ? '<strong style="color:green;">✓ FULLY PAID</strong>' : `<strong style="color:red;">Balance Due: ₹${(data.balance || 0).toLocaleString("en-IN")}</strong>`}
+      <p style="font-size:9px;margin-bottom:3px;"><strong>In Words:</strong> ${numberToWords(paidAmount)}</p>
+      <div style="font-size:9px;margin-bottom:2px;"><strong>Payment For:</strong> ${data.monthsCovered?.from && data.monthsCovered?.to ? data.monthsCovered.from + " to " + data.monthsCovered.to + " (" + data.monthsCovered.total + " months paid)" : period}</div>
+      <div style="margin-top:2px;font-size:9px;font-weight:bold;">
+        ${annualBalance <= 0 ? '<span style="color:green;">✓ ALL DUES CLEARED — FULLY PAID</span>' : `<span style="color:red;">Annual Balance: ₹${annualBalance.toLocaleString("en-IN")}</span>`}
       </div>
       <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:9px;">
         <span style="border-top:1px solid #000;padding-top:3px;">Student/Guardian</span>

@@ -78,7 +78,7 @@ export const getDailyCollection = async (
   const records = payments.map((p, idx) => ({
     sNo: idx + 1,
     receiptNo: p.receiptNo,
-    studentName: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: p.studentFee.enrollment.student.admissionNo,
     class: `${p.studentFee.enrollment.class.name} ${p.studentFee.enrollment.section?.name || ""}`.trim(),
     amount: p.amount,
@@ -318,7 +318,7 @@ export const getPendingFeeReport = async (
     const studentId = fee.enrollment.studentId || fee.enrollmentId;
     if (!studentMap[studentId]) {
       studentMap[studentId] = {
-        studentName: `${fee.enrollment.student.firstName} ${fee.enrollment.student.lastName}`,
+        studentName: (() => { const fn = fee.enrollment.student.firstName ?? ""; const ln = fee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
         admissionNo: fee.enrollment.student.admissionNo,
         fatherName: fee.enrollment.student.fatherName || "",
         phone: fee.enrollment.student.phone || "",
@@ -408,7 +408,7 @@ export const getDefaulterReport = async (
 
   const records = filteredFees.map((fee, idx) => ({
     sNo: idx + 1,
-    studentName: `${fee.enrollment.student.firstName} ${fee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = fee.enrollment.student.firstName ?? ""; const ln = fee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: fee.enrollment.student.admissionNo,
     fatherName: fee.enrollment.student.fatherName || "",
     phone: fee.enrollment.student.phone || "",
@@ -465,7 +465,7 @@ export const getFineReport = async (
 
   const records = fees.map((fee, idx) => ({
     sNo: idx + 1,
-    studentName: `${fee.enrollment.student.firstName} ${fee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = fee.enrollment.student.firstName ?? ""; const ln = fee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: fee.enrollment.student.admissionNo,
     class: `${fee.enrollment.class.name} ${fee.enrollment.section?.name || ""}`.trim(),
     installmentNo: fee.installmentNo,
@@ -519,7 +519,7 @@ export const getConcessionReport = async (
 
   const records = discounts.map((d, idx) => ({
     sNo: idx + 1,
-    studentName: `${d.studentFee.enrollment.student.firstName} ${d.studentFee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = d.studentFee.enrollment.student.firstName ?? ""; const ln = d.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: d.studentFee.enrollment.student.admissionNo,
     class: d.studentFee.enrollment.class.name,
     discountName: d.feeDiscount.name,
@@ -583,7 +583,7 @@ export const getScholarshipReport = async (tenantId: string, options: { academic
 
   const records = applied.map((a, idx) => ({
     sNo: idx + 1,
-    studentName: `${a.studentFee.enrollment.student.firstName} ${a.studentFee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = a.studentFee.enrollment.student.firstName ?? ""; const ln = a.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: a.studentFee.enrollment.student.admissionNo,
     class: a.studentFee.enrollment.class.name,
     scholarshipName: a.feeDiscount.name,
@@ -642,7 +642,7 @@ export const getModuleWiseFeeReport = async (
     const moduleFee = moduleItems.reduce((s, i) => s + i.amount, 0);
     return {
       sNo: idx + 1,
-      studentName: `${fee.enrollment.student.firstName} ${fee.enrollment.student.lastName}`,
+      studentName: (() => { const fn = fee.enrollment.student.firstName ?? ""; const ln = fee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: fee.enrollment.student.admissionNo,
       class: `${fee.enrollment.class.name} ${fee.enrollment.section?.name || ""}`.trim(),
       installmentNo: fee.installmentNo,
@@ -701,7 +701,7 @@ export const getCollectionRegister = async (
     sNo: idx + 1,
     date: p.paymentDate,
     receiptNo: p.receiptNo,
-    studentName: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: p.studentFee.enrollment.student.admissionNo,
     class: p.studentFee.enrollment.class.name,
     amount: Math.round(p.amount),
@@ -753,7 +753,7 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
   if (fees.length === 0) return { student: null, entries: [], summary: null };
 
   const student = {
-    name: `${fees[0].enrollment.student.firstName} ${fees[0].enrollment.student.lastName}`,
+    name: (() => { const fn = fees[0].enrollment.student.firstName ?? ""; const ln = fees[0].enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: fees[0].enrollment.student.admissionNo,
     fatherName: fees[0].enrollment.student.fatherName || "",
     class: `${fees[0].enrollment.class.name} ${fees[0].enrollment.section?.name || ""}`.trim(),
@@ -937,7 +937,7 @@ export const getBankBook = async (
     sNo: idx + 1,
     date: p.paymentDate,
     receiptNo: p.receiptNo,
-    studentName: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+    studentName: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: p.studentFee.enrollment.student.admissionNo,
     class: p.studentFee.enrollment.class.name,
     amount: Math.round(p.amount),
@@ -980,7 +980,7 @@ export const getAdvanceBalanceReport = async (tenantId: string) => {
     const advance = totalPaid - totalNet;
     if (advance > 0) {
       records.push({
-        studentName: `${enr.student.firstName} ${enr.student.lastName}`,
+        studentName: (() => { const fn = enr.student.firstName ?? ""; const ln = enr.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
         admissionNo: enr.student.admissionNo,
         class: `${enr.class.name} ${enr.section?.name || ""}`.trim(),
         totalPaid: Math.round(totalPaid),

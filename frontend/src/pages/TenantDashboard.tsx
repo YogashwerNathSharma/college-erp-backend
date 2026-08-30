@@ -397,29 +397,7 @@ export default function Dashboard() {
 
   const isFreePlan = subscriptionInfo?.amount === 0 || subscriptionInfo?.planName?.toLowerCase().includes("free");
 
-  // ─── Student fee detail handler ──────────────────────────────
-  const handlePaymentStudentClick = async (p: any) => {
-    setPaymentStudent(p);
-    setPaymentStudentFees([]);
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-      const query = p.admissionNo || p.studentName || "";
-      const res = await axios.get(getFullUrl(`/api/fees/collection/search?q=${encodeURIComponent(query)}`), { headers });
-      const result = res.data;
-      
-      if (result?.type === "single" && result?.data?.fees) {
-        setPaymentStudentFees(result.data.fees);
-      } else if (result?.type === "list" && result?.students?.length > 0) {
-        const enrollId = result.students[0].enrollmentId || result.students[0].id;
-        const feeRes = await axios.get(getFullUrl(`/api/fees/collection/student/${enrollId}`), { headers });
-        setPaymentStudentFees(feeRes.data?.fees || []);
-      }
-    } catch (err) {
-      console.error("Fee fetch error:", err);
-      setPaymentStudentFees([]);
-    }
-  };
+  // handlePaymentStudentClick removed — all fee clicks navigate to /fees/collection
 
   // ─── Gender modal handler ───────────────────────────────────
   const handleGenderClick = async () => {
@@ -563,8 +541,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 animate-fade-in-up stagger-2">
           <MiniStat label="Students" value={data.totalStudents} icon={<GraduationCap size={16} />} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-950/50" onClick={() => setDetailModal({ open: true, type: "students" })} />
           <MiniStat label="Teachers" value={data.totalTeachers || 0} icon={<UserCog size={16} />} color="text-green-600" bg="bg-green-50 dark:bg-green-950/50" onClick={() => navigate("/teachers")} />
-          <MiniStat label="Fee Collected" value={data.totalPaid >= 100000 ? `₹${formatCompact(data.totalPaid)}` : formatINR(data.totalPaid)} icon={<IndianRupee size={16} />} color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-950/50" onClick={() => setDetailModal({ open: true, type: "fees_collected" })} />
-          <MiniStat label="Fee Pending" value={data.totalPending >= 100000 ? `₹${formatCompact(data.totalPending)}` : formatINR(data.totalPending)} icon={<AlertCircle size={16} />} color="text-red-600" bg="bg-red-50 dark:bg-red-950/50" onClick={() => setDetailModal({ open: true, type: "fees_pending" })} />
+          <MiniStat label="Fee Collected" value={data.totalPaid >= 100000 ? `₹${formatCompact(data.totalPaid)}` : formatINR(data.totalPaid)} icon={<IndianRupee size={16} />} color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-950/50" onClick={() => navigate("/fees/dashboard")} />
+          <MiniStat label="Fee Pending" value={data.totalPending >= 100000 ? `₹${formatCompact(data.totalPending)}` : formatINR(data.totalPending)} icon={<AlertCircle size={16} />} color="text-red-600" bg="bg-red-50 dark:bg-red-950/50" onClick={() => navigate("/fees/dashboard")} />
           <MiniStat label="Attendance" value={data.insights?.attendanceToday ? `${data.insights.attendanceToday}%` : "—"} icon={<CalendarCheck size={16} />} color="text-purple-600" bg="bg-purple-50 dark:bg-purple-950/50" onClick={() => navigate("/attendance")} />
           <MiniStat label="Classes" value={data.totalClasses} icon={<School size={16} />} color="text-cyan-600" bg="bg-cyan-50 dark:bg-cyan-950/50" onClick={() => setDetailModal({ open: true, type: "classes" })} />
         </div>
@@ -635,7 +613,7 @@ export default function Dashboard() {
         {/* ═══ CHARTS ROW: Fee Collection + Attendance Trend (compact) ═══ */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 animate-fade-in-up stagger-4">
           {/* Monthly Fee Collection */}
-          <div onClick={() => setDetailModal({ open: true, type: "fees_collected" })} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        <div onClick={() => navigate("/fees/dashboard")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 sm:p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-white">Monthly Fee Collection</h3>
@@ -780,13 +758,13 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                 <Receipt size={14} className="text-emerald-500" /> Recent Payments
               </h3>
-              <button onClick={() => setDetailModal({ open: true, type: "recent_payments" })} className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex items-center gap-0.5">
+              <button onClick={() => navigate("/fees/receipts")} className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex items-center gap-0.5">
                 View All <ArrowRight size={12} />
               </button>
             </div>
             <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
               {data.recentPayments.length > 0 ? data.recentPayments.slice(0, 5).map((p: any, i: number) => (
-                <div key={i} onClick={() => handlePaymentStudentClick(p)} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors">
+        <div key={i} onClick={() => navigate(`/fees/collection?student=${encodeURIComponent(p.studentName || p.name || "")}`)} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                       {(p.studentName || p.name || "S")[0].toUpperCase()}
@@ -805,7 +783,7 @@ export default function Dashboard() {
           </div>
 
           {/* Activity Feed */}
-          <div onClick={() => setDetailModal({ open: true, type: "recent_payments" })} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+          <div onClick={() => navigate("/fees/receipts")} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5 mb-2">
               <Activity size={14} className="text-indigo-500" /> Recent Activity
             </h3>
@@ -836,7 +814,7 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
                 <AlertCircle size={14} className="text-red-500" /> Fee Defaulters
               </h3>
-              <button onClick={(e) => { e.stopPropagation(); setDetailModal({ open: true, type: "fees_pending" }); }} className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium">View All</button>
+          <button onClick={(e) => { e.stopPropagation(); navigate("/fees/due"); }} className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium">View All</button>
             </div>
             <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar">
               {data.defaulters.length > 0 ? data.defaulters.slice(0, 4).map((d: any, i: number) => (
@@ -926,81 +904,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Student Fee History Modal */}
-        {paymentStudent && (
-          <div className="fixed inset-0 bg-black/60 z-[9000] flex items-end sm:items-center justify-center sm:p-4" onClick={() => setPaymentStudent(null)}>
-            <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">{paymentStudent.studentName}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{paymentStudent.className}{paymentStudent.sectionName ? ` - ${paymentStudent.sectionName}` : ""}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => {
-                    const receiptData = { ...paymentStudent, installmentNo: paymentStudentFees[0]?.installmentNo || 1, dueDate: paymentStudentFees[0]?.dueDate, balance: paymentStudentFees.reduce((s: number, f: any) => s + (f.balanceAmount || 0), 0), feeHead: paymentStudentFees[0]?.feeStructure?.name || "Fee" };
-                    import("../utils/print").then(({ printDocument }) => printDocument("fee_receipt", receiptData));
-                  }} className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 font-medium">
-                    🖨️ Print Receipt
-                  </button>
-                  <button onClick={() => { setPaymentStudent(null); navigate(`/fees/collection?student=${encodeURIComponent(paymentStudent?.admissionNo || paymentStudent?.studentName || "")}`); }} className="px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 font-medium">
-                    💰 Collect Fee
-                  </button>
-                  <button onClick={() => setPaymentStudent(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg">✕</button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Fee Payment History</h3>
-                {paymentStudentFees.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <th className="text-left py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">#</th>
-                        <th className="text-left py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Installment</th>
-                        <th className="text-right py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Net Fee</th>
-                        <th className="text-right py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Paid</th>
-                        <th className="text-right py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Balance</th>
-                        <th className="text-center py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Status</th>
-                        <th className="text-left py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Due Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paymentStudentFees.map((f: any, idx: number) => (
-                        <tr key={f.id || idx} className="border-b border-slate-50 dark:border-slate-700/50">
-                          <td className="py-2.5 text-slate-500">{idx + 1}</td>
-                          <td className="py-2.5 font-medium text-slate-800 dark:text-slate-200">Inst. {f.installmentNo || idx + 1}</td>
-                          <td className="py-2.5 text-right text-slate-700 dark:text-slate-300">₹{(f.netAmount || f.totalAmount || 0).toLocaleString("en-IN")}</td>
-                          <td className="py-2.5 text-right text-emerald-600 font-medium">₹{(f.paidAmount || 0).toLocaleString("en-IN")}</td>
-                          <td className="py-2.5 text-right font-bold text-red-600">₹{(f.balanceAmount || 0).toLocaleString("en-IN")}</td>
-                          <td className="py-2.5 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              f.status === "PAID" ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                                : f.status === "OVERDUE" ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
-                                : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                            }`}>{f.status || "PENDING"}</span>
-                          </td>
-                          <td className="py-2.5 text-slate-500 dark:text-slate-400 text-xs">{f.dueDate ? new Date(f.dueDate).toLocaleDateString("en-IN") : "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="text-center py-8 text-slate-400">
-                    <p>No fee installments found for this student.</p>
-                    <p className="text-xs mt-1">Click "Collect Fee" to assign and collect fees.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                <span className="text-xs text-slate-500 dark:text-slate-400">{paymentStudentFees.length} installments</span>
-                <span className="text-sm font-bold text-slate-800 dark:text-white">
-                  Total Paid: <span className="text-emerald-600">₹{paymentStudentFees.reduce((s: number, f: any) => s + (f.paidAmount || 0), 0).toLocaleString("en-IN")}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Student Fee History Modal — removed, navigate to /fees/collection instead */}
 
         {/* Gender Breakdown Modal */}
         {genderModal && (

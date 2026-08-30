@@ -50,7 +50,46 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
   // 4. Outstanding
   const outstanding = totalReceivable - totalCollected;
 
-  // 5. Monthly Collection (grouped by month)
+  // 5a. Overdue Amount — fees where dueDate has passed and balance > 0
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const overdueAgg = await prisma.studentFee.aggregate({
+    where: {
+      tenantId,
+      isDeleted: false,
+      balanceAmount: { gt: 0 },
+      dueDate: { lt: today },
+      enrollment: { ...ayFilter, isDeleted: false },
+    },
+    _sum: { balanceAmount: true },
+  });
+  const overdueAmount = overdueAgg._sum.balanceAmount || 0;
+
+  // 5b. Total Discounts Given (sum of discountAmount across all student fees)
+  const discountAgg = await prisma.studentFee.aggregate({
+    where: {
+      tenantId,
+      isDeleted: false,
+      discountAmount: { gt: 0 },
+      enrollment: { ...ayFilter, isDeleted: false },
+    },
+    _sum: { discountAmount: true },
+  });
+  const totalDiscount = discountAgg._sum.discountAmount || 0;
+
+  // 5c. Total Fine Collected (sum of fineAmount across all student fees)
+  const fineAgg = await prisma.studentFee.aggregate({
+    where: {
+      tenantId,
+      isDeleted: false,
+      fineAmount: { gt: 0 },
+      enrollment: { ...ayFilter, isDeleted: false },
+    },
+    _sum: { fineAmount: true },
+  });
+  const totalFine = fineAgg._sum.fineAmount || 0;
+
+  // 6. Monthly Collection (grouped by month)
   const payments = await prisma.payment.findMany({
     where: {
       tenantId,
@@ -148,8 +187,8 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
 
   const recentCollections = recentPayments.map((p) => ({
     receiptNo: p.receiptNo,
-    date: p.paymentDate,
-    studentName: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+    date: p.paymentDate ? new Date(p.paymentDate).toISOString() : null,
+    studentName: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })() || "Unknown",
     className: p.studentFee.enrollment.class.name,
     amount: p.amount,
     collectedBy: p.collectedBy || "Admin",
@@ -157,7 +196,7 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
   }));
 
   return {
-    summary: { totalStudents, totalReceivable, totalCollected, outstanding },
+    summary: { totalStudents, totalReceivable, totalCollected, outstanding, overdueAmount, totalDiscount, totalFine },
     monthlyCollection,
     classwiseOutstanding,
     recentCollections,

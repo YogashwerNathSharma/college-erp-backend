@@ -43,6 +43,9 @@ interface ReceiptData {
   totalPaidTillDate?: number; // total paid across all payments
   pendingFrom?: string;      // "July 2026"
   dueDate?: string;
+  discountName?: string;
+  discountType?: string;
+  discountValue?: number;
 }
 
 const numberToWords = (num: number): string => {
@@ -64,12 +67,19 @@ const numberToWords = (num: number): string => {
 
 const getFeePeriodText = (data: ReceiptData): string => {
   if (data.feePeriod) return data.feePeriod;
+  // Use session to extract academic year start (e.g., "2026-27" → 2026)
+  let sessionYear: number;
+  if (data.session) {
+    sessionYear = parseInt(data.session.split("-")[0]) || new Date().getFullYear();
+  } else {
+    const now = new Date();
+    sessionYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  }
   const months = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   const installment = data.installmentNo || 1;
   const monthIdx = ((installment - 1) % 12);
   const monthName = months[monthIdx];
-  const year = new Date().getFullYear();
-  const displayYear = monthIdx >= 9 ? year + 1 : year;
+  const displayYear = monthIdx >= 9 ? sessionYear + 1 : sessionYear;
   return `${monthName} ${displayYear} (Installment #${installment})`;
 };
 
@@ -190,7 +200,7 @@ export const FeeReceiptPrint = async (data: ReceiptData) => {
           ${discount > 0 ? `
           <tr>
             <td style="border: 1px solid #000; padding: 2px 4px;"></td>
-            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #6b21a8;"><strong>Discount</strong></td>
+            <td style="border: 1px solid #000; padding: 2px 4px; font-size: 9px; color: #6b21a8;"><strong>Discount${data.discountName ? ` (${data.discountName}${data.discountType === 'PERCENTAGE' ? ` ${data.discountValue}%` : ''})` : ''}</strong></td>
             <td style="border: 1px solid #000; padding: 2px 4px; text-align: right; font-size: 9px; color: #6b21a8;">- ${discount.toLocaleString("en-IN")}</td>
           </tr>
           ` : ""}

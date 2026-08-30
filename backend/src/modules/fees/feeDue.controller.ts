@@ -64,7 +64,7 @@ export async function getDueSummaryController(req: Request, res: Response) {
       } else {
         classMap[classId].students.push({
           studentId: enrollment.studentId,
-          studentName: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
+          studentName: (() => { const fn = enrollment.student.firstName ?? ""; const ln = enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
           admissionNo: enrollment.student.admissionNo || "—",
           className: enrollment.class?.name || "",
           sectionName: enrollment.section?.name || "",

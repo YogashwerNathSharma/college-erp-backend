@@ -99,10 +99,10 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     if (fee.discountAmount > 0) {
       const discountNames =
         fee.discounts.map((d) => d.feeDiscount.name).join(", ") || "Discount";
-      runningBalance -= fee.discountAmount;
+      runningBalance -= fee.discountAmount;  
       entries.push({
         date: new Date(fee.updatedAt).toISOString(),
-        particulars: `Discount: ${discountNames}`,
+        particulars: `Discount: ${discountNames} (Inst. #${fee.installmentNo})`,
         receiptNo: "-",
         debit: 0,
         credit: fee.discountAmount,
@@ -139,10 +139,20 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
     }
   }
 
-  // Sort entries by date
-  entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Sort entries: debits first (by dueDate ascending), then credits (by date ascending)
+  // This ensures installment debits always appear before their payments,
+  // preventing negative running balance when advance payments are made.
+  entries.sort((a, b) => {
+    // Primary sort: by date
+    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    // Secondary sort: debits before credits on same date
+    if (a.debit > 0 && b.credit > 0) return -1;
+    if (a.credit > 0 && b.debit > 0) return 1;
+    return 0;
+  });
 
-  // Recalculate running balance after sort
+  // Recalculate running balance after sort  
   let recalcBalance = 0;
   for (const entry of entries) {
     recalcBalance += entry.debit - entry.credit;
@@ -166,7 +176,7 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
 
   return {
     student: {
-      name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
+      name: (() => { const fn = enrollment.student.firstName ?? ""; const ln = enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: enrollment.student.admissionNo,
       fatherName: enrollment.student.fatherName,
       phone: enrollment.student.phone,
@@ -247,7 +257,7 @@ export const searchStudentForLedger = async (query: string, tenantId: string) =>
 
   return enrollments.map((e) => ({
     enrollmentId: e.id,
-    name: `${e.student.firstName} ${e.student.lastName}`,
+    name: (() => { const fn = e.student.firstName ?? ""; const ln = e.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
     admissionNo: e.student.admissionNo,
     fatherName: e.student.fatherName,
     className: e.class.name,

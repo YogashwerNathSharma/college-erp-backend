@@ -786,7 +786,7 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
 
   return {
     student: {
-      name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
+      name: (() => { const fn = enrollment.student.firstName ?? ""; const ln = enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: enrollment.student.admissionNo,
       fatherName: enrollment.student.fatherName,
       phone: enrollment.student.phone,
@@ -891,7 +891,7 @@ export const searchStudents = async (query: string, tenantId: string) => {
     type: "multiple",
     results: enrollments.map((e) => ({
       enrollmentId: e.id,
-      name: `${e.student.firstName} ${e.student.lastName}`,
+      name: (() => { const fn = e.student.firstName ?? ""; const ln = e.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: e.student.admissionNo,
       fatherName: e.student.fatherName,
       phone: e.student.phone,
@@ -947,6 +947,13 @@ export const collectPayment = async (data: {
     selectedItems,
   } = data;
 
+  // Lookup discount details for receipt display
+  let discountInfo: { name: string; type: string; value: number } | null = null;
+  if (discountId) {
+    const disc = await prisma.feeDiscount.findFirst({ where: { id: discountId, tenantId } });
+    if (disc) discountInfo = { name: disc.name, type: disc.type, value: disc.value };
+  }
+
   // Get the student fee with structure items, per-student items, and enrollment info
   const studentFee = await prisma.studentFee.findFirst({
     where: { id: studentFeeId, tenantId, isDeleted: false },
@@ -958,6 +965,7 @@ export const collectPayment = async (data: {
           },
           class: { select: { name: true } },
           section: { select: { name: true } },
+          academicYear: { select: { name: true, startDate: true, endDate: true } },
         },
       },
       feeStructure: {
@@ -1093,9 +1101,11 @@ export const collectPayment = async (data: {
   // Calculate remaining balance across ALL installments for this enrollment
   const allFees = await prisma.studentFee.findMany({
     where: { enrollmentId: studentFee.enrollmentId, tenantId, isDeleted: false },
-    select: { balanceAmount: true },
+    select: { balanceAmount: true, totalAmount: true, paidAmount: true },
   });
   const totalRemainingBalance = allFees.reduce((sum, f) => sum + f.balanceAmount, 0);
+  const totalAnnualFee = allFees.reduce((sum, f) => sum + f.totalAmount, 0);
+  const totalPaidTillDate = allFees.reduce((sum, f) => sum + f.paidAmount, 0);
 
   return {
     receiptNo,
@@ -1106,13 +1116,17 @@ export const collectPayment = async (data: {
       reference: result.payment.reference,
       paymentDate: result.payment.paymentDate,
       discountAmount: discountAmount,
+      discountName: discountInfo?.name || null,
+      discountType: discountInfo?.type || null,
+      discountValue: discountInfo?.value || null,
     },
     studentInfo: {
-      name: `${studentFee.enrollment.student.firstName} ${studentFee.enrollment.student.lastName}`,
+      name: (() => { const fn = studentFee.enrollment.student.firstName ?? ""; const ln = studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
       admissionNo: studentFee.enrollment.student.admissionNo,
       fatherName: studentFee.enrollment.student.fatherName,
       class: studentFee.enrollment.class.name,
       section: studentFee.enrollment.section?.name || "",
+      session: (studentFee.enrollment as any).academicYear?.name || "",
     },
     feeInfo: {
       feeHead: feeHeadStr,
@@ -1120,6 +1134,9 @@ export const collectPayment = async (data: {
       installmentNo: studentFee.installmentNo,
       totalAmount: studentFee.totalAmount,
       discountAmount: result.newDiscountAmount,
+      discountName: discountInfo?.name || null,
+      discountType: discountInfo?.type || null,
+      discountValue: discountInfo?.value || null,
       netAmount: studentFee.totalAmount - result.newDiscountAmount + studentFee.fineAmount,
       paidAmount: result.newPaidAmount,
       balanceAmount: result.newBalanceAmount,
@@ -1128,6 +1145,8 @@ export const collectPayment = async (data: {
     // NEW: Month coverage info for receipt
     monthsCovered: getMonthsCoveredShort(monthCoverage),
     remainingBalance: totalRemainingBalance,
+    totalAnnualFee,
+    totalPaidTillDate,
     nextDueMonth: monthCoverage.pendingFromMonth,
     monthCoverageDetails: monthCoverage,
   };
@@ -1242,7 +1261,7 @@ export const getDefaulters = async (
       groupedByStudent[key] = {
         enrollmentId: fee.enrollmentId,
         student: {
-          name: `${fee.enrollment.student.firstName} ${fee.enrollment.student.lastName}`,
+          name: (() => { const fn = fee.enrollment.student.firstName ?? ""; const ln = fee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
           admissionNo: fee.enrollment.student.admissionNo,
           fatherName: fee.enrollment.student.fatherName,
           phone: fee.enrollment.student.phone,
@@ -1376,7 +1395,7 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
         reference: p.reference,
         paymentDate: p.paymentDate,
         student: {
-          name: `${p.studentFee.enrollment.student.firstName} ${p.studentFee.enrollment.student.lastName}`,
+          name: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })(),
           admissionNo: p.studentFee.enrollment.student.admissionNo,
           fatherName: p.studentFee.enrollment.student.fatherName || "",
           class: p.studentFee.enrollment.class.name,

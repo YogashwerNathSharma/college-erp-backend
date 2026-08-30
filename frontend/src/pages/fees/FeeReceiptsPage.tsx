@@ -27,6 +27,7 @@ interface StudentOption {
   sectionName: string;
   fatherName?: string;
   rollNumber?: string;
+  session?: string;
 }
 
 interface FeeInstallment {
@@ -159,6 +160,19 @@ const FeeReceiptsPage: React.FC = () => {
       const ledgerRes = await axios.get(`${API}/fees/ledger/${student.enrollmentId}`, { headers });
       const ledger = ledgerRes.data?.data || ledgerRes.data || {};
       
+      // Capture session from ledger student data and update selectedStudent
+      const ledgerSession = ledger.student?.session || "";
+      if (ledgerSession) {
+        student = { ...student, session: ledgerSession };
+        setSelectedStudent(student);
+      }
+
+      // Build a lookup from installmentNo -> fee installment data (for dueDate, discount)
+      const feeInstLookup: Record<number, any> = {};
+      for (const entry of (ledger.installmentStatus || fees)) {
+        feeInstLookup[entry.installmentNo] = entry;
+      }
+
       // Extract payments from ledger response (backend now sends flat payments array)
       const allPayments: PaymentRecord[] = (ledger.payments || []).map((p: any) => ({
         id: p.id,
@@ -168,7 +182,20 @@ const FeeReceiptsPage: React.FC = () => {
         paymentDate: p.paymentDate || p.createdAt || "",
         reference: p.reference || null,
         feeItems: p.feeItems || [],
-        studentFee: { installmentNo: p.installmentNo, feeStructureName: p.feeStructureName },
+        studentFee: (() => {
+          const matchedFee = feeInstLookup[p.installmentNo] || {};
+          return {
+          installmentNo: p.installmentNo,
+          feeStructureName: p.feeStructureName,
+          // Enrich with per-fee data from the fees/installmentStatus arrays
+          discountAmount: p.discountAmount || matchedFee.discountAmount || 0,
+          discountName: p.discountName || matchedFee.discountName || "",
+          discountType: p.discountType || matchedFee.discountType || "",
+          discountValue: p.discountValue || matchedFee.discountValue || "",
+          dueDate: p.dueDate || matchedFee.dueDate || null,
+          netAmount: matchedFee.netAmount || matchedFee.totalAmount || 0,
+          };
+        })(),
       }));
       setPayments(allPayments);
 
@@ -270,6 +297,13 @@ const FeeReceiptsPage: React.FC = () => {
       totalDue: totalFee,
       balance: totalBalance,
       totalPaidTillDate: totalPaid,
+      rollNumber: selectedStudent.rollNumber || "",
+      discountAmount: payment.studentFee?.discountAmount || 0,
+      discountName: payment.studentFee?.discountName || "",
+      discountType: payment.studentFee?.discountType || "",
+      discountValue: payment.studentFee?.discountValue || "",
+      dueDate: payment.studentFee?.dueDate || null,
+      session: selectedStudent.session || "",
     });
   };
 
@@ -296,6 +330,13 @@ const FeeReceiptsPage: React.FC = () => {
       totalDue: totalFee,
       balance: totalBalance,
       totalPaidTillDate: totalPaid,
+      rollNumber: selectedStudent?.rollNumber || "",
+      discountAmount: p.studentFee?.discountAmount || 0,
+      discountName: p.studentFee?.discountName || "",
+      discountType: p.studentFee?.discountType || "",
+      discountValue: p.studentFee?.discountValue || "",
+      dueDate: p.studentFee?.dueDate || null,
+      session: selectedStudent?.session || "",
     }));
     printMultipleReceipts(receiptsData);
   };

@@ -2665,10 +2665,11 @@ const FeeCollectionPage: React.FC = () => {
 
       balance: lastReceipt.feeInfo.balanceAmount ?? 0,
       annualBalance: lastReceipt.remainingBalance ?? 0,
-      discountAmount: lastReceipt.payment?.discountAmount || lastReceipt.feeInfo?.discountAmount || 0,
-      discountName: lastReceipt.payment?.discountName || lastReceipt.feeInfo?.discountName || "",
-      discountType: lastReceipt.payment?.discountType || lastReceipt.feeInfo?.discountType || "",
-      discountValue: lastReceipt.payment?.discountValue || lastReceipt.feeInfo?.discountValue || 0,
+      // Only show discount on receipt if it was part of THIS payment (not previous ones)
+      discountAmount: lastReceipt.payment?.discountAmount || 0,
+      discountName: lastReceipt.payment?.discountName || "",
+      discountType: lastReceipt.payment?.discountType || "",
+      discountValue: lastReceipt.payment?.discountValue || 0,
 
 
 
@@ -4351,62 +4352,23 @@ const FeeCollectionPage: React.FC = () => {
 
 
                       <button onClick={() => {
-
-
-
-
-
-                        const feeWithItems = fees.find(f => f.items && f.items.length > 0);
-
-
-
-
-
-                        const receiptItems = feeWithItems?.items?.map(i => ({ name: i.name, amount: i.amount }))
-
-
-
-
-
-                          || fees[0]?.feeStructure?.items?.map(i => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 }))
-
-
-
-
-
+                        // Find the specific installment this payment belongs to
+                        const parentFee = fees.find((f: any) => f.payments?.some((pay: any) => pay.id === p.id)) || fees[0];
+                        const receiptItems = parentFee?.items?.map((i: any) => ({ name: i.name, amount: i.amount }))
+                          || parentFee?.feeStructure?.items?.map((i: any) => ({ name: i.feeHead?.name || "Fee", amount: i.amount || 0 }))
                           || [];
-
-
-
-
-
                         setLastReceipt({
-
-
-
-
-
                           receiptNo: p.receiptNo,
-
-
-
-
-
-                          payment: p,
-
-
-
-
-
+                          payment: { ...p, discountAmount: 0 },
                           feeInfo: {
-                            feeHead: fees[0]?.feeStructure?.name || "Fee",
+                            feeHead: parentFee?.feeStructure?.name || "Fee",
                             feeItems: receiptItems,
-                            installmentNo: 1,
-                            totalAmount: fees[0]?.totalAmount || 0,
-                            discountAmount: fees[0]?.discountAmount || 0,
-                            netAmount: fees[0]?.netAmount || 0,
-                            paidAmount: fees.reduce((s: number, f: any) => s + f.paidAmount, 0),
-                            balanceAmount: fees.reduce((s: number, f: any) => s + f.balanceAmount, 0),
+                            installmentNo: parentFee?.installmentNo || 1,
+                            totalAmount: parentFee?.totalAmount || 0,
+                            discountAmount: 0,
+                            netAmount: parentFee?.netAmount || 0,
+                            paidAmount: parentFee?.paidAmount || 0,
+                            balanceAmount: parentFee?.balanceAmount || 0,
                           },
                           _selectedFeeItems: receiptItems,
                           monthsCovered: null,
@@ -4416,13 +4378,7 @@ const FeeCollectionPage: React.FC = () => {
                           studentInfo: { session: "" },
                           nextDueMonth: null,
                         });
-
-
-
-
-
                         setTimeout(() => document.getElementById("print-receipt-btn")?.click(), 100);
-
 
 
 

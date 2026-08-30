@@ -1028,3 +1028,247 @@ export const getFeeReports = async (
 ) => {
   return await getClassLedger(tenantId, options);
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 22. CLASS-WISE STUDENT FEE SUMMARY — Printable with all students
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const getClassWiseStudentFeeSummary = async (
+  tenantId: string,
+  options: { classId?: string; sectionId?: string; academicYearId?: string }
+) => {
+  // Get active academic year if not provided
+  let academicYearId = options.academicYearId;
+  if (!academicYearId) {
+    const activeAY = await prisma.academicYear.findFirst({
+      where: { tenantId, isActive: true, isDeleted: false },
+      select: { id: true, name: true },
+    });
+    academicYearId = activeAY?.id;
+  }
+
+  const academicYear = academicYearId
+    ? await prisma.academicYear.findFirst({ where: { id: academicYearId }, select: { name: true } })
+    : null;
+
+  // Get tenant info for print header
+  const tenant = await prisma.tenant.findFirst({
+    where: { id: tenantId },
+    select: { name: true, address: true, phone: true, email: true, logoUrl: true },
+  });
+
+  // Build enrollment filter
+  const enrollmentWhere: any = {
+    tenantId,
+    isDeleted: false,
+    status: "active",
+    ...(academicYearId ? { academicYearId } : {}),
+    ...(options.classId ? { classId: options.classId } : {}),
+    ...(options.sectionId ? { sectionId: options.sectionId } : {}),
+  };
+
+  // Get all enrollments with student details + fee data
+  const enrollments = await prisma.enrollment.findMany({
+    where: enrollmentWhere,
+    include: {
+      student: { select: { firstName: true, lastName: true, admissionNo: true, fatherName: true, phone: true } },
+      class: { select: { id: true, name: true } },
+      section: { select: { name: true } },
+      studentFees: {
+        where: { isDeleted: false },
+        select: {
+          installmentNo: true,
+          totalAmount: true,
+          discountAmount: true,
+          netAmount: true,
+          paidAmount: true,
+          balanceAmount: true,
+          status: true,
+          dueDate: true,
+        },
+        orderBy: { installmentNo: "asc" },
+      },
+    },
+    orderBy: [{ classId: "asc" }, { rollNumber: "asc" }],
+  });
+
+  // Group by class
+  const classMap: Record<string, any> = {};
+  for (const enr of enrollments) {
+    const classKey = enr.class.id;
+    if (!classMap[classKey]) {
+      classMap[classKey] = {
+        className: enr.class.name,
+        sectionName: enr.section?.name || "",
+        students: [],
+        classTotalFee: 0,
+        classTotalPaid: 0,
+        classTotalBalance: 0,
+        classTotalDiscount: 0,
+      };
+    }
+    const fn = enr.student.firstName ?? "";
+    const ln = enr.student.lastName ?? "";
+    const studentName = fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim();
+    const totalFee = enr.studentFees.reduce((s, f) => s + f.totalAmount, 0);
+    const totalPaid = enr.studentFees.reduce((s, f) => s + f.paidAmount, 0);
+    const totalBalance = enr.studentFees.reduce((s, f) => s + f.balanceAmount, 0);
+    const totalDiscount = enr.studentFees.reduce((s, f) => s + f.discountAmount, 0);
+    const paidInstallments = enr.studentFees.filter(f => f.status === "PAID").length;
+    const totalInstallments = enr.studentFees.length;
+    const lastPaidMonth = enr.studentFees.filter(f => f.status === "PAID").pop();
+
+    classMap[classKey].students.push({
+      studentName,
+      admissionNo: enr.student.admissionNo,
+      fatherName: enr.student.fatherName || "",
+      phone: enr.student.phone || "",
+      rollNumber: enr.rollNumber || "",
+      totalFee: Math.round(totalFee),
+      totalPaid: Math.round(totalPaid),
+      totalBalance: Math.round(totalBalance),
+      totalDiscount: Math.round(totalDiscount),
+      paidInstallments,
+      totalInstallments,
+      paidTillMonth: lastPaidMonth?.dueDate ? new Date(lastPaidMonth.dueDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "—",
+      status: totalBalance === 0 ? "PAID" : totalPaid > 0 ? "PARTIAL" : "UNPAID",
+      // Installment-wise detail for individual view
+      installments: enr.studentFees.map(f => ({
+        installmentNo: f.installmentNo,
+        dueDate: f.dueDate ? new Date(f.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—",
+        totalAmount: Math.round(f.totalAmount),
+        discount: Math.round(f.discountAmount),
+        netAmount: Math.round(f.netAmount),
+        paid: Math.round(f.paidAmount),
+        balance: Math.round(f.balanceAmount),
+        status: f.status,
+      })),
+    });
+
+    classMap[classKey].classTotalFee += totalFee;
+    classMap[classKey].classTotalPaid += totalPaid;
+    classMap[classKey].classTotalBalance += totalBalance;
+    classMap[classKey].classTotalDiscount += totalDiscount;
+  }
+
+  const classes = Object.values(classMap).sort((a: any, b: any) =>
+    a.className.localeCompare(b.className, undefined, { numeric: true })
+  );
+
+  const grandTotal = {
+    totalFee: classes.reduce((s: number, c: any) => s + c.classTotalFee, 0),
+    totalPaid: classes.reduce((s: number, c: any) => s + c.classTotalPaid, 0),
+    totalBalance: classes.reduce((s: number, c: any) => s + c.classTotalBalance, 0),
+    totalDiscount: classes.reduce((s: number, c: any) => s + c.classTotalDiscount, 0),
+    totalStudents: enrollments.length,
+  };
+
+  // Flatten for table rendering — each student as a record with class info
+  let sNo = 0;
+  const records = classes.flatMap((cls: any) =>
+    cls.students.map((s: any) => ({ sNo: ++sNo, className: cls.className, sectionName: cls.sectionName, ...s }))
+  );
+
+  return {
+    tenant: { name: tenant?.name || "", address: tenant?.address || "", phone: tenant?.phone || "", email: tenant?.email || "", logoUrl: tenant?.logoUrl || "" },
+    session: academicYear?.name || "",
+    classes,
+    records,
+    summary: grandTotal,
+    grandTotal,
+    generatedAt: new Date().toISOString(),
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 23. INDIVIDUAL STUDENT FEE REPORT — Full detail for one student (printable)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const getIndividualStudentFeeReport = async (
+  enrollmentId: string,
+  tenantId: string
+) => {
+  const tenant = await prisma.tenant.findFirst({
+    where: { id: tenantId },
+    select: { name: true, address: true, phone: true, email: true, logoUrl: true },
+  });
+
+  const enrollment = await prisma.enrollment.findFirst({
+    where: { id: enrollmentId, tenantId, isDeleted: false },
+    include: {
+      student: { select: { firstName: true, lastName: true, admissionNo: true, fatherName: true, phone: true, dob: true, gender: true } },
+      class: { select: { name: true } },
+      section: { select: { name: true } },
+      academicYear: { select: { name: true } },
+      studentFees: {
+        where: { isDeleted: false },
+        include: {
+          payments: { where: { isDeleted: false }, orderBy: { paymentDate: "asc" } },
+          discounts: { include: { feeDiscount: true } },
+          feeStructure: { include: { items: { include: { feeHead: true } } } },
+          items: true,
+        },
+        orderBy: { installmentNo: "asc" },
+      },
+    },
+  });
+
+  if (!enrollment) throw new Error("Enrollment not found");
+
+  const fn = enrollment.student.firstName ?? "";
+  const ln = enrollment.student.lastName ?? "";
+  const studentName = fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim();
+
+  const totalFee = enrollment.studentFees.reduce((s, f) => s + f.totalAmount, 0);
+  const totalPaid = enrollment.studentFees.reduce((s, f) => s + f.paidAmount, 0);
+  const totalBalance = enrollment.studentFees.reduce((s, f) => s + f.balanceAmount, 0);
+  const totalDiscount = enrollment.studentFees.reduce((s, f) => s + f.discountAmount, 0);
+  const totalFine = enrollment.studentFees.reduce((s, f) => s + f.fineAmount, 0);
+
+  const installments = enrollment.studentFees.map(fee => ({
+    installmentNo: fee.installmentNo,
+    dueDate: fee.dueDate ? new Date(fee.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—",
+    totalAmount: Math.round(fee.totalAmount),
+    discount: Math.round(fee.discountAmount),
+    discountName: fee.discounts.map(d => d.feeDiscount.name).join(", ") || "",
+    fine: Math.round(fee.fineAmount),
+    netAmount: Math.round(fee.netAmount),
+    paid: Math.round(fee.paidAmount),
+    balance: Math.round(fee.balanceAmount),
+    status: fee.status,
+    feeItems: (fee.items?.length > 0 ? fee.items : fee.feeStructure.items).map((item: any) => ({
+      name: item.name || item.feeHead?.name || "Fee",
+      amount: item.amount || 0,
+    })),
+    payments: fee.payments.map(p => ({
+      receiptNo: p.receiptNo,
+      date: new Date(p.paymentDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      amount: p.amount,
+      method: p.method,
+    })),
+  }));
+
+  return {
+    tenant: { name: tenant?.name || "", address: tenant?.address || "", phone: tenant?.phone || "", email: tenant?.email || "", logoUrl: tenant?.logoUrl || "" },
+    session: enrollment.academicYear.name,
+    student: {
+      name: studentName,
+      admissionNo: enrollment.student.admissionNo,
+      fatherName: enrollment.student.fatherName || "",
+      phone: enrollment.student.phone || "",
+      className: enrollment.class.name,
+      section: enrollment.section?.name || "",
+      rollNumber: enrollment.rollNumber || "",
+    },
+    summary: {
+      totalFee: Math.round(totalFee),
+      totalPaid: Math.round(totalPaid),
+      totalBalance: Math.round(totalBalance),
+      totalDiscount: Math.round(totalDiscount),
+      totalFine: Math.round(totalFine),
+      paidPercentage: totalFee > 0 ? Math.round((totalPaid / totalFee) * 100) : 0,
+    },
+    installments,
+    generatedAt: new Date().toISOString(),
+  };
+};

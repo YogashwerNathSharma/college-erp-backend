@@ -41,6 +41,8 @@ import {
   advanceBalanceController,
   refundReportController,
   adjustmentReportController,
+  classWiseStudentFeeSummaryController,
+  individualStudentFeeReportController,
 } from "./feeReports.controller";
 
 // Student Ledger (search)
@@ -134,6 +136,10 @@ router.get("/reports/advance-balance", advanceBalanceController);
 router.get("/reports/refund", refundReportController);
 
 // 21. Adjustment Report
+// 22. Class-wise Student Fee Summary (printable with tenant logo)
+router.get("/reports/class-wise-summary", classWiseStudentFeeSummaryController);
+// 23. Individual Student Fee Report (printable with all installments + payments)
+router.get("/reports/student-fee-report/:enrollmentId", individualStudentFeeReportController);
 router.get("/reports/adjustment", adjustmentReportController);
 
 // ═══════════════════════════════════════════════════════════════════════════

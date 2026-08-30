@@ -164,13 +164,11 @@ const feeReceiptTemplate = (data: any): string => {
       </div>
       <div style="text-align:center;font-size:10px;margin-bottom:5px;">Session : ${data.session || (() => { const now = new Date(); const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1; return y + "-" + String(y + 1).slice(2); })()}</div>
       <table style="width:100%;font-size:10px;margin-bottom:5px;border-collapse:collapse;" cellpadding="2">
-        <col style="width:24%"/><col style="width:26%"/><col style="width:20%"/><col style="width:30%"/>
-        <tr><td style="padding:2px 0;"><strong>Receipt No.</strong></td><td style="padding:2px 0;">${data.receiptNo || "—"}</td><td style="padding:2px 0;text-align:right;"><strong>Date.</strong></td><td style="padding:2px 0;text-align:right;">${payDate}</td></tr>
-        <tr><td style="padding:2px 0;"><strong>Student Name.</strong></td><td colspan="3" style="padding:2px 0;">${data.studentName || "—"}</td></tr>
-        <tr><td style="padding:2px 0;"><strong>Father's Name.</strong></td><td colspan="3" style="padding:2px 0;">${data.fatherName || "—"}</td></tr>
-        <tr><td style="padding:2px 0;"><strong>Class.</strong></td><td style="padding:2px 0;">${data.className || "—"} ${data.section || ""}</td><td style="padding:2px 0;text-align:right;"><strong>Adm.No.</strong></td><td style="padding:2px 0;text-align:right;">${data.admissionNo || "—"}</td></tr>
-        <tr><td style="padding:2px 0;"><strong>Roll No.</strong></td><td style="padding:2px 0;">${data.rollNumber || "—"}</td><td style="padding:2px 0;text-align:right;"><strong>Mode.</strong></td><td style="padding:2px 0;text-align:right;">${data.method || "CASH"}</td></tr>
-        <tr><td style="padding:2px 0;"><strong>Month.</strong></td><td colspan="3" style="padding:2px 0;">${period}</td></tr>
+        <tr><td style="padding:1px 0;white-space:nowrap;"><strong>Receipt No.</strong> ${data.receiptNo || "—"}</td><td style="padding:1px 0;text-align:right;white-space:nowrap;"><strong>Date.</strong> ${payDate}</td></tr>
+        <tr><td style="padding:1px 0;"><strong>Student.</strong> ${data.studentName || "—"}</td><td style="padding:1px 0;text-align:right;"><strong>Adm.No.</strong> ${data.admissionNo || "—"}</td></tr>
+        <tr><td style="padding:1px 0;" colspan="2"><strong>Father.</strong> ${data.fatherName || "—"}</td></tr>
+        <tr><td style="padding:1px 0;white-space:nowrap;"><strong>Class.</strong> ${data.className || "—"} ${data.section || ""}  &nbsp; <strong>Roll.</strong> ${data.rollNumber || "—"}</td><td style="padding:1px 0;text-align:right;white-space:nowrap;"><strong>Mode.</strong> ${data.method || "CASH"}</td></tr>
+        <tr><td style="padding:1px 0;" colspan="2"><strong>Month.</strong> ${period}</td></tr>
       </table>
       <table style="width:100%;border-collapse:collapse;border:1px solid #000;margin-bottom:5px;">
         <thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">S.No</th><th style="border:1px solid #000;padding:2px;text-align:left;font-size:10px;">Particulars</th><th style="border:1px solid #000;padding:2px;text-align:right;font-size:10px;">Amount (Rs)</th></tr></thead>
@@ -194,10 +192,6 @@ const feeReceiptTemplate = (data: any): string => {
         </tbody>
       </table>
       <p style="font-size:9px;margin-bottom:3px;"><strong>In Words:</strong> ${numberToWords(paidAmount)}</p>
-      <div style="font-size:9px;margin-bottom:2px;"><strong>Payment For:</strong> ${data.monthsCovered?.from && data.monthsCovered?.to ? data.monthsCovered.from + " to " + data.monthsCovered.to + " (" + data.monthsCovered.total + " months paid)" : period}</div>
-      <div style="margin-top:2px;font-size:9px;font-weight:bold;">
-        ${annualBalance <= 0 ? '<span style="color:green;">✓ ALL DUES CLEARED — FULLY PAID</span>' : `<span style="color:red;">Annual Balance: ₹${annualBalance.toLocaleString("en-IN")}</span>`}
-      </div>
       <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:9px;">
         <span style="border-top:1px solid #000;padding-top:3px;">Student/Guardian</span>
         <span style="border-top:1px solid #000;padding-top:3px;">Authorised Sign.</span>

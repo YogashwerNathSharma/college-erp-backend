@@ -259,7 +259,7 @@ app.use(autoCacheMiddleware);
 
 app.use("/api/dashboard", dashboardRoutes);
 // Other app.use ke saath:
-app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), settingsRoutes);
+app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), settingsRoutes);
 
 //////////////////////////////////////////////////////
 // AI ASSISTANT (ynAi)
@@ -333,7 +333,7 @@ app.use("/api/enrollment", enrollmentRoutes);
 // FEES MODULE
 //////////////////////////////////////////////////////
 
-app.use("/api/fees", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN", "PRINCIPAL"), feesRoutes);
+app.use("/api/fees", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN", "PRINCIPAL"), feesRoutes);
 
 
 //////////////////////////////////////////////////////
@@ -357,8 +357,8 @@ app.use("/api/backup", authMiddleware, allowRoles("SUPER_ADMIN"), backupRoutes);
 //////////////////////////////////////////////////////
 app.use("/api/hostel", hostelRoutes);
 app.use("/api/communication-new", communicationNewRoutes);
-app.use("/api/hr", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), hrRoutes);
-app.use("/api/inventory", authMiddleware, allowRoles("SUPER_ADMIN", "TENANT_ADMIN"), inventoryRoutes);
+app.use("/api/hr", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), hrRoutes);
+app.use("/api/inventory", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), inventoryRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports-new", reportRoutes);

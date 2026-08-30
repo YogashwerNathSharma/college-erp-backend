@@ -24,6 +24,8 @@ import {
   getBankBook,
   getAdvanceBalanceReport,
   getRefundReport,
+  getClassWiseStudentFeeSummary,
+  getIndividualStudentFeeReport,
   getAdjustmentReport,
   getFeeReports,
 } from "./feeReports.service";
@@ -289,11 +291,41 @@ export const refundReportController = async (req: any, res: any) => {
   }
 };
 
+
 // 21. Adjustment Report
 export const adjustmentReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const data = await getAdjustmentReport(tenantId);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 22. Class-wise Student Fee Summary (printable)
+export const classWiseStudentFeeSummaryController = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { classId, sectionId, academicYearId } = req.query;
+    const data = await getClassWiseStudentFeeSummary(tenantId, {
+      classId: classId as string,
+      sectionId: sectionId as string,
+      academicYearId: academicYearId as string,
+    });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 23. Individual Student Fee Report (printable)
+export const individualStudentFeeReportController = async (req: any, res: any) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { enrollmentId } = req.params;
+    if (!enrollmentId) return res.status(400).json({ error: "enrollmentId is required" });
+    const data = await getIndividualStudentFeeReport(enrollmentId, tenantId);
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

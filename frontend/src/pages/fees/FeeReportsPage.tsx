@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { API_BASE_URL } from "../../config/api";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { printDocument } from "../../utils/print";
+import { printDocument } from "../../utils/print"; 
+import { printViaIframe } from "../../utils/printHelper";
 import {
   FiPrinter,
   FiDownload,
@@ -360,6 +361,30 @@ const REPORTS: ReportDefinition[] = [
     ],
     summaryKeys: ["totalClasses", "totalDemand", "totalCollected", "totalPending"],
   },
+  {
+    id: "class-wise-summary",
+    name: "Class-wise Fee Summary",
+    endpoint: "/fees/reports/class-wise-summary",
+    icon: <FiUsers className="w-4 h-4" />,
+    category: "register",
+    filters: ["class", "section", "academicYear"],
+    columns: [
+      { key: "sNo", label: "S.No", align: "center" },
+      { key: "className", label: "Class" },
+      { key: "sectionName", label: "Section" },
+      { key: "studentName", label: "Student Name" },
+      { key: "fatherName", label: "Father Name" },
+      { key: "admissionNo", label: "Adm No" },
+      { key: "rollNumber", label: "Roll" },
+      { key: "totalFee", label: "Total Fee (₹)", align: "right", format: "currency" },
+      { key: "totalDiscount", label: "Discount (₹)", align: "right", format: "currency" },
+      { key: "totalPaid", label: "Paid (₹)", align: "right", format: "currency" },
+      { key: "totalBalance", label: "Balance (₹)", align: "right", format: "currency" },
+      { key: "paidTillMonth", label: "Paid Till" },
+      { key: "status", label: "Status", align: "center" },
+    ],
+    summaryKeys: ["totalStudents", "totalFee", "totalPaid", "totalBalance", "totalDiscount"],
+  },
 
   // ─── Cash & Bank Books ────────────────────────────────────────
   {
@@ -489,8 +514,9 @@ const FeeReportsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (filterClassId) fetchSections(filterClassId);
-    else setSections([]);
+    setFilterSectionId(""); // Reset section when class changes
+    if (filterClassId) { fetchSections(filterClassId); }
+    else { setSections([]); }
   }, [filterClassId]);
 
   const fetchClasses = async () => {
@@ -590,7 +616,7 @@ const FeeReportsPage: React.FC = () => {
       return;
     }
     fetchReport();
-  }, [selectedReport]); // eslint-disable-line
+  }, [selectedReport, filterClassId, filterSectionId, filterAcademicYearId]); // eslint-disable-line
 
   // ─── Student Search (for Student Ledger) ───────────────────────
   const handleStudentSearch = async () => {
@@ -666,21 +692,33 @@ const FeeReportsPage: React.FC = () => {
     const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const schoolName = tenant.name || tenant.schoolName || "School Name";
-    const address = tenant.address || "";
     const logoUrl = tenant.logoUrl || "";
     const printedBy = user.name || user.firstName || "Admin";
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
-    // Build table rows
-    const tableHeaders = currentReport.columns
-      .map((col) => `<th style="border:1px solid #000; padding:4px 6px; font-size:9px; text-align:${col.align || "left"}; white-space:nowrap;">${col.label}</th>`)
+    // Determine if class/section is filtered — if yes, show in header not in table
+    const isClassFiltered = !!filterClassId;
+    const filteredClassName = isClassFiltered ? (classes.find(c => c.id === filterClassId)?.name || "") : "";
+    const filteredSectionName = filterSectionId ? (sections.find(s => s.id === filterSectionId)?.name || "") : "";
+    const classLabel = isClassFiltered 
+      ? `Class: ${filteredClassName}${filteredSectionName ? " - " + filteredSectionName : " (All Sections)"}` 
+      : "All Classes";
+
+    // Skip class/section columns when filtered
+    const skipColumns = isClassFiltered ? ["className", "sectionName"] : [];
+    const printColumns = currentReport.columns.filter(col => !skipColumns.includes(col.key));
+
+    // Build table headers
+    const tableHeaders = printColumns
+      .map((col) => `<th style="border:1px solid #000; padding:4px 6px; font-size:9px; text-align:${col.align || "left"}; white-space:nowrap; background:#e8e8e8;">${col.label}</th>`)
       .join("");
 
+    // Build table rows
     const tableRows = data.records
       .map((row: any) => {
-        const cells = currentReport.columns
+        const cells = printColumns
           .map((col) => `<td style="border:1px solid #000; padding:3px 6px; font-size:9px; text-align:${col.align || "left"};">${formatCellValue(row[col.key], col.format)}</td>`)
           .join("");
         return `<tr>${cells}</tr>`;
@@ -693,57 +731,56 @@ const FeeReportsPage: React.FC = () => {
       const summaryItems = Object.entries(data.summary)
         .map(([key, value]) => {
           const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-          const formatted = typeof value === "number" ? `₹${formatCurrency(value as number)}` : value;
+          const formatted = typeof value === "number" ? "₹" + (value as number).toLocaleString("en-IN") : value;
           return `<span style="margin-right:20px;"><strong>${label}:</strong> ${formatted}</span>`;
         })
         .join("");
       summaryHTML = `<div style="margin-top:8px; padding:6px; background:#f0f0f0; border:1px solid #000; font-size:9px;">${summaryItems}</div>`;
     }
 
+    // Grand totals line
+    const totalsLine = data.grandTotal 
+      ? `<div style="font-size:9px; margin-top:2px; text-align:center;"><strong>Total Fee:</strong> ₹${(data.grandTotal.totalFee || 0).toLocaleString("en-IN")} | <strong>Paid:</strong> ₹${(data.grandTotal.totalPaid || 0).toLocaleString("en-IN")} | <strong>Balance:</strong> ₹${(data.grandTotal.totalBalance || 0).toLocaleString("en-IN")} | <strong>Discount:</strong> ₹${(data.grandTotal.totalDiscount || 0).toLocaleString("en-IN")}</div>`
+      : "";
+
     const html = `
-      <div style="font-family: Arial, sans-serif; padding: 10px;">
-        <!-- LOCKED HEADER -->
-        <div style="display:flex; align-items:center; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:8px;">
-          <!-- Logo LEFT -->
-          <div style="width:60px;">
-            ${logoUrl ? `<img src="${logoUrl}" style="width:50px; height:50px; object-fit:contain;" />` : ""}
-          </div>
-          <!-- Center: School Name + Address -->
-          <div style="flex:1; text-align:center;">
-            <div style="font-size:16px; font-weight:bold; letter-spacing:0.5px;">${schoolName}</div>
-            <div style="font-size:10px; color:#333;">${address}</div>
-          </div>
-          <!-- Right: Printed by + Date/Time -->
-          <div style="width:180px; text-align:right; font-size:9px; color:#555;">
-            <div>Printed by: <strong>${printedBy}</strong></div>
-            <div>Date: ${dateStr}</div>
-            <div>Time: ${timeStr}</div>
-          </div>
-        </div>
-
-        <!-- Report Title + Count -->
-        <div style="text-align:center; margin-bottom:10px;">
-          <div style="font-size:13px; font-weight:bold; text-transform:uppercase; letter-spacing:1px;">${currentReport.name}</div>
-          <div style="font-size:9px; color:#666;">Total Records: ${data.records.length}</div>
-        </div>
-
-        <!-- Table -->
-        <table style="width:100%; border-collapse:collapse; border:1px solid #000;">
-          <thead>
-            <tr style="background:#e8e8e8;">${tableHeaders}</tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-
-        <!-- Summary -->
-        ${summaryHTML}
+    <div style="font-family: Arial, sans-serif; padding: 10px;">
+      <!-- HEADER: Logo + School Name (no address) -->
+      <div style="text-align:center; margin-bottom:4px;">
+        ${logoUrl ? `<img src="${logoUrl}" style="width:45px; height:45px; object-fit:contain; vertical-align:middle; margin-right:8px;" />` : ""}
+        <span style="font-size:18px; font-weight:bold; letter-spacing:0.5px; vertical-align:middle;">${schoolName}</span>
       </div>
+
+      <!-- Summary line + HR -->
+      <div style="text-align:center; font-size:10px; margin-bottom:2px;">
+        <strong>${currentReport.name}</strong>${data.session ? ` | Session: ${data.session}` : ""} | ${classLabel}
+      </div>
+      ${totalsLine}
+      <hr style="border:none; border-top:2px solid #000; margin:6px 0 8px 0;" />
+
+      <!-- Printed by (right aligned, small) -->
+      <div style="text-align:right; font-size:8px; color:#555; margin-bottom:4px;">
+        Printed by: ${printedBy} | ${dateStr} ${timeStr} | Records: ${data.records.length}
+      </div>
+
+      <!-- Table -->
+      <table style="width:100%; border-collapse:collapse; border:1px solid #000;">
+        <thead>
+          <tr>${tableHeaders}</tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+
+      <!-- Summary -->
+      ${summaryHTML}
+    </div>
     `;
 
-    printDocument(html);
+    printViaIframe(html, { title: currentReport.name });
   };
+
 
   // ─── Render Filters ────────────────────────────────────────────
   const renderFilters = () => {
@@ -1092,12 +1129,12 @@ const FeeReportsPage: React.FC = () => {
   };
 
   const colorClasses: Record<string, { bg: string; bgLight: string }> = {
-    emerald: { bg: "bg-emerald-500", bgLight: "bg-emerald-50" },
-    red: { bg: "bg-red-500", bgLight: "bg-red-50" },
-    amber: { bg: "bg-amber-500", bgLight: "bg-amber-50" },
-    blue: { bg: "bg-blue-500", bgLight: "bg-blue-50" },
-    purple: { bg: "bg-purple-500", bgLight: "bg-purple-50" },
-    slate: { bg: "bg-slate-500", bgLight: "bg-slate-50" },
+    emerald: { bg: "bg-emerald-500", bgLight: "bg-emerald-50 dark:bg-emerald-950/40" },
+    red: { bg: "bg-red-500", bgLight: "bg-red-50 dark:bg-red-950/40" },
+    amber: { bg: "bg-amber-500", bgLight: "bg-amber-50 dark:bg-amber-950/40" },
+    blue: { bg: "bg-blue-500", bgLight: "bg-blue-50 dark:bg-blue-950/40" },
+    purple: { bg: "bg-purple-500", bgLight: "bg-purple-50 dark:bg-purple-950/40" },
+    slate: { bg: "bg-slate-500", bgLight: "bg-slate-50 dark:bg-slate-800/60" },
   };
 
   return (

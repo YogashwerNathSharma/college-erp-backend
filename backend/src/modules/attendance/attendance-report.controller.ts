@@ -9,11 +9,14 @@ import {
   getSchoolReportService,
 } from "./attendance-report.service";
 
+// ✅ FIXED: All report controllers now extract and pass academicYearId
+
 // 1. Monthly Report
 export const getMonthlyReport = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
     const { classId, sectionId, month, year } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!classId || !sectionId || !month || !year) {
       res.status(400).json({ message: "classId, sectionId, month, and year are required" });
@@ -25,7 +28,8 @@ export const getMonthlyReport = async (req: Request, res: Response): Promise<voi
       sectionId as string,
       Number(month),
       Number(year),
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -40,6 +44,7 @@ export const getDatewiseReport = async (req: Request, res: Response): Promise<vo
   try {
     const tenantId = (req as any).tenantId;
     const { classId, sectionId, date } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!classId || !sectionId || !date) {
       res.status(400).json({ message: "classId, sectionId, and date are required" });
@@ -50,7 +55,8 @@ export const getDatewiseReport = async (req: Request, res: Response): Promise<vo
       classId as string,
       sectionId as string,
       date as string,
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -65,6 +71,7 @@ export const getYearlyReport = async (req: Request, res: Response): Promise<void
   try {
     const tenantId = (req as any).tenantId;
     const { classId, sectionId, year } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!classId || !sectionId || !year) {
       res.status(400).json({ message: "classId, sectionId, and year are required" });
@@ -75,7 +82,8 @@ export const getYearlyReport = async (req: Request, res: Response): Promise<void
       classId as string,
       sectionId as string,
       Number(year),
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -90,6 +98,7 @@ export const getClasswiseReport = async (req: Request, res: Response): Promise<v
   try {
     const tenantId = (req as any).tenantId;
     const { classId, sectionId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!classId || !sectionId) {
       res.status(400).json({ message: "classId and sectionId are required" });
@@ -99,7 +108,8 @@ export const getClasswiseReport = async (req: Request, res: Response): Promise<v
     const data = await getClasswiseReportService(
       classId as string,
       sectionId as string,
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -114,6 +124,7 @@ export const getSchoolReport = async (req: Request, res: Response): Promise<void
   try {
     const tenantId = (req as any).tenantId;
     const { month, year } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!month || !year) {
       res.status(400).json({ message: "month and year are required" });
@@ -123,7 +134,8 @@ export const getSchoolReport = async (req: Request, res: Response): Promise<void
     const data = await getSchoolReportService(
       Number(month),
       Number(year),
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);

@@ -9,6 +9,7 @@ import {
 
 /////////////////////////
 // CREATE SUBJECT
+// ✅ FIXED: Uses middleware academicYearId as fallback
 /////////////////////////
 export const createSubject = async (req: Request, res: Response) => {
   try {
@@ -21,7 +22,9 @@ export const createSubject = async (req: Request, res: Response) => {
       });
     }
 
-    const { name, classId, academicYearId } = req.body;
+    const { name, classId } = req.body;
+    // ✅ Primary: body.academicYearId, fallback: middleware-injected
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
     if (!name || !classId || !academicYearId) {
       return res.status(400).json({
@@ -52,6 +55,7 @@ export const createSubject = async (req: Request, res: Response) => {
 
 /////////////////////////
 // GET SUBJECTS
+// ✅ FIXED: Uses middleware academicYearId as primary source
 /////////////////////////
 export const getSubjects = async (req: Request, res: Response) => {
   try {
@@ -64,9 +68,12 @@ export const getSubjects = async (req: Request, res: Response) => {
       });
     }
 
-    const subjects = await getSubjectsService(tenantId);
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string | undefined);
 
-    console.log(`GET SUBJECTS: tenantId=${tenantId}, found ${subjects.length} subjects`);
+    const subjects = await getSubjectsService(tenantId, academicYearId);
+
+    console.log(`GET SUBJECTS: tenantId=${tenantId}, academicYearId=${academicYearId || 'all'}, found ${subjects.length} subjects`);
     return res.json({
       success: true,
       data: subjects,
@@ -122,6 +129,7 @@ export const toggleSubject = async (req: Request, res: Response) => {
 
 /////////////////////////
 // BULK CREATE SUBJECTS
+// ✅ FIXED: Uses middleware academicYearId as fallback
 /////////////////////////
 export const bulkCreateSubjects = async (req: Request, res: Response) => {
   try {
@@ -130,7 +138,10 @@ export const bulkCreateSubjects = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { names, classIds, academicYearId } = req.body;
+    const { names, classIds } = req.body;
+    // ✅ Primary: body.academicYearId, fallback: middleware-injected
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
+
     if (!names || !classIds || !academicYearId) {
       return res.status(400).json({ success: false, message: "names, classIds, academicYearId are required" });
     }

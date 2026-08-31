@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import {
   sendPushNotificationHandler,
@@ -18,7 +19,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ============================================
 // IN-APP NOTIFICATIONS

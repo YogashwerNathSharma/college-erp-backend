@@ -1,14 +1,15 @@
 import express from "express";
-import { create, getAll, getById, update, remove, upload, dashboard } from "./teacher.controller";
+import { create, getAll, getById, update, partialUpdate, remove, upload, dashboard } from "./teacher.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import { checkLimit } from "../../middleware/subscriptionLimit.middleware";
 
 const router = express.Router();
 
-// DASHBOARD (must be before /:id)
-router.get("/dashboard", authMiddleware, resolveTenant, dashboard);
+// DASHBOARD (must be before /:id to avoid matching "dashboard" as an id)
+router.get("/dashboard", authMiddleware, resolveTenant, resolveAcademicYear, dashboard);
 
 // CREATE (with photo upload)
 router.post(
@@ -22,12 +23,12 @@ router.post(
 );
 
 // GET ALL
-router.get("/", authMiddleware, resolveTenant, getAll);
+router.get("/", authMiddleware, resolveTenant, resolveAcademicYear, getAll);
 
 // GET BY ID
-router.get("/:id", authMiddleware, resolveTenant, getById);
+router.get("/:id", authMiddleware, resolveTenant, resolveAcademicYear, getById);
 
-// UPDATE (with photo upload)
+// FULL UPDATE (with photo upload)
 router.put(
   "/:id",
   authMiddleware,
@@ -37,7 +38,17 @@ router.put(
   update
 );
 
+// PARTIAL UPDATE (with photo upload)
+router.patch(
+  "/:id",
+  authMiddleware,
+  allowRoles("ADMIN"),
+  resolveTenant,
+  upload.single("photo"),
+  partialUpdate
+);
+
 // DELETE (soft)
-router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, remove);
+router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, remove);
 
 export default router;

@@ -1,7 +1,7 @@
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // AUTO-CACHE MIDDLEWARE — Caches heavy GET endpoints automatically
 // Attach to app BEFORE routes: app.use(autoCacheMiddleware)
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 
 import { Request, Response, NextFunction } from "express";
 
@@ -48,11 +48,15 @@ const INVALIDATION_PREFIXES = [
 const TTL_MS = 30_000; // 30 seconds cache
 
 /**
- * Generate cache key from request (includes tenantId for multi-tenant isolation)
+ * Generate cache key from request.
+ * Includes tenantId AND academicYearId for proper isolation:
+ *   "tenantId:academicYearId:originalUrl"
+ * This prevents data from one academic year bleeding into another year's cache.
  */
 function getCacheKey(req: Request): string {
   const tenantId = (req as any).tenantId || (req as any).user?.tenantId || "global";
-  return `${tenantId}:${req.originalUrl}`;
+  const academicYearId = (req as any).academicYearId || (req.headers["x-academic-year-id"] as string) || "default";
+  return `${tenantId}:${academicYearId}:${req.originalUrl}`;
 }
 
 /**
@@ -72,7 +76,8 @@ function shouldInvalidate(req: Request): boolean {
 }
 
 /**
- * Invalidate all cache entries for a tenant
+ * Invalidate all cache entries for a tenant (across ALL academic years).
+ * This ensures mutations in any year properly clear stale data.
  */
 function invalidateTenantCache(tenantId: string): void {
   for (const key of cache.keys()) {

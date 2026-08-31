@@ -18,6 +18,7 @@ const ATTENDANCE_DASH_CACHE_TTL = 1800;
 
 /////////////////////////
 // DASHBOARD STATS
+// ✅ FIXED: Uses req.academicYearId from middleware as primary source
 /////////////////////////
 export const getDashboardStats = async (
   req: Request,
@@ -25,7 +26,8 @@ export const getDashboardStats = async (
 ): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
-    const { academicYearId } = req.query;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!academicYearId) {
       res.status(400).json({ message: "academicYearId is required" });
@@ -55,6 +57,7 @@ export const getDashboardStats = async (
 
 /////////////////////////
 // MARK ATTENDANCE (Bulk)
+// ✅ FIXED: Ensures academicYearId is injected from middleware if missing in body
 /////////////////////////
 export const markAttendance = async (
   req: Request,
@@ -68,10 +71,18 @@ export const markAttendance = async (
       return;
     }
 
-    const result = await markAttendanceService(
-      req.body as MarkAttendanceBody,
-      tenantId
-    );
+    // ✅ Ensure academicYearId from middleware is used if not in body
+    const body = req.body as MarkAttendanceBody;
+    if (!body.academicYearId) {
+      body.academicYearId = (req as any).academicYearId;
+    }
+
+    if (!body.academicYearId) {
+      res.status(400).json({ message: "academicYearId is required" });
+      return;
+    }
+
+    const result = await markAttendanceService(body, tenantId);
 
     res.json(result);
   } catch (error) {
@@ -82,6 +93,7 @@ export const markAttendance = async (
 
 /////////////////////////
 // UPDATE ATTENDANCE (Edit)
+// ✅ FIXED: Ensures academicYearId is injected from middleware if missing in body
 /////////////////////////
 export const updateAttendance = async (
   req: Request,
@@ -95,10 +107,18 @@ export const updateAttendance = async (
       return;
     }
 
-    const result = await updateAttendanceService(
-      req.body as UpdateAttendanceBody,
-      tenantId
-    );
+    // ✅ Ensure academicYearId from middleware is used if not in body
+    const body = req.body as UpdateAttendanceBody;
+    if (!body.academicYearId) {
+      body.academicYearId = (req as any).academicYearId;
+    }
+
+    if (!body.academicYearId) {
+      res.status(400).json({ message: "academicYearId is required" });
+      return;
+    }
+
+    const result = await updateAttendanceService(body, tenantId);
 
     res.json(result);
   } catch (error) {
@@ -109,6 +129,7 @@ export const updateAttendance = async (
 
 /////////////////////////
 // GET CLASS ATTENDANCE
+// ✅ FIXED: Passes academicYearId to service for enrollment scoping
 /////////////////////////
 export const getClassAttendance = async (
   req: Request,
@@ -117,6 +138,7 @@ export const getClassAttendance = async (
   try {
     const tenantId = (req as any).tenantId;
     const { classId, sectionId, date } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!classId || !sectionId || !date) {
       res.status(400).json({ message: "classId, sectionId, and date are required" });
@@ -127,7 +149,8 @@ export const getClassAttendance = async (
       classId as string,
       sectionId as string,
       date as string,
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -139,6 +162,7 @@ export const getClassAttendance = async (
 
 /////////////////////////
 // GET STUDENT ATTENDANCE
+// ✅ FIXED: Passes academicYearId for year-scoped history
 /////////////////////////
 export const getStudentAttendance = async (
   req: Request,
@@ -147,6 +171,7 @@ export const getStudentAttendance = async (
   try {
     const tenantId = (req as any).tenantId;
     const { studentId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!studentId) {
       res.status(400).json({ message: "studentId is required" });
@@ -155,7 +180,8 @@ export const getStudentAttendance = async (
 
     const data = await getStudentAttendanceService(
       studentId as string,
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(data);
@@ -167,6 +193,7 @@ export const getStudentAttendance = async (
 
 /////////////////////////
 // ATTENDANCE REPORT (Monthly)
+// ✅ FIXED: Passes academicYearId for year-scoped report
 /////////////////////////
 export const getAttendanceReport = async (
   req: Request,
@@ -175,6 +202,7 @@ export const getAttendanceReport = async (
   try {
     const tenantId = (req as any).tenantId;
     const { studentId, month, year } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!studentId || !month || !year) {
       res.status(400).json({ message: "studentId, month, and year are required" });
@@ -185,7 +213,8 @@ export const getAttendanceReport = async (
       studentId as string,
       Number(month),
       Number(year),
-      tenantId
+      tenantId,
+      academicYearId as string
     );
 
     res.json(report);
@@ -197,6 +226,7 @@ export const getAttendanceReport = async (
 
 /////////////////////////
 // ATTENDANCE SUMMARY (Academic Year)
+// ✅ Uses academicYearId from middleware as fallback
 /////////////////////////
 export const getAttendanceSummary = async (
   req: Request,
@@ -204,7 +234,8 @@ export const getAttendanceSummary = async (
 ): Promise<void> => {
   try {
     const tenantId = (req as any).tenantId;
-    const { studentId, academicYearId } = req.query;
+    const { studentId } = req.query;
+    const academicYearId = (req.query.academicYearId || (req as any).academicYearId) as string;
 
     if (!studentId || !academicYearId) {
       res.status(400).json({ message: "studentId and academicYearId are required" });
@@ -213,7 +244,7 @@ export const getAttendanceSummary = async (
 
     const summary = await getAttendanceSummaryService(
       studentId as string,
-      academicYearId as string,
+      academicYearId,
       tenantId
     );
 
@@ -223,4 +254,3 @@ export const getAttendanceSummary = async (
     res.status(500).json({ message: "Error generating summary" });
   }
 };
-

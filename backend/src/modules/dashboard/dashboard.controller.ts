@@ -76,24 +76,68 @@ export const getDashboard = async (
     }
 
     //////////////////////////////////////////////////////
-    // 🚀 TENANT DASHBOARD — 30min CACHE + REFRESH SUPPORT
+    // 🎓 RESOLVE ACADEMIC YEAR
     //////////////////////////////////////////////////////
 
-    const cacheKey = `dashboard:main:${tenantId}`;
+    // Primary: middleware-injected → fallback: query param → fallback: null
+    const academicYearId: string | undefined =
+      (req as any).academicYearId ||
+      (req.query.academicYearId as string) ||
+      (req.headers["x-academic-year-id"] as string) ||
+      undefined;
+
+    //////////////////////////////////////////////////////
+    // 🚀 TENANT DASHBOARD — 30min CACHE + REFRESH SUPPORT
+    // Cache key now includes academicYearId for year isolation
+    //////////////////////////////////////////////////////
+
+    const cacheKey = `dashboard:main:${tenantId}:${academicYearId || "all"}`;
 
     // ⚡ If refresh=true → delete old cache, new one will be created
     if (forceRefresh) {
       await invalidateCache(cacheKey).catch(() => {});
-      console.log(`🔄 Dashboard cache cleared for tenant: ${tenantId}`);
+      console.log(`🔄 Dashboard cache cleared for tenant: ${tenantId}, year: ${academicYearId || "all"}`);
     }
 
     const dashboardData = await cacheAside(cacheKey, async () => {
+
+      // ─── Build academic-year-aware enrollment filter ───
+      // When academicYearId is provided, student counts come from
+      // active enrollments in that year (not raw Student.count)
+      const enrollmentWhere: any = {
+        tenantId,
+        isDeleted: false,
+        status: "active",
+      };
+      if (academicYearId) {
+        enrollmentWhere.academicYearId = academicYearId;
+      }
+
       // ─── BATCH 1: Core counts (5 queries) ───
+      // When academicYearId is set, count students via enrollment for that year
       const [totalStudents, totalClasses, totalTeachers, fees, tenant] = await Promise.all([
-        prisma.student.count({ where: { tenantId, isDeleted: false } }),
-        prisma.class.count({ where: { tenantId, isDeleted: false } }),
+        // Student count: via enrollment for selected year
+        academicYearId
+          ? prisma.enrollment.count({ where: enrollmentWhere })
+          : prisma.student.count({ where: { tenantId, isDeleted: false } }),
+        // Class count: scope by academicYearId (Class has academicYearId field)
+        prisma.class.count({
+          where: {
+            tenantId,
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
+          },
+        }),
         prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-        prisma.studentFee.aggregate({ _sum: { paidAmount: true, balanceAmount: true, totalAmount: true }, where: { tenantId, isDeleted: false } }),
+        // Fees: scope via enrollment's academicYearId
+        prisma.studentFee.aggregate({
+          _sum: { paidAmount: true, balanceAmount: true, totalAmount: true },
+          where: {
+            tenantId,
+            isDeleted: false,
+            ...(academicYearId ? { enrollment: { academicYearId, isDeleted: false } } : {}),
+          },
+        }),
         prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, logoUrl: true, backgroundUrl: true, type: true, address: true, phone: true, email: true } }),
       ]);
 
@@ -109,12 +153,23 @@ export const getDashboard = async (
       const today = new Date(istMidnightUTC.getTime() - IST_OFFSET_MS); // convert back to actual UTC
       const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
+      // Gender counts: via enrollment for selected year
+      const genderEnrollmentFilter = academicYearId
+        ? { enrollments: { some: { academicYearId, status: "active", isDeleted: false } } }
+        : {};
+
+      // Attendance: Attendance model has academicYearId field
+      const attendanceYearFilter = academicYearId ? { academicYearId } : {};
+
+      // Class records: scope by academicYearId
+      const classYearFilter = academicYearId ? { academicYearId } : {};
+
       const [maleCount, femaleCount, totalAttendanceToday, presentToday, classRecords] = await Promise.all([
-        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
-        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
-        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } }),
-        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] } } }),
-        prisma.class.findMany({ where: { tenantId, isDeleted: false }, select: { id: true, name: true } }),
+        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE", ...genderEnrollmentFilter } }),
+        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE", ...genderEnrollmentFilter } }),
+        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, ...attendanceYearFilter } }),
+        prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] }, ...attendanceYearFilter } }),
+        prisma.class.findMany({ where: { tenantId, isDeleted: false, ...classYearFilter }, select: { id: true, name: true } }),
       ]);
 
       const attendanceToday = totalAttendanceToday > 0 ? Math.round((presentToday / totalAttendanceToday) * 100) : null;
@@ -125,7 +180,7 @@ export const getDashboard = async (
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const weekRecords = await prisma.attendance.findMany({
-        where: { tenantId, isDeleted: false, date: { gte: sevenDaysAgo, lt: tomorrow } },
+        where: { tenantId, isDeleted: false, date: { gte: sevenDaysAgo, lt: tomorrow }, ...attendanceYearFilter },
         select: { date: true, status: true },
       });
 
@@ -154,11 +209,65 @@ export const getDashboard = async (
 
       // ─── BATCH 3: Enrollments + recent data (5 queries) ───
       const [classStrength, recentPaymentsRaw, defaultersRaw, upcomingEvents, allStudents] = await Promise.all([
-        prisma.enrollment.groupBy({ by: ["classId"], where: { tenantId, isDeleted: false, status: "active" }, _count: { id: true } }),
-        prisma.payment.findMany({ where: { tenantId, isDeleted: false }, orderBy: { paymentDate: "desc" }, take: 5, select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } } }),
-        prisma.studentFee.findMany({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 }, enrollment: { status: "active" } }, orderBy: { balanceAmount: "desc" }, take: 5, select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+        // Class strength: scope enrollment groupBy by academicYearId
+        prisma.enrollment.groupBy({
+          by: ["classId"],
+          where: enrollmentWhere,
+          _count: { id: true },
+        }),
+        // Recent payments: scope via enrollment's academicYearId
+        prisma.payment.findMany({
+          where: {
+            tenantId,
+            isDeleted: false,
+            ...(academicYearId ? { studentFee: { enrollment: { academicYearId, isDeleted: false } } } : {}),
+          },
+          orderBy: { paymentDate: "desc" },
+          take: 5,
+          select: { amount: true, paymentDate: true, receiptNo: true, method: true, studentFee: { select: { enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } } } },
+        }),
+        // Defaulters: scope via enrollment's academicYearId
+        prisma.studentFee.findMany({
+          where: {
+            tenantId,
+            isDeleted: false,
+            balanceAmount: { gt: 0 },
+            enrollment: {
+              status: "active",
+              isDeleted: false,
+              ...(academicYearId ? { academicYearId } : {}),
+            },
+          },
+          orderBy: { balanceAmount: "desc" },
+          take: 5,
+          select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } },
+        }),
         prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
-        prisma.student.findMany({ where: { tenantId, isDeleted: false }, select: { firstName: true, lastName: true, dob: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } } }),
+        // Birthdays: filter students with enrollment in selected year
+        prisma.student.findMany({
+          where: {
+            tenantId,
+            isDeleted: false,
+            ...(academicYearId
+              ? { enrollments: { some: { academicYearId, status: "active", isDeleted: false } } }
+              : {}),
+          },
+          select: {
+            firstName: true,
+            lastName: true,
+            dob: true,
+            enrollments: {
+              where: {
+                isDeleted: false,
+                status: "active",
+                ...(academicYearId ? { academicYearId } : {}),
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { class: { select: { name: true } }, section: { select: { name: true } } },
+            },
+          },
+        }),
       ]);
 
       // ─── PROCESS RESULTS ───
@@ -199,9 +308,13 @@ export const getDashboard = async (
         return { name, className, section };
       }).slice(0, 10);
 
-      // ─── Monthly Fee Collection (grouped by month for current academic year) ───
+      // ─── Monthly Fee Collection (grouped by month for selected academic year) ───
       const allPayments = await prisma.payment.findMany({
-        where: { tenantId, isDeleted: false },
+        where: {
+          tenantId,
+          isDeleted: false,
+          ...(academicYearId ? { studentFee: { enrollment: { academicYearId, isDeleted: false } } } : {}),
+        },
         select: { amount: true, paymentDate: true },
       });
       const monthNames = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
@@ -246,11 +359,13 @@ export const getDashboard = async (
         announcements: [],
         upcomingExams: [],
         tenant,
+        // Include academicYearId in response for frontend confirmation
+        academicYearId: academicYearId || null,
       };
     }, DASHBOARD_CACHE_TTL);
 
     const elapsed = Date.now() - _startTime;
-    console.log(`✅ Dashboard loaded in ${elapsed}ms`);
+    console.log(`✅ Dashboard loaded in ${elapsed}ms (year: ${academicYearId || "all"})`);
 
     return res.json({
       success: true,

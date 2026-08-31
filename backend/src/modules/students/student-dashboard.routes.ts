@@ -26,18 +26,29 @@ import {
 const router = Router();
 router.use(authMiddleware, resolveTenant);
 
-// ── Dashboard Cache (60 seconds) ────────────────────────────────────────────
+// ── Dashboard Cache (30 minutes) ──────────────────────────────────────────────
 const dashboardCache = new Map<string, { data: any; expiry: number; createdAt: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // ⚡ 30 minutes (user preference)
+
+/**
+ * Resolve academicYearId from: middleware → query → header → undefined
+ */
+function resolveAcademicYearId(req: any): string | undefined {
+  return req.academicYearId
+    || (req.query.academicYearId as string)
+    || (req.headers["x-academic-year-id"] as string)
+    || undefined;
+}
 
 // ── Full Dashboard (single call) — with 20s timeout ──────────────────────────
 router.get("/full", async (req: any, res: Response) => {
   try {
     const _start = Date.now();
-    const yearId = req.query.academicYearId as string || "";
+    const yearId = resolveAcademicYearId(req) || "";
 
     // ⚡ PERF: Support ?refresh=true to force new data
     const forceRefresh = req.query.refresh === "true";
+    // Cache key includes academicYearId for year isolation
     const cacheKey = `${req.tenantId}|${yearId}`;
 
     // If refresh=true → delete old cache
@@ -58,7 +69,7 @@ router.get("/full", async (req: any, res: Response) => {
       setTimeout(() => resolve("TIMEOUT"), 30000);
     });
 
-    const dataPromise = getFullDashboardData(req.tenantId, req.query.academicYearId as string);
+    const dataPromise = getFullDashboardData(req.tenantId, yearId || undefined);
     const result = await Promise.race([dataPromise, timeoutPromise]);
 
     if (result === "TIMEOUT") {
@@ -80,7 +91,8 @@ router.get("/full", async (req: any, res: Response) => {
 // ── Stats Only ───────────────────────────────────────────────────────────────
 router.get("/stats", async (req: any, res: Response) => {
   try {
-    const stats = await getDashboardStats(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const stats = await getDashboardStats(req.tenantId, academicYearId);
     res.json({ success: true, data: stats });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -90,7 +102,8 @@ router.get("/stats", async (req: any, res: Response) => {
 // ── Birthday Today ───────────────────────────────────────────────────────────
 router.get("/birthday-today", async (req: any, res: Response) => {
   try {
-    const data = await getBirthdayToday(req.tenantId);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getBirthdayToday(req.tenantId, academicYearId);
     res.json({ success: true, data, count: data.length });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -100,7 +113,8 @@ router.get("/birthday-today", async (req: any, res: Response) => {
 // ── Section Strength ─────────────────────────────────────────────────────────
 router.get("/section-strength", async (req: any, res: Response) => {
   try {
-    const data = await getSectionStrength(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getSectionStrength(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -110,7 +124,8 @@ router.get("/section-strength", async (req: any, res: Response) => {
 // ── Class Strength ───────────────────────────────────────────────────────────
 router.get("/class-strength", async (req: any, res: Response) => {
   try {
-    const data = await getClassStrength(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getClassStrength(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -120,7 +135,8 @@ router.get("/class-strength", async (req: any, res: Response) => {
 // ── Monthly Admission Trend ──────────────────────────────────────────────────
 router.get("/monthly-admission", async (req: any, res: Response) => {
   try {
-    const data = await getMonthlyAdmissionTrend(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getMonthlyAdmissionTrend(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -140,7 +156,8 @@ router.get("/student-growth", async (req: any, res: Response) => {
 // ── Gender Ratio ─────────────────────────────────────────────────────────────
 router.get("/gender-ratio", async (req: any, res: Response) => {
   try {
-    const data = await getGenderRatio(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getGenderRatio(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -150,7 +167,8 @@ router.get("/gender-ratio", async (req: any, res: Response) => {
 // ── Category Distribution ────────────────────────────────────────────────────
 router.get("/category-distribution", async (req: any, res: Response) => {
   try {
-    const data = await getCategoryDistribution(req.tenantId, req.query.academicYearId as string);
+    const academicYearId = resolveAcademicYearId(req);
+    const data = await getCategoryDistribution(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -191,7 +209,8 @@ router.get("/scholarship-count", async (req: any, res: Response) => {
 router.get("/new-admissions", async (req: any, res: Response) => {
   try {
     const days = parseInt(req.query.days as string) || 30;
-    const count = await getNewAdmissionsCount(req.tenantId, days);
+    const academicYearId = resolveAcademicYearId(req);
+    const count = await getNewAdmissionsCount(req.tenantId, days, academicYearId);
     res.json({ success: true, data: { count, days } });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

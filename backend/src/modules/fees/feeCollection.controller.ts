@@ -36,7 +36,9 @@ export const assignFeesToStudentController = async (req: any, res: any) => {
 export const assignFeesToClassController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.body;
+    // Use body values first, fall back to middleware-resolved academicYearId
+    const classId = req.body.classId;
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
     if (!classId || !academicYearId) {
       return res.status(400).json({ error: "classId and academicYearId are required" });
@@ -67,13 +69,15 @@ export const searchStudentFeesController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { q, admissionNo } = req.query;
+    // Use middleware-resolved academicYearId for scoping search results
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
 
     const query = q || admissionNo;
     if (!query) {
       return res.status(400).json({ error: "Search query (q) is required" });
     }
 
-    const result = await searchStudents(query as string, tenantId);
+    const result = await searchStudents(query as string, tenantId, academicYearId);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -160,11 +164,14 @@ export const getDefaultersController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { classId, fromDate, toDate } = req.query;
+    // Use middleware-resolved academicYearId for scoping
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
 
     const result = await getDefaulters(tenantId, {
       classId: classId as string,
       fromDate: fromDate as string,
       toDate: toDate as string,
+      academicYearId,
     });
 
     res.json(result);
@@ -196,8 +203,24 @@ export const getAllPaymentsController = async (req: any, res: any) => {
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ error: "Unauthorized" });
 
+    // Use middleware-resolved academicYearId for scoping
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+
+    // Build enrollment filter for academic year scoping
+    const enrollmentFilter: any = { isDeleted: false };
+    if (academicYearId) {
+      enrollmentFilter.academicYearId = academicYearId;
+    }
+
     const payments = await prisma.payment.findMany({
-      where: { tenantId, isDeleted: false },
+      where: {
+        tenantId,
+        isDeleted: false,
+        studentFee: {
+          isDeleted: false,
+          enrollment: enrollmentFilter,
+        },
+      },
       orderBy: { paymentDate: "desc" },
       take: 100,
       include: {

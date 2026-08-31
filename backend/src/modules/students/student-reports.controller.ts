@@ -12,12 +12,21 @@ import prisma from "../../utils/prisma";
 export const getAdmissionReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { startDate, endDate, classId, academicYearId } = req.query;
+    const { startDate, endDate, classId, academicYearId: queryAcademicYearId } = req.query;
+    const academicYearId = req.academicYearId || queryAcademicYearId;
 
     const where: any = { tenantId, isDeleted: false };
     if (startDate) where.createdAt = { ...(where.createdAt || {}), gte: new Date(startDate) };
     if (endDate) where.createdAt = { ...(where.createdAt || {}), lte: new Date(endDate) };
-    if (academicYearId) where.academicYearId = academicYearId;
+    // Filter students who have an enrollment in the selected academic year
+    if (academicYearId) {
+      where.enrollments = {
+        some: {
+          academicYearId,
+          isDeleted: false,
+        },
+      };
+    }
 
     const enrollmentFilter: any = {};
     if (classId) enrollmentFilter.classId = classId;
@@ -85,7 +94,7 @@ export const getAdmissionReportHandler = async (req: any, res: Response) => {
 export const getStrengthReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
     const classes = await prisma.class.findMany({
       where: { tenantId, isDeleted: false },
@@ -162,11 +171,15 @@ export const getStrengthReportHandler = async (req: any, res: Response) => {
 export const getGenderReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const { classId } = req.query;
 
     const where: any = { tenantId, isDeleted: false, status: "active" };
-    if (academicYearId) where.academicYearId = academicYearId;
-    if (classId) where.enrollments = { some: { classId, isDeleted: false, status: "active" } };
+    // Use enrollment-based filtering for academic year (not direct on student)
+    const enrollmentScope: any = { isDeleted: false, status: "active" };
+    if (academicYearId) enrollmentScope.academicYearId = academicYearId;
+    if (classId) enrollmentScope.classId = classId;
+    if (academicYearId || classId) where.enrollments = { some: enrollmentScope };
 
     const students = await prisma.student.findMany({
       where,
@@ -199,11 +212,14 @@ export const getGenderReportHandler = async (req: any, res: Response) => {
 export const getCategoryReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const { classId } = req.query;
 
     const where: any = { tenantId, isDeleted: false, status: "active" };
-    if (academicYearId) where.academicYearId = academicYearId;
-    if (classId) where.enrollments = { some: { classId, isDeleted: false, status: "active" } };
+    const enrollmentScope: any = { isDeleted: false, status: "active" };
+    if (academicYearId) enrollmentScope.academicYearId = academicYearId;
+    if (classId) enrollmentScope.classId = classId;
+    if (academicYearId || classId) where.enrollments = { some: enrollmentScope };
 
     const students = await prisma.student.findMany({
       where,
@@ -249,11 +265,14 @@ export const getCategoryReportHandler = async (req: any, res: Response) => {
 export const getReligionReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const { classId } = req.query;
 
     const where: any = { tenantId, isDeleted: false, status: "active" };
-    if (academicYearId) where.academicYearId = academicYearId;
-    if (classId) where.enrollments = { some: { classId, isDeleted: false, status: "active" } };
+    const enrollmentScope: any = { isDeleted: false, status: "active" };
+    if (academicYearId) enrollmentScope.academicYearId = academicYearId;
+    if (classId) enrollmentScope.classId = classId;
+    if (academicYearId || classId) where.enrollments = { some: enrollmentScope };
 
     const students = await prisma.student.findMany({
       where,
@@ -410,10 +429,11 @@ export const getScholarshipReportHandler = async (req: any, res: Response) => {
 export const getMedicalReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { condition, academicYearId } = req.query;
+    const { condition } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
     const where: any = { tenantId, isDeleted: false, status: "active" };
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (academicYearId) where.enrollments = { some: { academicYearId, isDeleted: false, status: "active" } };
 
     // Get students with medical conditions
     if (condition) {
@@ -472,10 +492,14 @@ export const getBirthdayReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
     const { month } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
     const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
 
+    const where: any = { tenantId, isDeleted: false, status: "active" };
+    if (academicYearId) where.enrollments = { some: { academicYearId, isDeleted: false, status: "active" } };
+
     const students = await prisma.student.findMany({
-      where: { tenantId, isDeleted: false, status: "active" },
+      where,
       select: {
         id: true, firstName: true, lastName: true, fullName: true,
         admissionNo: true, dob: true, phone: true, fatherPhone: true,
@@ -626,7 +650,8 @@ export const getTransferReportHandler = async (req: any, res: Response) => {
 export const getPromotionReportHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { academicYearId, classId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const { classId } = req.query;
 
     const where: any = { tenantId };
     if (academicYearId) where.academicYearId = academicYearId;
@@ -774,7 +799,10 @@ export const getCustomReportHandler = async (req: any, res: Response) => {
       if (filters.category) where.category = filters.category;
       if (filters.religion) where.religion = filters.religion;
       if (filters.bloodGroup) where.bloodGroup = filters.bloodGroup;
-      if (filters.academicYearId) where.academicYearId = filters.academicYearId;
+      if (filters.academicYearId || req.academicYearId) {
+        const ayId = req.academicYearId || filters.academicYearId;
+        where.enrollments = { some: { academicYearId: ayId, isDeleted: false, status: "active" } };
+      }
       if (filters.classId) {
         where.enrollments = { some: { classId: filters.classId, isDeleted: false, status: "active" } };
       }

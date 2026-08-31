@@ -34,7 +34,8 @@ import {
 export const getFeeReportsController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId, fromDate, toDate } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { fromDate, toDate } = req.query;
     const data = await getFeeReports(tenantId, { academicYearId, fromDate, toDate });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -46,8 +47,9 @@ export const getFeeReportsController = async (req: any, res: any) => {
 export const dailyCollectionController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { date, fromDate, toDate } = req.query;
-    const data = await getDailyCollection(tenantId, { date, fromDate, toDate });
+    const data = await getDailyCollection(tenantId, { date, fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -58,7 +60,8 @@ export const dailyCollectionController = async (req: any, res: any) => {
 export const monthlyCollectionController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { year, month, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { year, month } = req.query;
     const data = await getMonthlyCollection(tenantId, {
       year: year ? parseInt(year) : undefined,
       month: month ? parseInt(month) : undefined,
@@ -74,7 +77,8 @@ export const monthlyCollectionController = async (req: any, res: any) => {
 export const headWiseCollectionController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { fromDate, toDate, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { fromDate, toDate } = req.query;
     const data = await getHeadWiseCollection(tenantId, { fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -86,8 +90,9 @@ export const headWiseCollectionController = async (req: any, res: any) => {
 export const categoryWiseCollectionController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate } = req.query;
-    const data = await getCategoryWiseCollection(tenantId, { fromDate, toDate });
+    const data = await getCategoryWiseCollection(tenantId, { fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -98,7 +103,8 @@ export const categoryWiseCollectionController = async (req: any, res: any) => {
 export const pendingFeeController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, sectionId, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId, sectionId } = req.query;
     const data = await getPendingFeeReport(tenantId, { classId, sectionId, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -110,7 +116,8 @@ export const pendingFeeController = async (req: any, res: any) => {
 export const defaulterReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, sectionId, academicYearId, month, year, feeCategory } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId, sectionId, month, year, feeCategory } = req.query;
     const data = await getDefaulterReport(tenantId, {
       classId,
       sectionId,
@@ -129,8 +136,9 @@ export const defaulterReportController = async (req: any, res: any) => {
 export const fineReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate, classId } = req.query;
-    const data = await getFineReport(tenantId, { fromDate, toDate, classId });
+    const data = await getFineReport(tenantId, { fromDate, toDate, classId, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -141,7 +149,8 @@ export const fineReportController = async (req: any, res: any) => {
 export const concessionReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId, classId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId } = req.query;
     const data = await getConcessionReport(tenantId, { academicYearId, classId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -153,7 +162,7 @@ export const concessionReportController = async (req: any, res: any) => {
 export const scholarshipReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const data = await getScholarshipReport(tenantId, { academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -165,7 +174,8 @@ export const scholarshipReportController = async (req: any, res: any) => {
 export const transportFeeReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId } = req.query;
     const data = await getModuleWiseFeeReport(tenantId, "Transport", { classId, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -177,7 +187,8 @@ export const transportFeeReportController = async (req: any, res: any) => {
 export const hostelFeeReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId } = req.query;
     const data = await getModuleWiseFeeReport(tenantId, "Hostel", { classId, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -189,7 +200,8 @@ export const hostelFeeReportController = async (req: any, res: any) => {
 export const examFeeReportController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId } = req.query;
     const data = await getModuleWiseFeeReport(tenantId, "Examination", { classId, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -201,8 +213,9 @@ export const examFeeReportController = async (req: any, res: any) => {
 export const collectionRegisterController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate, method } = req.query;
-    const data = await getCollectionRegister(tenantId, { fromDate, toDate, method });
+    const data = await getCollectionRegister(tenantId, { fromDate, toDate, method, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -213,8 +226,9 @@ export const collectionRegisterController = async (req: any, res: any) => {
 export const receiptRegisterController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate } = req.query;
-    const data = await getReceiptRegister(tenantId, { fromDate, toDate });
+    const data = await getReceiptRegister(tenantId, { fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -237,7 +251,8 @@ export const studentLedgerReportController = async (req: any, res: any) => {
 export const classLedgerController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId, fromDate, toDate } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { fromDate, toDate } = req.query;
     const data = await getClassLedger(tenantId, { academicYearId, fromDate, toDate });
     res.json({ success: true, data });
   } catch (error: any) {
@@ -249,8 +264,9 @@ export const classLedgerController = async (req: any, res: any) => {
 export const cashBookController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate } = req.query;
-    const data = await getCashBook(tenantId, { fromDate, toDate });
+    const data = await getCashBook(tenantId, { fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -261,8 +277,9 @@ export const cashBookController = async (req: any, res: any) => {
 export const bankBookController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
     const { fromDate, toDate } = req.query;
-    const data = await getBankBook(tenantId, { fromDate, toDate });
+    const data = await getBankBook(tenantId, { fromDate, toDate, academicYearId });
     res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -307,7 +324,8 @@ export const adjustmentReportController = async (req: any, res: any) => {
 export const classWiseStudentFeeSummaryController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, sectionId, academicYearId } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
+    const { classId, sectionId } = req.query;
     const data = await getClassWiseStudentFeeSummary(tenantId, {
       classId: classId as string,
       sectionId: sectionId as string,

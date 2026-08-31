@@ -8,8 +8,11 @@ const getAll = async (req: any, res: any) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
+    // Use middleware-resolved academicYearId as primary, fall back to query param
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string | undefined;
+
     const filters = {
-      academicYearId: req.query.academicYearId as string | undefined,
+      academicYearId,
       classId: req.query.classId as string | undefined,
     };
 
@@ -50,7 +53,8 @@ const getByClass = async (req: any, res: any) => {
     }
 
     const { classId } = req.params;
-    const academicYearId = req.query.academicYearId as string;
+    // Use middleware-resolved academicYearId as fallback when query param not provided
+    const academicYearId = req.query.academicYearId as string || (req as any).academicYearId;
 
     if (!academicYearId) {
       return res.status(400).json({ success: false, message: "academicYearId query parameter is required" });
@@ -76,7 +80,9 @@ const create = async (req: any, res: any) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { name, classId, academicYearId, installmentType, totalInstallments, dueDay, items } = req.body;
+    const { name, classId, installmentType, totalInstallments, dueDay, items } = req.body;
+    // Use body.academicYearId first, fall back to middleware-resolved academicYearId
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
     if (!name || !classId || !academicYearId || !items || !items.length) {
       return res.status(400).json({
@@ -177,4 +183,3 @@ export default {
   update,
   softDelete,
 };
-

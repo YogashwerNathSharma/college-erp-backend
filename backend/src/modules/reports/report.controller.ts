@@ -7,7 +7,8 @@ import * as reportService from "./report.service";
 
 export const getStudentReportHandler = async (req: any, res: Response) => {
   try {
-    const { classId, sectionId, academicYearId, format } = req.query;
+    const { classId, sectionId, format } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
     const result = await reportService.generateStudentReport(req.tenantId, {
       classId, sectionId, academicYearId, format: format || "json",
     });
@@ -32,7 +33,8 @@ export const getStudentReportHandler = async (req: any, res: Response) => {
 
 export const getFeeReportHandler = async (req: any, res: Response) => {
   try {
-    const { academicYearId, classId, status, format, startDate, endDate } = req.query;
+    const { classId, status, format, startDate, endDate } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
     const result = await reportService.generateFeeReport(req.tenantId, {
       academicYearId, classId, status, format: format || "json", startDate, endDate,
     });
@@ -58,8 +60,9 @@ export const getFeeReportHandler = async (req: any, res: Response) => {
 export const getAttendanceReportHandler = async (req: any, res: Response) => {
   try {
     const { classId, sectionId, month, year, format } = req.query;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
     const result = await reportService.generateAttendanceReport(req.tenantId, {
-      classId, sectionId,
+      classId, sectionId, academicYearId,
       month: month ? parseInt(month) : undefined,
       year: year ? parseInt(year) : undefined,
       format: format || "json",

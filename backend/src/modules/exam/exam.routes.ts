@@ -47,9 +47,14 @@ import {
 } from "./seating.service";
 import { getBulkAdmitCardsService } from "./bulk-admit-cards.service";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 const router = express.Router();
+
+// Apply auth + tenant + academic year middleware
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ═══════════════════════════════════════════════════════
 // STATIC ROUTES FIRST (before :id routes)

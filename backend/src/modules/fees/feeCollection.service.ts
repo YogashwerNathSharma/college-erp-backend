@@ -814,7 +814,8 @@ export const getStudentFees = async (enrollmentId: string, tenantId: string) => 
 
 export const getStudentFeesByAdmissionNo = async (
   admissionNo: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const student = await prisma.student.findFirst({
     where: { admissionNo, tenantId, isDeleted: false },
@@ -823,13 +824,16 @@ export const getStudentFeesByAdmissionNo = async (
 
   if (!student) throw new Error("Student not found with this admission number");
 
+  const enrollmentWhere: any = {
+    studentId: student.id,
+    tenantId,
+    status: "active", // lowercase per Prisma rules
+    isDeleted: false,
+  };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollment = await prisma.enrollment.findFirst({
-    where: {
-      studentId: student.id,
-      tenantId,
-      status: "active", // lowercase per Prisma rules
-      isDeleted: false,
-    },
+    where: enrollmentWhere,
     orderBy: { createdAt: "desc" },
   });
 
@@ -845,7 +849,7 @@ export const getStudentFeesByAdmissionNo = async (
 /**
  * Search students by name, admission number, class, or section
  */
-export const searchStudents = async (query: string, tenantId: string) => {
+export const searchStudents = async (query: string, tenantId: string, academicYearId?: string) => {
   // Try exact admission number match first
   const exactStudent = await prisma.student.findFirst({
     where: { admissionNo: { equals: query, mode: "insensitive" }, tenantId, isDeleted: false },
@@ -854,7 +858,7 @@ export const searchStudents = async (query: string, tenantId: string) => {
 
   if (exactStudent) {
     const enrollment = await prisma.enrollment.findFirst({
-      where: { studentId: exactStudent.id, tenantId, isDeleted: false },
+      where: { studentId: exactStudent.id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
       orderBy: { createdAt: "desc" },
       select: { id: true },
     });
@@ -866,6 +870,7 @@ export const searchStudents = async (query: string, tenantId: string) => {
     where: {
       tenantId,
       isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
       OR: [
         { student: { firstName: { contains: query, mode: "insensitive" } } },
         { student: { lastName: { contains: query, mode: "insensitive" } } },
@@ -1219,7 +1224,7 @@ export const applyDiscount = async (
  */
 export const getDefaulters = async (
   tenantId: string,
-  filters?: { classId?: string; fromDate?: string; toDate?: string }
+  filters?: { classId?: string; fromDate?: string; toDate?: string; academicYearId?: string }
 ) => {
   const where: any = {
     tenantId,
@@ -1233,8 +1238,12 @@ export const getDefaulters = async (
     if (filters.toDate) where.dueDate.lte = new Date(filters.toDate);
   }
 
-  if (filters?.classId) {
-    where.enrollment = { classId: filters.classId, isDeleted: false };
+  // Build enrollment filter with academic year scoping
+  const enrollmentFilter: any = { isDeleted: false };
+  if (filters?.classId) enrollmentFilter.classId = filters.classId;
+  if (filters?.academicYearId) enrollmentFilter.academicYearId = filters.academicYearId;
+  if (Object.keys(enrollmentFilter).length > 1) {
+    where.enrollment = enrollmentFilter;
   }
 
   const defaulterFees = await prisma.studentFee.findMany({

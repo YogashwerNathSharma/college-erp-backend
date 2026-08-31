@@ -6,18 +6,36 @@ export async function getDueSummaryController(req: Request, res: Response) {
     const tenantId = (req as any).user?.tenantId;
     if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
 
-    // Get all classes
+    // Use middleware-resolved academicYearId as primary, fall back to query param
+    const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string);
+
+    // Build enrollment filter for academic year scoping
+    const enrollmentFilter: any = {
+      isDeleted: false,
+      status: "active",
+    };
+    if (academicYearId) {
+      enrollmentFilter.academicYearId = academicYearId;
+    }
+
+    // Get all classes (optionally scoped by academicYearId if the Class model supports it)
+    const classWhere: any = { tenantId, isDeleted: false };
+    if (academicYearId) {
+      classWhere.academicYearId = academicYearId;
+    }
+
     const classes = await prisma.class.findMany({
-      where: { tenantId, isDeleted: false },
+      where: classWhere,
       orderBy: { name: "asc" },
     });
 
-    // Get all student fees with balance > 0
+    // Get all student fees with balance > 0, scoped by academic year via enrollment
     const studentFees = await prisma.studentFee.findMany({
       where: {
         tenantId,
         isDeleted: false,
         balanceAmount: { gt: 0 },
+        enrollment: enrollmentFilter,
       },
       include: {
         enrollment: {

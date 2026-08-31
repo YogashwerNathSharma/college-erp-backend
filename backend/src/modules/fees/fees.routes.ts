@@ -2,6 +2,8 @@
 
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 import { addTransportFeeToStudent, addHostelFeeToStudent, removeTransportFeeFromStudent, removeHostelFeeFromStudent, addModuleFeeToStudent } from "./feeIntegration.service";
 // Existing sub-module routes

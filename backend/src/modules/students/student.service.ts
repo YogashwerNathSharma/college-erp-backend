@@ -243,18 +243,20 @@ export const getAllStudents = async (
     ];
   }
 
-  const enrollmentFilter: any = {};
+  // Academic year scoping: When academicYearId is provided, ALWAYS filter students
+  // by their enrollment in that year. This ensures switching academic year changes the roster.
+  const enrollmentFilter: any = {
+    status: "active",
+    isDeleted: false,
+  };
   if (classId) enrollmentFilter.classId = classId;
   if (sectionId) enrollmentFilter.sectionId = sectionId;
   if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
 
-  if (Object.keys(enrollmentFilter).length > 0) {
+  // When academicYearId is present, always scope through enrollment (even without class/section)
+  if (academicYearId || classId || sectionId) {
     where.enrollments = {
-      some: {
-        ...enrollmentFilter,
-        status: "active",
-        isDeleted: false,
-      },
+      some: enrollmentFilter,
     };
   }
 

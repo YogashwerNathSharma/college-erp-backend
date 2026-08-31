@@ -3,8 +3,6 @@ import multer from "multer";
 import { uploadToCloudinary } from "../../config/cloudinary";
 import path from "path";
 import prisma from "../../utils/prisma";
-import logger from "../../config/logger";
-import { cached, invalidateCache } from "../../utils/cache";
 import {
   createTeacher,
   getTeachers,
@@ -47,7 +45,6 @@ function parseFormArrays(data: any): any {
   } else if (Array.isArray(data["classIds[]"])) {
     data.classIds = data["classIds[]"];
   }
-  // Clean up bracket keys
   delete data["subjectIds[]"];
   delete data["classIds[]"];
   return data;
@@ -65,19 +62,13 @@ export const create = async (req: any, res: Response) => {
 
     const data = parseFormArrays({ ...req.body });
 
-    // Handle photo upload
     if (req.file) {
       data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
     }
 
     const teacher = await createTeacher(data, tenantId);
-
-    // Invalidate teacher caches
-    await invalidateCache(`teacher:dashboard:${tenantId}`);
-
     return res.status(201).json({ success: true, data: teacher });
   } catch (e: any) {
-    logger.error("Create teacher failed", { error: e.message, tenantId: req.user?.tenantId });
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -95,7 +86,6 @@ export const getAll = async (req: any, res: Response) => {
     const data = await getTeachers(req.query, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
-    logger.error("Get teachers failed", { error: e.message, tenantId: req.user?.tenantId });
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -118,7 +108,6 @@ export const getById = async (req: any, res: Response) => {
 
     return res.json({ success: true, data: teacher });
   } catch (e: any) {
-    logger.error("Get teacher by ID failed", { error: e.message, tenantId: req.user?.tenantId });
     return res.status(500).json({ success: false, message: e.message });
   }
 };
@@ -136,19 +125,37 @@ export const update = async (req: any, res: Response) => {
 
     const data = parseFormArrays({ ...req.body });
 
-    // Handle photo upload
     if (req.file) {
       data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
     }
 
     const teacher = await updateTeacher(id, data, tenantId);
-
-    // Invalidate caches
-    await invalidateCache(`teacher:dashboard:${tenantId}`);
-
     return res.json({ success: true, data: teacher });
   } catch (e: any) {
-    logger.error("Update teacher failed", { error: e.message, tenantId: req.user?.tenantId });
+    return res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// PARTIAL UPDATE (PATCH)
+//////////////////////////////////////////////////////
+export const partialUpdate = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { id } = req.params;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const data = parseFormArrays({ ...req.body });
+
+    if (req.file) {
+      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
+    }
+
+    const teacher = await updateTeacher(id, data, tenantId);
+    return res.json({ success: true, data: teacher });
+  } catch (e: any) {
     return res.status(400).json({ success: false, message: e.message });
   }
 };
@@ -165,108 +172,140 @@ export const remove = async (req: any, res: Response) => {
     }
 
     await deleteTeacher(id, tenantId);
-
-    // Invalidate caches
-    await invalidateCache(`teacher:dashboard:${tenantId}`);
-
     return res.json({ success: true, message: "Teacher deleted successfully" });
   } catch (e: any) {
-    logger.error("Delete teacher failed", { error: e.message, tenantId: req.user?.tenantId });
     return res.status(400).json({ success: false, message: e.message });
   }
 };
 
 //////////////////////////////////////////////////////
-// DASHBOARD (cached, 30s TTL)
+// DASHBOARD
 //////////////////////////////////////////////////////
 export const dashboard = async (req: any, res: any) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenantId || (req as any).tenantId;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    // ⚡ PERF: 30-min cache + refresh support
-    const forceRefresh = req.query?.refresh === "true";
-    const cacheKey = `teacher:dashboard:${tenantId}`;
-    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const dashData = await cached(cacheKey, 1800000, async () => {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // Base counts
+    const [total, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
+      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+      prisma.leave.count({ where: { tenantId, status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, createdAt: { gte: startOfMonth } } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
+    ]);
 
-      // Base counts
-      const [total, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
-        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-        prisma.leave.count({ where: { tenantId, status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
-        prisma.teacher.count({ where: { tenantId, isDeleted: false, createdAt: { gte: thirtyDaysAgo } } }),
-        prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
-        prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
-      ]);
+    // Department distribution
+    const teachers = await prisma.teacher.findMany({
+      where: { tenantId, isDeleted: false },
+      select: { departmentId: true, createdAt: true },
+    }) as any[];
 
-      // Department distribution
-      const teachers = await prisma.teacher.findMany({
-        where: { tenantId, isDeleted: false },
-        select: { departmentId: true, createdAt: true },
-      }) as any[];
+    const deptIds = [...new Set(teachers.map(t => t.departmentId).filter(Boolean))];
+    let deptMap = new Map<string, string>();
+    if (deptIds.length > 0) {
+      try {
+        const depts = await prisma.department?.findMany?.({
+          where: { id: { in: deptIds } },
+          select: { id: true, name: true },
+        });
+        if (depts) deptMap = new Map(depts.map((d: any) => [d.id, d.name]));
+      } catch {}
+    }
 
-      // Get department names
-      const deptIds = [...new Set(teachers.map(t => t.departmentId).filter(Boolean))];
-      let deptMap = new Map<string, string>();
-      if (deptIds.length > 0) {
-        try {
-          const depts = await prisma.department?.findMany?.({
-            where: { id: { in: deptIds } },
-            select: { id: true, name: true },
-          });
-          if (depts) deptMap = new Map(depts.map((d: any) => [d.id, d.name]));
-        } catch {}
-      }
-
-      const deptCount: Record<string, number> = {};
-      teachers.forEach((t: any) => {
-        const deptName = t.departmentId ? (deptMap.get(t.departmentId) || "Other") : "Not Assigned";
-        deptCount[deptName] = (deptCount[deptName] || 0) + 1;
-      });
-      const departmentDistribution = Object.entries(deptCount)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-
-      // Experience distribution
-      const expBuckets: Record<string, number> = { "0-5 yrs": 0, "5-10 yrs": 0, "10-15 yrs": 0, "15+ yrs": 0 };
-      teachers.forEach(t => {
-        const years = (now.getTime() - new Date(t.createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-        if (years < 5) expBuckets["0-5 yrs"]++;
-        else if (years < 10) expBuckets["5-10 yrs"]++;
-        else if (years < 15) expBuckets["10-15 yrs"]++;
-        else expBuckets["15+ yrs"]++;
-      });
-      const experienceDistribution = Object.entries(expBuckets).map(([range, count]) => ({ range, count }));
-
-      const departmentsCount = new Set(teachers.map((t: any) => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
-
-      return {
-        stats: {
-          totalTeachers: total,
-          activeTeachers: total - onLeaveCount,
-          onLeave: onLeaveCount,
-          newJoinings,
-          departments: departmentsCount,
-          maleTeachers: maleCount,
-          femaleTeachers: femaleCount,
-        },
-        departmentDistribution,
-        experienceDistribution,
-        attendanceTrend: [],
-        qualificationDistribution: [],
-        teachersOnLeave: [],
-        upcomingSalary: [],
-      };
+    const deptCount: Record<string, number> = {};
+    teachers.forEach((t: any) => {
+      const deptName = t.departmentId ? (deptMap.get(t.departmentId) || "Other") : "Unassigned";
+      deptCount[deptName] = (deptCount[deptName] || 0) + 1;
     });
+    const departmentDistribution = Object.entries(deptCount)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
 
-    return res.json({ success: true, data: dashData });
+    // Experience distribution
+    const expBuckets: Record<string, number> = { "0-5 yrs": 0, "5-10 yrs": 0, "10-15 yrs": 0, "15+ yrs": 0 };
+    teachers.forEach(t => {
+      const years = (now.getTime() - new Date(t.createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      if (years < 5) expBuckets["0-5 yrs"]++;
+      else if (years < 10) expBuckets["5-10 yrs"]++;
+      else if (years < 15) expBuckets["10-15 yrs"]++;
+      else expBuckets["15+ yrs"]++;
+    });
+    const experienceDistribution = Object.entries(expBuckets).map(([range, count]) => ({ range, count }));
+
+    // Gender distribution
+    const genderDistribution = [
+      { name: "Male", value: maleCount },
+      { name: "Female", value: femaleCount },
+      { name: "Other", value: total - maleCount - femaleCount },
+    ].filter(g => g.value > 0);
+
+    const departmentsCount = new Set(teachers.map((t: any) => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
+
+    // Teachers on leave
+    let teachersOnLeave: any[] = [];
+    try {
+      const onLeaveTeachers = await prisma.teacher.findMany({
+        where: {
+          tenantId, isDeleted: false,
+          leaves: { some: { status: "APPROVED", startDate: { lte: now }, endDate: { gte: now } } },
+        },
+        select: {
+          id: true, name: true, departmentId: true,
+          leaves: {
+            where: { status: "APPROVED", startDate: { lte: now }, endDate: { gte: now } },
+            select: { leaveType: true, startDate: true, endDate: true, status: true },
+            take: 1,
+          },
+        },
+        take: 10,
+      });
+      teachersOnLeave = onLeaveTeachers.map((t) => ({
+        id: t.id, name: t.name,
+        department: t.departmentId ? (deptMap.get(t.departmentId) || "N/A") : "N/A",
+        leaveType: t.leaves[0]?.leaveType || "Leave",
+        fromDate: t.leaves[0]?.startDate, toDate: t.leaves[0]?.endDate,
+        status: t.leaves[0]?.status || "APPROVED",
+      }));
+    } catch {}
+
+    // Upcoming salary
+    let upcomingSalary: any[] = [];
+    try {
+      const salaries = await prisma.teacherSalary.findMany({
+        where: { tenantId, month: now.getMonth() + 1, year: now.getFullYear(), status: "PENDING" },
+        select: {
+          id: true, basicSalary: true, totalDeductions: true, netSalary: true,
+          teacher: { select: { name: true, departmentId: true } },
+        },
+        take: 10, orderBy: { netSalary: "desc" },
+      });
+      upcomingSalary = salaries.map((s) => ({
+        id: s.id, name: s.teacher?.name || "N/A",
+        department: s.teacher?.departmentId ? (deptMap.get(s.teacher.departmentId) || "N/A") : "N/A",
+        gross: s.basicSalary, deductions: s.totalDeductions, net: s.netSalary,
+      }));
+    } catch {}
+
+    return res.json({
+      success: true,
+      data: {
+        stats: {
+          totalTeachers: total, activeTeachers: total - onLeaveCount,
+          onLeave: onLeaveCount, newJoinings,
+          departments: departmentsCount, maleTeachers: maleCount, femaleTeachers: femaleCount,
+        },
+        departmentDistribution, experienceDistribution, genderDistribution,
+        attendanceTrend: [], qualificationDistribution: [],
+        teachersOnLeave, upcomingSalary,
+      },
+    });
   } catch (err: any) {
-    logger.error("Teacher dashboard error", { error: err.message, tenantId: req.user?.tenantId });
     return res.status(500).json({ success: false, message: err.message });
   }
 };

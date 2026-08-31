@@ -234,11 +234,12 @@ export const getStudentLedger = async (enrollmentId: string, tenantId: string) =
 // SEARCH STUDENT FOR LEDGER
 // ═══════════════════════════════════════════════════════════════════════
 
-export const searchStudentForLedger = async (query: string, tenantId: string) => {
+export const searchStudentForLedger = async (query: string, tenantId: string, academicYearId?: string) => {
   const enrollments = await prisma.enrollment.findMany({
     where: {
       tenantId,
       isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
       OR: [
         { student: { firstName: { contains: query, mode: "insensitive" } } },
         { student: { lastName: { contains: query, mode: "insensitive" } } },

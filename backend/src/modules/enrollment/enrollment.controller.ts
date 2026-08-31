@@ -38,6 +38,7 @@ export const createEnrollment = async (req: Request, res: Response) => {
 export const getEnrollments = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId as string;
 
     if (!tenantId) {
       return res.status(401).json({
@@ -46,7 +47,7 @@ export const getEnrollments = async (req: Request, res: Response) => {
       });
     }
 
-    const data = await service.getEnrollments({ tenantId });
+    const data = await service.getEnrollments({ tenantId }, academicYearId);
 
     return res.status(200).json({
       success: true,

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import {
   createAssetHandler,
@@ -19,7 +20,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ============================================
 // DASHBOARD / STATS

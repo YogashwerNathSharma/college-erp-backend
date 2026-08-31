@@ -25,11 +25,43 @@ import {
 } from "./exam.service";
 
 /////////////////////////
+// GENERATE CUSTOM SEATING
+/////////////////////////
+export const generateCustomSeating = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const result = await generateCustomSeatingService(req.body, tenantId);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("GENERATE CUSTOM SEATING ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error generating custom seating" });
+  }
+};
+
+/////////////////////////
+// AI ARRANGE SEATING
+/////////////////////////
+export const aiArrangeSeating = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const result = await aiArrangeSeatingService(req.body, tenantId);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("AI ARRANGE SEATING ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error with AI seating arrangement" });
+  }
+};
+
+/////////////////////////
 // CREATE EXAM
 /////////////////////////
 export const createExam = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    // ✅ Ensure academicYearId from middleware is used if not in body
+    if (!req.body.academicYearId && req.academicYearId) {
+      req.body.academicYearId = req.academicYearId;
+    }
     const result = await createExamService(req.body, tenantId);
     return res.status(201).json({ success: true, data: result });
   } catch (error: any) {
@@ -59,7 +91,9 @@ export const updateExam = async (req: any, res: Response) => {
 export const getExams = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.query;
+    const classId = req.query.classId;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = req.academicYearId || req.query.academicYearId;
     const result = await getExamsService(tenantId, classId as string, academicYearId as string);
     return res.json({ success: true, data: result });
   } catch (error: any) {
@@ -214,7 +248,9 @@ export const getConsolidatedReport = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { studentId } = req.params;
-    const { academicYearId, classId } = req.query;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const classId = req.query.classId;
 
     if (!studentId || !academicYearId || !classId) {
       return res.status(400).json({
@@ -261,6 +297,7 @@ import {
   removeInvigilatorService,
   getExamDashboardService,
   getExamReportsService,
+  bulkCreateExamService,
 } from "./exam.service";
 
 /////////////////////////
@@ -491,15 +528,17 @@ export const removeInvigilator = async (req: any, res: Response) => {
 export const getExamDashboard = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId, classId } = req.query;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const classId = req.query.classId;
     const cacheKey = `exam-dash:${tenantId}:${academicYearId || "all"}:${classId || "all"}`;
     const result = await cached(cacheKey, 20000, () =>
       getExamDashboardService(tenantId, academicYearId as string, classId as string)
     );
     return res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("DASHBOARD ERROR:", error);
-    return res.status(500).json({ success: false, message: error.message || "Error fetching dashboard" });
+    console.error("EXAM DASHBOARD ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error fetching exam dashboard" });
   }
 };
 
@@ -509,61 +548,36 @@ export const getExamDashboard = async (req: any, res: Response) => {
 export const getExamReports = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { examId, reportType, subjectId } = req.query;
-    if (!examId || !reportType) {
-      return res.status(400).json({ success: false, message: "examId and reportType are required" });
+    const examId = req.query.examId as string;
+    const reportType = req.query.reportType as string || "result_summary";
+    const subjectId = req.query.subjectId as string | undefined;
+
+    if (!examId) {
+      return res.status(400).json({ success: false, message: "examId is required" });
     }
-    const result = await getExamReportsService(tenantId, examId as string, reportType as string, { subjectId: subjectId as string });
+
+    const result = await getExamReportsService(tenantId, examId, reportType, { subjectId });
     return res.json({ success: true, data: result });
   } catch (error: any) {
-    console.error("REPORTS ERROR:", error);
-    return res.status(500).json({ success: false, message: error.message || "Error fetching reports" });
+    console.error("EXAM REPORTS ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message || "Error fetching exam reports" });
   }
 };
 
 /////////////////////////
-// GENERATE CUSTOM SEATING (Multi-class, configurable capacity)
+// BULK CREATE EXAM
 /////////////////////////
-export const generateCustomSeating = async (req: any, res: Response) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const result = await generateCustomSeatingService(req.body, tenantId);
-    return res.json({ success: true, data: result, message: "Custom seating generated successfully" });
-  } catch (error: any) {
-    console.error("GENERATE CUSTOM SEATING ERROR:", error);
-    return res.status(500).json({ success: false, message: error.message || "Error generating custom seating" });
-  }
-};
-
-/////////////////////////
-// BULK CREATE EXAM (All Classes + Schedule)
-/////////////////////////
-import { bulkCreateExamService } from "./exam.service";
-
 export const bulkCreateExam = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    // ✅ Use middleware academicYearId if not in body
+    if (!req.body.academicYearId && (req as any).academicYearId) {
+      req.body.academicYearId = (req as any).academicYearId;
+    }
     const result = await bulkCreateExamService(req.body, tenantId);
-    return res.status(201).json({
-      success: true,
-      data: result,
-      message: `Exam created for ${result.examsCreated} classes with ${result.schedulesCreated} schedules`,
-    });
+    return res.json({ success: true, data: result });
   } catch (error: any) {
     console.error("BULK CREATE EXAM ERROR:", error);
-    return res.status(500).json({ success: false, message: error.message || "Error in bulk exam creation" });
-  }
-};
-/////////////////////////
-// AI AUTO-ARRANGE SEATING
-/////////////////////////
-export const aiArrangeSeating = async (req: any, res: Response) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const result = await aiArrangeSeatingService(req.body, tenantId);
-    return res.json({ success: true, data: result, message: "AI seating arrangement generated successfully" });
-  } catch (error: any) {
-    console.error("AI ARRANGE SEATING ERROR:", error);
-    return res.status(500).json({ success: false, message: error.message || "Error in AI seating arrangement" });
+    return res.status(500).json({ success: false, message: error.message || "Error bulk creating exams" });
   }
 };

@@ -11,10 +11,12 @@ export const generateStudentReport = async (tenantId: string, filters: any) => {
   const { classId, sectionId, academicYearId, format } = filters;
 
   const where: any = { tenantId, isDeleted: false };
+  // Always scope by enrollment when academicYearId is available
   if (classId || sectionId || academicYearId) {
     where.enrollments = {
       some: {
         isDeleted: false,
+        status: "active",
         ...(classId && { classId }),
         ...(sectionId && { sectionId }),
         ...(academicYearId && { academicYearId }),
@@ -26,7 +28,10 @@ export const generateStudentReport = async (tenantId: string, filters: any) => {
     where,
     include: {
       enrollments: {
-        where: { isDeleted: false },
+        where: {
+          isDeleted: false,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
         include: { class: true, section: true, academicYear: true },
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -144,7 +149,7 @@ export const generateFeeReport = async (tenantId: string, filters: any) => {
 // ============================================
 
 export const generateAttendanceReport = async (tenantId: string, filters: any) => {
-  const { classId, sectionId, month, year, format } = filters;
+  const { classId, sectionId, academicYearId, month, year, format } = filters;
 
   const targetMonth = month || new Date().getMonth() + 1;
   const targetYear = year || new Date().getFullYear();
@@ -155,6 +160,7 @@ export const generateAttendanceReport = async (tenantId: string, filters: any) =
   const where: any = { tenantId, date: { gte: startDate, lte: endDate } };
   if (classId) where.classId = classId;
   if (sectionId) where.sectionId = sectionId;
+  if (academicYearId) where.academicYearId = academicYearId;
 
   const attendance = await prisma.attendance.findMany({
     where,

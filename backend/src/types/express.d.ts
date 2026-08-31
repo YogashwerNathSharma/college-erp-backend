@@ -8,6 +8,10 @@ declare global {
         tenantId: string;
         role: string;
       };
+      /** Resolved tenant ID (set by resolveTenant middleware) */
+      tenantId?: string;
+      /** Resolved academic year ID (set by resolveAcademicYear middleware) */
+      academicYearId?: string;
     }
   }
 }

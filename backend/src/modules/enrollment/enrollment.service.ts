@@ -1,13 +1,19 @@
 import prisma from "../../utils/prisma";
-export const getEnrollments = async (user: any) => {
+export const getEnrollments = async (user: any, academicYearId?: string) => {
+  const where: any = {
+    tenantId: user.tenantId,
+    isDeleted: false,
+  };
+  // Scope by academic year when provided
+  if (academicYearId) where.academicYearId = academicYearId;
+
   return await prisma.enrollment.findMany({
-    where: {
-      tenantId: user.tenantId,
-    },
+    where,
     include: {
       student: true,
       class: true,
       section: true,
+      academicYear: { select: { id: true, name: true } },
     },
   });
 };

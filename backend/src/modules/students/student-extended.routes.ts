@@ -2,9 +2,10 @@ import { Router, Response } from "express";
 import prisma from "../../utils/prisma";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 const router = Router();
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ══════════════════════════════════════════════════════
 // MEDICAL HISTORY

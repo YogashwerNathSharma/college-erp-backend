@@ -1,5 +1,6 @@
 
 
+
 import prisma from "../../config/prisma";
 import { cacheAside, invalidateCache, CacheKeys } from "../../utils/cache";
 import { MarkAttendanceBody, UpdateAttendanceBody } from "./attendance.types";
@@ -124,25 +125,32 @@ export const updateAttendanceService = async (
 
 // ========================================
 // GET CLASS ATTENDANCE (for a specific date)
+// ✅ FIXED: Added academicYearId to scope enrollments
 // ========================================
 export const getClassAttendanceService = async (
   classId: string,
   sectionId: string,
   date: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
-  // Get all students in this class/section
+  // Get all students in this class/section — scoped by academicYearId
+  const enrollmentWhere: any = {
+    classId,
+    sectionId,
+    tenantId,
+    status: "active",
+    isDeleted: false,
+  };
+  if (academicYearId) {
+    enrollmentWhere.academicYearId = academicYearId;
+  }
+
   const enrollments = await prisma.enrollment.findMany({
-    where: {
-      classId,
-      sectionId,
-      tenantId,
-      status: "active",
-      isDeleted: false,
-    },
+    where: enrollmentWhere,
     select: {
       rollNumber: true,
       student: {
@@ -161,14 +169,19 @@ export const getClassAttendanceService = async (
   });
 
   // Get existing attendance for this date
+  const attendanceWhere: any = {
+    classId,
+    sectionId,
+    date: attendanceDate,
+    tenantId,
+    isDeleted: false,
+  };
+  if (academicYearId) {
+    attendanceWhere.academicYearId = academicYearId;
+  }
+
   const attendanceRecords = await prisma.attendance.findMany({
-    where: {
-      classId,
-      sectionId,
-      date: attendanceDate,
-      tenantId,
-      isDeleted: false,
-    },
+    where: attendanceWhere,
   });
 
   // Map attendance by studentId
@@ -198,44 +211,56 @@ export const getClassAttendanceService = async (
 
 // ========================================
 // GET STUDENT ATTENDANCE HISTORY
+// ✅ FIXED: Added academicYearId scoping
 // ========================================
 export const getStudentAttendanceService = async (
   studentId: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
+  const where: any = {
+    studentId,
+    tenantId,
+    isDeleted: false,
+  };
+  if (academicYearId) {
+    where.academicYearId = academicYearId;
+  }
+
   return prisma.attendance.findMany({
-    where: {
-      studentId,
-      tenantId,
-      isDeleted: false,
-    },
+    where,
     orderBy: { date: "desc" },
   });
 };
 
 // ========================================
 // ATTENDANCE REPORT (Monthly - for student)
+// ✅ FIXED: Added academicYearId scoping
 // ========================================
 export const getAttendanceReportService = async (
   studentId: string,
   month: number,
   year: number,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
 
-  const records = await prisma.attendance.findMany({
-    where: {
-      studentId,
-      tenantId,
-      isDeleted: false,
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
+  const where: any = {
+    studentId,
+    tenantId,
+    isDeleted: false,
+    date: {
+      gte: startDate,
+      lte: endDate,
     },
-  });
+  };
+  if (academicYearId) {
+    where.academicYearId = academicYearId;
+  }
+
+  const records = await prisma.attendance.findMany({ where });
 
   const total = records.length;
   const present = records.filter((r) => r.status === "PRESENT").length;
@@ -285,6 +310,7 @@ export const getAttendanceSummaryService = async (
 
 // ========================================
 // DASHBOARD STATS (like image #1 - Dashboard)
+// ✅ FIXED: Today/week attendance queries now scoped by academicYearId
 // ========================================
 export const getDashboardStatsService = async (
   tenantId: string,
@@ -306,10 +332,11 @@ export const getDashboardStatsService = async (
   const totalStudents = enrollments.length;
   const studentIds = enrollments.map((e: any) => e.studentId);
 
-  // Today's attendance — use range query to handle timezone
+  // Today's attendance — scoped by academicYearId
   const todayRecords = await prisma.attendance.findMany({
     where: {
       tenantId,
+      academicYearId,
       date: { gte: today, lt: tomorrow },
       isDeleted: false,
     },
@@ -320,13 +347,14 @@ export const getDashboardStatsService = async (
   const lateToday = todayRecords.filter((r) => r.status === "LATE").length;
   const onLeave = todayRecords.filter((r) => r.status === "LEAVE").length;
 
-  // Weekly trend (last 7 days)
+  // Weekly trend (last 7 days) — scoped by academicYearId
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const weekRecords = await prisma.attendance.findMany({
     where: {
       tenantId,
+      academicYearId,
       isDeleted: false,
       date: { gte: sevenDaysAgo, lt: tomorrow },
     },
@@ -410,7 +438,7 @@ export const getDashboardStatsService = async (
       select: {
         id: true, firstName: true, lastName: true, phone: true,
         enrollments: {
-          where: { isDeleted: false, status: "active" },
+          where: { isDeleted: false, status: "active", academicYearId },
           select: {
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
@@ -465,4 +493,3 @@ export const getDashboardStatsService = async (
     heatmapData,
   };
 };
-

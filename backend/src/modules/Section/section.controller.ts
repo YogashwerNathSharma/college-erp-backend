@@ -9,6 +9,7 @@ import {
 
 /////////////////////////
 // CREATE SECTION
+// ✅ FIXED: Uses middleware academicYearId as fallback
 /////////////////////////
 export const createSection = async (req: Request, res: Response) => {
   try {
@@ -21,7 +22,9 @@ export const createSection = async (req: Request, res: Response) => {
       });
     }
 
-    const { name, classId, academicYearId } = req.body;
+    const { name, classId } = req.body;
+    // ✅ Primary: body.academicYearId, fallback: middleware-injected
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
     if (!name || !classId || !academicYearId) {
       return res.status(400).json({
@@ -51,11 +54,13 @@ export const createSection = async (req: Request, res: Response) => {
 };
 /////////////////////////
 // GET ALL SECTIONS
+// ✅ FIXED: Uses middleware academicYearId as primary source
 /////////////////////////
 export const getSections = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-    const academicYearId = req.query.academicYearId as string | undefined;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string | undefined);
     const classId = req.query.classId as string | undefined;
 
     const sections = await getSectionsService(tenantId, academicYearId, classId);

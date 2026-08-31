@@ -54,9 +54,10 @@ export const createStudentHandler = async (req: any, res: any) => {
 
     const result = await createStudent(req.body, req.tenantId, req.user?.userId);
     // Invalidate dashboard + stats caches so they refresh with new student
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.status(201).json({ success: true, data: result });
   } catch (err: any) {
     console.error("Create student error:", err.message, "\nStack:", err.stack?.split("\n").slice(0, 5).join("\n"));
@@ -66,7 +67,9 @@ export const createStudentHandler = async (req: any, res: any) => {
 
 export const getAllStudentsHandler = async (req: any, res: any) => {
   try {
-    const { classId, sectionId, academicYearId, status, admissionStatus, search, gender, page, limit, dateFrom, dateTo } = req.query;
+    const { classId, sectionId, academicYearId: queryAcademicYearId, status, admissionStatus, search, gender, page, limit, dateFrom, dateTo } = req.query;
+    // Use middleware-injected academicYearId as primary, fall back to query param
+    const academicYearId = req.academicYearId || queryAcademicYearId;
     const result = await getAllStudents(req.tenantId, {
       classId,
       sectionId,
@@ -107,9 +110,10 @@ export const updateStudentHandler = async (req: any, res: any) => {
   try {
     const result = await updateStudent(req.params.id, req.body, req.tenantId);
     // Invalidate dashboard + stats caches so status/gender changes reflect immediately
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -119,9 +123,10 @@ export const updateStudentHandler = async (req: any, res: any) => {
 export const softDeleteStudentHandler = async (req: any, res: any) => {
   try {
     await softDeleteStudent(req.params.id, req.tenantId);
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, message: "Student moved to recycle bin" });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -131,9 +136,10 @@ export const softDeleteStudentHandler = async (req: any, res: any) => {
 export const restoreStudentHandler = async (req: any, res: any) => {
   try {
     await restoreStudent(req.params.id, req.tenantId);
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, message: "Student restored" });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -151,7 +157,8 @@ export const getDeletedStudentsHandler = async (req: any, res: any) => {
 
 export const getStudentStatsHandler = async (req: any, res: any) => {
   try {
-    const stats = await getStudentStats(req.tenantId, req.query.academicYearId);
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const stats = await getStudentStats(req.tenantId, academicYearId);
     res.json({ success: true, data: stats });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -170,9 +177,10 @@ export const createEnrollmentHandler = async (req: any, res: any) => {
       { classId, sectionId, academicYearId, rollNumber },
       req.tenantId
     );
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.status(201).json({ success: true, data: enrollment });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -189,9 +197,10 @@ export const bulkCreateEnrollmentsHandler = async (req: any, res: any) => {
       academicYearId,
       req.tenantId
     );
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: results });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -245,9 +254,10 @@ export const promoteStudentHandler = async (req: any, res: any) => {
       rollNumber,
       promotionType || "promotion"
     );
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -287,9 +297,10 @@ export const bulkPromoteHandler = async (req: any, res: any) => {
       promotionType || "promotion"
     );
 
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -299,9 +310,10 @@ export const bulkPromoteHandler = async (req: any, res: any) => {
 export const undoPromotionHandler = async (req: any, res: any) => {
   try {
     const result = await undoPromotion(req.params.promotionId, req.tenantId, req.user?.userId);
-    invalidateCache(`dashboard:${req.tenantId}`);
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`dashboard:main:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -320,8 +332,9 @@ export const changeSectionHandler = async (req: any, res: any) => {
       req.tenantId,
       req.user?.userId
     );
-    invalidateCache(`student-dash:${req.tenantId}`);
-    invalidateCache(`student-stats:${req.tenantId}`);
+    invalidateCache(`student-dash:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:${req.academicYearId || "all"}`);
+    invalidateCache(`student-stats:${req.tenantId}:all`);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -394,7 +407,8 @@ export const toggleAgeConfigHandler = async (req: any, res: any) => {
 
 export const printStudentsHandler = async (req: any, res: any) => {
   try {
-    const { classId, sectionId, academicYearId, status, search, columns } = req.body;
+    const { classId, sectionId, academicYearId: bodyAcademicYearId, status, search, columns } = req.body;
+    const academicYearId = req.academicYearId || bodyAcademicYearId;
     const result = await getAllStudents(req.tenantId, {
       classId,
       sectionId,

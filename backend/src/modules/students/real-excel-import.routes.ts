@@ -3,12 +3,13 @@ import fs from "fs";
 import os from "os";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import { uploadDocument } from "../../utils/upload";
 import { importRealRmsExcel } from "./real-excel-import.service";
 
 const router = Router();
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 router.post("/import", allowRoles("ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"), (req: any, res: any) => {
   uploadDocument(req, res, async (err: any) => {

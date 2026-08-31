@@ -6,7 +6,7 @@ import prisma from "../../utils/prisma";
 export const createSubjectService = async (data: any, tenantId: string) => {
 
   //////////////////////////
-  // 🔒 VALIDATE CLASS
+  // 🔐 VALIDATE CLASS
   //////////////////////////
   const classExists = await prisma.class.findFirst({
     where: {
@@ -20,7 +20,7 @@ export const createSubjectService = async (data: any, tenantId: string) => {
   }
 
   //////////////////////////
-  // 🔒 VALIDATE ACADEMIC YEAR
+  // 🔐 VALIDATE ACADEMIC YEAR
   //////////////////////////
   const yearExists = await prisma.academicYear.findFirst({
     where: {
@@ -34,7 +34,7 @@ export const createSubjectService = async (data: any, tenantId: string) => {
   }
 
   //////////////////////////
-  // 🔒 PREVENT DUPLICATE
+  // 🔐 PREVENT DUPLICATE
   //////////////////////////
   const duplicate = await prisma.subject.findFirst({
     where: {
@@ -64,10 +64,16 @@ export const createSubjectService = async (data: any, tenantId: string) => {
 
 /////////////////////////
 // GET SUBJECTS
+// ✅ FIXED: Added academicYearId filtering — was missing entirely
 /////////////////////////
-export const getSubjectsService = async (tenantId: string) => {
+export const getSubjectsService = async (tenantId: string, academicYearId?: string) => {
+  const where: any = { tenantId };
+  if (academicYearId) {
+    where.academicYearId = academicYearId;
+  }
+
   const subjects = await prisma.subject.findMany({
-    where: { tenantId },
+    where,
     orderBy: { createdAt: "desc" },
   });
 

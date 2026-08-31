@@ -8,12 +8,13 @@ import {
 
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
+import { resolveAcademicYear } from '../../middleware/academicYear.middleware';
 
 const router = Router({ mergeParams: true });
 
 // Global search
 router.use(authMiddleware);
-router.use(resolveTenant);
+router.use(resolveTenant, resolveAcademicYear);
 
 router.get("/", globalSearch);
 

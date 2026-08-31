@@ -12,7 +12,9 @@ export const get = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getSettings(tenantId);
+    // Pass middleware-injected academicYearId for fallback during settings creation
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+    const data = await getSettings(tenantId, academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("GET SETTINGS ERROR:", e);

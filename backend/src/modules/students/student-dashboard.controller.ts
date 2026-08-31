@@ -2,9 +2,9 @@ import { Response } from "express";
 import prisma from "../../utils/prisma";
 import { cached } from "../../utils/cache";
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // STUDENT DASHBOARD CONTROLLER
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 
 // Statuses that count as "active/enrolled" (must match student-dashboard.service.ts)
 const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
@@ -17,40 +17,91 @@ const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
 export const getFullDashboardHandler = async (req: any, res: Response) => {
   try {
     const tenantId = req.tenantId;
-    const { academicYearId } = req.query;
+    // Primary: middleware-injected → fallback: query param
+    const academicYearId: string | undefined =
+      req.academicYearId ||
+      (req.query.academicYearId as string) ||
+      undefined;
 
-    // ─── BATCH 1: Core counts (5 queries) ───
+    // ─── Build enrollment filter for academic year scoping ───
+    const enrollmentYearFilter = academicYearId
+      ? { academicYearId, status: "active", isDeleted: false }
+      : { status: "active", isDeleted: false };
+
+    // ─── Build student base where (scoped by enrollment in selected year) ───
+    const studentBaseWhere: any = {
+      tenantId,
+      isDeleted: false,
+    };
+    if (academicYearId) {
+      studentBaseWhere.enrollments = {
+        some: enrollmentYearFilter,
+      };
+    }
+
+    // ─── BATCH 1: Core counts via enrollment for year scoping ───
     const [totalStudents, activeStudents, inactiveStudents, maleStudents, femaleStudents] = await Promise.all([
-      prisma.student.count({ where: { tenantId, isDeleted: false, ...(academicYearId && { academicYearId }) } }),
-      prisma.student.count({ where: { tenantId, isDeleted: false, status: { in: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) } }),
-      prisma.student.count({ where: { tenantId, isDeleted: false, status: { notIn: [...ACTIVE_STATUSES] }, ...(academicYearId && { academicYearId }) } }),
-      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE", ...(academicYearId && { academicYearId }) } }),
-      prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE", ...(academicYearId && { academicYearId }) } }),
+      prisma.student.count({ where: studentBaseWhere }),
+      prisma.student.count({ where: { ...studentBaseWhere, status: { in: [...ACTIVE_STATUSES] } } }),
+      prisma.student.count({ where: { ...studentBaseWhere, status: { notIn: [...ACTIVE_STATUSES] } } }),
+      prisma.student.count({ where: { ...studentBaseWhere, gender: "MALE" } }),
+      prisma.student.count({ where: { ...studentBaseWhere, gender: "FEMALE" } }),
     ]);
 
-    // ─── BATCH 2: Secondary counts (5 queries) ───
+    // ─── BATCH 2: Secondary counts ───
     const [transportCount, hostelCount, recentAdmissions, feeDefaulters, leavingStudents] = await Promise.all([
       prisma.transportAssignment.count({ where: { tenantId, status: "ACTIVE" } }).catch(() => 0),
       prisma.hostelAllocation.count({ where: { tenantId, status: "ACTIVE" } }).catch(() => 0),
-      prisma.student.count({ where: { tenantId, isDeleted: false, createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, ...(academicYearId && { academicYearId }) } }),
-      prisma.studentFee.count({ where: { tenantId, isDeleted: false, balanceAmount: { gt: 0 } } }).catch(() => 0),
+      prisma.student.count({
+        where: {
+          ...studentBaseWhere,
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      prisma.studentFee.count({
+        where: {
+          tenantId,
+          isDeleted: false,
+          balanceAmount: { gt: 0 },
+          ...(academicYearId ? { enrollment: { academicYearId, isDeleted: false } } : {}),
+        },
+      }).catch(() => 0),
       prisma.student.count({ where: { tenantId, isDeleted: false, status: { in: ["transferred", "dropped", "passed"] }, statusChangedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }).catch(() => 0),
     ]);
 
-    // ─── BATCH 3: Complex data (4 queries) ───
+    // ─── BATCH 3: Complex data ───
     const [classStrength, categoryDistribution, genderRatio, birthdayToday] = await Promise.all([
       getClassStrengthData(tenantId, academicYearId),
       getCategoryDistributionData(tenantId, academicYearId),
       getGenderRatioData(tenantId, academicYearId),
-      getBirthdayTodayData(tenantId),
+      getBirthdayTodayData(tenantId, academicYearId),
     ]);
 
-    // ─── BATCH 4: Recent admissions list ───
+    // ─── BATCH 4: Recent admissions list (scoped by year) ───
+    const recentStudentWhere: any = { tenantId, isDeleted: false };
+    if (academicYearId) {
+      recentStudentWhere.enrollments = {
+        some: { academicYearId, status: "active", isDeleted: false },
+      };
+    }
+
     const recentStudents = await prisma.student.findMany({
-      where: { tenantId, isDeleted: false },
+      where: recentStudentWhere,
       orderBy: { createdAt: "desc" },
       take: 10,
-      select: { id: true, firstName: true, lastName: true, admissionNo: true, createdAt: true, enrollments: { where: { isDeleted: false, status: "active" }, orderBy: { createdAt: "desc" }, take: 1, select: { class: { select: { name: true } }, section: { select: { name: true } } } } },
+      select: {
+        id: true, firstName: true, lastName: true, admissionNo: true, createdAt: true,
+        enrollments: {
+          where: {
+            isDeleted: false,
+            status: "active",
+            ...(academicYearId ? { academicYearId } : {}),
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { class: { select: { name: true } }, section: { select: { name: true } } },
+        },
+      },
     });
 
     const data = {
@@ -73,6 +124,7 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
         admNo: s.admissionNo || "", class: s.enrollments?.[0]?.class?.name || "",
         section: s.enrollments?.[0]?.section?.name || "", date: s.createdAt,
       })),
+      academicYearId: academicYearId || null,
     };
 
     res.json({ success: true, data });
@@ -87,7 +139,8 @@ export const getFullDashboardHandler = async (req: any, res: Response) => {
  */
 export const getBirthdayTodayHandler = async (req: any, res: Response) => {
   try {
-    const data = await getBirthdayTodayData(req.tenantId);
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const data = await getBirthdayTodayData(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -99,7 +152,8 @@ export const getBirthdayTodayHandler = async (req: any, res: Response) => {
  */
 export const getSectionStrengthHandler = async (req: any, res: Response) => {
   try {
-    const data = await getSectionStrengthData(req.tenantId, req.query.academicYearId);
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const data = await getSectionStrengthData(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -111,7 +165,8 @@ export const getSectionStrengthHandler = async (req: any, res: Response) => {
  */
 export const getMonthlyAdmissionHandler = async (req: any, res: Response) => {
   try {
-    const data = await getMonthlyAdmissionData(req.tenantId, req.query.academicYearId);
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const data = await getMonthlyAdmissionData(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -209,29 +264,38 @@ export const getScholarshipCountHandler = async (req: any, res: Response) => {
  */
 export const getGenderRatioHandler = async (req: any, res: Response) => {
   try {
-    const data = await getGenderRatioData(req.tenantId, req.query.academicYearId);
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+    const data = await getGenderRatioData(req.tenantId, academicYearId);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ══════════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS — all now support academicYearId scoping
+// ══════════════════════════════════════════════════════════════════════
 
-async function getBirthdayTodayData(tenantId: string) {
+async function getBirthdayTodayData(tenantId: string, academicYearId?: string) {
   const today = new Date();
   const month = today.getMonth() + 1;
   const day = today.getDate();
 
+  // Build where clause — scope by enrollment in selected academic year
+  const studentWhere: any = {
+    tenantId,
+    isDeleted: false,
+    status: { in: [...ACTIVE_STATUSES] },
+  };
+  if (academicYearId) {
+    studentWhere.enrollments = {
+      some: { academicYearId, status: "active", isDeleted: false },
+    };
+  }
+
   // Fetch enrolled students (active + pending + verified) and filter by DOB in app layer
   const students = await prisma.student.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      status: { in: [...ACTIVE_STATUSES] },
-    },
+    where: studentWhere,
     select: {
       id: true,
       firstName: true,
@@ -241,7 +305,11 @@ async function getBirthdayTodayData(tenantId: string) {
       photoUrl: true,
       admissionNo: true,
       enrollments: {
-        where: { status: "active", isDeleted: false },
+        where: {
+          status: "active",
+          isDeleted: false,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
         select: {
           class: { select: { name: true } },
           section: { select: { name: true } },
@@ -270,8 +338,14 @@ async function getBirthdayTodayData(tenantId: string) {
 }
 
 async function getClassStrengthData(tenantId: string, academicYearId?: string) {
+  // Scope classes by academicYearId (Class has academicYearId field)
+  const classWhere: any = { tenantId };
+  if (academicYearId) {
+    classWhere.academicYearId = academicYearId;
+  }
+
   const classes = await prisma.class.findMany({
-    where: { tenantId },
+    where: classWhere,
     select: {
       id: true,
       name: true,
@@ -294,8 +368,14 @@ async function getClassStrengthData(tenantId: string, academicYearId?: string) {
 }
 
 async function getSectionStrengthData(tenantId: string, academicYearId?: string) {
+  // Scope sections by academicYearId (Section has academicYearId field)
+  const sectionWhere: any = { tenantId, isActive: true };
+  if (academicYearId) {
+    sectionWhere.academicYearId = academicYearId;
+  }
+
   const sections = await prisma.section.findMany({
-    where: { tenantId, isActive: true },
+    where: sectionWhere,
     select: {
       id: true,
       name: true,
@@ -322,13 +402,20 @@ async function getSectionStrengthData(tenantId: string, academicYearId?: string)
 
 async function getCategoryDistributionData(tenantId: string, academicYearId?: string) {
   // Use ACTIVE_STATUSES for consistency with dashboard service
+  // Scope by enrollment in selected academic year
+  const studentWhere: any = {
+    tenantId,
+    isDeleted: false,
+    status: { in: [...ACTIVE_STATUSES] },
+  };
+  if (academicYearId) {
+    studentWhere.enrollments = {
+      some: { academicYearId, isDeleted: false },
+    };
+  }
+
   const students = await prisma.student.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      status: { in: [...ACTIVE_STATUSES] },
-      ...(academicYearId && { academicYearId }),
-    },
+    where: studentWhere,
     select: { category: true },
   });
 
@@ -353,14 +440,21 @@ async function getMonthlyAdmissionData(tenantId: string, academicYearId?: string
   const now = new Date();
   const twelveMonthsAgo = new Date(now.getFullYear() - 1, now.getMonth(), 1);
 
+  // Build where clause — scope by enrollment in selected academic year
+  const studentWhere: any = {
+    tenantId,
+    isDeleted: false,
+    createdAt: { gte: twelveMonthsAgo },
+  };
+  if (academicYearId) {
+    studentWhere.enrollments = {
+      some: { academicYearId, isDeleted: false },
+    };
+  }
+
   // Single DB query
   const students = await prisma.student.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      createdAt: { gte: twelveMonthsAgo },
-      ...(academicYearId && { academicYearId }),
-    },
+    where: studentWhere,
     select: { createdAt: true },
   });
 
@@ -386,12 +480,17 @@ async function getMonthlyAdmissionData(tenantId: string, academicYearId?: string
 
 async function getGenderRatioData(tenantId: string, academicYearId?: string) {
   // Use normalized enum values (MALE / FEMALE) and include pending/verified
+  // Scope by enrollment in selected academic year
   const where: any = {
     tenantId,
     isDeleted: false,
     status: { in: [...ACTIVE_STATUSES] },
-    ...(academicYearId && { academicYearId }),
   };
+  if (academicYearId) {
+    where.enrollments = {
+      some: { academicYearId, isDeleted: false },
+    };
+  }
 
   const [male, female, other] = await Promise.all([
     prisma.student.count({ where: { ...where, gender: "MALE" } }),

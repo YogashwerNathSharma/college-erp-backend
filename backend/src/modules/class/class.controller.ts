@@ -10,12 +10,14 @@ import {
   restoreClassService,
 } from "./class.service";
 
-// ─── Create Class ────────────────────────────────────────────────────────────
+// ─── Create Class ────────────────────────────────────────────────────────────────
 
 export const createClass = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-    const { name, academicYearId } = req.body;
+    const { name } = req.body;
+    // ✅ Use middleware-injected academicYearId as primary, fallback to body
+    const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
     if (!name || !academicYearId) {
       return res.status(400).json({
@@ -39,12 +41,14 @@ export const createClass = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Get All Classes (non-deleted) ───────────────────────────────────────────
+// ─── Get All Classes (non-deleted) ───────────────────────────────────────────────
+// ✅ FIXED: Uses req.academicYearId from middleware as primary source
 
 export const getClasses = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-    const academicYearId = req.query.academicYearId as string | undefined;
+    // ✅ Primary: middleware-injected academicYearId, fallback: query param
+    const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string | undefined);
 
     const classes = await getClassesService(tenantId, academicYearId);
 
@@ -57,7 +61,7 @@ export const getClasses = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Get Deleted Classes (Recycle Bin) ───────────────────────────────────────
+// ─── Get Deleted Classes (Recycle Bin) ───────────────────────────────────────────
 
 export const getDeletedClasses = async (req: Request, res: Response) => {
   try {
@@ -73,7 +77,7 @@ export const getDeletedClasses = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Update Class ────────────────────────────────────────────────────────────
+// ─── Update Class ────────────────────────────────────────────────────────────────
 
 export const updateClass = async (req: Request, res: Response) => {
   try {
@@ -93,7 +97,7 @@ export const updateClass = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Toggle Active/Inactive ─────────────────────────────────────────────────
+// ─── Toggle Active/Inactive ─────────────────────────────────────────────────────
 
 export const toggleClassStatus = async (req: Request, res: Response) => {
   try {
@@ -112,7 +116,7 @@ export const toggleClassStatus = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Soft Delete (Move to Recycle Bin) ───────────────────────────────────────
+// ─── Soft Delete (Move to Recycle Bin) ───────────────────────────────────────────
 
 export const softDeleteClass = async (req: Request, res: Response) => {
   try {
@@ -131,7 +135,7 @@ export const softDeleteClass = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Restore from Recycle Bin ────────────────────────────────────────────────
+// ─── Restore from Recycle Bin ────────────────────────────────────────────────────
 
 export const restoreClass = async (req: Request, res: Response) => {
   try {

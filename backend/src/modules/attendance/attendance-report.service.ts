@@ -4,21 +4,26 @@ import prisma from "../../config/prisma";
 
 // ========================================
 // 1. MONTHLY REPORT — Day-wise grid for a class
+// ✅ FIXED: Added academicYearId to scope enrollments and attendance
 // ========================================
 export const getMonthlyReportService = async (
   classId: string,
   sectionId: string,
   month: number,
   year: number,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
   const daysInMonth = endDate.getDate();
 
-  // Get all students in this class/section
+  // Get all students in this class/section — scoped by academicYearId
+  const enrollmentWhere: any = { classId, sectionId, tenantId, isDeleted: false };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollments = await prisma.enrollment.findMany({
-    where: { classId, sectionId, tenantId, isDeleted: false },
+    where: enrollmentWhere,
     include: {
       student: {
         select: { id: true, firstName: true, lastName: true, rollNumber: true, fatherName: true, admissionNo: true },
@@ -27,15 +32,18 @@ export const getMonthlyReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
-  // Get all attendance records for this month
+  // Get all attendance records for this month — scoped by academicYearId
+  const attendanceWhere: any = {
+    classId,
+    sectionId,
+    tenantId,
+    isDeleted: false,
+    date: { gte: startDate, lte: endDate },
+  };
+  if (academicYearId) attendanceWhere.academicYearId = academicYearId;
+
   const records = await prisma.attendance.findMany({
-    where: {
-      classId,
-      sectionId,
-      tenantId,
-      isDeleted: false,
-      date: { gte: startDate, lte: endDate },
-    },
+    where: attendanceWhere,
   });
 
   // Build attendance map: studentId -> { day -> status }
@@ -110,18 +118,23 @@ export const getMonthlyReportService = async (
 
 // ========================================
 // 2. DATE-WISE REPORT — Single date for a class
+// ✅ FIXED: Added academicYearId to scope enrollments and attendance
 // ========================================
 export const getDatewiseReportService = async (
   classId: string,
   sectionId: string,
   date: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const attendanceDate = new Date(date);
   attendanceDate.setHours(0, 0, 0, 0);
 
+  const enrollmentWhere: any = { classId, sectionId, tenantId, isDeleted: false };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollments = await prisma.enrollment.findMany({
-    where: { classId, sectionId, tenantId, isDeleted: false },
+    where: enrollmentWhere,
     include: {
       student: {
         select: {
@@ -136,14 +149,17 @@ export const getDatewiseReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
+  const attendanceWhere: any = {
+    classId,
+    sectionId,
+    tenantId,
+    isDeleted: false,
+    date: attendanceDate,
+  };
+  if (academicYearId) attendanceWhere.academicYearId = academicYearId;
+
   const records = await prisma.attendance.findMany({
-    where: {
-      classId,
-      sectionId,
-      tenantId,
-      isDeleted: false,
-      date: attendanceDate,
-    },
+    where: attendanceWhere,
   });
 
   const attendanceMap = new Map(records.map((r) => [r.studentId, r.status]));
@@ -173,18 +189,23 @@ export const getDatewiseReportService = async (
 
 // ========================================
 // 3. YEARLY REPORT — Month-wise summary for each student
+// ✅ FIXED: Added academicYearId to scope enrollments and attendance
 // ========================================
 export const getYearlyReportService = async (
   classId: string,
   sectionId: string,
   year: number,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const startDate = new Date(year, 0, 1);
   const endDate = new Date(year, 11, 31);
 
+  const enrollmentWhere: any = { classId, sectionId, tenantId, isDeleted: false };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollments = await prisma.enrollment.findMany({
-    where: { classId, sectionId, tenantId, isDeleted: false },
+    where: enrollmentWhere,
     include: {
       student: {
         select: { id: true, firstName: true, lastName: true, rollNumber: true },
@@ -193,14 +214,17 @@ export const getYearlyReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
+  const attendanceWhere: any = {
+    classId,
+    sectionId,
+    tenantId,
+    isDeleted: false,
+    date: { gte: startDate, lte: endDate },
+  };
+  if (academicYearId) attendanceWhere.academicYearId = academicYearId;
+
   const records = await prisma.attendance.findMany({
-    where: {
-      classId,
-      sectionId,
-      tenantId,
-      isDeleted: false,
-      date: { gte: startDate, lte: endDate },
-    },
+    where: attendanceWhere,
   });
 
   // Build map: studentId -> month -> { present, total }
@@ -252,14 +276,19 @@ export const getYearlyReportService = async (
 
 // ========================================
 // 4. CLASS-WISE SUMMARY — Overall attendance per student
+// ✅ FIXED: Added academicYearId to scope enrollments and attendance
 // ========================================
 export const getClasswiseReportService = async (
   classId: string,
   sectionId: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
+  const enrollmentWhere: any = { classId, sectionId, tenantId, isDeleted: false };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollments = await prisma.enrollment.findMany({
-    where: { classId, sectionId, tenantId, isDeleted: false },
+    where: enrollmentWhere,
     include: {
       student: {
         select: {
@@ -274,8 +303,11 @@ export const getClasswiseReportService = async (
     orderBy: { student: { rollNumber: "asc" } },
   });
 
+  const attendanceWhere: any = { classId, sectionId, tenantId, isDeleted: false };
+  if (academicYearId) attendanceWhere.academicYearId = academicYearId;
+
   const records = await prisma.attendance.findMany({
-    where: { classId, sectionId, tenantId, isDeleted: false },
+    where: attendanceWhere,
   });
 
   // Build map: studentId -> { present, total }
@@ -311,34 +343,48 @@ export const getClasswiseReportService = async (
 
 // ========================================
 // 5. FULL SCHOOL REPORT — Class-wise overview
+// ✅ FIXED: Added academicYearId to scope classes, enrollments and attendance
 // ========================================
 export const getSchoolReportService = async (
   month: number,
   year: number,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
 
+  const classWhere: any = { tenantId, isDeleted: false, isActive: true };
+  if (academicYearId) classWhere.academicYearId = academicYearId;
+
   const allClasses = await prisma.class.findMany({
-    where: { tenantId, isDeleted: false, isActive: true },
+    where: classWhere,
     orderBy: { name: "asc" },
   });
 
+  const sectionWhere: any = { tenantId, isDeleted: false };
+  if (academicYearId) sectionWhere.academicYearId = academicYearId;
+
   const allSections = await prisma.section.findMany({
-    where: { tenantId, isDeleted: false },
+    where: sectionWhere,
   });
+
+  const attendanceWhere: any = {
+    tenantId,
+    isDeleted: false,
+    date: { gte: startDate, lte: endDate },
+  };
+  if (academicYearId) attendanceWhere.academicYearId = academicYearId;
 
   const records = await prisma.attendance.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      date: { gte: startDate, lte: endDate },
-    },
+    where: attendanceWhere,
   });
 
+  const enrollmentWhere: any = { tenantId, isDeleted: false };
+  if (academicYearId) enrollmentWhere.academicYearId = academicYearId;
+
   const enrollments = await prisma.enrollment.findMany({
-    where: { tenantId, isDeleted: false },
+    where: enrollmentWhere,
   });
 
   const classesReport: any[] = [];
@@ -394,4 +440,3 @@ export const getSchoolReportService = async (
     classes: classesReport,
   };
 };
-

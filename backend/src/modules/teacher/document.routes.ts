@@ -6,6 +6,7 @@ import path from "path";
 import { upload, getByTeacher, remove } from "./document.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 // Multer config
@@ -38,10 +39,10 @@ router.post(
 );
 
 // GET DOCUMENTS
-router.get("/", authMiddleware, resolveTenant, getByTeacher);
+router.get("/", authMiddleware, resolveTenant, resolveAcademicYear, getByTeacher);
 
 // DELETE DOCUMENT
-router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, remove);
+router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, remove);
 
 export default router;
 

@@ -6,6 +6,7 @@
 import { Router, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import prisma from "../../utils/prisma";
 import { uploadDocument } from "../../utils/upload";
@@ -25,7 +26,7 @@ import { generateStudentProfilePDF, generateStudentListPDF } from "./student-pdf
 import { importFromExcel, exportToExcel, getImportTemplate, exportMultiSheet } from "./student-excel.service";
 
 const router = Router();
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // STATUS OPERATIONS

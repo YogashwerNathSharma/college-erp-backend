@@ -20,11 +20,13 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
     const tenantId = req.tenantId;
     const {
       admissionNo, rollNo, name, fatherName, motherName,
-      mobile, aadhaar, classId, sectionId, academicYearId,
+      mobile, aadhaar, classId, sectionId, academicYearId: bodyAcademicYearId,
       houseId, category, religion, transport, hostel,
       status, gender, bloodGroup,
       page = 1, limit = 50, sortBy = "createdAt", sortOrder = "desc",
     } = req.body;
+    // Use middleware-injected academicYearId as primary, fall back to body param
+    const academicYearId = req.academicYearId || bodyAcademicYearId;
 
     const where: any = { tenantId, isDeleted: false };
 
@@ -33,7 +35,7 @@ export const advancedSearchHandler = async (req: any, res: Response) => {
     if (category) where.category = category;
     if (religion) where.religion = religion;
     if (bloodGroup) where.bloodGroup = bloodGroup;
-    if (academicYearId) where.academicYearId = academicYearId;
+    // academicYearId filtering is handled via enrollment below (enrollment-based is correct)
     if (houseId) where.houseId = houseId;
 
     // Gender normalization

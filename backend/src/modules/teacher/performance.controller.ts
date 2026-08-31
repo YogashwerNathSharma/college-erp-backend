@@ -16,8 +16,10 @@ export const create = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
+    // Use middleware-injected academicYearId as primary, fallback to body
+    const academicYearId = (req as any).academicYearId || req.body.academicYearId;
     const data = await createPerformance(
-      { ...req.body, evaluatedBy: req.user?.id },
+      { ...req.body, academicYearId, evaluatedBy: req.user?.id },
       tenantId
     );
     return res.status(201).json({ success: true, data });
@@ -32,7 +34,8 @@ export const getByTeacher = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { teacherId } = req.params;
-    const { academicYearId } = req.query;
+    // Use middleware-injected academicYearId as primary, fallback to query
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -58,7 +61,9 @@ export const getAll = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getAllPerformances(req.query, tenantId);
+    // Inject middleware academicYearId into query for the service to use
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+    const data = await getAllPerformances({ ...req.query, academicYearId }, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("GET ALL PERFORMANCES ERROR:", e);

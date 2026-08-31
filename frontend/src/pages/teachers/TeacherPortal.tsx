@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { API_BASE_URL } from "../../config/api";
+import { getFullUrl } from "../../utils/url";
 import {
   FiHome,
   FiBook,
@@ -23,9 +23,8 @@ import {
   FiLogOut,
   FiShield,
   FiClipboard,
+  FiInbox,
 } from "react-icons/fi";
-
-const API = `${API_BASE_URL}/api`;
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -40,14 +39,14 @@ interface User {
 }
 
 interface ClassItem {
-  _id: string;
+  id: string;
   name: string;
   section?: string;
   students?: string[];
 }
 
 interface Student {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   rollNumber?: string;
@@ -61,7 +60,7 @@ interface Student {
 }
 
 interface Exam {
-  _id: string;
+  id: string;
   name: string;
   classId?: string;
   subjects?: { subjectId: string; subjectName: string; maxMarks: number }[];
@@ -75,6 +74,49 @@ interface AttendanceRecord {
 interface MarkRecord {
   studentId: string;
   marks: number;
+}
+
+interface TimetableEntry {
+  id?: string;
+  day: string;
+  period: number;
+  subject?: { id: string; name: string };
+  class?: { id: string; name: string };
+  section?: { id: string; name: string };
+}
+
+interface LeaveRecord {
+  id: string;
+  leaveType?: { id: string; name: string } | string;
+  leaveTypeId?: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  reason?: string;
+  fromDate?: string;
+  toDate?: string;
+  type?: string;
+}
+
+interface SalaryRecord {
+  id: string;
+  month: number;
+  year: number;
+  basicSalary: number;
+  totalAllowances: number;
+  totalDeductions: number;
+  netSalary: number;
+  status: string;
+  allowances?: { name: string; amount: number }[];
+  deductions?: { name: string; amount: number }[];
+}
+
+interface AcademicYear {
+  id: string;
+  name: string;
+  isCurrent?: boolean;
+  isActive?: boolean;
+  status?: string;
 }
 
 interface TeacherPortalProps {
@@ -98,6 +140,47 @@ function getCurrentUser(): User | null {
     return null;
   }
 }
+
+/** Normalize id: Prisma returns `id`, older MongoDB models may return `_id` */
+function normalizeId(item: any): string {
+  return item?.id || item?._id || "";
+}
+
+/** Get current day abbreviation for timetable API */
+function getTodayDayCode(): string {
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  return days[new Date().getDay()];
+}
+
+/** Format a date string for display */
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return "N/A";
+  try {
+    return new Date(dateStr).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+const TIME_SLOTS = [
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "11:00 - 12:00",
+  "12:00 - 01:00",
+  "01:00 - 02:00",
+  "02:00 - 03:00",
+  "03:00 - 04:00",
+];
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 // ─────────────────────────────────────────────────────────
 // Sidebar Component
@@ -261,26 +344,72 @@ function Spinner() {
 }
 
 // ─────────────────────────────────────────────────────────
+// Empty State Placeholder
+// ─────────────────────────────────────────────────────────
+
+function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message: string }) {
+  return (
+    <div className="text-center py-8 text-gray-500">
+      <Icon className="mx-auto text-3xl mb-2 text-gray-300" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // Dashboard Section
 // ─────────────────────────────────────────────────────────
 
 function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipal: boolean }) {
   const [stats, setStats] = useState({ todayClasses: 0, totalStudents: 0, pendingAttendance: 0 });
+  const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchStats() {
+    async function fetchDashboard() {
       try {
-        const [classRes, studentRes] = await Promise.all([
-          axios.get(`${API}/class`, { headers: getAuthHeaders() }),
-          axios.get(`${API}/students`, { headers: getAuthHeaders() }),
+        const todayCode = getTodayDayCode();
+
+        // Fetch timetable for today, students count, and notifications in parallel
+        const [timetableRes, studentRes, notifRes] = await Promise.allSettled([
+          axios.get(getFullUrl("/api/timetable"), {
+            headers: getAuthHeaders(),
+            params: { day: todayCode },
+          }),
+          axios.get(getFullUrl("/api/students"), { headers: getAuthHeaders() }),
+          axios.get(getFullUrl("/api/notifications"), {
+            headers: getAuthHeaders(),
+            params: { limit: 5 },
+          }),
         ]);
-        const classes = classRes.data?.data || classRes.data || [];
-        const students = studentRes.data?.data || studentRes.data || [];
+
+        // Process timetable
+        let schedule: TimetableEntry[] = [];
+        if (timetableRes.status === "fulfilled") {
+          const ttData = timetableRes.value.data?.data?.data || timetableRes.value.data?.data || [];
+          schedule = Array.isArray(ttData) ? ttData : [];
+        }
+        setTodaySchedule(schedule);
+
+        // Process students
+        let studentCount = 0;
+        if (studentRes.status === "fulfilled") {
+          const stuData = studentRes.value.data?.data || studentRes.value.data || [];
+          const stuMeta = studentRes.value.data?.data?.meta;
+          studentCount = stuMeta?.total || (Array.isArray(stuData) ? stuData.length : 0);
+        }
+
+        // Process notifications
+        if (notifRes.status === "fulfilled") {
+          const nData = notifRes.value.data?.data || notifRes.value.data || [];
+          setNotifications(Array.isArray(nData) ? nData.slice(0, 5) : []);
+        }
+
         setStats({
-          todayClasses: Array.isArray(classes) ? classes.length : 0,
-          totalStudents: Array.isArray(students) ? students.length : 0,
-          pendingAttendance: Array.isArray(classes) ? classes.length : 0,
+          todayClasses: schedule.length,
+          totalStudents: studentCount,
+          pendingAttendance: schedule.length, // periods yet to be marked
         });
       } catch {
         // silently fail — show zeros
@@ -288,7 +417,7 @@ function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipa
         setLoading(false);
       }
     }
-    fetchStats();
+    fetchDashboard();
   }, []);
 
   if (loading) return <Spinner />;
@@ -331,49 +460,59 @@ function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipa
         })}
       </div>
 
-      {/* Today's Schedule (placeholder) */}
+      {/* Today's Schedule — fetched from Timetable API */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Today's Schedule</h3>
-        <div className="space-y-3">
-          {[
-            { time: "9:00 AM", subject: "Mathematics", class: "Class 10-A" },
-            { time: "10:30 AM", subject: "Physics", class: "Class 11-B" },
-            { time: "12:00 PM", subject: "Mathematics", class: "Class 9-A" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <FiClock className="text-indigo-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-800">{item.subject}</p>
-                <p className="text-xs text-gray-500">{item.class}</p>
-              </div>
-              <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded">
-                {item.time}
-              </span>
-            </div>
-          ))}
-        </div>
+        {todaySchedule.length === 0 ? (
+          <EmptyState icon={FiCalendar} message="No classes scheduled for today." />
+        ) : (
+          <div className="space-y-3">
+            {todaySchedule.map((entry, i) => {
+              const timeSlot = TIME_SLOTS[entry.period - 1] || `Period ${entry.period}`;
+              const subjectName = entry.subject?.name || "N/A";
+              const className = entry.class?.name || "N/A";
+              const sectionName = entry.section?.name ? ` (${entry.section.name})` : "";
+              return (
+                <div key={normalizeId(entry) || i} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <FiClock className="text-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{subjectName}</p>
+                    <p className="text-xs text-gray-500">{className}{sectionName}</p>
+                  </div>
+                  <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded">
+                    {timeSlot}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Recent Notifications */}
+      {/* Recent Notifications — fetched from Notifications API */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Notifications</h3>
-        <div className="space-y-3">
-          {[
-            { msg: "Staff meeting scheduled for tomorrow at 3 PM", time: "2h ago" },
-            { msg: "Exam schedule updated for Class 10", time: "5h ago" },
-            { msg: "Parent-teacher meeting next Monday", time: "1d ago" },
-          ].map((n, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <FiBell className="text-indigo-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-700">{n.msg}</p>
-                <p className="text-xs text-gray-400 mt-1">{n.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        {notifications.length === 0 ? (
+          <EmptyState icon={FiBell} message="No recent notifications." />
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((n: any, i: number) => {
+              const message = n.message || n.title || n.text || "Notification";
+              const time = n.createdAt ? formatDate(n.createdAt) : "";
+              return (
+                <div key={normalizeId(n) || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <FiBell className="text-indigo-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-700">{message}</p>
+                    {time && <p className="text-xs text-gray-400 mt-1">{time}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -389,9 +528,9 @@ function ClassesSection() {
 
   useEffect(() => {
     axios
-      .get(`${API}/class`, { headers: getAuthHeaders() })
+      .get(getFullUrl("/api/class"), { headers: getAuthHeaders() })
       .then((res) => {
-        const data = res.data?.data || res.data || [];
+        const data = res.data?.data?.data || res.data?.data || [];
         setClasses(Array.isArray(data) ? data : []);
       })
       .catch(() => toast.error("Failed to load classes"))
@@ -404,14 +543,14 @@ function ClassesSection() {
     <div className="space-y-4">
       <h2 className="text-xl font-bold text-gray-800">My Classes</h2>
       {classes.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-200">
           <FiBook className="mx-auto text-4xl mb-3 text-gray-300" />
           <p>No classes assigned yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {classes.map((cls) => (
-            <div key={cls._id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+            <div key={normalizeId(cls)} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <FiBook className="text-indigo-600" />
@@ -438,6 +577,8 @@ function ClassesSection() {
 
 function AttendanceSection() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [activeAcademicYearId, setActiveAcademicYearId] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -446,14 +587,31 @@ function AttendanceSection() {
   const [submitting, setSubmitting] = useState(false);
   const [classLoading, setClassLoading] = useState(true);
 
+  // Fetch classes and academic years on mount
   useEffect(() => {
-    axios
-      .get(`${API}/class`, { headers: getAuthHeaders() })
-      .then((res) => {
-        const data = res.data?.data || res.data || [];
-        setClasses(Array.isArray(data) ? data : []);
+    Promise.all([
+      axios.get(getFullUrl("/api/class"), { headers: getAuthHeaders() }),
+      axios.get(getFullUrl("/api/academic"), { headers: getAuthHeaders() }),
+    ])
+      .then(([classRes, yearRes]) => {
+        const classData = classRes.data?.data?.data || classRes.data?.data || [];
+        setClasses(Array.isArray(classData) ? classData : []);
+
+        const yearData = yearRes.data?.data?.data || yearRes.data?.data || [];
+        const years: AcademicYear[] = Array.isArray(yearData) ? yearData : [];
+        setAcademicYears(years);
+
+        // Find the active/current academic year
+        const current = years.find(
+          (y) => y.isCurrent === true || y.isActive === true || y.status === "ACTIVE"
+        );
+        if (current) {
+          setActiveAcademicYearId(current.id);
+        } else if (years.length > 0) {
+          setActiveAcademicYearId(years[0].id);
+        }
       })
-      .catch(() => toast.error("Failed to load classes"))
+      .catch(() => toast.error("Failed to load data"))
       .finally(() => setClassLoading(false));
   }, []);
 
@@ -461,16 +619,16 @@ function AttendanceSection() {
     if (!selectedClass) return;
     setLoading(true);
     axios
-      .get(`${API}/students`, {
+      .get(getFullUrl("/api/students"), {
         headers: getAuthHeaders(),
         params: { classId: selectedClass },
       })
       .then((res) => {
-        const data = res.data?.data || res.data || [];
-        const studentList = Array.isArray(data) ? data : [];
+        const rawData = res.data?.data?.data || res.data?.data || [];
+        const studentList: Student[] = Array.isArray(rawData) ? rawData : [];
         setStudents(studentList);
         setRecords(
-          studentList.map((s: Student) => ({ studentId: s._id, status: "present" as const }))
+          studentList.map((s) => ({ studentId: normalizeId(s), status: "present" as const }))
         );
       })
       .catch(() => toast.error("Failed to load students"))
@@ -488,14 +646,18 @@ function AttendanceSection() {
       toast.error("Please select a class and mark attendance");
       return;
     }
+    if (!activeAcademicYearId) {
+      toast.error("No active academic year found. Please contact administration.");
+      return;
+    }
     setSubmitting(true);
     try {
       await axios.post(
-        `${API}/attendance`,
+        getFullUrl("/api/attendance"),
         {
           classId: selectedClass,
           date: selectedDate,
-          academicYearId: "current",
+          academicYearId: activeAcademicYearId,
           records,
         },
         { headers: getAuthHeaders() }
@@ -533,7 +695,7 @@ function AttendanceSection() {
               >
                 <option value="">-- Select Class --</option>
                 {classes.map((cls) => (
-                  <option key={cls._id} value={cls._id}>
+                  <option key={normalizeId(cls)} value={normalizeId(cls)}>
                     {cls.name} {cls.section ? `(${cls.section})` : ""}
                   </option>
                 ))}
@@ -579,9 +741,10 @@ function AttendanceSection() {
 
           <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
             {students.map((student) => {
-              const record = records.find((r) => r.studentId === student._id);
+              const sid = normalizeId(student);
+              const record = records.find((r) => r.studentId === sid);
               return (
-                <div key={student._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div key={sid} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
                       {student.firstName?.[0] || "S"}
@@ -599,7 +762,7 @@ function AttendanceSection() {
                     {(["present", "absent", "late"] as const).map((status) => (
                       <button
                         key={status}
-                        onClick={() => updateStatus(student._id, status)}
+                        onClick={() => updateStatus(sid, status)}
                         className={`text-xs px-3 py-1.5 rounded-lg border font-medium capitalize transition-all ${
                           record?.status === status
                             ? statusColors[status]
@@ -653,12 +816,12 @@ function MarksSection() {
 
   useEffect(() => {
     Promise.all([
-      axios.get(`${API}/class`, { headers: getAuthHeaders() }),
-      axios.get(`${API}/exam`, { headers: getAuthHeaders() }),
+      axios.get(getFullUrl("/api/class"), { headers: getAuthHeaders() }),
+      axios.get(getFullUrl("/api/exam"), { headers: getAuthHeaders() }),
     ])
       .then(([classRes, examRes]) => {
-        const classData = classRes.data?.data || classRes.data || [];
-        const examData = examRes.data?.data || examRes.data || [];
+        const classData = classRes.data?.data?.data || classRes.data?.data || [];
+        const examData = examRes.data?.data?.data || examRes.data?.data || [];
         setClasses(Array.isArray(classData) ? classData : []);
         setExams(Array.isArray(examData) ? examData : []);
       })
@@ -669,16 +832,16 @@ function MarksSection() {
     if (!selectedClass) return;
     setLoading(true);
     axios
-      .get(`${API}/students`, {
+      .get(getFullUrl("/api/students"), {
         headers: getAuthHeaders(),
         params: { classId: selectedClass },
       })
       .then((res) => {
-        const data = res.data?.data || res.data || [];
-        const studentList = Array.isArray(data) ? data : [];
+        const data = res.data?.data?.data || res.data?.data || [];
+        const studentList: Student[] = Array.isArray(data) ? data : [];
         setStudents(studentList);
         const initial: Record<string, number> = {};
-        studentList.forEach((s: Student) => { initial[s._id] = 0; });
+        studentList.forEach((s) => { initial[normalizeId(s)] = 0; });
         setMarks(initial);
       })
       .catch(() => toast.error("Failed to load students"))
@@ -686,7 +849,7 @@ function MarksSection() {
   }, [selectedClass]);
 
   const selectedExamObj = useMemo(
-    () => exams.find((e) => e._id === selectedExam),
+    () => exams.find((e) => normalizeId(e) === selectedExam),
     [exams, selectedExam]
   );
 
@@ -702,7 +865,7 @@ function MarksSection() {
         marks: m,
       }));
       await axios.post(
-        `${API}/exam/marks`,
+        getFullUrl("/api/exam/marks"),
         {
           examId: selectedExam,
           classId: selectedClass,
@@ -735,7 +898,7 @@ function MarksSection() {
             >
               <option value="">-- Select Class --</option>
               {classes.map((cls) => (
-                <option key={cls._id} value={cls._id}>
+                <option key={normalizeId(cls)} value={normalizeId(cls)}>
                   {cls.name} {cls.section ? `(${cls.section})` : ""}
                 </option>
               ))}
@@ -750,7 +913,7 @@ function MarksSection() {
             >
               <option value="">-- Select Exam --</option>
               {exams.map((exam) => (
-                <option key={exam._id} value={exam._id}>
+                <option key={normalizeId(exam)} value={normalizeId(exam)}>
                   {exam.name}
                 </option>
               ))}
@@ -786,33 +949,36 @@ function MarksSection() {
           </div>
 
           <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
-            {students.map((student) => (
-              <div key={student._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-xs font-bold text-purple-600">
-                    {student.firstName?.[0] || "S"}
+            {students.map((student) => {
+              const sid = normalizeId(student);
+              return (
+                <div key={sid} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center text-xs font-bold text-purple-600">
+                      {student.firstName?.[0] || "S"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {student.firstName} {student.lastName}
+                      </p>
+                      {student.rollNumber && (
+                        <p className="text-xs text-gray-500">Roll: {student.rollNumber}</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {student.firstName} {student.lastName}
-                    </p>
-                    {student.rollNumber && (
-                      <p className="text-xs text-gray-500">Roll: {student.rollNumber}</p>
-                    )}
-                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={selectedExamObj?.subjects?.find((s) => s.subjectId === selectedSubject)?.maxMarks || 100}
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={marks[sid] ?? 0}
+                    onChange={(e) =>
+                      setMarks((prev) => ({ ...prev, [sid]: Number(e.target.value) }))
+                    }
+                  />
                 </div>
-                <input
-                  type="number"
-                  min={0}
-                  max={selectedExamObj?.subjects?.find((s) => s.subjectId === selectedSubject)?.maxMarks || 100}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  value={marks[student._id] ?? 0}
-                  onChange={(e) =>
-                    setMarks((prev) => ({ ...prev, [student._id]: Number(e.target.value) }))
-                  }
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
@@ -851,9 +1017,9 @@ function StudentRecordsSection() {
 
   useEffect(() => {
     axios
-      .get(`${API}/class`, { headers: getAuthHeaders() })
+      .get(getFullUrl("/api/class"), { headers: getAuthHeaders() })
       .then((res) => {
-        const data = res.data?.data || res.data || [];
+        const data = res.data?.data?.data || res.data?.data || [];
         setClasses(Array.isArray(data) ? data : []);
       })
       .catch(() => toast.error("Failed to load classes"));
@@ -863,12 +1029,12 @@ function StudentRecordsSection() {
     if (!selectedClass) return;
     setLoading(true);
     axios
-      .get(`${API}/students`, {
+      .get(getFullUrl("/api/students"), {
         headers: getAuthHeaders(),
         params: { classId: selectedClass },
       })
       .then((res) => {
-        const data = res.data?.data || res.data || [];
+        const data = res.data?.data?.data || res.data?.data || [];
         setStudents(Array.isArray(data) ? data : []);
       })
       .catch(() => toast.error("Failed to load students"))
@@ -901,13 +1067,13 @@ function StudentRecordsSection() {
     setSaving(true);
     try {
       await axios.put(
-        `${API}/students/${editingStudent._id}`,
+        getFullUrl(`/api/students/${normalizeId(editingStudent)}`),
         editForm,
         { headers: getAuthHeaders() }
       );
       toast.success("Student updated successfully!");
       setStudents((prev) =>
-        prev.map((s) => (s._id === editingStudent._id ? { ...s, ...editForm } : s))
+        prev.map((s) => (normalizeId(s) === normalizeId(editingStudent) ? { ...s, ...editForm } : s))
       );
       setEditingStudent(null);
     } catch (err: any) {
@@ -933,7 +1099,7 @@ function StudentRecordsSection() {
             >
               <option value="">-- All Classes --</option>
               {classes.map((cls) => (
-                <option key={cls._id} value={cls._id}>
+                <option key={normalizeId(cls)} value={normalizeId(cls)}>
                   {cls.name} {cls.section ? `(${cls.section})` : ""}
                 </option>
               ))}
@@ -972,37 +1138,40 @@ function StudentRecordsSection() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredStudents.map((student) => (
-                  <tr key={student._id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
-                          {student.firstName?.[0] || "S"}
+                {filteredStudents.map((student) => {
+                  const sid = normalizeId(student);
+                  return (
+                    <tr key={sid} className="hover:bg-gray-50">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
+                            {student.firstName?.[0] || "S"}
+                          </div>
+                          <span className="font-medium text-gray-800">
+                            {student.firstName} {student.lastName}
+                          </span>
                         </div>
-                        <span className="font-medium text-gray-800">
-                          {student.firstName} {student.lastName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-gray-600 hidden sm:table-cell">
-                      {student.rollNumber || "-"}
-                    </td>
-                    <td className="px-5 py-3 text-gray-600 hidden md:table-cell">
-                      {student.phone || "-"}
-                    </td>
-                    <td className="px-5 py-3 text-gray-600 hidden lg:table-cell">
-                      {student.guardianName || "-"}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => openEdit(student)}
-                        className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium"
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-3 text-gray-600 hidden sm:table-cell">
+                        {student.rollNumber || "-"}
+                      </td>
+                      <td className="px-5 py-3 text-gray-600 hidden md:table-cell">
+                        {student.phone || "-"}
+                      </td>
+                      <td className="px-5 py-3 text-gray-600 hidden lg:table-cell">
+                        {student.guardianName || "-"}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => openEdit(student)}
+                          className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1087,19 +1256,46 @@ function StudentRecordsSection() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Timetable Section
+// Timetable Section — fetches real data from API
 // ─────────────────────────────────────────────────────────
 
 function TimetableSection() {
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const dayLabels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const periods = [
-    { time: "9:00 - 9:45", label: "Period 1" },
-    { time: "9:45 - 10:30", label: "Period 2" },
-    { time: "10:45 - 11:30", label: "Period 3" },
-    { time: "11:30 - 12:15", label: "Period 4" },
-    { time: "1:00 - 1:45", label: "Period 5" },
-    { time: "1:45 - 2:30", label: "Period 6" },
+    { time: "08:00 - 09:00", label: "Period 1", num: 1 },
+    { time: "09:00 - 10:00", label: "Period 2", num: 2 },
+    { time: "10:00 - 11:00", label: "Period 3", num: 3 },
+    { time: "11:00 - 12:00", label: "Period 4", num: 4 },
+    { time: "12:00 - 01:00", label: "Lunch Break", num: 0 },
+    { time: "01:00 - 02:00", label: "Period 5", num: 5 },
+    { time: "02:00 - 03:00", label: "Period 6", num: 6 },
+    { time: "03:00 - 04:00", label: "Period 7", num: 7 },
   ];
+
+  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios
+      .get(getFullUrl("/api/timetable"), { headers: getAuthHeaders() })
+      .then((res) => {
+        const data = res.data?.data?.data || res.data?.data || [];
+        setTimetable(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        // silently fail — show empty timetable
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  function getEntry(day: string, periodNum: number): TimetableEntry | undefined {
+    return timetable.find((t) => t.day === day && t.period === periodNum);
+  }
+
+  if (loading) return <Spinner />;
+
+  const hasTimetableData = timetable.length > 0;
 
   return (
     <div className="space-y-6">
@@ -1110,7 +1306,7 @@ function TimetableSection() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Time</th>
-                {days.map((day) => (
+                {dayLabels.map((day) => (
                   <th key={day} className="text-center px-4 py-3 font-medium text-gray-600">
                     {day}
                   </th>
@@ -1118,136 +1314,369 @@ function TimetableSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {periods.map((period, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-gray-800">{period.label}</p>
-                    <p className="text-xs text-gray-500">{period.time}</p>
-                  </td>
-                  {days.map((day) => (
-                    <td key={day} className="px-4 py-3 text-center">
-                      <span className="text-xs text-gray-400">-</span>
+              {periods.map((period, i) => {
+                const isBreak = period.num === 0;
+                return (
+                  <tr key={i} className={isBreak ? "bg-amber-50" : "hover:bg-gray-50"}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-800">{period.label}</p>
+                      <p className="text-xs text-gray-500">{period.time}</p>
                     </td>
-                  ))}
-                </tr>
-              ))}
+                    {days.map((day) => {
+                      if (isBreak) {
+                        return (
+                          <td key={day} className="px-4 py-3 text-center">
+                            <span className="text-xs text-amber-600 font-medium">Break</span>
+                          </td>
+                        );
+                      }
+                      const entry = getEntry(day, period.num);
+                      return (
+                        <td key={day} className="px-4 py-3 text-center">
+                          {entry?.subject?.name ? (
+                            <div>
+                              <p className="text-xs font-medium text-indigo-700">{entry.subject.name}</p>
+                              {entry.class?.name && (
+                                <p className="text-xs text-gray-500">{entry.class.name}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
-          <p className="text-xs text-gray-500">
-            <FiAlertCircle className="inline mr-1" />
-            Timetable data will be populated when configured by administration.
-          </p>
-        </div>
+        {!hasTimetableData && (
+          <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
+            <p className="text-xs text-gray-500">
+              <FiAlertCircle className="inline mr-1" />
+              Timetable data will be populated when configured by administration.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Leave Section
+// Leave Section — fetches real data from API
 // ─────────────────────────────────────────────────────────
 
 function LeaveSection() {
-  const [leaves] = useState([
-    { id: "1", type: "Casual Leave", from: "2025-01-10", to: "2025-01-11", status: "approved", reason: "Family function" },
-    { id: "2", type: "Sick Leave", from: "2025-02-05", to: "2025-02-06", status: "pending", reason: "Fever" },
-  ]);
+  const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applyForm, setApplyForm] = useState({ leaveTypeId: "", startDate: "", endDate: "", reason: "" });
+  const [leaveTypes, setLeaveTypes] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const statusBadge = {
+  useEffect(() => {
+    fetchLeaves();
+    fetchLeaveTypes();
+  }, []);
+
+  async function fetchLeaves() {
+    try {
+      const res = await axios.get(getFullUrl("/api/teacher-leave"), {
+        headers: getAuthHeaders(),
+      });
+      const data = res.data?.data?.data || res.data?.data || [];
+      setLeaves(Array.isArray(data) ? data : []);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchLeaveTypes() {
+    try {
+      const res = await axios.get(getFullUrl("/api/teacher-leave/types"), {
+        headers: getAuthHeaders(),
+      });
+      const data = res.data?.data || [];
+      setLeaveTypes(Array.isArray(data) ? data : []);
+    } catch {
+      // Leave types may not be available
+    }
+  }
+
+  async function handleApplyLeave() {
+    if (!applyForm.startDate || !applyForm.endDate || !applyForm.reason) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await axios.post(
+        getFullUrl("/api/teacher-leave"),
+        applyForm,
+        { headers: getAuthHeaders() }
+      );
+      toast.success("Leave application submitted!");
+      setShowApplyModal(false);
+      setApplyForm({ leaveTypeId: "", startDate: "", endDate: "", reason: "" });
+      fetchLeaves();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to apply for leave");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function getLeaveTypeName(leave: LeaveRecord): string {
+    if (typeof leave.leaveType === "object" && leave.leaveType?.name) return leave.leaveType.name;
+    if (typeof leave.leaveType === "string") return leave.leaveType;
+    if (leave.type) return leave.type;
+    return "Leave";
+  }
+
+  const statusBadge: Record<string, string> = {
+    APPROVED: "bg-green-100 text-green-700",
     approved: "bg-green-100 text-green-700",
+    PENDING: "bg-amber-100 text-amber-700",
     pending: "bg-amber-100 text-amber-700",
+    REJECTED: "bg-red-100 text-red-700",
     rejected: "bg-red-100 text-red-700",
   };
+
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800">My Leave</h2>
-        <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+        <button
+          onClick={() => setShowApplyModal(true)}
+          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+        >
           Apply Leave
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="divide-y divide-gray-100">
-          {leaves.map((leave) => (
-            <div key={leave.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-gray-800">{leave.type}</p>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                      statusBadge[leave.status as keyof typeof statusBadge]
-                    }`}
-                  >
-                    {leave.status}
-                  </span>
+      {leaves.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <EmptyState icon={FiFileText} message="No leave records found." />
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {leaves.map((leave) => {
+              const leaveId = normalizeId(leave);
+              const typeName = getLeaveTypeName(leave);
+              const fromDate = leave.startDate || leave.fromDate || "";
+              const toDate = leave.endDate || leave.toDate || "";
+              const status = leave.status || "PENDING";
+              return (
+                <div key={leaveId} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-800">{typeName}</p>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
+                          statusBadge[status] || "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {status.toLowerCase()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDate(fromDate)} to {formatDate(toDate)}
+                      {leave.reason ? ` • ${leave.reason}` : ""}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {leave.from} to {leave.to} • {leave.reason}
-                </p>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Apply Leave Modal */}
+      {showApplyModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Apply for Leave</h3>
+            <div className="space-y-4">
+              {leaveTypes.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                  <select
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                    value={applyForm.leaveTypeId}
+                    onChange={(e) => setApplyForm((p) => ({ ...p, leaveTypeId: e.target.value }))}
+                  >
+                    <option value="">-- Select Type --</option>
+                    {leaveTypes.map((lt: any) => (
+                      <option key={normalizeId(lt)} value={normalizeId(lt)}>
+                        {lt.name || lt.type || "Leave"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  value={applyForm.startDate}
+                  onChange={(e) => setApplyForm((p) => ({ ...p, startDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">To Date *</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  value={applyForm.endDate}
+                  onChange={(e) => setApplyForm((p) => ({ ...p, endDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason *</label>
+                <textarea
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
+                  rows={3}
+                  value={applyForm.reason}
+                  onChange={(e) => setApplyForm((p) => ({ ...p, reason: e.target.value }))}
+                />
               </div>
             </div>
-          ))}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowApplyModal(false)}
+                className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApplyLeave}
+                disabled={submitting}
+                className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {submitting ? "Submitting..." : "Submit Application"}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Salary Section
+// Salary Section — fetches real data from API
 // ─────────────────────────────────────────────────────────
 
 function SalarySection() {
-  const payslips = [
-    { month: "June 2025", basic: 45000, allowances: 12000, deductions: 5000, net: 52000 },
-    { month: "May 2025", basic: 45000, allowances: 12000, deductions: 5000, net: 52000 },
-    { month: "April 2025", basic: 45000, allowances: 12000, deductions: 5000, net: 52000 },
-  ];
+  const [salaryRecords, setSalaryRecords] = useState<SalaryRecord[]>([]);
+  const [currentSalary, setCurrentSalary] = useState<SalaryRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSalary() {
+      try {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        // Try to fetch current month's salary slip
+        const res = await axios.get(getFullUrl("/api/teacher-salary"), {
+          headers: getAuthHeaders(),
+          params: { month: currentMonth, year: currentYear },
+        });
+
+        const data = res.data?.data?.data || res.data?.data || [];
+        const records: SalaryRecord[] = Array.isArray(data) ? data : (data ? [data] : []);
+        setSalaryRecords(records);
+
+        if (records.length > 0) {
+          setCurrentSalary(records[0]);
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSalary();
+  }, []);
+
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-gray-800">My Salary & Payslips</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Basic Salary</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">₹45,000</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Allowances</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">₹12,000</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-sm text-gray-500">Net Pay</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-1">₹52,000</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800">Recent Payslips</h3>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {payslips.map((slip, i) => (
-            <div key={i} className="px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-800">{slip.month}</p>
-                <p className="text-xs text-gray-500">
-                  Basic: ₹{slip.basic.toLocaleString()} | Allowances: ₹{slip.allowances.toLocaleString()} | Ded: ₹{slip.deductions.toLocaleString()}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-indigo-600">₹{slip.net.toLocaleString()}</p>
-                <button className="text-xs text-indigo-500 hover:underline mt-1">Download</button>
-              </div>
+      {currentSalary ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Basic Salary</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">
+                ₹{(currentSalary.basicSalary || 0).toLocaleString("en-IN")}
+              </p>
             </div>
-          ))}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Allowances</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">
+                ₹{(currentSalary.totalAllowances || 0).toLocaleString("en-IN")}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <p className="text-sm text-gray-500">Net Pay</p>
+              <p className="text-2xl font-bold text-indigo-600 mt-1">
+                ₹{(currentSalary.netSalary || 0).toLocaleString("en-IN")}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800">Recent Payslips</h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {salaryRecords.map((slip) => {
+                const monthName = MONTHS[(slip.month || 1) - 1] || "Unknown";
+                return (
+                  <div key={normalizeId(slip)} className="px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {monthName} {slip.year}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Basic: ₹{(slip.basicSalary || 0).toLocaleString("en-IN")} | Allowances: ₹{(slip.totalAllowances || 0).toLocaleString("en-IN")} | Ded: ₹{(slip.totalDeductions || 0).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-indigo-600">₹{(slip.netSalary || 0).toLocaleString("en-IN")}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        slip.status === "PAID" ? "bg-green-100 text-green-700" :
+                        slip.status === "PENDING" ? "bg-amber-100 text-amber-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {slip.status || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <EmptyState icon={FiDollarSign} message="No salary records available. Please contact administration." />
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1276,7 +1705,7 @@ function ProfileSection({ user }: { user: User | null }) {
     setChangingPassword(true);
     try {
       await axios.put(
-        `${API}/auth/change-password`,
+        getFullUrl("/api/auth/change-password"),
         { currentPassword: passwords.current, newPassword: passwords.newPass },
         { headers: getAuthHeaders() }
       );
@@ -1301,7 +1730,7 @@ function ProfileSection({ user }: { user: User | null }) {
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-800">{user?.name || "Teacher"}</h3>
-            <p className="text-sm text-gray-500">{user?.email || "teacher@school.com"}</p>
+            <p className="text-sm text-gray-500">{user?.email || "-"}</p>
             <span className="inline-block mt-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium capitalize">
               {user?.role || "teacher"}
             </span>
@@ -1373,44 +1802,105 @@ function ProfileSection({ user }: { user: User | null }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Approve Leave Section (Principal Only)
+// Approve Leave Section (Principal Only) — fetches real data
 // ─────────────────────────────────────────────────────────
 
 function ApproveLeaveSection() {
-  const pendingLeaves = [
-    { id: "1", teacher: "Priya Sharma", type: "Casual Leave", from: "2025-06-20", to: "2025-06-21", reason: "Personal work" },
-    { id: "2", teacher: "Rahul Kumar", type: "Sick Leave", from: "2025-06-25", to: "2025-06-26", reason: "Medical appointment" },
-  ];
+  const [pendingLeaves, setPendingLeaves] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchPendingLeaves();
+  }, []);
+
+  async function fetchPendingLeaves() {
+    try {
+      const res = await axios.get(getFullUrl("/api/teacher-leave"), {
+        headers: getAuthHeaders(),
+        params: { status: "PENDING" },
+      });
+      const data = res.data?.data?.data || res.data?.data || [];
+      setPendingLeaves(Array.isArray(data) ? data : []);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAction(leaveId: string, action: "APPROVED" | "REJECTED") {
+    setProcessing(leaveId);
+    try {
+      await axios.put(
+        getFullUrl(`/api/teacher-leave/${leaveId}`),
+        { status: action },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(`Leave ${action.toLowerCase()} successfully`);
+      setPendingLeaves((prev) => prev.filter((l) => normalizeId(l) !== leaveId));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || `Failed to ${action.toLowerCase()} leave`);
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  if (loading) return <Spinner />;
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-gray-800">Approve Leave Requests</h2>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="divide-y divide-gray-100">
-          {pendingLeaves.map((leave) => (
-            <div key={leave.id} className="px-5 py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{leave.teacher}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {leave.type} • {leave.from} to {leave.to}
-                  </p>
-                  <p className="text-xs text-gray-500">Reason: {leave.reason}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button className="px-4 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium border border-green-200">
-                    Approve
-                  </button>
-                  <button className="px-4 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium border border-red-200">
-                    Reject
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      {pendingLeaves.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <EmptyState icon={FiCheck} message="No pending leave requests." />
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {pendingLeaves.map((leave) => {
+              const leaveId = normalizeId(leave);
+              const teacherName = leave.teacher?.name || leave.teacherName || "Unknown";
+              const typeName = typeof leave.leaveType === "object" ? leave.leaveType?.name : (leave.type || "Leave");
+              const fromDate = leave.startDate || leave.fromDate || "";
+              const toDate = leave.endDate || leave.toDate || "";
+              const isProcessing = processing === leaveId;
+              return (
+                <div key={leaveId} className="px-5 py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{teacherName}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {typeName} • {formatDate(fromDate)} to {formatDate(toDate)}
+                      </p>
+                      {leave.reason && (
+                        <p className="text-xs text-gray-500">Reason: {leave.reason}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAction(leaveId, "APPROVED")}
+                        disabled={isProcessing}
+                        className="px-4 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium border border-green-200 disabled:opacity-50"
+                      >
+                        {isProcessing ? "..." : "Approve"}
+                      </button>
+                      <button
+                        onClick={() => handleAction(leaveId, "REJECTED")}
+                        disabled={isProcessing}
+                        className="px-4 py-2 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium border border-red-200 disabled:opacity-50"
+                      >
+                        {isProcessing ? "..." : "Reject"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1525,7 +2015,6 @@ export default function TeacherPortal({ isPrincipal = false }: TeacherPortalProp
           <div className="flex items-center gap-3">
             <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
               <FiBell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
             </button>
             <button
               onClick={() => {

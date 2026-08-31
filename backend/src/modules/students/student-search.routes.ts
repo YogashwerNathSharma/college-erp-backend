@@ -6,6 +6,7 @@
 import { Router, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import {
   advancedSearch,
   checkDuplicate,
@@ -16,7 +17,7 @@ import {
 } from "./student-search.service";
 
 const router = Router();
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ── Advanced Search ──────────────────────────────────────────────────────────
 router.post("/advanced", async (req: any, res: Response) => {

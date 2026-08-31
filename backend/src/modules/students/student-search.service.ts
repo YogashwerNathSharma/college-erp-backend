@@ -177,7 +177,11 @@ export const advancedSearch = async (tenantId: string, filters: StudentAdvancedS
       where,
       include: {
         enrollments: {
-          where: { status: "active", isDeleted: false },
+          where: {
+            status: "active",
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
+          },
           include: {
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },

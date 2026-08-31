@@ -1,7 +1,9 @@
 
 import prisma from "../../utils/prisma";
+import { invalidateAcademicYearCache } from "../../middleware/academicYear.middleware";
+import { invalidateAcademicYearCache } from "../../middleware/academicYear.middleware";
 
-// ─── Create Academic Year ────────────────────────────────────────────────────
+// ─── Create Academic Year ────────────────────────────────────────────
 
 export const createAcademicYear = async (data: any, tenantId: string) => {
   if (!tenantId) {
@@ -14,7 +16,7 @@ export const createAcademicYear = async (data: any, tenantId: string) => {
     data: { isActive: false, isCurrent: false },
   });
 
-  return prisma.academicYear.create({
+  const year = await prisma.academicYear.create({
     data: {
       name: data.name,
       startDate: new Date(data.startDate),
@@ -24,9 +26,14 @@ export const createAcademicYear = async (data: any, tenantId: string) => {
       tenantId,
     },
   });
+
+  // Invalidate the middleware's current-year cache for this tenant
+  invalidateAcademicYearCache(tenantId);
+
+  return year;
 };
 
-// ─── Get All Academic Years (only non-deleted) ───────────────────────────────
+// ─── Get All Academic Years (only non-deleted) ───────────────────────
 
 export const getAcademicYears = async (tenantId: string) => {
   return prisma.academicYear.findMany({
@@ -35,7 +42,7 @@ export const getAcademicYears = async (tenantId: string) => {
   });
 };
 
-// ─── Get All Including Deleted (for recycle bin / admin view) ────────────────
+// ─── Get All Including Deleted (for recycle bin / admin view) ────────
 
 export const getDeletedAcademicYears = async (tenantId: string) => {
   return prisma.academicYear.findMany({
@@ -44,7 +51,7 @@ export const getDeletedAcademicYears = async (tenantId: string) => {
   });
 };
 
-// ─── Set Active Year (only one can be active at a time) ──────────────────────
+// ─── Set Active Year (only one can be active at a time) ──────────────
 
 export const setActiveYear = async (id: string, tenantId: string) => {
   // Deactivate all first
@@ -54,13 +61,18 @@ export const setActiveYear = async (id: string, tenantId: string) => {
   });
 
   // Activate selected
-  return prisma.academicYear.update({
+  const year = await prisma.academicYear.update({
     where: { id },
     data: { isActive: true, isCurrent: true },
   });
+
+  // Invalidate the middleware's current-year cache for this tenant
+  invalidateAcademicYearCache(tenantId);
+
+  return year;
 };
 
-// ─── Toggle Active/Inactive Status ──────────────────────────────────────────
+// ─── Toggle Active/Inactive Status ──────────────────────────────────
 
 export const toggleAcademicYearStatus = async (id: string, tenantId: string) => {
   const year = await prisma.academicYear.findFirst({
@@ -71,10 +83,12 @@ export const toggleAcademicYearStatus = async (id: string, tenantId: string) => 
     throw new Error("Academic year not found");
   }
 
+  let result;
+
   // If currently active → deactivate
   // If currently inactive → activate (and deactivate others)
   if (year.isActive) {
-    return prisma.academicYear.update({
+    result = await prisma.academicYear.update({
       where: { id },
       data: { isActive: false, isCurrent: false },
     });
@@ -85,14 +99,19 @@ export const toggleAcademicYearStatus = async (id: string, tenantId: string) => 
       data: { isActive: false, isCurrent: false },
     });
 
-    return prisma.academicYear.update({
+    result = await prisma.academicYear.update({
       where: { id },
       data: { isActive: true, isCurrent: true },
     });
   }
+
+  // Invalidate the middleware's current-year cache for this tenant
+  invalidateAcademicYearCache(tenantId);
+
+  return result;
 };
 
-// ─── Soft Delete ─────────────────────────────────────────────────────────────
+// ─── Soft Delete ─────────────────────────────────────────────────────
 
 export const softDeleteAcademicYear = async (id: string, tenantId: string) => {
   const year = await prisma.academicYear.findFirst({
@@ -107,7 +126,7 @@ export const softDeleteAcademicYear = async (id: string, tenantId: string) => {
     throw new Error("Cannot delete the currently active academic year. Please set another year as active first.");
   }
 
-  return prisma.academicYear.update({
+  const result = await prisma.academicYear.update({
     where: { id },
     data: {
       isDeleted: true,
@@ -116,9 +135,14 @@ export const softDeleteAcademicYear = async (id: string, tenantId: string) => {
       isCurrent: false,
     },
   });
+
+  // Invalidate cache in case the deleted year was cached
+  invalidateAcademicYearCache(tenantId);
+
+  return result;
 };
 
-// ─── Restore from Soft Delete ────────────────────────────────────────────────
+// ─── Restore from Soft Delete ────────────────────────────────────────
 
 export const restoreAcademicYear = async (id: string, tenantId: string) => {
   const year = await prisma.academicYear.findFirst({
@@ -138,7 +162,7 @@ export const restoreAcademicYear = async (id: string, tenantId: string) => {
   });
 };
 
-// ─── Update Academic Year ────────────────────────────────────────────────────
+// ─── Update Academic Year ────────────────────────────────────────────
 
 export const updateAcademicYear = async (id: string, tenantId: string, data: any) => {
   const year = await prisma.academicYear.findFirst({
@@ -158,4 +182,3 @@ export const updateAcademicYear = async (id: string, tenantId: string, data: any
     },
   });
 };
-

@@ -868,7 +868,7 @@ export const generateListPdfHandler = async (req: any, res: Response) => {
     if (filters?.status) where.status = filters.status;
     if (filters?.gender) where.gender = { in: [filters.gender, filters.gender.toLowerCase()] };
     if (filters?.classId) where.enrollments = { some: { classId: filters.classId, isDeleted: false, status: "active" } };
-    if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
+    if (filters?.academicYearId) where.enrollments = { some: { academicYearId: filters.academicYearId, isDeleted: false, status: "active" } };
 
     const students = await prisma.student.findMany({
       where,
@@ -1065,7 +1065,7 @@ export const exportExcelHandler = async (req: any, res: Response) => {
     if (filters?.status) where.status = filters.status;
     if (filters?.gender) where.gender = { in: [filters.gender, filters.gender.toLowerCase()] };
     if (filters?.classId) where.enrollments = { some: { classId: filters.classId, isDeleted: false, status: "active" } };
-    if (filters?.academicYearId) where.academicYearId = filters.academicYearId;
+    if (filters?.academicYearId) where.enrollments = { some: { academicYearId: filters.academicYearId, isDeleted: false, status: "active" } };
 
     const students = await prisma.student.findMany({
       where,

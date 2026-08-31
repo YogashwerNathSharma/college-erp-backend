@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import {
   createNoticeHandler,
@@ -19,7 +20,7 @@ const router = Router();
 
 const noticeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ============================================
 // NOTICE ROUTES

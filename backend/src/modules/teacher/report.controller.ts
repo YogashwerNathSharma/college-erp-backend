@@ -103,7 +103,8 @@ export const salary = async (req: any, res: Response) => {
 export const performance = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { academicYearId } = req.query;
+    // Use middleware-injected academicYearId as primary, fallback to query
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
 
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });

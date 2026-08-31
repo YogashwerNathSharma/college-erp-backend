@@ -11,6 +11,7 @@ import { useState, useEffect, lazy, Suspense, Component, ReactNode } from "react
 import axios from "axios";
 import { API_BASE_URL } from "./config/api";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AcademicYearProvider } from "./context/AcademicYearContext";
 
 // ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
@@ -663,6 +664,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <AcademicYearProvider>
         <Suspense fallback={<PageLoader />}>
           <Routes>
           {/* ===== PUBLIC ROUTES ===== */}
@@ -938,6 +940,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Suspense>
+        </AcademicYearProvider>
       </BrowserRouter>
     </ThemeProvider>
   );

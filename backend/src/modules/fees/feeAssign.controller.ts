@@ -9,15 +9,17 @@ import {
 export const getAssignStudentsController = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { classId, academicYearId } = req.query;
+    // Use query param first (explicit), fall back to middleware-resolved academicYearId
+    const classId = req.query.classId as string;
+    const academicYearId = req.query.academicYearId as string || (req as any).academicYearId;
 
     if (!classId || !academicYearId) {
       return res.status(400).json({ error: "classId and academicYearId are required" });
     }
 
     const result = await getStudentsWithAssignmentStatus(
-      classId as string,
-      academicYearId as string,
+      classId,
+      academicYearId,
       tenantId
     );
     res.json({ success: true, data: result });

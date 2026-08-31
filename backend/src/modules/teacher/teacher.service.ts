@@ -1,14 +1,12 @@
-
 import { getPagination } from "../../utils/pagination";
 import prisma from "../../utils/prisma";
-import logger from "../../config/logger";
 import { buildPaginationMeta } from "../../utils/pagination";
 
 //////////////////////////////////////////////////////
 // CREATE TEACHER
 //////////////////////////////////////////////////////
 export const createTeacher = async (data: any, tenantId: string) => {
-  // 🔐 DUPLICATE CHECK (tenant-safe)
+  // 🔐 DUPLICATE CHECK (tenant-scoped, active teachers only)
   const existing = await prisma.teacher.findFirst({
     where: {
       email: data.email,
@@ -133,8 +131,8 @@ export const getTeachers = async (query: any, tenantId: string) => {
     ];
   }
 
-  const [teachers, total] = await Promise.all([
-    prisma.teacher.findMany({
+  const [rawTeachers, total] = await Promise.all([
+    (prisma.teacher.findMany as any)({
       where: whereClause,
       include: {
         subjects: {
@@ -149,6 +147,14 @@ export const getTeachers = async (query: any, tenantId: string) => {
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
+    }).catch(async () => {
+      // Fallback: if include fails due to orphaned relations, fetch without includes
+      return prisma.teacher.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      });
     }),
 
     prisma.teacher.count({
@@ -156,10 +162,14 @@ export const getTeachers = async (query: any, tenantId: string) => {
     }),
   ]);
 
-  const data = teachers.map((t) => ({
+  const data = rawTeachers.map((t: any) => ({
     ...t,
-    subjects: t.subjects.map((s) => s.subject),
-    classes: t.classes.map((c) => c.class),
+    subjects: (t.subjects || [])
+      .filter((s: any) => s?.subject != null)
+      .map((s: any) => s.subject),
+    classes: (t.classes || [])
+      .filter((c: any) => c?.class != null)
+      .map((c: any) => c.class),
   }));
 
   return {
@@ -172,7 +182,7 @@ export const getTeachers = async (query: any, tenantId: string) => {
 // GET TEACHER BY ID
 //////////////////////////////////////////////////////
 export const getTeacherById = async (id: string, tenantId: string) => {
-  const teacher = await prisma.teacher.findFirst({
+  const teacher = await (prisma.teacher.findFirst as any)({
     where: {
       id,
       tenantId,
@@ -188,14 +198,23 @@ export const getTeacherById = async (id: string, tenantId: string) => {
         include: { class: true },
       },
     },
+  }).catch(async () => {
+    // Fallback if include fails due to orphaned relations
+    return prisma.teacher.findFirst({
+      where: { id, tenantId, isDeleted: false },
+    });
   });
 
   if (!teacher) return null;
 
   return {
     ...teacher,
-    subjects: teacher.subjects.map((s) => s.subject),
-    classes: teacher.classes.map((c) => c.class),
+    subjects: (teacher.subjects || [])
+      .filter((s: any) => s?.subject != null)
+      .map((s: any) => s.subject),
+    classes: (teacher.classes || [])
+      .filter((c: any) => c?.class != null)
+      .map((c: any) => c.class),
   };
 };
 
@@ -348,4 +367,3 @@ export const deleteTeacher = async (id: string, tenantId: string) => {
     });
   });
 };
-

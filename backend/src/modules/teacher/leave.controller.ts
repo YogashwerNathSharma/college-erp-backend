@@ -18,7 +18,9 @@ export const apply = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const leave = await applyLeave(req.body, tenantId);
+    // Use middleware-injected academicYearId as primary, fallback to body
+    const academicYearId = (req as any).academicYearId || req.body.academicYearId;
+    const leave = await applyLeave({ ...req.body, academicYearId }, tenantId);
     return res.status(201).json({ success: true, data: leave });
   } catch (e: any) {
     logger.error("APPLY LEAVE ERROR:", e);

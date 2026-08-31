@@ -50,6 +50,7 @@ import { authMiddleware } from '../../middleware/auth.middleware';
 import { resolveTenant } from '../../middleware/tenant.middleware';
 
 import { allowRoles } from '../../middleware/role.middleware';
+import { resolveAcademicYear } from '../../middleware/academicYear.middleware';
 
 import { uploadDocument } from '../../utils/upload';
 
@@ -119,7 +120,7 @@ const upload = multer({
 
 router.use(authMiddleware);
 
-router.use(resolveTenant);
+router.use(resolveTenant, resolveAcademicYear);
 
 
 

@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import * as libraryController from "./library.controller";
 
@@ -15,7 +16,7 @@ const router = Router();
 
 // Har route pe auth aur tenant middleware lagao
 router.use(authMiddleware);
-router.use(resolveTenant);
+router.use(resolveTenant, resolveAcademicYear);
 
 // ==================== DASHBOARD ====================
 // GET /api/library/dashboard — Stats dikhao (Admin, Teacher, Principal)

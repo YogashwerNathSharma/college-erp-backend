@@ -6,6 +6,7 @@
 import { Router, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import {
   sendSMS, sendEmail, sendWhatsApp,
@@ -15,7 +16,7 @@ import {
 } from "./student-communication.service";
 
 const router = Router();
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ── Send SMS to Student/Parent ───────────────────────────────────────────────
 router.post("/:id/send-sms", async (req: any, res: Response) => {

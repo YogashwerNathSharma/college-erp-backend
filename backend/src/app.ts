@@ -23,6 +23,7 @@ import masterRoutes from "./modules/masters/master.routes";
 import compression from "compression";
 import cors from "cors";
 import { autoCacheMiddleware } from "./middleware/autoCache.middleware";
+import { resolveAcademicYear } from "./middleware/academicYear.middleware";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 // Other route imports ke saath:
@@ -225,30 +226,27 @@ app.use("/api/super-admin/system-settings", authMiddleware, allowRoles("SUPER_AD
 app.use("/api/security", authMiddleware, allowRoles("SUPER_ADMIN"), securityRoutes);
 app.use("/api/database", authMiddleware, allowRoles("SUPER_ADMIN"), databaseRoutes);
 app.use("/api/monitoring", authMiddleware, allowRoles("SUPER_ADMIN"), monitoringRoutes);
-app.use("/api/subscriptions", subscriptionRoutes);
-
-// SUPER ADMIN - MODULE, PLUGIN, THEME MANAGEMENT
 app.use("/api/super-admin/modules", authMiddleware, allowRoles("SUPER_ADMIN"), moduleManagementRoutes);
 app.use("/api/super-admin/plugins", authMiddleware, allowRoles("SUPER_ADMIN"), pluginManagementRoutes);
 app.use("/api/super-admin/themes", authMiddleware, allowRoles("SUPER_ADMIN"), themeManagementRoutes);
-app.use("/api/super-admin/audit", authMiddleware, allowRoles("SUPER_ADMIN"), auditCenterRoutes);
-app.use("/api/super-admin/notifications", authMiddleware, allowRoles("SUPER_ADMIN"), notificationCenterRoutes);
-app.use("/api/super-admin/reports", authMiddleware, allowRoles("SUPER_ADMIN"), reportCenterRoutes);
-app.use("/api/super-admin/support", authMiddleware, allowRoles("SUPER_ADMIN"), supportCenterRoutes);
-app.use("/api/super-admin/subscriptions", authMiddleware, allowRoles("SUPER_ADMIN"), subscriptionMgmtRoutes);
-app.use("/api/super-admin/users", authMiddleware, allowRoles("SUPER_ADMIN"), userManagementRoutes);
+app.use("/api/super-admin/audit-center", authMiddleware, allowRoles("SUPER_ADMIN"), auditCenterRoutes);
+app.use("/api/super-admin/notification-center", authMiddleware, allowRoles("SUPER_ADMIN"), notificationCenterRoutes);
+app.use("/api/super-admin/report-center", authMiddleware, allowRoles("SUPER_ADMIN"), reportCenterRoutes);
+app.use("/api/super-admin/support-center", authMiddleware, allowRoles("SUPER_ADMIN"), supportCenterRoutes);
+app.use("/api/super-admin/subscription-management", authMiddleware, allowRoles("SUPER_ADMIN"), subscriptionMgmtRoutes);
+app.use("/api/super-admin/user-management", authMiddleware, allowRoles("SUPER_ADMIN"), userManagementRoutes);
 app.use("/api/super-admin/iam", authMiddleware, allowRoles("SUPER_ADMIN"), iamRoutes);
-
+app.use("/api/subscriptions", authMiddleware, subscriptionRoutes);
+app.use("/api/subscription-payments", authMiddleware, subscriptionPaymentRoutes);
 
 //////////////////////////////////////////////////////
-// 🔥 SUBSCRIPTION CHECK MIDDLEWARE
-// All routes BELOW this will be blocked if expired
+// 🔐 SUBSCRIPTION CHECK — applied to all routes below
 //////////////////////////////////////////////////////
 
 app.use(subscriptionCheckMiddleware);
 
 //////////////////////////////////////////////////////
-// ⚡ AUTO-CACHE (caches dashboards & heavy GETs for 30s)
+// ⚡ AUTO-CACHE (30s for heavy GET endpoints)
 //////////////////////////////////////////////////////
 
 app.use(autoCacheMiddleware);
@@ -262,82 +260,67 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), settingsRoutes);
 
 //////////////////////////////////////////////////////
-// AI ASSISTANT (ynAi)
-//////////////////////////////////////////////////////
-app.use("/api/ai", aiAssistantRoutes);
-
-//////////////////////////////////////////////////////
-// STUDENT PORTAL (separate layout, student role only)
-//////////////////////////////////////////////////////
-
-app.use("/api/student-portal", studentPortalRoutes);
-
-//////////////////////////////////////////////////////
-// ACADEMIC FLOW
+// ACADEMIC
 //////////////////////////////////////////////////////
 
 app.use("/api/academic", academicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
-app.use("/api/students", studentRoutes);
-import studentExtendedRoutes from "./modules/students/student-extended.routes";
-app.use("/api/students", studentExtendedRoutes);
+app.use("/api/subject", subjectRoutes);
 
 //////////////////////////////////////////////////////
-// STUDENT MODULE - ENTERPRISE ENHANCED ROUTES
+// STUDENTS
 //////////////////////////////////////////////////////
-app.use("/api/students/dashboard", studentDashboardRoutes);
-app.use("/api/students/search", studentSearchRoutes);
-app.use("/api/students/communication", studentCommunicationRoutes);
-app.use("/api/students/operations", studentOperationsRoutes);
-app.use("/api/students/reports", studentReportsRoutes);
+
+app.use("/api/students", studentRoutes);
+app.use("/api/students", studentDashboardRoutes);
+app.use("/api/students", studentSearchRoutes);
+app.use("/api/students", studentCommunicationRoutes);
+app.use("/api/students", studentOperationsRoutes);
+app.use("/api/students", studentReportsRoutes);
+
+//////////////////////////////////////////////////////
+// TEACHERS
+//////////////////////////////////////////////////////
 
 app.use("/api/teacher", teacherRoutes);
-app.use("/api/subjects", subjectRoutes);
+app.use("/api/teacher", teacherDashboardRoutes);
+app.use("/api/teacher", teacherLeaveRoutes);
+app.use("/api/teacher", teacherSalaryRoutes);
+app.use("/api/teacher", teacherPerformanceRoutes);
+app.use("/api/teacher", teacherDocumentRoutes);
+app.use("/api/teacher", communicationRoutes);
+app.use("/api/teacher", teacherReportRoutes);
+app.use("/api/teacher", teacherSettingsRoutes);
+
+//////////////////////////////////////////////////////
+// ATTENDANCE
+//////////////////////////////////////////////////////
+
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api/attendance/report", attendanceReportRoutes);
-
-//////////////////////////////////////////////////////
-// TEACHER MODULE (Extended)
-//////////////////////////////////////////////////////
-
-app.use("/api/teacher-dashboard", teacherDashboardRoutes);
-app.use("/api/teacher-leave", teacherLeaveRoutes);
-app.use("/api/teacher-salary", teacherSalaryRoutes);
-app.use("/api/teacher-performance", teacherPerformanceRoutes);
-app.use("/api/teacher-document", teacherDocumentRoutes);
-app.use("/api/communication", communicationRoutes);
-app.use("/api/teacher-report", teacherReportRoutes);
-app.use("/api/teacher-settings", teacherSettingsRoutes);
+app.use("/api/attendance", attendanceReportRoutes);
 
 //////////////////////////////////////////////////////
 // TIMETABLE
 //////////////////////////////////////////////////////
 
 app.use("/api/timetable", timetableRoutes);
-//////////////////
-// library management
-/////////////////////////
 
-// Route registration (subscription check ke NEECHE)
-app.use("/api/transport", transportRoutes);
-app.use("/api/library", libraryRoutes);
 //////////////////////////////////////////////////////
-// ADMISSION FLOW
+// ADMISSION
 //////////////////////////////////////////////////////
 
 app.use("/api/admission", admissionRoutes);
 app.use("/api/enrollment", enrollmentRoutes);
 
 //////////////////////////////////////////////////////
-// FEES MODULE
+// FEES
 //////////////////////////////////////////////////////
 
-app.use("/api/fees", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN", "PRINCIPAL"), feesRoutes);
-
+app.use("/api/fees", feesRoutes);
 
 //////////////////////////////////////////////////////
-// EXAM MODULE
+// EXAMS
 //////////////////////////////////////////////////////
 
 app.use("/api/exam", examRoutes);
@@ -345,32 +328,70 @@ app.use("/api/grade", gradeRoutes);
 app.use("/api/room", roomRoutes);
 
 //////////////////////////////////////////////////////
-// PERMISSIONS MODULE
+// LIBRARY
 //////////////////////////////////////////////////////
-app.use("/api/permissions", permissionsRoutes);
+
+app.use("/api/library", libraryRoutes);
+
+//////////////////////////////////////////////////////
+// TRANSPORT
+//////////////////////////////////////////////////////
+
+app.use("/api/transport", transportRoutes);
+
+//////////////////////////////////////////////////////
+// STUDENT PORTAL
+//////////////////////////////////////////////////////
+
+app.use("/api/student-portal", studentPortalRoutes);
+
+//////////////////////////////////////////////////////
+// SIGNATURE
+//////////////////////////////////////////////////////
 
 app.use("/api/signature", signatureRoutes);
-app.use("/api/backup", authMiddleware, allowRoles("SUPER_ADMIN"), backupRoutes);
 
 //////////////////////////////////////////////////////
-// NEW MODULE ROUTES
+// BACKUP
 //////////////////////////////////////////////////////
+
+app.use("/api/backup", backupRoutes);
+
+//////////////////////////////////////////////////////
+// PERMISSIONS
+//////////////////////////////////////////////////////
+
+app.use("/api/permissions", permissionsRoutes);
+
+//////////////////////////////////////////////////////
+// AI ASSISTANT
+//////////////////////////////////////////////////////
+
+app.use("/api/ai", aiAssistantRoutes);
+
+//////////////////////////////////////////////////////
+// MASTERS
+//////////////////////////////////////////////////////
+
+app.use("/api/masters", masterRoutes);
+
+//////////////////////////////////////////////////////
+// ENTERPRISE MODULES
+//////////////////////////////////////////////////////
+
 app.use("/api/hostel", hostelRoutes);
-app.use("/api/communication-new", communicationNewRoutes);
-app.use("/api/hr", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), hrRoutes);
-app.use("/api/inventory", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), inventoryRoutes);
+app.use("/api/communication", communicationNewRoutes);
+app.use("/api/hr", hrRoutes);
+app.use("/api/inventory", inventoryRoutes);
 app.use("/api/certificate", certificateRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/reports-new", reportRoutes);
+app.use("/api/notification", notificationRoutes);
+app.use("/api/report", reportRoutes);
 
-//////////////////////////////////////////////////////
-// ENTERPRISE MODULE ROUTES
-//////////////////////////////////////////////////////
 app.use("/api/gate-pass", gatePassRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/helpdesk", helpdeskRoutes);
-app.use("/api/workflows", workflowRoutes);
-app.use("/api/forms", formBuilderRoutes);
+app.use("/api/workflow", workflowRoutes);
+app.use("/api/form-builder", formBuilderRoutes);
 app.use("/api/report-builder", reportBuilderRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/scheduler", schedulerRoutes);
@@ -378,13 +399,12 @@ app.use("/api/dashboard-builder", dashboardBuilderRoutes);
 app.use("/api/theme", themeRoutes);
 app.use("/api/qr", qrRoutes);
 app.use("/api/payment-gateway", paymentGatewayRoutes);
-app.use("/api/files", fileManagerRoutes);
+app.use("/api/file-manager", fileManagerRoutes);
 app.use("/api/import-export", importExportRoutes);
 app.use("/api/queue", queueRoutes);
-app.use("/api/masters", masterRoutes);
 
 //////////////////////////////////////////////////////
-// SWAGGER DOCS
+// SWAGGER (API Documentation)
 //////////////////////////////////////////////////////
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -397,4 +417,3 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 export default app;
-

@@ -3,11 +3,11 @@ import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 import { useNavigate } from "react-router-dom";
 import {
-  UserCog, Users, UserCheck, UserX, Clock, Briefcase,
-  BookOpen, GraduationCap, Calendar, IndianRupee,
-  Plus, ClipboardCheck, Wallet, ArrowRight, TrendingUp, 
-  LayoutDashboard, IdCard, FolderOpen, BarChart3, Star, FileText, CalendarClock,
-  TrendingDown, Award, Building2, RefreshCw,
+  UserCog, Users, UserCheck, Clock,
+  BookOpen, Calendar,
+  Plus, ClipboardCheck, Wallet, ArrowRight, TrendingUp,
+  LayoutDashboard, IdCard, FolderOpen, BarChart3, Star, CalendarClock,
+  TrendingDown, Award, Building2, RefreshCw, AlertCircle,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area,
@@ -57,13 +57,34 @@ function formatINR(amount: number): string {
   return "₹" + amount.toLocaleString("en-IN");
 }
 
+/** Safe date formatter — returns "--" if the date is invalid */
+function formatDateShort(dateStr: string): string {
+  if (!dateStr) return "--";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "--";
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
 // ─────────────────────────────────────────────────────
 // CHART COLORS
 // ─────────────────────────────────────────────────────
 
-const DONUT_COLORS = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#8b5cf6"];
 const DEPT_COLORS = ["#4f46e5", "#10b981", "#f59e0b", "#06b6d4", "#8b5cf6", "#ec4899"];
 const QUALIFICATION_COLORS = ["#6366f1", "#22c55e", "#eab308", "#ef4444"];
+const GENDER_COLORS = ["#4f46e5", "#ec4899", "#94a3b8"]; // male, female, other/unset
+
+// ─────────────────────────────────────────────────────
+// EMPTY CHART PLACEHOLDER
+// ─────────────────────────────────────────────────────
+
+function EmptyChartPlaceholder({ message }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-[260px] text-gray-400 dark:text-gray-500">
+      <AlertCircle className="w-10 h-10 mb-2 opacity-40" />
+      <p className="text-sm font-medium">{message || "No data available"}</p>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────
 // MAIN COMPONENT
@@ -89,9 +110,16 @@ export default function TeacherDashboard() {
   const [salaryData, setSalaryData] = useState<SalaryInfo[]>([]);
 
   useEffect(() => {
-    // ⚡ Detect page refresh to bust cache
-    const isPageRefresh = performance?.navigation?.type === 1 ||
-      (performance.getEntriesByType?.("navigation")?.[0] as any)?.type === "reload";
+    // Detect page refresh to bust cache (use modern PerformanceNavigationTiming API)
+    let isPageRefresh = false;
+    try {
+      const navEntries = performance.getEntriesByType?.("navigation");
+      if (navEntries && navEntries.length > 0) {
+        isPageRefresh = (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+      }
+    } catch {
+      // Fallback: don't force refresh
+    }
     fetchDashboardData(isPageRefresh);
   }, []);
 
@@ -130,7 +158,26 @@ export default function TeacherDashboard() {
   };
 
   // ─────────────────────────────────────────────────────
-  // STAT CARD COMPONENT
+  // COMPUTED VALUES (dynamic, not hardcoded)
+  // ─────────────────────────────────────────────────────
+
+  /** Active percentage — shown only when total > 0 */
+  const activePercent = stats.totalTeachers > 0
+    ? Math.round((stats.activeTeachers / stats.totalTeachers) * 100)
+    : null;
+
+  /** Gender distribution pie data — built from API stats */
+  const genderData = (() => {
+    const slices: { name: string; value: number }[] = [];
+    if (stats.maleTeachers > 0) slices.push({ name: "Male", value: stats.maleTeachers });
+    if (stats.femaleTeachers > 0) slices.push({ name: "Female", value: stats.femaleTeachers });
+    const otherCount = stats.totalTeachers - stats.maleTeachers - stats.femaleTeachers;
+    if (otherCount > 0) slices.push({ name: "Other", value: otherCount });
+    return slices;
+  })();
+
+  // ─────────────────────────────────────────────────────
+  // CLICKABLE STAT CARD COMPONENT
   // ─────────────────────────────────────────────────────
 
   const StatCard = ({
@@ -140,6 +187,7 @@ export default function TeacherDashboard() {
     color,
     trend,
     trendValue,
+    onClick,
   }: {
     title: string;
     value: string | number;
@@ -147,6 +195,7 @@ export default function TeacherDashboard() {
     color: string;
     trend?: "up" | "down" | "neutral";
     trendValue?: string;
+    onClick?: () => void;
   }) => {
     const colorMap: Record<string, { bg: string; text: string; iconBg: string }> = {
       blue: { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-600 dark:text-blue-400", iconBg: "bg-blue-100 dark:bg-blue-900/50" },
@@ -160,7 +209,17 @@ export default function TeacherDashboard() {
     const c = colorMap[color] || colorMap.blue;
 
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 hover:shadow-md transition-shadow duration-200">
+      <div
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") onClick(); } : undefined}
+        className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-5 transition-all duration-200 ${
+          onClick
+            ? "cursor-pointer hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600 hover:-translate-y-0.5 active:translate-y-0"
+            : "hover:shadow-md"
+        }`}
+      >
         <div className="flex items-center gap-4">
           <div className={`w-12 h-12 rounded-xl ${c.iconBg} flex items-center justify-center`}>
             <Icon className={`w-6 h-6 ${c.text}`} />
@@ -179,8 +238,59 @@ export default function TeacherDashboard() {
               {trendValue}
             </div>
           )}
+          {onClick && (
+            <ArrowRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-500" />
+          )}
         </div>
       </div>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────
+  // LEAVE TYPE BADGE (dynamic — no hardcoded string matching)
+  // ─────────────────────────────────────────────────────
+
+  /** Render leave-type badge with a stable color based on the string hash */
+  const LeaveTypeBadge = ({ leaveType }: { leaveType: string }) => {
+    if (!leaveType) return <span className="text-xs text-gray-400">—</span>;
+
+    // Deterministic color from the leaveType string so the same type always gets the same color
+    const palettes = [
+      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+      "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400",
+      "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+    ];
+    const hash = leaveType.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const cls = palettes[hash % palettes.length];
+
+    // Humanize — capitalize first letter, truncate long IDs
+    const label = leaveType.length > 20 ? leaveType.slice(0, 18) + "…" : leaveType;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+        {label}
+      </span>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────
+  // STATUS BADGE (dynamic — no hardcoded string matching)
+  // ─────────────────────────────────────────────────────
+
+  const StatusBadge = ({ status }: { status: string }) => {
+    const upper = (status || "").toUpperCase();
+    const isApproved = upper === "APPROVED";
+    const cls = isApproved
+      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+        {status || "—"}
+      </span>
     );
   };
 
@@ -230,6 +340,7 @@ export default function TeacherDashboard() {
           <button
             onClick={() => fetchDashboardData(true)}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            title="Refresh dashboard"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
@@ -271,167 +382,264 @@ export default function TeacherDashboard() {
         ))}
       </div>
 
-      {/* Stat Cards */}
+      {/* ━━━━ Stat Cards (ALL CLICKABLE — navigate to relevant pages) ━━━━ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Teachers" value={stats.totalTeachers} icon={Users} color="blue" trend="up" trendValue="+5%" />
-        <StatCard title="Active" value={stats.activeTeachers} icon={UserCheck} color="green" trend="up" trendValue="93%" />
-        <StatCard title="On Leave" value={stats.onLeave} icon={Clock} color="amber" />
-        <StatCard title="New Joinings" value={stats.newJoinings} icon={UserCog} color="purple" trend="up" trendValue="This month" />
-        <StatCard title="Departments" value={stats.departments} icon={Building2} color="cyan" />
+        <StatCard
+          title="Total Teachers"
+          value={stats.totalTeachers}
+          icon={Users}
+          color="blue"
+          onClick={() => navigate("/teachers")}
+        />
+        <StatCard
+          title="Active"
+          value={stats.activeTeachers}
+          icon={UserCheck}
+          color="green"
+          /* Dynamic: show active percentage only when there are teachers */
+          trend={activePercent !== null ? "up" : undefined}
+          trendValue={activePercent !== null ? `${activePercent}%` : undefined}
+          onClick={() => navigate("/teachers")}
+        />
+        <StatCard
+          title="On Leave"
+          value={stats.onLeave}
+          icon={Clock}
+          color="amber"
+          onClick={() => navigate("/teacher-leave")}
+        />
+        <StatCard
+          title="New Joinings"
+          value={stats.newJoinings}
+          icon={UserCog}
+          color="purple"
+          trend={stats.newJoinings > 0 ? "up" : undefined}
+          trendValue={stats.newJoinings > 0 ? "This month" : undefined}
+          onClick={() => navigate("/teachers")}
+        />
+        <StatCard
+          title="Departments"
+          value={stats.departments}
+          icon={Building2}
+          color="cyan"
+          onClick={() => {
+            /* Scroll to department chart on same page */
+            document.getElementById("dept-chart")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        />
       </div>
 
-      {/* Charts Row 1 */}
+      {/* ━━━━ Charts Row 1 ━━━━ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Department Distribution - Donut */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+        <div id="dept-chart" className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Department Distribution</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={departmentData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {departmentData.map((_, index) => (
-                  <Cell key={`dept-${index}`} fill={DEPT_COLORS[index % DEPT_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                }}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                iconType="circle"
-                iconSize={10}
-                formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-300">{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          {departmentData.length === 0 ? (
+            <EmptyChartPlaceholder message="No department data available" />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={departmentData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {departmentData.map((_, index) => (
+                    <Cell key={`dept-${index}`} fill={DEPT_COLORS[index % DEPT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255,255,255,0.95)",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  iconSize={10}
+                  formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-300">{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Experience Distribution - Bar Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Experience Distribution</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={experienceData} barCategoryGap="30%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis
-                dataKey="range"
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                }}
-              />
-              <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {experienceData.length === 0 || experienceData.every((d) => d.count === 0) ? (
+            <EmptyChartPlaceholder message="No experience data available" />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={experienceData} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="range"
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255,255,255,0.95)",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                />
+                <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
-      {/* Charts Row 2 */}
+      {/* ━━━━ Charts Row 2 ━━━━ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Attendance - Area Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Monthly Attendance Trend</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={attendanceData}>
-              <defs>
-                <linearGradient id="attendGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-              />
-              <YAxis
-                domain={[80, 100]}
-                tick={{ fontSize: 12, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-                tickFormatter={(val) => `${val}%`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                }}
-                formatter={(val: any) => [`${val}%`, "Attendance"]}
-              />
-              <Area
-                type="monotone"
-                dataKey="percentage"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                fill="url(#attendGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {attendanceData.length === 0 ? (
+            <EmptyChartPlaceholder message="No attendance trend data available" />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={attendanceData}>
+                <defs>
+                  <linearGradient id="attendGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                />
+                <YAxis
+                  domain={[80, 100]}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  axisLine={{ stroke: "#e5e7eb" }}
+                  tickFormatter={(val) => `${val}%`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255,255,255,0.95)",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                  formatter={(val: any) => [`${val}%`, "Attendance"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="percentage"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fill="url(#attendGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
-        {/* Qualification Distribution - Donut */}
+        {/* Gender Distribution - Donut (built from API stats) */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Qualification Distribution</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={qualificationData}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={95}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {qualificationData.map((_, index) => (
-                  <Cell key={`qual-${index}`} fill={QUALIFICATION_COLORS[index % QUALIFICATION_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                }}
-              />
-              <Legend
-                verticalAlign="bottom"
-                height={36}
-                iconType="circle"
-                iconSize={10}
-                formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-300">{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Gender Distribution</h3>
+          {genderData.length === 0 ? (
+            <EmptyChartPlaceholder message="No gender data available" />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={genderData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {genderData.map((_, index) => (
+                    <Cell key={`gender-${index}`} fill={GENDER_COLORS[index % GENDER_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255,255,255,0.95)",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                  formatter={(val: any, name: string) => [`${val} teachers`, name]}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  iconSize={10}
+                  formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-300">{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
-      {/* Tables + Quick Actions Row */}
+      {/* ━━━━ Charts Row 3 (Qualification — only if API returns data) ━━━━ */}
+      {qualificationData.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Qualification Distribution</h3>
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={qualificationData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={95}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {qualificationData.map((_, index) => (
+                    <Cell key={`qual-${index}`} fill={QUALIFICATION_COLORS[index % QUALIFICATION_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255,255,255,0.95)",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  iconSize={10}
+                  formatter={(value) => <span className="text-sm text-gray-600 dark:text-gray-300">{value}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* ━━━━ Tables + Quick Actions Row ━━━━ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Teachers on Leave */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
@@ -468,31 +676,20 @@ export default function TeacherDashboard() {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                            {teacher.name.charAt(0)}
+                            {teacher.name?.charAt(0) || "?"}
                           </div>
                           <span className="text-sm font-medium text-gray-900 dark:text-white">{teacher.name}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">{teacher.department}</td>
+                      <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">{teacher.department || "—"}</td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          teacher.leaveType === "Casual" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                          teacher.leaveType === "Sick" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                          "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                        }`}>
-                          {teacher.leaveType}
-                        </span>
+                        <LeaveTypeBadge leaveType={teacher.leaveType} />
                       </td>
                       <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">
-                        {new Date(teacher.fromDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} - {new Date(teacher.toDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                        {formatDateShort(teacher.fromDate)} – {formatDateShort(teacher.toDate)}
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          teacher.status === "Approved" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        }`}>
-                          {teacher.status}
-                        </span>
+                        <StatusBadge status={teacher.status} />
                       </td>
                     </tr>
                   ))
@@ -545,7 +742,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Upcoming Salary Table */}
+      {/* ━━━━ Upcoming Salary Table ━━━━ */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
         <div className="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Salary Processing</h3>
@@ -570,8 +767,12 @@ export default function TeacherDashboard() {
             <tbody>
               {salaryData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center text-gray-400 dark:text-gray-500 py-8">
-                    No salary data available
+                  <td colSpan={5} className="text-center py-8">
+                    <div className="flex flex-col items-center text-gray-400 dark:text-gray-500">
+                      <Wallet className="w-8 h-8 mb-2 opacity-40" />
+                      <p className="text-sm font-medium">No salary data available</p>
+                      <p className="text-xs mt-1">Salary records will appear here once processed</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -580,12 +781,12 @@ export default function TeacherDashboard() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-sm font-medium text-green-600 dark:text-green-400">
-                          {teacher.name.charAt(0)}
+                          {teacher.name?.charAt(0) || "?"}
                         </div>
                         <span className="text-sm font-medium text-gray-900 dark:text-white">{teacher.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">{teacher.department}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600 dark:text-gray-300">{teacher.department || "—"}</td>
                     <td className="px-5 py-3 text-sm text-gray-900 dark:text-white text-right font-medium">{formatINR(teacher.gross)}</td>
                     <td className="px-5 py-3 text-sm text-red-600 dark:text-red-400 text-right">-{formatINR(teacher.deductions)}</td>
                     <td className="px-5 py-3 text-sm text-green-600 dark:text-green-400 text-right font-bold">{formatINR(teacher.net)}</td>

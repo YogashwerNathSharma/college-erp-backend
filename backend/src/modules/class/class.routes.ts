@@ -12,6 +12,7 @@ import {
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 const router = Router();
 
@@ -29,15 +30,15 @@ router.get(
 // ─── CRUD routes ─────────────────────────────────────────────────────────────
 
 // Create
-router.post("/", authMiddleware, allowRoles("ADMIN"), resolveTenant, createClass);
+router.post("/", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, createClass);
 
 // Get All (non-deleted)
-router.get("/", authMiddleware, resolveTenant, getClasses);
+router.get("/", authMiddleware, resolveTenant, resolveAcademicYear, getClasses);
 
 // ─── Dynamic :id routes AFTER static ────────────────────────────────────────
 
 // Update
-router.put("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, updateClass);
+router.put("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, updateClass);
 
 // Toggle active/inactive
 router.patch(
@@ -49,7 +50,7 @@ router.patch(
 );
 
 // Soft delete
-router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, softDeleteClass);
+router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, softDeleteClass);
 
 // Restore
 router.patch(

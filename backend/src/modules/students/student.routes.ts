@@ -13,6 +13,7 @@ import { createStudentSchema, updateStudentSchema } from "./student.validator";
 import { authMiddleware } from "../../middleware/auth.middleware";
 
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 
 
@@ -96,7 +97,7 @@ const router = Router();
 
 // ============================================
 
-router.use(authMiddleware, resolveTenant);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 
 
@@ -278,7 +279,7 @@ router.get("/next-admission-no", async (req: any, res: any) => {
 
     const tenantId = req.tenantId;
 
-    const academicYearId = req.query.academicYearId as string;
+    const academicYearId = req.academicYearId || req.query.academicYearId as string;
 
 
 
@@ -372,7 +373,7 @@ router.get("/class-strength", async (req: any, res: any) => {
 
     const tenantId = req.tenantId;
 
-    const { academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
 
 
@@ -418,11 +419,13 @@ router.get("/recent-admissions", async (req: any, res: any) => {
 
     const limit = parseInt(req.query.limit) || 5;
 
+    const academicYearId = req.academicYearId || req.query.academicYearId;
+
 
 
     const students = await prisma.student.findMany({
 
-      where: { tenantId },
+      where: { tenantId, isDeleted: false, ...(academicYearId ? { enrollments: { some: { academicYearId, isDeleted: false } } } : {}) },
 
       orderBy: { createdAt: "desc" },
 
@@ -472,7 +475,7 @@ router.get("/category-distribution", async (req: any, res: any) => {
 
     const tenantId = req.tenantId;
 
-    const { academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
 
 
@@ -532,7 +535,7 @@ router.get("/fee-pending", async (req: any, res: any) => {
 
     const tenantId = req.tenantId;
 
-    const { academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
 
 
@@ -628,7 +631,7 @@ router.get("/attendance-overview", async (req: any, res: any) => {
 
     const tenantId = req.tenantId;
 
-    const { academicYearId } = req.query;
+    const academicYearId = req.academicYearId || req.query.academicYearId;
 
 
 

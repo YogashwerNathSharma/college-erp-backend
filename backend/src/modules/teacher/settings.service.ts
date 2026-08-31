@@ -5,22 +5,26 @@ import prisma from "../../utils/prisma";
 //////////////////////////////////////////////////////
 // GET SETTINGS
 //////////////////////////////////////////////////////
-export const getSettings = async (tenantId: string) => {
+export const getSettings = async (tenantId: string, academicYearId?: string) => {
   let settings = await prisma.teacherSettings.findFirst({
     where: { tenantId },
   });
 
   // Create default settings if not exists
   if (!settings) {
-    // Get active academic year
-    const activeYear = await prisma.academicYear.findFirst({
-      where: { tenantId, isCurrent: true },
-    });
+    // Use provided academicYearId or fall back to active academic year
+    let yearId = academicYearId;
+    if (!yearId) {
+      const activeYear = await prisma.academicYear.findFirst({
+        where: { tenantId, isCurrent: true },
+      });
+      yearId = activeYear?.id || "";
+    }
 
     settings = await prisma.teacherSettings.create({
       data: {
         tenantId,
-        academicYearId: activeYear?.id || "",
+        academicYearId: yearId,
       },
     });
   }

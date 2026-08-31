@@ -1,12 +1,14 @@
 
 import { Router } from "express";
 import transportController from "./transport.controller";
-import { authMiddleware } from "../../middleware/auth.middleware"; // Adjust path as per your project structure
+import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 const router = Router();
 
 // Apply auth middleware to all transport routes
-router.use(authMiddleware);
+router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ─────────────────────────────────────────────
 // DASHBOARD

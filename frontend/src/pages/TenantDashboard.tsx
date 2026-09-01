@@ -164,7 +164,7 @@ const BAR_COLORS = ["#6366f1", "#8b5cf6", "#a78bfa", "#c4b5fd", "#818cf8", "#636
 // ═══════════════════════════════════════════════════════════════
 
 export default function Dashboard() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
   const { setTenant }: any = useOutletContext();
   const navigate = useNavigate();
 

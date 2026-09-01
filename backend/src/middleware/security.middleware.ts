@@ -37,6 +37,6 @@ export const corsConfig = cors({
         "http://localhost:3000",
       ],
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Device-Fingerprint", "X-Tenant-ID"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Device-Fingerprint", "X-Tenant-ID", "X-Academic-Year-Id"],
 });

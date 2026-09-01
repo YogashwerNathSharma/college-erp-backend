@@ -39,6 +39,7 @@ export const corsOptions: CorsOptions = {
     "Authorization",
     "X-Requested-With",
     "X-Tenant-ID",
+    "X-Academic-Year-Id",
     "X-Device-Fingerprint",
   ],
   exposedHeaders: ["Content-Disposition", "X-Total-Count"],

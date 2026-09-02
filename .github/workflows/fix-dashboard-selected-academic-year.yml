@@ -1,0 +1,70 @@
+name: Fix dashboard selected academic year
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make dashboard follow selected academic year
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/pages/TenantDashboard.tsx')
+          s = p.read_text()
+
+          old = 'import { useEffect, useState } from "react";'
+          new = 'import { useEffect, useState } from "react";\nimport { useAcademicYear } from "../context/AcademicYearContext";'
+          if old not in s or 'useAcademicYear' not in s:
+              raise SystemExit('Expected React import/context marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '  const navigate = useNavigate();\n'
+          new = '  const navigate = useNavigate();\n  const { selectedAcademicYear, selectedAcademicYearId, loading: academicYearLoading } = useAcademicYear();\n'
+          if old not in s:
+              raise SystemExit('Expected navigate marker not found')
+          s = s.replace(old, new, 1)
+
+          s = s.replace('localStorage.getItem("dashboard_cache")', 'localStorage.getItem(`dashboard_cache:${localStorage.getItem("selectedAcademicYearId") || "none"}`)', 2)
+
+          old = '        const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";\n        const res = await axios.get(getFullUrl(url), { headers });'
+          new = '        if (!selectedAcademicYearId) return;\n        const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";\n        const res = await axios.get(getFullUrl(url), {\n          headers,\n          params: { academicYearId: selectedAcademicYearId },\n        });'
+          if old not in s:
+              raise SystemExit('Expected dashboard request marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '          localStorage.setItem("dashboard_cache", JSON.stringify({'
+          new = '          localStorage.setItem(`dashboard_cache:${selectedAcademicYearId}`, JSON.stringify({'
+          if old not in s:
+              raise SystemExit('Expected dashboard cache write marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  useEffect(() => {\n    fetchAll(isPageRefresh);\n  }, []);'''
+          new = '''  useEffect(() => {\n    if (academicYearLoading || !selectedAcademicYearId) return;\n    fetchAll(isPageRefresh);\n  }, [academicYearLoading, selectedAcademicYearId]);'''
+          if old not in s:
+              raise SystemExit('Expected dashboard effect marker not found')
+          s = s.replace(old, new, 1)
+
+          # Show the selected session, not a date-derived session.
+          s = s.replace('{getCurrentSession()}', '{selectedAcademicYear?.name || "—"}', 2)
+
+          p.write_text(s)
+          PY
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/pages/TenantDashboard.tsx
+          git commit -m "fix: make dashboard follow selected academic year"
+          git rm .github/workflows/fix-dashboard-selected-academic-year.yml
+          git commit --amend --no-edit
+          git push

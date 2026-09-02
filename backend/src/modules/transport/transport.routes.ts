@@ -1,79 +1,56 @@
 
 import { Router } from "express";
 import transportController from "./transport.controller";
+import * as academicYearController from "./transport.academicYear.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 const router = Router();
 
-// Apply auth middleware to all transport routes
+// Apply auth + tenant + selected academic-year context to all transport routes.
 router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
-// ─────────────────────────────────────────────
-// DASHBOARD
-// ─────────────────────────────────────────────
-router.get("/dashboard", transportController.getDashboard.bind(transportController));
+// Dashboard
+router.get("/dashboard", academicYearController.getDashboard);
 
-// ─────────────────────────────────────────────
-// VEHICLES
-// ─────────────────────────────────────────────
+// Vehicles
 router.post("/vehicles", transportController.createVehicle.bind(transportController));
 router.get("/vehicles", transportController.getAllVehicles.bind(transportController));
 router.get("/vehicles/:id", transportController.getVehicleById.bind(transportController));
 router.put("/vehicles/:id", transportController.updateVehicle.bind(transportController));
 router.delete("/vehicles/:id", transportController.deleteVehicle.bind(transportController));
 
-// ─────────────────────────────────────────────
-// ROUTES
-// ─────────────────────────────────────────────
+// Routes
 router.post("/routes", transportController.createRoute.bind(transportController));
 router.get("/routes", transportController.getAllRoutes.bind(transportController));
 router.get("/routes/:id", transportController.getRouteById.bind(transportController));
 router.put("/routes/:id", transportController.updateRoute.bind(transportController));
 router.delete("/routes/:id", transportController.deleteRoute.bind(transportController));
 
-// ─────────────────────────────────────────────
-// ROUTE STOPS
-// ─────────────────────────────────────────────
+// Route Stops
 router.post("/stops/:routeId", transportController.addStop.bind(transportController));
 router.get("/stops/route/:routeId", transportController.getStopsByRoute.bind(transportController));
 router.put("/stops/:id", transportController.updateStop.bind(transportController));
 router.delete("/stops/:id", transportController.deleteStop.bind(transportController));
 
-// ─────────────────────────────────────────────
-// ASSIGNMENTS
-// ─────────────────────────────────────────────
-router.post("/assignments", transportController.createAssignment.bind(transportController));
-router.get("/assignments", transportController.getAllAssignments.bind(transportController));
-router.get("/assignments/:id", transportController.getAssignmentById.bind(transportController));
-router.put("/assignments/:id", transportController.updateAssignment.bind(transportController));
-router.delete("/assignments/:id", transportController.unassignStudent.bind(transportController));
+// Assignments — academic-year isolated
+router.post("/assignments", academicYearController.createAssignment);
+router.get("/assignments", academicYearController.getAllAssignments);
+router.get("/assignments/:id", academicYearController.getAssignmentById);
+router.put("/assignments/:id", academicYearController.updateAssignment);
+router.delete("/assignments/:id", academicYearController.unassignStudent);
 
-// ─────────────────────────────────────────────
-// ATTENDANCE
-// ─────────────────────────────────────────────
-router.post("/attendance", transportController.markAttendance.bind(transportController));
-router.get("/attendance", transportController.getAttendance.bind(transportController));
+// Attendance — resolved through year-scoped assignments
+router.post("/attendance", academicYearController.markAttendance);
+router.get("/attendance", academicYearController.getAttendance);
 
-// ─────────────────────────────────────────────
-// REPORTS
-// ─────────────────────────────────────────────
+// Reports / Settings remain on the existing implementation for now.
 router.get("/reports/:type", transportController.getReport.bind(transportController));
-
-// ─────────────────────────────────────────────
-// SETTINGS
-// ─────────────────────────────────────────────
 router.get("/settings", transportController.getSettings.bind(transportController));
 router.put("/settings", transportController.updateSettings.bind(transportController));
 
 export default router;
 
-// ─────────────────────────────────────────────
-// REGISTRATION IN APP
-// ─────────────────────────────────────────────
-// In your main app.ts or index.ts, add:
-//
-// import transportRoutes from "./modules/transport/transport.routes";
+// Registration in app.ts / index.ts:
 // app.use("/api/transport", transportRoutes);
-

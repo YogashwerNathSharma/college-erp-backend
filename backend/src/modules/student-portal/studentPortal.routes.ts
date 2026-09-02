@@ -1,4 +1,3 @@
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // STUDENT PORTAL ROUTES
 // Student role ke liye dedicated APIs
@@ -7,64 +6,39 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 
 import {
-  getMyProfileController,
-  getMyDashboardController,
-  getMyTimetableController,
-  getMyAttendanceSummaryController,
-  getMyAttendanceDetailController,
-  getMyFeeSummaryController,
-  getMyFeeDetailsController,
-  getMyExamsController,
-  getMyMarksController,
-  getMySubjectsController,
-  getMyLibraryController,
-} from "./studentPortal.controller";
+  getMyProfileControllerAY,
+  getMyDashboardControllerAY,
+  getMyTimetableControllerAY,
+  getMyAttendanceSummaryControllerAY,
+  getMyAttendanceDetailControllerAY,
+  getMyFeeSummaryControllerAY,
+  getMyFeeDetailsControllerAY,
+  getMyExamsControllerAY,
+  getMyMarksControllerAY,
+  getMySubjectsControllerAY,
+  getMyLibraryControllerAY,
+} from "./studentPortal.academicYear.controller";
 
 const router = Router();
 
-// All routes need auth + tenant + STUDENT role
-router.use(authMiddleware, resolveTenant, allowRoles("STUDENT"));
+// All routes need auth + tenant + selected academic year + STUDENT role.
+// The academic year is validated against the tenant before any portal query runs.
+router.use(authMiddleware, resolveTenant, resolveAcademicYear, allowRoles("STUDENT"));
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// PROFILE & DASHBOARD
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/me", getMyProfileController);
-router.get("/dashboard", getMyDashboardController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TIMETABLE
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/timetable", getMyTimetableController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ATTENDANCE
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/attendance/summary", getMyAttendanceSummaryController);
-router.get("/attendance/detail", getMyAttendanceDetailController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// FEES
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/fees/summary", getMyFeeSummaryController);
-router.get("/fees/details", getMyFeeDetailsController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// EXAMS & MARKS
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/exams", getMyExamsController);
-router.get("/marks", getMyMarksController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SUBJECTS (Courses)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/subjects", getMySubjectsController);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// LIBRARY
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-router.get("/library", getMyLibraryController);
+router.get("/me", getMyProfileControllerAY);
+router.get("/dashboard", getMyDashboardControllerAY);
+router.get("/timetable", getMyTimetableControllerAY);
+router.get("/attendance/summary", getMyAttendanceSummaryControllerAY);
+router.get("/attendance/detail", getMyAttendanceDetailControllerAY);
+router.get("/fees/summary", getMyFeeSummaryControllerAY);
+router.get("/fees/details", getMyFeeDetailsControllerAY);
+router.get("/exams", getMyExamsControllerAY);
+router.get("/marks", getMyMarksControllerAY);
+router.get("/subjects", getMySubjectsControllerAY);
+router.get("/library", getMyLibraryControllerAY);
 
 export default router;

@@ -89,7 +89,8 @@ export function AcademicYearProvider({ children }: { children: ReactNode }) {
       setAcademicYears(years);
 
       const savedId = localStorage.getItem(STORAGE_KEY);
-      const savedYear = savedId ? years.find((y) => y.id === savedId) : null;
+      const hasExplicitSelection = localStorage.getItem("academicYearExplicitSelection") === "1";
+      const savedYear = hasExplicitSelection && savedId ? years.find((y) => y.id === savedId) : null;
       const currentYear = years.find((y) => y.isCurrent);
       const activeYear = years.find((y) => y.isActive);
       const yearToSelect = savedYear || currentYear || activeYear || years[0] || null;
@@ -117,6 +118,7 @@ export function AcademicYearProvider({ children }: { children: ReactNode }) {
   const setSelectedAcademicYear = useCallback((year: AcademicYear) => {
     setSelectedState(year);
     localStorage.setItem(STORAGE_KEY, year.id);
+    localStorage.setItem("academicYearExplicitSelection", "1");
     window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: year }));
   }, []);
 

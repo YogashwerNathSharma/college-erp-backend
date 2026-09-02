@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { getFullUrl } from "../../utils/url";
+import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
   FiHome,
   FiBook,
@@ -360,7 +361,7 @@ function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message:
 // Dashboard Section
 // ─────────────────────────────────────────────────────────
 
-function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipal: boolean }) {
+function DashboardSection({ user, isPrincipal, academicYearId }: { user: User | null; isPrincipal: boolean; academicYearId?: string }) {
   const [stats, setStats] = useState({ todayClasses: 0, totalStudents: 0, pendingAttendance: 0 });
   const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -375,9 +376,9 @@ function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipa
         const [timetableRes, studentRes, notifRes] = await Promise.allSettled([
           axios.get(getFullUrl("/api/timetable"), {
             headers: getAuthHeaders(),
-            params: { day: todayCode },
+            params: { day: todayCode, ...(academicYearId ? { academicYearId } : {}) },
           }),
-          axios.get(getFullUrl("/api/students"), { headers: getAuthHeaders() }),
+          axios.get(getFullUrl("/api/students"), { headers: getAuthHeaders(), params: academicYearId ? { academicYearId } : undefined }),
           axios.get(getFullUrl("/api/notifications"), {
             headers: getAuthHeaders(),
             params: { limit: 5 },
@@ -418,7 +419,7 @@ function DashboardSection({ user, isPrincipal }: { user: User | null; isPrincipa
       }
     }
     fetchDashboard();
-  }, []);
+  }, [academicYearId]);
 
   if (loading) return <Spinner />;
 
@@ -1951,6 +1952,7 @@ function ReportsSection() {
 // ─────────────────────────────────────────────────────────
 
 export default function TeacherPortal({ isPrincipal = false }: TeacherPortalProps) {
+  const { selectedAcademicYearId } = useAcademicYear();
   const [activeSection, setActiveSection] = useState<SectionId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const user = useMemo(() => getCurrentUser(), []);
@@ -1958,7 +1960,7 @@ export default function TeacherPortal({ isPrincipal = false }: TeacherPortalProp
   function renderSection() {
     switch (activeSection) {
       case "dashboard":
-        return <DashboardSection user={user} isPrincipal={isPrincipal} />;
+        return <DashboardSection user={user} isPrincipal={isPrincipal} academicYearId={selectedAcademicYearId || undefined} />;
       case "classes":
         return <ClassesSection />;
       case "attendance":
@@ -1980,7 +1982,7 @@ export default function TeacherPortal({ isPrincipal = false }: TeacherPortalProp
       case "reports":
         return isPrincipal ? <ReportsSection /> : <DashboardSection user={user} isPrincipal={isPrincipal} />;
       default:
-        return <DashboardSection user={user} isPrincipal={isPrincipal} />;
+        return <DashboardSection user={user} isPrincipal={isPrincipal} academicYearId={selectedAcademicYearId || undefined} />;
     }
   }
 

@@ -9,6 +9,7 @@ import { FiArrowLeft, FiSave, FiUpload } from "react-icons/fi";
 
 
 import { getFullUrl } from "../../utils/url";
+import { useAcademicYear } from "../../context/AcademicYearContext";
 
 interface SubjectOption {
   id: string;
@@ -31,6 +32,7 @@ const AddEditTeacher = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const { academicYears: globalAcademicYears, selectedAcademicYearId } = useAcademicYear();
 
   // Form state — Personal Info
   const [firstName, setFirstName] = useState("");
@@ -60,41 +62,35 @@ const AddEditTeacher = () => {
 
 
 
-  // Fetch dropdown options
-  const fetchOptions = async () => {
+  // Fetch dropdown options for the selected academic year.
+  const fetchOptions = async (yearId?: string) => {
     try {
-      const [subRes, classRes, yearRes] = await Promise.all([
-        axios.get(getFullUrl("/api/subjects")),
-        axios.get(getFullUrl("/api/class")),
-        axios.get(getFullUrl("/api/academic")),
+      const headers = { Authorization: `Bearer ${localStorage.getItem("token") || ""}` };
+      const params = yearId ? { academicYearId: yearId } : undefined;
+      const [subRes, classRes] = await Promise.all([
+        axios.get(getFullUrl("/api/subjects"), { headers, params }),
+        axios.get(getFullUrl("/api/class"), { headers, params }),
       ]);
-
       const subs = subRes.data.data?.data || subRes.data.data || [];
       setAllSubjects(Array.isArray(subs) ? subs : []);
-
       const cls = classRes.data.data?.data || classRes.data.data || [];
       setClasses(Array.isArray(cls) ? cls : []);
-
-      const years = yearRes.data.data?.data || yearRes.data.data || [];
-      const yearArray = Array.isArray(years) ? years : [];
-      setAcademicYears(yearArray);
-
-      if (!isEdit && yearArray.length > 0) {
-        const current = yearArray.find(
-          (y: any) =>
-            y.isCurrent === true ||
-            y.isActive === true ||
-            y.status === "ACTIVE"
-        );
-        if (current) {
-          setAcademicYearId(current.id);
-        }
-      }
     } catch (err) {
-      console.error("Failed to fetch options:", err);
-      toast.error("Failed to load form data");
+      console.error("Failed to fetch teacher form options:", err);
+      toast.error("Failed to load classes and subjects");
     }
   };
+
+  useEffect(() => {
+    setAcademicYears(globalAcademicYears);
+    if (!isEdit && selectedAcademicYearId) {
+      setAcademicYearId((prev) => prev || selectedAcademicYearId);
+    }
+  }, [globalAcademicYears, selectedAcademicYearId, isEdit]);
+
+  useEffect(() => {
+    if (selectedAcademicYearId) fetchOptions(selectedAcademicYearId);
+  }, [selectedAcademicYearId]);
 
   // Filter subjects when classes change
   useEffect(() => {
@@ -117,7 +113,9 @@ const AddEditTeacher = () => {
     if (!id) return;
     setFetching(true);
     try {
-      const res = await axios.get(getFullUrl(`/api/teacher/${id}`));
+      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+      });
 
       if (res.data.success) {
         const t = res.data.data;
@@ -152,7 +150,6 @@ const AddEditTeacher = () => {
   };
 
   useEffect(() => {
-    fetchOptions();
     if (isEdit) fetchTeacher();
   }, [id]);
 
@@ -207,11 +204,11 @@ const AddEditTeacher = () => {
       let res;
       if (isEdit) {
         res = await axios.put(getFullUrl(`/api/teacher/${id}`), formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         });
       } else {
         res = await axios.post(getFullUrl("/api/teacher"), formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         });
       }
 

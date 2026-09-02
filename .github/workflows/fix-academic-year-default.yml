@@ -1,0 +1,48 @@
+name: Fix academic year default selection
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prefer current year until user explicitly selects another
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('frontend/src/context/AcademicYearContext.tsx')
+          s = p.read_text()
+
+          old = '''      const savedId = localStorage.getItem(STORAGE_KEY);\n      const savedYear = savedId ? years.find((y) => y.id === savedId) : null;\n      const currentYear = years.find((y) => y.isCurrent);\n      const activeYear = years.find((y) => y.isActive);\n      const yearToSelect = savedYear || currentYear || activeYear || years[0] || null;'''
+          new = '''      const savedId = localStorage.getItem(STORAGE_KEY);\n      const hasExplicitSelection = localStorage.getItem("academicYearExplicitSelection") === "1";\n      const savedYear = hasExplicitSelection && savedId ? years.find((y) => y.id === savedId) : null;\n      const currentYear = years.find((y) => y.isCurrent);\n      const activeYear = years.find((y) => y.isActive);\n      const yearToSelect = savedYear || currentYear || activeYear || years[0] || null;'''
+          if old not in s:
+              raise SystemExit('Academic year selection block not found')
+          s = s.replace(old, new, 1)
+
+          old = '''    setSelectedState(year);\n    localStorage.setItem(STORAGE_KEY, year.id);\n    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: year }));'''
+          new = '''    setSelectedState(year);\n    localStorage.setItem(STORAGE_KEY, year.id);\n    localStorage.setItem("academicYearExplicitSelection", "1");\n    window.dispatchEvent(new CustomEvent("academicYearChanged", { detail: year }));'''
+          if old not in s:
+              raise SystemExit('Academic year setter block not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
+      - name: Commit fix and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/context/AcademicYearContext.tsx
+          git commit -m "fix: default dashboard to current academic year"
+          git rm .github/workflows/fix-academic-year-default.yml
+          git commit --amend --no-edit
+          git push

@@ -6,7 +6,7 @@ on:
 
 jobs:
   fix:
-    if: github.ref == 'refs/heads/main'
+    if: github.actor == 'YogashwerNathSharma' && github.event.head_commit.message == 'fix: run teacher add academic year patch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -42,8 +42,9 @@ jobs:
 
       - name: Verify frontend
         run: |
-          grep -n "useAcademicYear\|fetchOptions(selectedAcademicYearId)\|Authorization" frontend/src/pages/teachers/AddEditTeacher.tsx
-          cd frontend && npm run build
+          cd frontend
+          npm ci
+          npm run build
 
       - name: Commit fixed file and remove workflow
         run: |

@@ -18,6 +18,7 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+
           p = Path('frontend/src/pages/TenantDashboard.tsx')
           s = p.read_text()
 
@@ -53,9 +54,19 @@ jobs:
               raise SystemExit('Expected dashboard effect marker not found')
           s = s.replace(old, new, 1)
 
-          # Show the selected session, not a date-derived session.
           s = s.replace('{getCurrentSession()}', '{selectedAcademicYear?.name || "—"}', 2)
 
+          p.write_text(s)
+
+          # Teacher records also carry academicYearId, so the dashboard total must
+          # follow the same selected-year contract instead of being tenant-wide.
+          p = Path('backend/src/modules/dashboard/dashboard.controller.ts')
+          s = p.read_text()
+          old = '        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),'
+          new = '        prisma.teacher.count({\n          where: {\n            tenantId,\n            isDeleted: false,\n            ...(academicYearId ? { academicYearId } : {}),\n          },\n        }),' 
+          if old not in s:
+              raise SystemExit('Expected teacher dashboard count marker not found')
+          s = s.replace(old, new, 1)
           p.write_text(s)
           PY
 
@@ -63,7 +74,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/pages/TenantDashboard.tsx
+          git add frontend/src/pages/TenantDashboard.tsx backend/src/modules/dashboard/dashboard.controller.ts
           git commit -m "fix: make dashboard follow selected academic year"
           git rm .github/workflows/fix-dashboard-selected-academic-year.yml
           git commit --amend --no-edit

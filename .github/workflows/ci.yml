@@ -34,53 +34,6 @@ jobs:
         working-directory: ./backend
         run: npx tsc --noEmit
 
-      - name: One-time Teacher Add Academic Year Repair
-        if: github.event_name == 'push' && github.event.head_commit.message == 'chore: trigger teacher add repair'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('frontend/src/pages/teachers/AddEditTeacher.tsx')
-          s = p.read_text()
-          if 'useAcademicYear' not in s:
-              s = s.replace('import { getFullUrl } from "../../utils/url";\n', 'import { getFullUrl } from "../../utils/url";\nimport { useAcademicYear } from "../../context/AcademicYearContext";\n')
-          if 'globalAcademicYears, selectedAcademicYearId' not in s:
-              s = s.replace('  const isEdit = Boolean(id);\n', '  const isEdit = Boolean(id);\n  const { academicYears: globalAcademicYears, selectedAcademicYearId } = useAcademicYear();\n')
-          start = s.index('  // Fetch dropdown options\n')
-          end = s.index('\n  // Filter subjects when classes change', start)
-          new_block = '''  // Fetch dropdown options for the selected academic year.\n  const fetchOptions = async (yearId?: string) => {\n    try {\n      const headers = { Authorization: `Bearer ${localStorage.getItem("token") || ""}` };\n      const params = yearId ? { academicYearId: yearId } : undefined;\n      const [subRes, classRes] = await Promise.all([\n        axios.get(getFullUrl("/api/subjects"), { headers, params }),\n        axios.get(getFullUrl("/api/class"), { headers, params }),\n      ]);\n      const subs = subRes.data.data?.data || subRes.data.data || [];\n      setAllSubjects(Array.isArray(subs) ? subs : []);\n      const cls = classRes.data.data?.data || classRes.data.data || [];\n      setClasses(Array.isArray(cls) ? cls : []);\n    } catch (err) {\n      console.error("Failed to fetch teacher form options:", err);\n      toast.error("Failed to load classes and subjects");\n    }\n  };\n\n  useEffect(() => {\n    setAcademicYears(globalAcademicYears);\n    if (!isEdit && selectedAcademicYearId) {\n      setAcademicYearId((prev) => prev || selectedAcademicYearId);\n    }\n  }, [globalAcademicYears, selectedAcademicYearId, isEdit]);\n\n  useEffect(() => {\n    if (selectedAcademicYearId) fetchOptions(selectedAcademicYearId);\n  }, [selectedAcademicYearId]);\n'''
-          s = s[:start] + new_block + s[end:]
-          s = s.replace('  useEffect(() => {\n    fetchOptions();\n    if (isEdit) fetchTeacher();\n  }, [id]);', '  useEffect(() => {\n    if (isEdit) fetchTeacher();\n  }, [id]);')
-          s = s.replace('      const res = await axios.get(getFullUrl(`/api/teacher/${id}`));', '      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), {\n        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },\n      });')
-          s = s.replace('headers: { "Content-Type": "multipart/form-data" },', 'headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },')
-          if 'fetchOptions(selectedAcademicYearId)' not in s or 'Authorization' not in s:
-              raise SystemExit('Teacher repair patch validation failed')
-          p.write_text(s)
-          PY
-
-          cd frontend
-          npm ci
-          npm run build
-
-          cd ..
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/ci.yml')
-          s = p.read_text()
-          start = s.index('      - name: One-time Teacher Add Academic Year Repair\n')
-          end = s.index('      - name: Security Audit\n', start)
-          s = s[:start] + s[end:]
-          p.write_text(s)
-          Path('.github/teacher-add-trigger-2.txt').unlink(missing_ok=True)
-          Path('.github/workflows/fix-teacher-add-academic-year.yml').unlink(missing_ok=True)
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/ci.yml .github/teacher-add-trigger-2.txt .github/workflows/fix-teacher-add-academic-year.yml
-          git commit -m "fix: make teacher add academic year aware"
-          git push origin main
-
       - name: Security Audit
         working-directory: ./backend
         run: npm audit --audit-level=high || true

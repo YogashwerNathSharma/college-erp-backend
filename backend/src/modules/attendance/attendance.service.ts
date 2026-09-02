@@ -21,6 +21,7 @@ export const markAttendanceService = async (
     where: {
       date: attendanceDate,
       tenantId,
+      academicYearId,
       isDeleted: false,
       studentId: { in: students.map(s => s.studentId) },
     },
@@ -75,6 +76,7 @@ export const updateAttendanceService = async (
     where: {
       classId,
       sectionId,
+      academicYearId,
       date: attendanceDate,
       tenantId,
       isDeleted: false,

@@ -19,14 +19,11 @@ import importExportRoutes from "./modules/import-export/import-export.routes";
 import queueRoutes from "./modules/queue/queue.routes";
 import masterRoutes from "./modules/masters/master.routes";
 
-
 import compression from "compression";
 import cors from "cors";
 import { autoCacheMiddleware } from "./middleware/autoCache.middleware";
-import { resolveAcademicYear } from "./middleware/academicYear.middleware";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
-// Other route imports ke saath:
 import settingsRoutes from "./modules/settings/settings.routes";
 
 import { securityHeaders, corsConfig } from "./middleware/security.middleware";
@@ -34,8 +31,7 @@ import { sanitizeInput } from "./middleware/sanitize.middleware";
 import { swaggerSpec } from "./config/swagger";
 import { requestLogger } from "./middleware/requestLogger.middleware";
 import healthRoutes from "./routes/health.routes";
-import { rateLimiter } from "./middleware/rateLimit";
-import { authLimiter } from "./middleware/rateLimit";
+import { rateLimiter, authLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { allowRoles } from "./middleware/role.middleware";
@@ -70,7 +66,6 @@ import studentReportsRoutes from "./modules/students/student-reports.routes";
 
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import attendanceReportRoutes from "./modules/attendance/attendance-report.routes";
-
 import timetableRoutes from "./modules/timetable/timetable.routes";
 
 // TEACHER MODULE
@@ -93,18 +88,12 @@ import feesRoutes from "./modules/fees/fees.routes";
 // SUPER ADMIN
 import superAdminRoutes from "./modules/super-admin/superAdmin.routes";
 import superadminreportsRoutes from "./modules/super-admin/reports.routes";
-
-// SUPER ADMIN - SECURITY, DATABASE, MONITORING
 import securityRoutes from "./modules/super-admin/security.routes";
 import databaseRoutes from "./modules/super-admin/database.routes";
 import monitoringRoutes from "./modules/super-admin/monitoring.routes";
-
-// SUPER ADMIN ENTERPRISE SETTINGS
-// SUPER ADMIN - MODULE, PLUGIN, THEME MANAGEMENT
 import moduleManagementRoutes from "./modules/super-admin/module-management.routes";
 import pluginManagementRoutes from "./modules/super-admin/plugin-management.routes";
 import themeManagementRoutes from "./modules/super-admin/theme-management.routes";
-
 import systemSettingsRoutes from "./modules/super-admin/system-settings.routes";
 import auditCenterRoutes from "./modules/super-admin/audit-center.routes";
 import notificationCenterRoutes from "./modules/super-admin/notification-center.routes";
@@ -123,29 +112,13 @@ import examRoutes from "./modules/exam/exam.routes";
 import gradeRoutes from "./modules/grade/grade.routes";
 import roomRoutes from "./modules/room/room.routes";
 
-// libraray
-// app.ts mein — routes register karo
 import libraryRoutes from "./modules/libraryManagement/library.routes";
-///transport
-// Import (top of file, with other imports)
 import transportRoutes from "./modules/transport/transport.routes";
-
-// STUDENT PORTAL
 import studentPortalRoutes from "./modules/student-portal/studentPortal.routes";
-
-// SIGNATURE
 import signatureRoutes from "./modules/signature/signature.routes";
-
-// BACKUP
 import backupRoutes from "./modules/backup/backup.routes";
-
-// PERMISSIONS
 import permissionsRoutes from "./modules/permissions/permissions.routes";
-
-// AI ASSISTANT
 import aiAssistantRoutes from "./modules/ai-assistant/ai.routes";
-
-// NEW MODULE ROUTES
 import hostelRoutes from "./modules/hostel/hostel.routes";
 import communicationNewRoutes from "./modules/communication/communication.routes";
 import hrRoutes from "./modules/hr/hr.routes";
@@ -154,55 +127,46 @@ import certificateRoutes from "./modules/certificate/certificate.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
 import reportRoutes from "./modules/reports/report.routes";
 
-
 const app = express();
 
 //////////////////////////////////////////////////////
-// GZIP COMPRESSION (reduces API response size by 60-80%)
+// GZIP COMPRESSION
 //////////////////////////////////////////////////////
-
 app.use(compression());
 
 //////////////////////////////////////////////////////
 // CORS
 //////////////////////////////////////////////////////
-
 app.use(corsConfig);
 
 //////////////////////////////////////////////////////
 // BODY PARSER
 //////////////////////////////////////////////////////
-
 app.use(express.json({ limit: "1mb" }));
 
 //////////////////////////////////////////////////////
 // SECURITY HEADERS
 //////////////////////////////////////////////////////
-
 app.use(securityHeaders);
 
 //////////////////////////////////////////////////////
 // INPUT SANITIZATION
 //////////////////////////////////////////////////////
-
 app.use(sanitizeInput);
 
 //////////////////////////////////////////////////////
 // RATE LIMITER
 //////////////////////////////////////////////////////
-
 app.use(rateLimiter);
 
 //////////////////////////////////////////////////////
-// REQUEST LOGGER (structured Winston logging)
+// REQUEST LOGGER
 //////////////////////////////////////////////////////
-
 app.use(requestLogger);
 
 //////////////////////////////////////////////////////
-// STATIC FILES (Protected — requires auth token)
+// STATIC FILES
 //////////////////////////////////////////////////////
-
 app.use(
   "/uploads",
   authMiddleware,
@@ -210,13 +174,9 @@ app.use(
 );
 
 //////////////////////////////////////////////////////
-// 🔓 ROUTES THAT SKIP SUBSCRIPTION CHECK
-// (Auth, Subscriptions, Payments, Settings, SuperAdmin)
+// ROUTES THAT SKIP SUBSCRIPTION CHECK
 //////////////////////////////////////////////////////
-
-// Health check (no auth required — used by Render/load balancers)
 app.use("/api", healthRoutes);
-
 app.use("/api", siteRoutes);
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/tenant", tenantRoutes);
@@ -240,29 +200,24 @@ app.use("/api/subscriptions", authMiddleware, subscriptionRoutes);
 app.use("/api/subscription-payments", authMiddleware, subscriptionPaymentRoutes);
 
 //////////////////////////////////////////////////////
-// 🔐 SUBSCRIPTION CHECK — applied to all routes below
+// SUBSCRIPTION CHECK
 //////////////////////////////////////////////////////
-
 app.use(subscriptionCheckMiddleware);
 
 //////////////////////////////////////////////////////
-// ⚡ AUTO-CACHE (30s for heavy GET endpoints)
+// AUTO-CACHE
 //////////////////////////////////////////////////////
-
 app.use(autoCacheMiddleware);
 
 //////////////////////////////////////////////////////
 // DASHBOARD
 //////////////////////////////////////////////////////
-
 app.use("/api/dashboard", dashboardRoutes);
-// Other app.use ke saath:
 app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TENANT_ADMIN"), settingsRoutes);
 
 //////////////////////////////////////////////////////
 // ACADEMIC
 //////////////////////////////////////////////////////
-
 app.use("/api/academic", academicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
@@ -270,19 +225,20 @@ app.use("/api/subject", subjectRoutes);
 
 //////////////////////////////////////////////////////
 // STUDENTS
+// IMPORTANT: Enterprise student routes MUST be mounted before the CRUD
+// router because student.routes.ts ends with /:id, which otherwise captures
+// /full and returns the student-by-id response instead of dashboard data.
 //////////////////////////////////////////////////////
-
-app.use("/api/students", studentRoutes);
 app.use("/api/students", studentDashboardRoutes);
 app.use("/api/students", studentSearchRoutes);
 app.use("/api/students", studentCommunicationRoutes);
 app.use("/api/students", studentOperationsRoutes);
 app.use("/api/students", studentReportsRoutes);
+app.use("/api/students", studentRoutes);
 
 //////////////////////////////////////////////////////
 // TEACHERS
 //////////////////////////////////////////////////////
-
 app.use("/api/teacher", teacherRoutes);
 app.use("/api/teacher", teacherDashboardRoutes);
 app.use("/api/teacher", teacherLeaveRoutes);
@@ -296,33 +252,28 @@ app.use("/api/teacher", teacherSettingsRoutes);
 //////////////////////////////////////////////////////
 // ATTENDANCE
 //////////////////////////////////////////////////////
-
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/attendance", attendanceReportRoutes);
 
 //////////////////////////////////////////////////////
 // TIMETABLE
 //////////////////////////////////////////////////////
-
 app.use("/api/timetable", timetableRoutes);
 
 //////////////////////////////////////////////////////
 // ADMISSION
 //////////////////////////////////////////////////////
-
 app.use("/api/admission", admissionRoutes);
 app.use("/api/enrollment", enrollmentRoutes);
 
 //////////////////////////////////////////////////////
 // FEES
 //////////////////////////////////////////////////////
-
 app.use("/api/fees", feesRoutes);
 
 //////////////////////////////////////////////////////
 // EXAMS
 //////////////////////////////////////////////////////
-
 app.use("/api/exam", examRoutes);
 app.use("/api/grade", gradeRoutes);
 app.use("/api/room", roomRoutes);
@@ -330,55 +281,46 @@ app.use("/api/room", roomRoutes);
 //////////////////////////////////////////////////////
 // LIBRARY
 //////////////////////////////////////////////////////
-
 app.use("/api/library", libraryRoutes);
 
 //////////////////////////////////////////////////////
 // TRANSPORT
 //////////////////////////////////////////////////////
-
 app.use("/api/transport", transportRoutes);
 
 //////////////////////////////////////////////////////
 // STUDENT PORTAL
 //////////////////////////////////////////////////////
-
 app.use("/api/student-portal", studentPortalRoutes);
 
 //////////////////////////////////////////////////////
 // SIGNATURE
 //////////////////////////////////////////////////////
-
 app.use("/api/signature", signatureRoutes);
 
 //////////////////////////////////////////////////////
 // BACKUP
 //////////////////////////////////////////////////////
-
 app.use("/api/backup", backupRoutes);
 
 //////////////////////////////////////////////////////
 // PERMISSIONS
 //////////////////////////////////////////////////////
-
 app.use("/api/permissions", permissionsRoutes);
 
 //////////////////////////////////////////////////////
 // AI ASSISTANT
 //////////////////////////////////////////////////////
-
 app.use("/api/ai", aiAssistantRoutes);
 
 //////////////////////////////////////////////////////
 // MASTERS
 //////////////////////////////////////////////////////
-
 app.use("/api/masters", masterRoutes);
 
 //////////////////////////////////////////////////////
 // ENTERPRISE MODULES
 //////////////////////////////////////////////////////
-
 app.use("/api/hostel", hostelRoutes);
 app.use("/api/communication", communicationNewRoutes);
 app.use("/api/hr", hrRoutes);
@@ -386,7 +328,6 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/report", reportRoutes);
-
 app.use("/api/gate-pass", gatePassRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/helpdesk", helpdeskRoutes);
@@ -404,15 +345,13 @@ app.use("/api/import-export", importExportRoutes);
 app.use("/api/queue", queueRoutes);
 
 //////////////////////////////////////////////////////
-// SWAGGER (API Documentation)
+// SWAGGER
 //////////////////////////////////////////////////////
-
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 //////////////////////////////////////////////////////
 // ERROR HANDLING
 //////////////////////////////////////////////////////
-
 app.use(notFoundHandler);
 app.use(errorHandler);
 

@@ -65,10 +65,17 @@ export const createRoom = async (data: any, tenantId: string) => {
   });
 };
 
-export const getRoomsByHostel = async (hostelId: string, tenantId: string) => {
+export const getRoomsByHostel = async (hostelId: string, tenantId: string, academicYearId?: string) => {
   return prisma.hostelRoom.findMany({
     where: { hostelId, tenantId, isDeleted: false },
-    include: { allocations: { where: { isActive: true } } },
+    include: {
+      allocations: {
+        where: {
+          isActive: true,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
+      },
+    },
     orderBy: { roomNumber: "asc" },
   });
 };
@@ -91,25 +98,32 @@ export const deleteRoom = async (id: string, tenantId: string) => {
 // ALLOCATION
 // ============================================
 
-export const allocateRoom = async (data: any, tenantId: string) => {
+export const allocateRoom = async (data: any, tenantId: string, academicYearId: string) => {
+  if (!academicYearId) throw new Error("Academic year is required");
+
   const room = await prisma.hostelRoom.findFirst({
     where: { id: data.roomId, tenantId, isDeleted: false },
-    include: { allocations: { where: { isActive: true } } },
+    include: {
+      allocations: {
+        where: { isActive: true, academicYearId },
+      },
+    },
   });
 
   if (!room) throw new Error("Room not found");
   if (room.allocations.length >= room.capacity) throw new Error("Room is at full capacity");
 
-  // Check if student already has active allocation
+  // Check if student already has an active allocation in the selected academic year.
   const existingAllocation = await prisma.hostelAllocation.findFirst({
-    where: { studentId: data.studentId, tenantId, isActive: true },
+    where: { studentId: data.studentId, tenantId, academicYearId, isActive: true },
   });
-  if (existingAllocation) throw new Error("Student already has an active room allocation");
+  if (existingAllocation) throw new Error("Student already has an active room allocation in this academic year");
 
   const allocation = await prisma.hostelAllocation.create({
     data: {
       ...data,
       tenantId,
+      academicYearId,
       startDate: new Date(data.startDate),
       endDate: data.endDate ? new Date(data.endDate) : null,
       isActive: true,
@@ -134,9 +148,14 @@ export const allocateRoom = async (data: any, tenantId: string) => {
   return allocation;
 };
 
-export const deallocateRoom = async (allocationId: string, tenantId: string, reason?: string) => {
-  // Get allocation details before deallocation
-  const allocation = await prisma.hostelAllocation.findFirst({ where: { id: allocationId, tenantId } });
+export const deallocateRoom = async (allocationId: string, tenantId: string, academicYearId: string, reason?: string) => {
+  if (!academicYearId) throw new Error("Academic year is required");
+
+  // Get allocation details before deallocation, restricted to selected academic year.
+  const allocation = await prisma.hostelAllocation.findFirst({
+    where: { id: allocationId, tenantId, academicYearId },
+  });
+  if (!allocation) throw new Error("Allocation not found in selected academic year");
 
   const result = await prisma.hostelAllocation.update({
     where: { id: allocationId, tenantId },
@@ -145,7 +164,7 @@ export const deallocateRoom = async (allocationId: string, tenantId: string, rea
 
   // ═══ AUTO FEE INTEGRATION ═══
   // Remove hostel fee from pending installments when room is vacated
-  if (allocation?.studentId) {
+  if (allocation.studentId) {
     try {
       // @ts-ignore - dynamic import for circular dependency avoidance
       const { removeHostelFeeFromStudent } = await import("../fees/feeIntegration.service");
@@ -158,8 +177,10 @@ export const deallocateRoom = async (allocationId: string, tenantId: string, rea
   return result;
 };
 
-export const getAllocations = async (tenantId: string, filters?: { hostelId?: string; isActive?: boolean }) => {
-  const where: any = { tenantId };
+export const getAllocations = async (tenantId: string, academicYearId: string, filters?: { hostelId?: string; isActive?: boolean }) => {
+  if (!academicYearId) throw new Error("Academic year is required");
+
+  const where: any = { tenantId, academicYearId };
   if (filters?.hostelId) where.hostelId = filters.hostelId;
   if (filters?.isActive !== undefined) where.isActive = filters.isActive;
 

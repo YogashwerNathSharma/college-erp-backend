@@ -168,6 +168,15 @@ export default function Dashboard() {
   const { setTenant }: any = useOutletContext();
   const navigate = useNavigate();
 
+  // Restore authenticated user from localStorage for dashboard greeting/payment prefill.
+  const [user] = useState<any>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  });
+
   // ⚡ PERF: Load cached tenant immediately (school name + logo show instantly)
   useEffect(() => {
     const savedTenant = localStorage.getItem("tenant");

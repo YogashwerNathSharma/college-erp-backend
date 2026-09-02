@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { getFullUrl } from "../../utils/url";
+import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
   Users, UserCheck, UserX, UserPlus, UserMinus,
   GraduationCap, Bus, Building, Award, CreditCard,
@@ -96,8 +97,11 @@ export default function AdminStudentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
-  const [academicYearId, setAcademicYearId] = useState<string>("");
-  const [academicYears, setAcademicYears] = useState<Array<{ id: string; name: string }>>([]);
+  const {
+    academicYears,
+    selectedAcademicYearId,
+    setSelectedAcademicYear,
+  } = useAcademicYear();
 
   const token = localStorage.getItem("token");
   const authHeaders = () => ({ headers: { Authorization: `Bearer ${token}` } });
@@ -105,7 +109,7 @@ export default function AdminStudentDashboard() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const params = academicYearId ? { academicYearId } : {};
+      const params = selectedAcademicYearId ? { academicYearId: selectedAcademicYearId } : {};
       const res = await axios.get(getFullUrl("/api/students/full"), {
         params, ...authHeaders(),
       });
@@ -122,9 +126,9 @@ export default function AdminStudentDashboard() {
       try {
         console.error("[StudentDashboard] /full failed, trying fallback:", err.message);
         const [statsRes, classRes, catRes, recentRes] = await Promise.all([
-          axios.get(getFullUrl("/api/students/stats"), { params: { academicYearId }, ...authHeaders() }),
-          axios.get(getFullUrl("/api/students/class-strength"), { params: { academicYearId }, ...authHeaders() }),
-          axios.get(getFullUrl("/api/students/category-distribution"), { params: { academicYearId }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/stats"), { params: { academicYearId: selectedAcademicYearId || undefined }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/class-strength"), { params: { academicYearId: selectedAcademicYearId || undefined }, ...authHeaders() }),
+          axios.get(getFullUrl("/api/students/category-distribution"), { params: { academicYearId: selectedAcademicYearId || undefined }, ...authHeaders() }),
           axios.get(getFullUrl("/api/students/recent-admissions"), { params: { limit: 10 }, ...authHeaders() }),
         ]);
 
@@ -146,17 +150,11 @@ export default function AdminStudentDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [academicYearId]);
+  }, [selectedAcademicYearId]);
 
-  const fetchAcademicYears = async () => {
-    try {
-      const res = await axios.get(getFullUrl("/api/academic"), authHeaders());
-      if (res.data?.success) setAcademicYears(res.data.data || []);
-    } catch { /* silent */ }
-  };
-
-  useEffect(() => { fetchAcademicYears(); }, []);
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -186,8 +184,11 @@ export default function AdminStudentDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <select
-            value={academicYearId}
-            onChange={(e) => setAcademicYearId(e.target.value)}
+            value={selectedAcademicYearId || ""}
+            onChange={(e) => {
+              const year = academicYears.find((ay) => ay.id === e.target.value);
+              if (year) setSelectedAcademicYear({ ...year, startDate: "", endDate: "", isActive: true, isCurrent: false });
+            }}
             className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           >
             <option value="">All Sessions</option>

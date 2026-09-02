@@ -69,7 +69,7 @@ export const getRoomsByHostelHandler = async (req: any, res: Response) => {
   try {
     const hostelId = req.params.hostelId || req.query.hostelId;
     if (!hostelId) return res.json({ success: true, data: [] });
-    const result = await hostelService.getRoomsByHostel(hostelId, req.tenantId);
+    const result = await hostelService.getRoomsByHostel(hostelId, req.tenantId, req.academicYearId);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -100,7 +100,8 @@ export const deleteRoomHandler = async (req: any, res: Response) => {
 
 export const allocateRoomHandler = async (req: any, res: Response) => {
   try {
-    const result = await hostelService.allocateRoom(req.body, req.tenantId);
+    if (!req.academicYearId) return res.status(400).json({ success: false, message: "Academic year is required" });
+    const result = await hostelService.allocateRoom(req.body, req.tenantId, req.academicYearId);
     res.status(201).json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -109,8 +110,9 @@ export const allocateRoomHandler = async (req: any, res: Response) => {
 
 export const deallocateRoomHandler = async (req: any, res: Response) => {
   try {
+    if (!req.academicYearId) return res.status(400).json({ success: false, message: "Academic year is required" });
     const { allocationId, reason } = req.body;
-    const result = await hostelService.deallocateRoom(allocationId, req.tenantId, reason);
+    const result = await hostelService.deallocateRoom(allocationId, req.tenantId, req.academicYearId, reason);
     res.json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
@@ -119,8 +121,9 @@ export const deallocateRoomHandler = async (req: any, res: Response) => {
 
 export const getAllocationsHandler = async (req: any, res: Response) => {
   try {
+    if (!req.academicYearId) return res.status(400).json({ success: false, message: "Academic year is required" });
     const { hostelId, isActive } = req.query;
-    const result = await hostelService.getAllocations(req.tenantId, {
+    const result = await hostelService.getAllocations(req.tenantId, req.academicYearId, {
       hostelId,
       isActive: isActive === "true" ? true : isActive === "false" ? false : undefined,
     });
@@ -164,7 +167,7 @@ export const updateMessHandler = async (req: any, res: Response) => {
 export const setMessMenuHandler = async (req: any, res: Response) => {
   try {
     const result = await hostelService.setMessMenu(req.body, req.tenantId);
-    res.json({ success: true, data: result });
+    res.status(200).json({ success: true, data: result });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }

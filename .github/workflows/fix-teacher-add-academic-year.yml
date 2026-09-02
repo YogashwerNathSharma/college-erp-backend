@@ -28,16 +28,14 @@ jobs:
               s = s.replace('import { getFullUrl } from "../../utils/url";\n', 'import { getFullUrl } from "../../utils/url";\nimport { useAcademicYear } from "../../context/AcademicYearContext";\n')
           if 'globalAcademicYears, selectedAcademicYearId' not in s:
               s = s.replace('  const isEdit = Boolean(id);\n', '  const isEdit = Boolean(id);\n  const { academicYears: globalAcademicYears, selectedAcademicYearId } = useAcademicYear();\n')
-          marker = '  // Fetch dropdown options'
-          start = s.index(marker)
+          start = s.index('  // Fetch dropdown options')
           end = s.index('  // Filter subjects when classes change', start)
           new_block = '''  // Fetch dropdown options for the selected academic year.\n  const fetchOptions = async (yearId?: string) => {\n    try {\n      const headers = { Authorization: `Bearer ${localStorage.getItem("token") || ""}` };\n      const params = yearId ? { academicYearId: yearId } : undefined;\n      const [subRes, classRes] = await Promise.all([\n        axios.get(getFullUrl("/api/subjects"), { headers, params }),\n        axios.get(getFullUrl("/api/class"), { headers, params }),\n      ]);\n      const subs = subRes.data.data?.data || subRes.data.data || [];\n      setAllSubjects(Array.isArray(subs) ? subs : []);\n      const cls = classRes.data.data?.data || classRes.data.data || [];\n      setClasses(Array.isArray(cls) ? cls : []);\n    } catch (err) {\n      console.error("Failed to fetch teacher form options:", err);\n      toast.error("Failed to load classes and subjects");\n    }\n  };\n\n  useEffect(() => {\n    setAcademicYears(globalAcademicYears);\n    if (!isEdit && selectedAcademicYearId) {\n      setAcademicYearId((prev) => prev || selectedAcademicYearId);\n    }\n  }, [globalAcademicYears, selectedAcademicYearId, isEdit]);\n\n  useEffect(() => {\n    if (selectedAcademicYearId) fetchOptions(selectedAcademicYearId);\n  }, [selectedAcademicYearId]);\n\n'''
           s = s[:start] + new_block + s[end:]
-          old_effect = '''  useEffect(() => {\n    fetchOptions();\n    if (isEdit) fetchTeacher();\n  }, [id]);'''
-          s = s.replace(old_effect, '''  useEffect(() => {\n    if (isEdit) fetchTeacher();\n  }, [id]);''')
+          s = s.replace('  useEffect(() => {\n    fetchOptions();\n    if (isEdit) fetchTeacher();\n  }, [id]);', '  useEffect(() => {\n    if (isEdit) fetchTeacher();\n  }, [id]);')
           s = s.replace('      const res = await axios.get(getFullUrl(`/api/teacher/${id}`));', '      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), {\n        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },\n      });')
           s = s.replace('headers: { "Content-Type": "multipart/form-data" },', 'headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },')
-          if 'fetchOptions(selectedAcademicYearId)' not in s:
+          if 'fetchOptions(selectedAcademicYearId)' not in s or 'Authorization' not in s:
               raise SystemExit('Teacher repair patch validation failed')
           p.write_text(s)
           PY
@@ -63,6 +61,6 @@ jobs:
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/ci.yml .github/teacher-add-trigger.txt .github/teacher-add-trigger-2.txt .github/workflows/fix-teacher-add-academic-year.yml
+          git add -A
           git commit -m "fix: make teacher add academic year aware"
           git push origin main

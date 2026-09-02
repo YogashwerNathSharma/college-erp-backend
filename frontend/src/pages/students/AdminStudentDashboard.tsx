@@ -106,7 +106,7 @@ export default function AdminStudentDashboard() {
     setLoading(true);
     try {
       const params = academicYearId ? { academicYearId } : {};
-      const res = await axios.get(getFullUrl("/api/students/dashboard/full"), {
+      const res = await axios.get(getFullUrl("/api/students/full"), {
         params, ...authHeaders(),
       });
       if (res.data.success) {

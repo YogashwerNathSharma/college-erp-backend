@@ -1,1 +1,1 @@
-One-time repair trigger.
+Run robust teacher add repair.

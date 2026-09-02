@@ -45,7 +45,7 @@ export const createAssignment = async (tenantId: string, academicYearId: string,
 
   if (assignment.monthlyFee > 0) {
     try {
-      const { addTransportFeeToStudent } = await import("../fees/feeIntegration.service");
+      const { addTransportFeeToStudent } = require("../fees/feeIntegration.service");
       await addTransportFeeToStudent(data.studentId, tenantId, assignment.monthlyFee, assignment.route?.name || "");
     } catch (err) {
       console.error("Auto transport fee add failed (non-blocking):", err);
@@ -115,7 +115,7 @@ export const unassignStudent = async (tenantId: string, academicYearId: string, 
     data: { status: "INACTIVE", endDate: new Date(), isDeleted: true },
   });
   try {
-    const { removeTransportFeeFromStudent } = await import("../fees/feeIntegration.service");
+    const { removeTransportFeeFromStudent } = require("../fees/feeIntegration.service");
     await removeTransportFeeFromStudent(assignment.studentId, tenantId);
   } catch (err) {
     console.error("Auto transport fee remove failed (non-blocking):", err);

@@ -1,0 +1,79 @@
+name: Fix Teacher Add Academic Year
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  fix:
+    if: github.actor == 'YogashwerNathSharma' && github.event.head_commit.message == 'chore: add teacher add academic year fix workflow'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch AddEditTeacher
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/pages/teachers/AddEditTeacher.tsx')
+          s = p.read_text()
+
+          if 'useAcademicYear' not in s:
+              s = s.replace(
+                  'import { getFullUrl } from "../../utils/url";\n',
+                  'import { getFullUrl } from "../../utils/url";\nimport { useAcademicYear } from "../../context/AcademicYearContext";\n'
+              )
+
+          s = s.replace(
+              '  const isEdit = Boolean(id);\n',
+              '  const isEdit = Boolean(id);\n  const { academicYears: globalAcademicYears, selectedAcademicYearId } = useAcademicYear();\n'
+          )
+
+          start = s.index('  // Fetch dropdown options\n')
+          end = s.index('\n  // Filter subjects when classes change', start)
+          new_block = '''  // Fetch dropdown options for the selected academic year.\n  const fetchOptions = async (yearId?: string) => {\n    try {\n      const headers = {\n        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,\n      };\n\n      const params = yearId ? { academicYearId: yearId } : undefined;\n      const [subRes, classRes] = await Promise.all([\n        axios.get(getFullUrl("/api/subjects"), { headers, params }),\n        axios.get(getFullUrl("/api/class"), { headers, params }),\n      ]);\n\n      const subs = subRes.data.data?.data || subRes.data.data || [];\n      setAllSubjects(Array.isArray(subs) ? subs : []);\n\n      const cls = classRes.data.data?.data || classRes.data.data || [];\n      setClasses(Array.isArray(cls) ? cls : []);\n    } catch (err) {\n      console.error("Failed to fetch teacher form options:", err);\n      toast.error("Failed to load classes and subjects");\n    }\n  };\n\n  // Use the global academic-year source so this form always shows the same\n  // years as the rest of the ERP and follows the currently selected year.\n  useEffect(() => {\n    setAcademicYears(globalAcademicYears);\n    if (!isEdit && selectedAcademicYearId) {\n      setAcademicYearId((prev) => prev || selectedAcademicYearId);\n    }\n  }, [globalAcademicYears, selectedAcademicYearId, isEdit]);\n\n  // Load classes/subjects whenever the selected academic year changes.\n  useEffect(() => {\n    if (selectedAcademicYearId) {\n      fetchOptions(selectedAcademicYearId);\n    }\n  }, [selectedAcademicYearId]);\n'''
+          s = s[:start] + new_block + s[end:]
+
+          s = s.replace(
+              '  useEffect(() => {\n    fetchOptions();\n    if (isEdit) fetchTeacher();\n  }, [id]);',
+              '  useEffect(() => {\n    if (isEdit) fetchTeacher();\n  }, [id]);'
+          )
+
+          s = s.replace(
+              '      const res = await axios.get(getFullUrl(`/api/teacher/${id}`));',
+              '      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), {\n        headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },\n      });'
+          )
+
+          s = s.replace(
+              '        res = await axios.put(getFullUrl(`/api/teacher/${id}`), formData, {\n          headers: { "Content-Type": "multipart/form-data" },\n        });',
+              '        res = await axios.put(getFullUrl(`/api/teacher/${id}`), formData, {\n          headers: {\n            "Content-Type": "multipart/form-data",\n            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,\n          },\n        });'
+          )
+          s = s.replace(
+              '        res = await axios.post(getFullUrl("/api/teacher"), formData, {\n          headers: { "Content-Type": "multipart/form-data" },\n        });',
+              '        res = await axios.post(getFullUrl("/api/teacher"), formData, {\n          headers: {\n            "Content-Type": "multipart/form-data",\n            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,\n          },\n        });'
+          )
+
+          if 'useAcademicYear' not in s or 'fetchOptions(selectedAcademicYearId)' not in s:
+              raise SystemExit('Patch validation failed')
+          p.write_text(s)
+          PY
+
+      - name: Verify
+        run: |
+          grep -n "useAcademicYear\|fetchOptions(selectedAcademicYearId)\|Authorization" frontend/src/pages/teachers/AddEditTeacher.tsx
+          cd frontend && npm run build
+
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/fix-teacher-add-academic-year.yml
+          git commit -m "fix: make teacher add academic year aware" -- frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/fix-teacher-add-academic-year.yml
+          git push origin main

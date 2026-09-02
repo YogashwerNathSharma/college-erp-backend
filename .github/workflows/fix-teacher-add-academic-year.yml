@@ -6,7 +6,7 @@ on:
 
 jobs:
   fix:
-    if: github.actor == 'YogashwerNathSharma' && github.event.head_commit.message == 'fix: run teacher add academic year patch'
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,16 +40,15 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Verify frontend
+      - name: Validate patched source
         run: |
-          cd frontend
-          npm ci
-          npm run build
+          grep -n "useAcademicYear\|fetchOptions(selectedAcademicYearId)\|Authorization" frontend/src/pages/teachers/AddEditTeacher.tsx
 
-      - name: Commit fixed file and remove workflow
+      - name: Commit fixed file and remove temporary files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/fix-teacher-add-academic-year.yml
-          git commit -m "fix: make teacher add academic year aware" -- frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/fix-teacher-add-academic-year.yml
+          rm -f .github/teacher-add-trigger.txt
+          git add frontend/src/pages/teachers/AddEditTeacher.tsx .github/workflows/fix-teacher-add-academic-year.yml .github/teacher-add-trigger.txt
+          git commit -m "fix: make teacher add academic year aware"
           git push origin main

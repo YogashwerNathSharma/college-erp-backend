@@ -1,5 +1,6 @@
 import { getFullUrl } from "../utils/url";
 import { useEffect, useState } from "react";
+import { useAcademicYear } from "../context/AcademicYearContext";
 import axios from "axios";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import {
@@ -167,6 +168,7 @@ export default function Dashboard() {
 
   const { setTenant }: any = useOutletContext();
   const navigate = useNavigate();
+  const { selectedAcademicYear, selectedAcademicYearId, loading: academicYearLoading } = useAcademicYear();
 
   // Restore authenticated user from localStorage for dashboard greeting/payment prefill.
   const [user] = useState<any>(() => {
@@ -187,7 +189,7 @@ export default function Dashboard() {
   // User sees last known data immediately, then fresh data replaces it
   const getInitialData = () => {
     try {
-      const cached = localStorage.getItem("dashboard_cache");
+      const cached = localStorage.getItem(`dashboard_cache:${localStorage.getItem("selectedAcademicYearId") || "none"}`);
       if (cached) return JSON.parse(cached);
     } catch {}
     return {
@@ -215,7 +217,7 @@ export default function Dashboard() {
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   // ⚡ PERF: If we have cached data, skip loading state entirely (instant UI)
-  const hasCachedData = !!localStorage.getItem("dashboard_cache");
+  const hasCachedData = !!localStorage.getItem(`dashboard_cache:${localStorage.getItem("selectedAcademicYearId") || "none"}`);
   const [loading, setLoading] = useState(!hasCachedData);
   const [refreshing, setRefreshing] = useState(false); // only show when explicitly refreshing
   const [detailModal, setDetailModal] = useState<{
@@ -254,8 +256,12 @@ export default function Dashboard() {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
         // ⚡ Pass refresh=true to bust backend cache
+        if (!selectedAcademicYearId) return;
         const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";
-        const res = await axios.get(getFullUrl(url), { headers });
+        const res = await axios.get(getFullUrl(url), {
+          headers,
+          params: { academicYearId: selectedAcademicYearId },
+        });
         const d = res.data?.data;
 
         setData({
@@ -298,7 +304,7 @@ export default function Dashboard() {
 
         // ⚡ PERF: Cache dashboard data in localStorage for instant load next time
         try {
-          localStorage.setItem("dashboard_cache", JSON.stringify({
+          localStorage.setItem(`dashboard_cache:${selectedAcademicYearId}`, JSON.stringify({
             totalStudents: d?.totalStudents ?? 0, totalClasses: d?.totalClasses ?? 0,
             totalPaid: d?.totalPaid ?? 0, totalPending: d?.totalPending ?? 0,
             totalTeachers: d?.totalTeachers ?? 0, genderData: d?.genderData ?? [],
@@ -333,8 +339,9 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    if (academicYearLoading || !selectedAcademicYearId) return;
     fetchAll(isPageRefresh);
-  }, []);
+  }, [academicYearLoading, selectedAcademicYearId]);
 
   // ─── Plan + Payment handlers ─────────────────────────────────
   const fetchPlans = async () => {
@@ -479,14 +486,14 @@ export default function Dashboard() {
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">{formatDate()}</p>
             <div className="flex sm:hidden items-center gap-3 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b></span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Session: <b className="text-slate-700 dark:text-slate-300">{selectedAcademicYear?.name || "—"}</b></span>
               <span className="flex items-center gap-1.5"><Building2 size={12} /> <b className="text-slate-700 dark:text-slate-300">Main Campus</b></span>
             </div>
           </div>
           <div className="hidden sm:flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              Session: <b className="text-slate-700 dark:text-slate-300">{getCurrentSession()}</b>
+              Session: <b className="text-slate-700 dark:text-slate-300">{selectedAcademicYear?.name || "—"}</b>
             </span>
             <span className="flex items-center gap-1.5">
               <Building2 size={13} /> Branch: <b className="text-slate-700 dark:text-slate-300">Main Campus</b>

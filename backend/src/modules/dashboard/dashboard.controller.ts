@@ -128,7 +128,13 @@ export const getDashboard = async (
             ...(academicYearId ? { academicYearId } : {}),
           },
         }),
-        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
+        prisma.teacher.count({
+          where: {
+            tenantId,
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
+          },
+        }),
         // Fees: scope via enrollment's academicYearId
         prisma.studentFee.aggregate({
           _sum: { paidAmount: true, balanceAmount: true, totalAmount: true },

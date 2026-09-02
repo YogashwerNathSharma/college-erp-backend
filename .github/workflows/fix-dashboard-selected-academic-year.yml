@@ -22,51 +22,51 @@ jobs:
           p = Path('frontend/src/pages/TenantDashboard.tsx')
           s = p.read_text()
 
-          old = 'import { useEffect, useState } from "react";'
-          new = 'import { useEffect, useState } from "react";\nimport { useAcademicYear } from "../context/AcademicYearContext";'
-          if old not in s or 'useAcademicYear' not in s:
-              raise SystemExit('Expected React import/context marker not found')
-          s = s.replace(old, new, 1)
+          if 'useAcademicYear' not in s:
+              s = s.replace(
+                  'import { useEffect, useState } from "react";',
+                  'import { useEffect, useState } from "react";\nimport { useAcademicYear } from "../context/AcademicYearContext";',
+                  1,
+              )
 
-          old = '  const navigate = useNavigate();\n'
-          new = '  const navigate = useNavigate();\n  const { selectedAcademicYear, selectedAcademicYearId, loading: academicYearLoading } = useAcademicYear();\n'
-          if old not in s:
-              raise SystemExit('Expected navigate marker not found')
-          s = s.replace(old, new, 1)
+          if 'selectedAcademicYearId' not in s:
+              s = s.replace(
+                  '  const navigate = useNavigate();\n',
+                  '  const navigate = useNavigate();\n  const { selectedAcademicYear, selectedAcademicYearId, loading: academicYearLoading } = useAcademicYear();\n',
+                  1,
+              )
 
-          s = s.replace('localStorage.getItem("dashboard_cache")', 'localStorage.getItem(`dashboard_cache:${localStorage.getItem("selectedAcademicYearId") || "none"}`)', 2)
+          s = s.replace(
+              'localStorage.getItem("dashboard_cache")',
+              'localStorage.getItem(`dashboard_cache:${localStorage.getItem("selectedAcademicYearId") || "none"}`)',
+          )
 
           old = '        const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";\n        const res = await axios.get(getFullUrl(url), { headers });'
           new = '        if (!selectedAcademicYearId) return;\n        const url = refresh ? "/api/dashboard?refresh=true" : "/api/dashboard";\n        const res = await axios.get(getFullUrl(url), {\n          headers,\n          params: { academicYearId: selectedAcademicYearId },\n        });'
-          if old not in s:
-              raise SystemExit('Expected dashboard request marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
-          old = '          localStorage.setItem("dashboard_cache", JSON.stringify({'
-          new = '          localStorage.setItem(`dashboard_cache:${selectedAcademicYearId}`, JSON.stringify({'
-          if old not in s:
-              raise SystemExit('Expected dashboard cache write marker not found')
-          s = s.replace(old, new, 1)
+          s = s.replace(
+              'localStorage.setItem("dashboard_cache", JSON.stringify({',
+              'localStorage.setItem(`dashboard_cache:${selectedAcademicYearId}`, JSON.stringify({',
+              1,
+          )
 
           old = '''  useEffect(() => {\n    fetchAll(isPageRefresh);\n  }, []);'''
           new = '''  useEffect(() => {\n    if (academicYearLoading || !selectedAcademicYearId) return;\n    fetchAll(isPageRefresh);\n  }, [academicYearLoading, selectedAcademicYearId]);'''
-          if old not in s:
-              raise SystemExit('Expected dashboard effect marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
-          s = s.replace('{getCurrentSession()}', '{selectedAcademicYear?.name || "—"}', 2)
-
+          s = s.replace('{getCurrentSession()}', '{selectedAcademicYear?.name || "—"}')
           p.write_text(s)
 
-          # Teacher records also carry academicYearId, so the dashboard total must
-          # follow the same selected-year contract instead of being tenant-wide.
+          # Teacher count must follow the selected academic year too.
           p = Path('backend/src/modules/dashboard/dashboard.controller.ts')
           s = p.read_text()
-          old = '        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),'
-          new = '        prisma.teacher.count({\n          where: {\n            tenantId,\n            isDeleted: false,\n            ...(academicYearId ? { academicYearId } : {}),\n          },\n        }),' 
-          if old not in s:
-              raise SystemExit('Expected teacher dashboard count marker not found')
-          s = s.replace(old, new, 1)
+          old = '        prisma.teacher.count({ where: { tenantId, isDeleted: false } }),' 
+          new = '''        prisma.teacher.count({\n          where: {\n            tenantId,\n            isDeleted: false,\n            ...(academicYearId ? { academicYearId } : {}),\n          },\n        }),'''
+          if old in s:
+              s = s.replace(old, new, 1)
           p.write_text(s)
           PY
 

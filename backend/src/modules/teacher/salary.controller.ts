@@ -17,7 +17,7 @@ export const create = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const salary = await createSalary(req.body, tenantId);
+    const salary = await createSalary({ ...req.body, academicYearId: (req as any).academicYearId || req.body.academicYearId }, tenantId);
     return res.status(201).json({ success: true, data: salary });
   } catch (e: any) {
     logger.error("CREATE SALARY ERROR:", e);
@@ -33,7 +33,7 @@ export const getAll = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getSalaries(req.query, tenantId);
+    const data = await getSalaries({ ...req.query, academicYearId: (req as any).academicYearId || req.query.academicYearId }, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("GET SALARIES ERROR:", e);
@@ -56,7 +56,7 @@ export const slip = async (req: any, res: Response) => {
       return res.status(400).json({ success: false, message: "Month and year required" });
     }
 
-    const data = await getPayslip(teacherId, parseInt(month), parseInt(year), tenantId);
+    const data = await getPayslip(teacherId, parseInt(month), parseInt(year), tenantId, (req as any).academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("GET PAYSLIP ERROR:", e);
@@ -74,7 +74,7 @@ export const update = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await updateSalary(id, req.body, tenantId);
+    const data = await updateSalary(id, req.body, tenantId, (req as any).academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("UPDATE SALARY ERROR:", e);

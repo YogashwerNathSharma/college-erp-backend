@@ -16,15 +16,16 @@ const TEACHER_CACHE_TTL = 1800000;
 export const getStats = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     // ⚡ PERF: 30-min cache + refresh support
     const forceRefresh = req.query?.refresh === "true";
-    const cacheKey = `teacher:dash:stats:${tenantId}`;
+    const cacheKey = `teacher:dash:stats:${tenantId}:${academicYearId || "all"}`;
     if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
-    const stats = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDashboardStats(tenantId));
+    const stats = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDashboardStats(tenantId, academicYearId));
     return res.json({ success: true, data: stats });
   } catch (e: any) {
     logger.error("Dashboard stats error", { error: e.message, tenantId: req.user?.tenantId });
@@ -36,15 +37,16 @@ export const getStats = async (req: any, res: Response) => {
 export const getDeptChart = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     // ⚡ PERF: 30-min cache + refresh support
     const forceRefresh = req.query?.refresh === "true";
-    const cacheKey = `teacher:dash:dept:${tenantId}`;
+    const cacheKey = `teacher:dash:dept:${tenantId}:${academicYearId || "all"}`;
     if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
-    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDepartmentChart(tenantId));
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDepartmentChart(tenantId, academicYearId));
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("Department chart error", { error: e.message, tenantId: req.user?.tenantId });
@@ -56,15 +58,16 @@ export const getDeptChart = async (req: any, res: Response) => {
 export const getOverview = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     // ⚡ PERF: 30-min cache + refresh support
     const forceRefresh = req.query?.refresh === "true";
-    const cacheKey = `teacher:dash:overview:${tenantId}`;
+    const cacheKey = `teacher:dash:overview:${tenantId}:${academicYearId || "all"}`;
     if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
-    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getMonthlyOverview(tenantId));
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getMonthlyOverview(tenantId, academicYearId));
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("Monthly overview error", { error: e.message, tenantId: req.user?.tenantId });
@@ -76,11 +79,12 @@ export const getOverview = async (req: any, res: Response) => {
 export const getRecent = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getRecentTeachers(tenantId);
+    const data = await getRecentTeachers(tenantId, academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("Recent teachers error", { error: e.message, tenantId: req.user?.tenantId });
@@ -92,12 +96,13 @@ export const getRecent = async (req: any, res: Response) => {
 export const getLeaves = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const leaves = await prisma.leave?.findMany?.({
-      where: { tenantId, isDeleted: false },
+      where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: {

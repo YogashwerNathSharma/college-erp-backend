@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 import { useNavigate } from "react-router-dom";
+import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
   UserCog, Users, UserCheck, Clock,
   BookOpen, Calendar,
@@ -92,6 +93,7 @@ function EmptyChartPlaceholder({ message }: { message?: string }) {
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
+  const { selectedAcademicYearId, loading: academicYearLoading } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<TeacherStats>({
     totalTeachers: 0,
@@ -120,8 +122,10 @@ export default function TeacherDashboard() {
     } catch {
       // Fallback: don't force refresh
     }
-    fetchDashboardData(isPageRefresh);
-  }, []);
+    if (!academicYearLoading && selectedAcademicYearId) {
+      fetchDashboardData(isPageRefresh);
+    }
+  }, [academicYearLoading, selectedAcademicYearId]);
 
   const fetchDashboardData = async (refresh: boolean = false) => {
     setLoading(true);
@@ -130,8 +134,8 @@ export default function TeacherDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       // ⚡ PERF: Pass refresh=true to bust 30-min backend cache
-      const url = refresh ? "/api/teacher/dashboard?refresh=true" : "/api/teacher/dashboard";
-      const res = await axios.get(getFullUrl(url), { headers });
+      const params = { academicYearId: selectedAcademicYearId, ...(refresh ? { refresh: "true" } : {}) };
+      const res = await axios.get(getFullUrl("/api/teacher/dashboard"), { headers, params });
       const data = res.data?.data || res.data;
 
       setStats(data.stats || {

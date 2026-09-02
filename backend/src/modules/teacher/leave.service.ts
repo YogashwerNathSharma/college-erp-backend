@@ -9,7 +9,7 @@ import { getPagination, buildPaginationMeta } from "../../utils/pagination";
 export const applyLeave = async (data: any, tenantId: string) => {
   // Validate teacher
   const teacher = await prisma.teacher.findFirst({
-    where: { id: data.teacherId, tenantId, isDeleted: false },
+    where: { id: data.teacherId, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
   });
 
   if (!teacher) {
@@ -74,6 +74,8 @@ export const getLeaves = async (query: any, tenantId: string) => {
     isDeleted: false,
   };
 
+  if (query.academicYearId) whereClause.academicYearId = query.academicYearId;
+
   if (query.teacherId) {
     whereClause.teacherId = query.teacherId;
   }
@@ -108,8 +110,8 @@ export const getLeaves = async (query: any, tenantId: string) => {
 //////////////////////////////////////////////////////
 // GET LEAVE STATS
 //////////////////////////////////////////////////////
-export const getLeaveStats = async (tenantId: string, teacherId?: string) => {
-  const whereBase: any = { tenantId, isDeleted: false };
+export const getLeaveStats = async (tenantId: string, teacherId?: string, academicYearId?: string) => {
+  const whereBase: any = { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) };
   if (teacherId) whereBase.teacherId = teacherId;
 
   const [total, approved, pending, rejected] = await Promise.all([
@@ -129,10 +131,11 @@ export const updateLeaveStatus = async (
   id: string,
   status: "APPROVED" | "REJECTED",
   approvedBy: string,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const leave = await prisma.leave.findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
   });
 
   if (!leave) {
@@ -154,9 +157,9 @@ export const updateLeaveStatus = async (
 //////////////////////////////////////////////////////
 // CANCEL / DELETE LEAVE
 //////////////////////////////////////////////////////
-export const cancelLeave = async (id: string, tenantId: string) => {
+export const cancelLeave = async (id: string, tenantId: string, academicYearId?: string) => {
   const leave = await prisma.leave.findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
   });
 
   if (!leave) {

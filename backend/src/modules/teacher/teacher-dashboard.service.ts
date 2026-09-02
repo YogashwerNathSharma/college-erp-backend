@@ -7,13 +7,13 @@ import logger from "../../config/logger";
 // The controller simply calls this function.
 //////////////////////////////////////////////////////
 
-export const getTeacherDashboardData = async (tenantId: string) => {
+export const getTeacherDashboardData = async (tenantId: string, academicYearId?: string) => {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // ─── Fetch all active teachers with leave info in ONE query ───
   const teachers = await prisma.teacher.findMany({
-    where: { tenantId, isDeleted: false },
+    where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     select: {
       id: true,
       name: true,
@@ -120,6 +120,7 @@ export const getTeacherDashboardData = async (tenantId: string) => {
     const pendingSalaries = await prisma.teacherSalary.findMany({
       where: {
         tenantId,
+        ...(academicYearId ? { academicYearId } : {}),
         month: currentMonth,
         year: currentYear,
         status: "PENDING",

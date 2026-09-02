@@ -36,7 +36,7 @@ export const getAll = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getLeaves(req.query, tenantId);
+    const data = await getLeaves({ ...req.query, academicYearId: (req as any).academicYearId || req.query.academicYearId }, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("GET LEAVES ERROR:", e);
@@ -53,7 +53,7 @@ export const stats = async (req: any, res: Response) => {
     }
 
     const teacherId = req.query.teacherId as string | undefined;
-    const data = await getLeaveStats(tenantId, teacherId);
+    const data = await getLeaveStats(tenantId, teacherId, (req as any).academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("LEAVE STATS ERROR:", e);
@@ -77,7 +77,7 @@ export const approve = async (req: any, res: Response) => {
       return res.status(400).json({ success: false, message: "Invalid status" });
     }
 
-    const data = await updateLeaveStatus(id, status, userId, tenantId);
+    const data = await updateLeaveStatus(id, status, userId, tenantId, (req as any).academicYearId);
     return res.json({ success: true, data });
   } catch (e: any) {
     logger.error("APPROVE LEAVE ERROR:", e);
@@ -95,7 +95,7 @@ export const remove = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    await cancelLeave(id, tenantId);
+    await cancelLeave(id, tenantId, (req as any).academicYearId);
     return res.json({ success: true, message: "Leave cancelled successfully" });
   } catch (e: any) {
     logger.error("CANCEL LEAVE ERROR:", e);

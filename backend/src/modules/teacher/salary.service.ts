@@ -9,7 +9,7 @@ import { getPagination, buildPaginationMeta } from "../../utils/pagination";
 export const createSalary = async (data: any, tenantId: string) => {
   // Validate teacher
   const teacher = await prisma.teacher.findFirst({
-    where: { id: data.teacherId, tenantId, isDeleted: false },
+    where: { id: data.teacherId, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
   });
 
   if (!teacher) {
@@ -24,6 +24,7 @@ export const createSalary = async (data: any, tenantId: string) => {
       year: data.year,
       tenantId,
       isDeleted: false,
+      ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}),
     },
   });
 
@@ -75,6 +76,7 @@ export const getSalaries = async (query: any, tenantId: string) => {
     isDeleted: false,
   };
 
+  if (query.academicYearId) whereClause.academicYearId = query.academicYearId;
   if (query.teacherId) whereClause.teacherId = query.teacherId;
   if (query.month) whereClause.month = parseInt(query.month);
   if (query.year) whereClause.year = parseInt(query.year);
@@ -106,7 +108,8 @@ export const getPayslip = async (
   teacherId: string,
   month: number,
   year: number,
-  tenantId: string
+  tenantId: string,
+  academicYearId?: string
 ) => {
   const salary = await prisma.teacherSalary.findFirst({
     where: {
@@ -115,6 +118,7 @@ export const getPayslip = async (
       year,
       tenantId,
       isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
     },
     include: {
       teacher: { select: { id: true, name: true, email: true, phone: true } },
@@ -131,9 +135,9 @@ export const getPayslip = async (
 //////////////////////////////////////////////////////
 // UPDATE SALARY
 //////////////////////////////////////////////////////
-export const updateSalary = async (id: string, data: any, tenantId: string) => {
+export const updateSalary = async (id: string, data: any, tenantId: string, academicYearId?: string) => {
   const existing = await prisma.teacherSalary.findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
   });
 
   if (!existing) {

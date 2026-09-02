@@ -61,6 +61,7 @@ export const create = async (req: any, res: Response) => {
     }
 
     const data = parseFormArrays({ ...req.body });
+    data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
     if (req.file) {
       data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -83,7 +84,7 @@ export const getAll = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const data = await getTeachers(req.query, tenantId);
+    const data = await getTeachers({ ...req.query, academicYearId: (req as any).academicYearId || req.query.academicYearId }, tenantId);
     return res.json({ success: true, data });
   } catch (e: any) {
     return res.status(500).json({ success: false, message: e.message });
@@ -101,7 +102,7 @@ export const getById = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const teacher = await getTeacherById(id, tenantId);
+    const teacher = await getTeacherById(id, tenantId, (req as any).academicYearId);
     if (!teacher) {
       return res.status(404).json({ success: false, message: "Teacher not found" });
     }
@@ -124,6 +125,7 @@ export const update = async (req: any, res: Response) => {
     }
 
     const data = parseFormArrays({ ...req.body });
+    data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
     if (req.file) {
       data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -148,6 +150,7 @@ export const partialUpdate = async (req: any, res: Response) => {
     }
 
     const data = parseFormArrays({ ...req.body });
+    data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
     if (req.file) {
       data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -171,7 +174,7 @@ export const remove = async (req: any, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    await deleteTeacher(id, tenantId);
+    await deleteTeacher(id, tenantId, (req as any).academicYearId);
     return res.json({ success: true, message: "Teacher deleted successfully" });
   } catch (e: any) {
     return res.status(400).json({ success: false, message: e.message });
@@ -188,21 +191,22 @@ export const dashboard = async (req: any, res: any) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
+    const academicYearId = (req as any).academicYearId as string | undefined;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Base counts
     const [total, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
-      prisma.teacher.count({ where: { tenantId, isDeleted: false } }),
-      prisma.leave.count({ where: { tenantId, status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false, createdAt: { gte: startOfMonth } } }),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "MALE" } }),
-      prisma.teacher.count({ where: { tenantId, isDeleted: false, gender: "FEMALE" } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) } }),
+      prisma.leave.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), createdAt: { gte: startOfMonth } } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), gender: "MALE" } }),
+      prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), gender: "FEMALE" } }),
     ]);
 
     // Department distribution
     const teachers = await prisma.teacher.findMany({
-      where: { tenantId, isDeleted: false },
+      where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
       select: { departmentId: true, createdAt: true },
     }) as any[];
 
@@ -252,13 +256,13 @@ export const dashboard = async (req: any, res: any) => {
     try {
       const onLeaveTeachers = await prisma.teacher.findMany({
         where: {
-          tenantId, isDeleted: false,
+          tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}),
           leaves: { some: { status: "APPROVED", startDate: { lte: now }, endDate: { gte: now } } },
         },
         select: {
           id: true, name: true, departmentId: true,
           leaves: {
-            where: { status: "APPROVED", startDate: { lte: now }, endDate: { gte: now } },
+            where: { isDeleted: false, ...(academicYearId ? { academicYearId } : {}), status: "APPROVED", startDate: { lte: now }, endDate: { gte: now } },
             select: { leaveType: true, startDate: true, endDate: true, status: true },
             take: 1,
           },
@@ -278,7 +282,7 @@ export const dashboard = async (req: any, res: any) => {
     let upcomingSalary: any[] = [];
     try {
       const salaries = await prisma.teacherSalary.findMany({
-        where: { tenantId, month: now.getMonth() + 1, year: now.getFullYear(), status: "PENDING" },
+        where: { tenantId, ...(academicYearId ? { academicYearId } : {}), month: now.getMonth() + 1, year: now.getFullYear(), status: "PENDING" },
         select: {
           id: true, basicSalary: true, totalDeductions: true, netSalary: true,
           teacher: { select: { name: true, departmentId: true } },

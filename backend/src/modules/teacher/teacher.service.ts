@@ -12,6 +12,7 @@ export const createTeacher = async (data: any, tenantId: string) => {
       email: data.email,
       tenantId,
       isDeleted: false,
+      ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}),
     },
   });
 
@@ -119,6 +120,8 @@ export const getTeachers = async (query: any, tenantId: string) => {
     isDeleted: false,
   };
 
+  if (query.academicYearId) whereClause.academicYearId = query.academicYearId;
+
   // Search filter
   if (search) {
     whereClause.OR = [
@@ -181,12 +184,13 @@ export const getTeachers = async (query: any, tenantId: string) => {
 //////////////////////////////////////////////////////
 // GET TEACHER BY ID
 //////////////////////////////////////////////////////
-export const getTeacherById = async (id: string, tenantId: string) => {
+export const getTeacherById = async (id: string, tenantId: string, academicYearId?: string) => {
   const teacher = await (prisma.teacher.findFirst as any)({
     where: {
       id,
       tenantId,
       isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
     },
     include: {
       subjects: {
@@ -201,7 +205,7 @@ export const getTeacherById = async (id: string, tenantId: string) => {
   }).catch(async () => {
     // Fallback if include fails due to orphaned relations
     return prisma.teacher.findFirst({
-      where: { id, tenantId, isDeleted: false },
+      where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     });
   });
 
@@ -228,7 +232,7 @@ export const updateTeacher = async (
 ) => {
   // Check teacher exists
   const existing = await prisma.teacher.findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
   });
 
   if (!existing) {
@@ -243,6 +247,7 @@ export const updateTeacher = async (
         tenantId,
         isDeleted: false,
         id: { not: id },
+        ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}),
       },
     });
 
@@ -341,9 +346,9 @@ export const updateTeacher = async (
 //////////////////////////////////////////////////////
 // DELETE TEACHER (soft)
 //////////////////////////////////////////////////////
-export const deleteTeacher = async (id: string, tenantId: string) => {
+export const deleteTeacher = async (id: string, tenantId: string, academicYearId?: string) => {
   const existing = await prisma.teacher.findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
   });
 
   if (!existing) {

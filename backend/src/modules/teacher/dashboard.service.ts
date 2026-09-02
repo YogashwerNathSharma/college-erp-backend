@@ -5,11 +5,11 @@ import prisma from "../../utils/prisma";
 //////////////////////////////////////////////////////
 // GET DASHBOARD STATS
 //////////////////////////////////////////////////////
-export const getDashboardStats = async (tenantId: string) => {
+export const getDashboardStats = async (tenantId: string, academicYearId?: string) => {
   // ⚡ PERF: Removed duplicate query (total === active was identical)
   const [total, male, female] = await Promise.all([
     prisma.teacher.count({
-      where: { tenantId, isDeleted: false },
+      where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     }),
     prisma.teacher.count({
       where: { tenantId, isDeleted: false, gender: "MALE" },
@@ -30,11 +30,11 @@ export const getDashboardStats = async (tenantId: string) => {
 //////////////////////////////////////////////////////
 // GET DEPARTMENT CHART DATA (Teachers by Subject/Department)
 //////////////////////////////////////////////////////
-export const getDepartmentChart = async (tenantId: string) => {
+export const getDepartmentChart = async (tenantId: string, academicYearId?: string) => {
   const teacherSubjects = await prisma.teacherSubject.findMany({
     where: {
       isDeleted: false,
-      teacher: { tenantId, isDeleted: false },
+      teacher: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     },
     include: {
       subject: { select: { name: true } },
@@ -59,13 +59,14 @@ export const getDepartmentChart = async (tenantId: string) => {
 //////////////////////////////////////////////////////
 // GET MONTHLY OVERVIEW (Teachers added per month)
 //////////////////////////////////////////////////////
-export const getMonthlyOverview = async (tenantId: string) => {
+export const getMonthlyOverview = async (tenantId: string, academicYearId?: string) => {
   const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
   const teachers = await prisma.teacher.findMany({
     where: {
       tenantId,
       isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
       createdAt: { gte: startOfYear },
     },
     select: { createdAt: true },
@@ -87,9 +88,9 @@ export const getMonthlyOverview = async (tenantId: string) => {
 //////////////////////////////////////////////////////
 // GET RECENT TEACHERS (last 5)
 //////////////////////////////////////////////////////
-export const getRecentTeachers = async (tenantId: string) => {
+export const getRecentTeachers = async (tenantId: string, academicYearId?: string) => {
   const teachers = await prisma.teacher.findMany({
-    where: { tenantId, isDeleted: false },
+    where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     include: {
       subjects: {
         where: { isDeleted: false },

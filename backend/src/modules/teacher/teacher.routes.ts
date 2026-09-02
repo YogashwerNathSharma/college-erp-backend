@@ -17,6 +17,7 @@ router.post(
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  resolveAcademicYear,
   checkLimit("teachers"),
   upload.single("photo"),
   create
@@ -34,6 +35,7 @@ router.put(
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  resolveAcademicYear,
   upload.single("photo"),
   update
 );
@@ -44,6 +46,7 @@ router.patch(
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  resolveAcademicYear,
   upload.single("photo"),
   partialUpdate
 );

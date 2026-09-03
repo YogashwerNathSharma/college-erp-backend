@@ -9,7 +9,9 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// Exact class-section mapping from your Excel file
+// School class-section mapping for 2026-27: PNC through VIII.
+// IX was accidentally included in the previous seed and is not part of
+// the current school's student/class range.
 const CLASS_SECTIONS: Record<string, string[]> = {
   "PNC":  ["A", "B", "C", "D", "E"],
   "LKG":  ["A", "B", "C", "D", "E", "F"],
@@ -22,7 +24,6 @@ const CLASS_SECTIONS: Record<string, string[]> = {
   "VI":   ["A", "B", "C", "D"],
   "VII":  ["A", "B", "C", "D"],
   "VIII": ["A", "B", "C", "D"],
-  "IX":   ["A", "B", "C", "D"],
 };
 
 const ACADEMIC_YEAR_NAME = "2026-27";
@@ -32,7 +33,6 @@ const ACADEMIC_YEAR_END = new Date("2027-03-31");
 async function main() {
   console.log(`\n🚀 SEED: Creating Classes & Sections for ${ACADEMIC_YEAR_NAME}\n`);
 
-  // ─── Step 1: Find tenant ─────────────────────────────────────────
   const tenants = await prisma.tenant.findMany({ where: { isDeleted: false } });
   if (!tenants.length) {
     console.error("❌ No tenant found in database!");
@@ -41,7 +41,6 @@ async function main() {
   const tenant = tenants[0];
   console.log(`✅ Tenant: ${tenant.name} (${tenant.id})`);
 
-  // ─── Step 2: Find or Create Academic Year 2026-27 ─────────────────
   let academicYear = await prisma.academicYear.findFirst({
     where: { tenantId: tenant.id, name: ACADEMIC_YEAR_NAME },
   });
@@ -60,7 +59,6 @@ async function main() {
     });
     console.log(`  ✅ Created Academic Year: ${ACADEMIC_YEAR_NAME}`);
 
-    // Deactivate other academic years
     await prisma.academicYear.updateMany({
       where: { tenantId: tenant.id, id: { not: academicYear.id } },
       data: { isActive: false, isCurrent: false },
@@ -70,14 +68,12 @@ async function main() {
 
   console.log(`✅ Academic Year: ${academicYear.name} (${academicYear.id})\n`);
 
-  // ─── Step 3: Create Classes & Sections ──────────────────────────────
   let classesCreated = 0;
   let sectionsCreated = 0;
   let classesSkipped = 0;
   let sectionsSkipped = 0;
 
   for (const [className, sections] of Object.entries(CLASS_SECTIONS)) {
-    // Check if class already exists
     let cls = await prisma.class.findFirst({
       where: {
         tenantId: tenant.id,
@@ -113,7 +109,6 @@ async function main() {
       console.log(`  ⏭️  Class exists: ${className}`);
     }
 
-    // Create sections
     for (const sectionName of sections) {
       let section = await prisma.section.findFirst({
         where: {

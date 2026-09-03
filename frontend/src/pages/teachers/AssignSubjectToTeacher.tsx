@@ -98,9 +98,6 @@ const AssignSubjectToTeacher = () => {
       const teacherSubjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
       const subjectById = new Map(yearSubjects.map((s: any) => [s.id, s]));
 
-      // A teacher subject is stored by subjectId. The class must therefore be
-      // resolved from the subject's classId; do not expect classId on the
-      // flattened teacher.subjects response.
       const existing: Assignment[] = teacherSubjects
         .map((sub: any, i: number) => {
           const subjectId = sub.id || sub.subjectId || sub.subject?.id || "";
@@ -117,9 +114,6 @@ const AssignSubjectToTeacher = () => {
         })
         .filter((a: Assignment) => a.subjectId && a.classId);
 
-      // Keep one row per actual teacher-subject assignment. This is important
-      // for class-specific subjects such as Science (VII), Science (VIII) and
-      // S.St (VIII); classIds must never be paired by array position.
       setAssignments(existing);
     } catch (err) {
       console.error("Failed to load teacher assignments", err);
@@ -127,7 +121,7 @@ const AssignSubjectToTeacher = () => {
     }
   };
 
-  const addRow = () => setAssignments((prev) => [...prev, { id: `new-${Date.now()}`, classId: "", subjectId: "", type: "Theory" }]);
+  const addRow = () => setAssignments((prev) => [...prev, { id: `new-${Date.now()}-${Math.random()}`, classId: "", subjectId: "", type: "Theory" }]);
   const removeRow = (id: string) => setAssignments((prev) => prev.filter((a) => a.id !== id));
 
   const updateRow = (id: string, field: keyof Assignment, value: string) => {
@@ -142,11 +136,27 @@ const AssignSubjectToTeacher = () => {
     if (assignments.length === 0) return toast.error("Please add at least one assignment");
     if (assignments.some((a) => !a.classId || !a.subjectId)) return toast.error("Please fill all fields in each row");
 
+    // Send multipart/form-data because the teacher update route uses multer.
+    // Every selected subject is sent independently; the backend resolves its
+    // authoritative classId from the database. This allows multiple subjects
+    // for the same class without relying on array-position pairing.
+    const duplicatePairs = new Set<string>();
+    for (const row of assignments) {
+      const key = `${row.classId}:${row.subjectId}`;
+      if (duplicatePairs.has(key)) return toast.error("The same subject cannot be assigned twice to the same class");
+      duplicatePairs.add(key);
+    }
+
     setLoading(true);
     try {
-      const subjectIds = [...new Set(assignments.map((a) => a.subjectId))];
-      const classIds = [...new Set(assignments.map((a) => a.classId))];
-      const res = await axios.put(`${API}/teacher/${selectedTeacher}`, { subjectIds, classIds, academicYearId: selectedYear }, auth());
+      const formData = new FormData();
+      formData.append("academicYearId", selectedYear);
+      for (const row of assignments) {
+        formData.append("subjectIds[]", row.subjectId);
+        formData.append("classIds[]", row.classId);
+      }
+
+      const res = await axios.put(`${API}/teacher/${selectedTeacher}`, formData, auth());
       if (res.data?.success) {
         toast.success("Assignments saved successfully");
         await loadExistingAssignments();

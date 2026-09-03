@@ -130,21 +130,24 @@ const AssignSubjectToTeacher = () => {
     }
   };
 
+  const selectClass = "w-full min-w-0 h-11 px-3 bg-transparent border border-slate-500 rounded-lg text-sm text-inherit outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500";
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Assign Subject to Teacher</h1>
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+    <div className="w-full min-w-0 p-3 sm:p-4 md:p-6 overflow-x-hidden">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Assign Subject to Teacher</h1>
+
+      <div className="w-full min-w-0 rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Teacher <span className="text-red-500">*</span></label>
-            <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium mb-1">Teacher <span className="text-red-500">*</span></label>
+            <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className={selectClass}>
               <option value="">Select Teacher</option>
               {teachers.map((t: any) => <option key={t.id} value={t.id}>{t.name || `${t.firstName || ""} ${t.lastName || ""}`.trim()}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year <span className="text-red-500">*</span></label>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none">
+          <div className="min-w-0">
+            <label className="block text-sm font-medium mb-1">Academic Year <span className="text-red-500">*</span></label>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className={selectClass}>
               <option value="">Select Year</option>
               {academicYears.map((y: any) => <option key={y.id} value={y.id}>{y.name}</option>)}
             </select>
@@ -153,26 +156,83 @@ const AssignSubjectToTeacher = () => {
       </div>
 
       {selectedTeacher && selectedYear && (
-        <div className="bg-white rounded-lg shadow">
-          <div className="overflow-x-auto">
+        <div className="w-full min-w-0 rounded-lg shadow overflow-hidden">
+          {/* Desktop/table layout */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full table-auto">
-              <thead className="bg-gray-50 border-b"><tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Class</th><th className="px-4 py-3 text-left">Subject</th><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
+              <thead className="border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Class</th>
+                  <th className="px-4 py-3 text-left">Subject</th>
+                  <th className="px-4 py-3 text-left">Type</th>
+                  <th className="px-4 py-3 text-center">Action</th>
+                </tr>
+              </thead>
               <tbody>
                 {assignments.map((row, index) => (
                   <tr key={row.id} className="border-b">
                     <td className="px-4 py-3">{index + 1}</td>
-                    <td className="px-4 py-3"><select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className="w-full px-3 py-1.5 border rounded-lg text-sm"><option value="">Select Class</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
-                    <td className="px-4 py-3"><select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className="w-full px-3 py-1.5 border rounded-lg text-sm"><option value="">Select Subject</option>{getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
-                    <td className="px-4 py-3"><select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className="w-full px-3 py-1.5 border rounded-lg text-sm"><option value="Theory">Theory</option><option value="Practical">Practical</option></select></td>
-                    <td className="px-4 py-3 text-center"><button type="button" onClick={() => removeRow(row.id)} className="p-2 text-red-600 rounded-lg"><FiTrash2 size={16} /></button></td>
+                    <td className="px-4 py-3"><select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}><option value="">Select Class</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
+                    <td className="px-4 py-3"><select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}><option value="">Select Subject</option>{getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
+                    <td className="px-4 py-3"><select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}><option value="Theory">Theory</option><option value="Practical">Practical</option></select></td>
+                    <td className="px-4 py-3 text-center"><button type="button" onClick={() => removeRow(row.id)} className="p-2 text-red-500 rounded-lg"><FiTrash2 size={18} /></button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center p-4 border-t">
-            <button type="button" onClick={addRow} className="flex items-center gap-2 px-4 py-2 text-primary-600 border border-primary-600 rounded-lg"><FiPlus size={16} /> Add More</button>
-            <button type="button" onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-50"><FiSave size={16} /> {loading ? "Saving..." : "Save Assignment"}</button>
+
+          {/* Mobile/card layout: prevents the 5-column table from being squeezed off-screen */}
+          <div className="md:hidden p-3 space-y-3">
+            {assignments.length === 0 && (
+              <div className="rounded-lg border border-slate-600 p-4 text-center text-sm opacity-80">
+                No assignments yet. Tap “Add More” to create one.
+              </div>
+            )}
+            {assignments.map((row, index) => (
+              <div key={row.id} className="rounded-xl border border-slate-600 p-3 space-y-3 overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">Assignment {index + 1}</span>
+                  <button type="button" onClick={() => removeRow(row.id)} aria-label={`Remove assignment ${index + 1}`} className="p-2 text-red-500 rounded-lg">
+                    <FiTrash2 size={18} />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Class</label>
+                  <select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}>
+                    <option value="">Select Class</option>
+                    {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Subject</label>
+                  <select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}>
+                    <option value="">Select Subject</option>
+                    {getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Type</label>
+                  <select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}>
+                    <option value="Theory">Theory</option>
+                    <option value="Practical">Practical</option>
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-between p-3 sm:p-4 border-t">
+            <button type="button" onClick={addRow} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 border border-primary-600 rounded-lg">
+              <FiPlus size={18} /> Add More
+            </button>
+            <button type="button" onClick={handleSave} disabled={loading} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-5 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-50">
+              <FiSave size={18} /> {loading ? "Saving..." : "Save Assignment"}
+            </button>
           </div>
         </div>
       )}

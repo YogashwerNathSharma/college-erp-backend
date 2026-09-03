@@ -21,7 +21,7 @@ const resolveTeacherSubjectRows = async (
 
   const uniqueSubjectIds = [...new Set(pairs.map((p) => p.subjectId))];
   const selectedClassIds = new Set((classIds || []).filter(Boolean));
-  const subjects = await db.subject.findMany({
+  const subjects: Array<{ id: string; classId: string; academicYearId: string }> = await db.subject.findMany({
     where: { id: { in: uniqueSubjectIds }, tenantId, ...(academicYearId ? { academicYearId } : {}) },
     select: { id: true, classId: true, academicYearId: true },
   });
@@ -30,7 +30,7 @@ const resolveTeacherSubjectRows = async (
     throw new Error("One or more selected subjects do not belong to the selected academic year");
   }
 
-  const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
+  const subjectMap = new Map<string, { id: string; classId: string; academicYearId: string }>(subjects.map((s) => [s.id, s]));
   const seen = new Set<string>();
   return pairs.map((pair) => {
     const subject = subjectMap.get(pair.subjectId);
@@ -177,8 +177,6 @@ export const updateTeacher = async (id: string, data: any, tenantId: string) => 
       academicYearId: yearId,
     } });
 
-    // An explicit assignment payload always replaces active subject rows.
-    // This also works when callers provide assignments without parallel arrays.
     if (data.subjectIds !== undefined || hasExactAssignments) {
       await tx.teacherSubject.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
       if (subjectIds.length) {

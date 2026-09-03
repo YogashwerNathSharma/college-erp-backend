@@ -2,11 +2,52 @@ import { getPagination } from "../../utils/pagination";
 import prisma from "../../utils/prisma";
 import { buildPaginationMeta } from "../../utils/pagination";
 
+// Build TeacherSubject rows from the database subject -> class relation.
+// The frontend may send unique classIds, but subjectIds must never be paired
+// with classIds by array position because a teacher can teach different
+// subjects in different classes.
+const resolveTeacherSubjectRows = async (
+  db: any,
+  teacherId: string,
+  subjectIds: string[],
+  classIds: string[],
+  tenantId: string,
+  academicYearId?: string
+) => {
+  const uniqueSubjectIds = [...new Set((subjectIds || []).filter(Boolean))];
+  const selectedClassIds = new Set((classIds || []).filter(Boolean));
+  if (!uniqueSubjectIds.length) return [];
+
+  const subjects = await db.subject.findMany({
+    where: {
+      id: { in: uniqueSubjectIds },
+      tenantId,
+      ...(academicYearId ? { academicYearId } : {}),
+    },
+    select: { id: true, classId: true, academicYearId: true },
+  });
+
+  if (subjects.length !== uniqueSubjectIds.length) {
+    throw new Error("One or more selected subjects do not belong to the selected academic year");
+  }
+
+  for (const subject of subjects) {
+    if (selectedClassIds.size && !selectedClassIds.has(subject.classId)) {
+      throw new Error("Selected subject and class do not match");
+    }
+  }
+
+  return subjects.map((subject: any) => ({
+    teacherId,
+    subjectId: subject.id,
+    classId: subject.classId,
+  }));
+};
+
 //////////////////////////////////////////////////////
 // CREATE TEACHER
 //////////////////////////////////////////////////////
 export const createTeacher = async (data: any, tenantId: string) => {
-  // 🔐 DUPLICATE CHECK (tenant-scoped, active teachers only)
   const existing = await prisma.teacher.findFirst({
     where: {
       email: data.email,
@@ -16,55 +57,30 @@ export const createTeacher = async (data: any, tenantId: string) => {
     },
   });
 
-  if (existing) {
-    throw new Error("Teacher already exists with this email");
-  }
+  if (existing) throw new Error("Teacher already exists with this email");
+  if (!data.academicYearId) throw new Error("Academic year is required");
 
-  // 🔐 VALIDATE ACADEMIC YEAR
-  if (!data.academicYearId) {
-    throw new Error("Academic year is required");
-  }
+  const year = await prisma.academicYear.findFirst({ where: { id: data.academicYearId, tenantId } });
+  if (!year) throw new Error("Invalid academic year");
 
-  const year = await prisma.academicYear.findFirst({
-    where: {
-      id: data.academicYearId,
-      tenantId,
-    },
-  });
-
-  if (!year) {
-    throw new Error("Invalid academic year");
-  }
-
-  // 🔐 VALIDATE SUBJECTS
   if (data.subjectIds?.length) {
     const subjects = await prisma.subject.findMany({
-      where: {
-        id: { in: data.subjectIds },
-        tenantId,
-      },
+      where: { id: { in: data.subjectIds }, tenantId, academicYearId: data.academicYearId },
     });
-
-    if (subjects.length !== data.subjectIds.length) {
-      throw new Error("Invalid subject(s)");
+    if (subjects.length !== [...new Set(data.subjectIds)].length) {
+      throw new Error("Invalid subject(s) for selected academic year");
     }
   }
 
-  // 🔐 VALIDATE CLASSES
   if (data.classIds?.length) {
     const classes = await prisma.class.findMany({
-      where: {
-        id: { in: data.classIds },
-        tenantId,
-      },
+      where: { id: { in: data.classIds }, tenantId, academicYearId: data.academicYearId },
     });
-
-    if (classes.length !== data.classIds.length) {
-      throw new Error("Invalid class(es)");
+    if (classes.length !== [...new Set(data.classIds)].length) {
+      throw new Error("Invalid class(es) for selected academic year");
     }
   }
 
-  // 🚀 TRANSACTION
   return await prisma.$transaction(async (tx) => {
     const teacher = await tx.teacher.create({
       data: {
@@ -83,23 +99,16 @@ export const createTeacher = async (data: any, tenantId: string) => {
       },
     });
 
-    // SUBJECTS
     if (data.subjectIds?.length) {
-      await tx.teacherSubject.createMany({
-        data: data.subjectIds.map((id: string) => ({
-          teacherId: teacher.id,
-          subjectId: id,
-        })),
-      });
+      const rows = await resolveTeacherSubjectRows(
+        tx, teacher.id, data.subjectIds, data.classIds || [], tenantId, data.academicYearId
+      );
+      if (rows.length) await tx.teacherSubject.createMany({ data: rows });
     }
 
-    // CLASSES
     if (data.classIds?.length) {
       await tx.teacherClass.createMany({
-        data: data.classIds.map((id: string) => ({
-          teacherId: teacher.id,
-          classId: id,
-        })),
+        data: [...new Set(data.classIds)].map((id: string) => ({ teacherId: teacher.id, classId: id })),
       });
     }
 
@@ -108,21 +117,14 @@ export const createTeacher = async (data: any, tenantId: string) => {
 };
 
 //////////////////////////////////////////////////////
-// GET TEACHERS (with search + pagination)
+// GET TEACHERS
 //////////////////////////////////////////////////////
 export const getTeachers = async (query: any, tenantId: string) => {
   const { skip, limit, page } = getPagination(query);
-
   const search = query.search?.trim() || "";
-
-  const whereClause: any = {
-    tenantId,
-    isDeleted: false,
-  };
-
+  const whereClause: any = { tenantId, isDeleted: false };
   if (query.academicYearId) whereClause.academicYearId = query.academicYearId;
 
-  // Search filter
   if (search) {
     whereClause.OR = [
       { name: { contains: search, mode: "insensitive" } },
@@ -138,47 +140,26 @@ export const getTeachers = async (query: any, tenantId: string) => {
     (prisma.teacher.findMany as any)({
       where: whereClause,
       include: {
-        subjects: {
-          where: { isDeleted: false },
-          include: { subject: true },
-        },
-        classes: {
-          where: { isDeleted: false },
-          include: { class: true },
-        },
+        subjects: { where: { isDeleted: false }, include: { subject: true } },
+        classes: { where: { isDeleted: false }, include: { class: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
-    }).catch(async () => {
-      // Fallback: if include fails due to orphaned relations, fetch without includes
-      return prisma.teacher.findMany({
-        where: whereClause,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      });
-    }),
-
-    prisma.teacher.count({
-      where: whereClause,
-    }),
+    }).catch(async () => prisma.teacher.findMany({ where: whereClause, orderBy: { createdAt: "desc" }, skip, take: limit })),
+    prisma.teacher.count({ where: whereClause }),
   ]);
 
   const data = rawTeachers.map((t: any) => ({
     ...t,
-    subjects: (t.subjects || [])
-      .filter((s: any) => s?.subject != null)
-      .map((s: any) => s.subject),
-    classes: (t.classes || [])
-      .filter((c: any) => c?.class != null)
-      .map((c: any) => c.class),
+    subjects: (t.subjects || []).filter((s: any) => s?.subject != null).map((s: any) => ({
+      ...s.subject,
+      classId: s.classId,
+    })),
+    classes: (t.classes || []).filter((c: any) => c?.class != null).map((c: any) => c.class),
   }));
 
-  return {
-    data,
-    meta: buildPaginationMeta(total, page, limit),
-  };
+  return { data, meta: buildPaginationMeta(total, page, limit) };
 };
 
 //////////////////////////////////////////////////////
@@ -186,114 +167,68 @@ export const getTeachers = async (query: any, tenantId: string) => {
 //////////////////////////////////////////////////////
 export const getTeacherById = async (id: string, tenantId: string, academicYearId?: string) => {
   const teacher = await (prisma.teacher.findFirst as any)({
-    where: {
-      id,
-      tenantId,
-      isDeleted: false,
-      ...(academicYearId ? { academicYearId } : {}),
-    },
+    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
     include: {
-      subjects: {
-        where: { isDeleted: false },
-        include: { subject: true },
-      },
-      classes: {
-        where: { isDeleted: false },
-        include: { class: true },
-      },
+      subjects: { where: { isDeleted: false }, include: { subject: true } },
+      classes: { where: { isDeleted: false }, include: { class: true } },
     },
-  }).catch(async () => {
-    // Fallback if include fails due to orphaned relations
-    return prisma.teacher.findFirst({
-      where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
-    });
-  });
+  }).catch(async () => prisma.teacher.findFirst({ where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) } }));
 
   if (!teacher) return null;
 
   return {
     ...teacher,
+    // Keep classId from TeacherSubject. It is the authoritative class for
+    // this exact teacher-subject assignment.
     subjects: (teacher.subjects || [])
       .filter((s: any) => s?.subject != null)
-      .map((s: any) => s.subject),
-    classes: (teacher.classes || [])
-      .filter((c: any) => c?.class != null)
-      .map((c: any) => c.class),
+      .map((s: any) => ({ ...s.subject, classId: s.classId })),
+    classes: (teacher.classes || []).filter((c: any) => c?.class != null).map((c: any) => c.class),
   };
 };
 
 //////////////////////////////////////////////////////
 // UPDATE TEACHER
 //////////////////////////////////////////////////////
-export const updateTeacher = async (
-  id: string,
-  data: any,
-  tenantId: string
-) => {
-  // Check teacher exists
+export const updateTeacher = async (id: string, data: any, tenantId: string) => {
   const existing = await prisma.teacher.findFirst({
     where: { id, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
   });
+  if (!existing) throw new Error("Teacher not found");
 
-  if (!existing) {
-    throw new Error("Teacher not found");
-  }
-
-  // Check email uniqueness (excluding self)
   if (data.email && data.email !== existing.email) {
     const emailExists = await prisma.teacher.findFirst({
-      where: {
-        email: data.email,
-        tenantId,
-        isDeleted: false,
-        id: { not: id },
-        ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}),
-      },
+      where: { email: data.email, tenantId, isDeleted: false, id: { not: id }, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
     });
-
-    if (emailExists) {
-      throw new Error("Email already in use by another teacher");
-    }
+    if (emailExists) throw new Error("Email already in use by another teacher");
   }
 
-  // Validate academic year
   if (data.academicYearId) {
-    const year = await prisma.academicYear.findFirst({
-      where: { id: data.academicYearId, tenantId },
-    });
+    const year = await prisma.academicYear.findFirst({ where: { id: data.academicYearId, tenantId } });
     if (!year) throw new Error("Invalid academic year");
   }
 
-  // Validate subjects
   if (data.subjectIds?.length) {
     const subjects = await prisma.subject.findMany({
-      where: { id: { in: data.subjectIds }, tenantId },
+      where: { id: { in: data.subjectIds }, tenantId, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
     });
-    if (subjects.length !== data.subjectIds.length) {
-      throw new Error("Invalid subject(s)");
-    }
+    if (subjects.length !== [...new Set(data.subjectIds)].length) throw new Error("Invalid subject(s) for selected academic year");
   }
 
-  // Validate classes
   if (data.classIds?.length) {
     const classes = await prisma.class.findMany({
-      where: { id: { in: data.classIds }, tenantId },
+      where: { id: { in: data.classIds }, tenantId, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) },
     });
-    if (classes.length !== data.classIds.length) {
-      throw new Error("Invalid class(es)");
-    }
+    if (classes.length !== [...new Set(data.classIds)].length) throw new Error("Invalid class(es) for selected academic year");
   }
 
   return await prisma.$transaction(async (tx) => {
-    // Update teacher basic info
     const teacher = await tx.teacher.update({
       where: { id },
       data: {
         firstName: data.firstName || existing.firstName,
         lastName: data.lastName || existing.lastName,
-        name: data.firstName && data.lastName
-          ? `${data.firstName} ${data.lastName}`
-          : existing.name,
+        name: data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : existing.name,
         email: data.email || existing.email,
         phone: data.phone || existing.phone,
         gender: data.gender !== undefined ? data.gender : existing.gender,
@@ -305,36 +240,21 @@ export const updateTeacher = async (
       },
     });
 
-    // ✅ Replace subjects (soft-delete old, create new)
     if (data.subjectIds !== undefined) {
-      await tx.teacherSubject.updateMany({
-        where: { teacherId: id, isDeleted: false },
-        data: { isDeleted: true, deletedAt: new Date() },
-      });
-
+      await tx.teacherSubject.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
       if (data.subjectIds.length > 0) {
-        await tx.teacherSubject.createMany({
-          data: data.subjectIds.map((subId: string) => ({
-            teacherId: id,
-            subjectId: subId,
-          })),
-        });
+        const rows = await resolveTeacherSubjectRows(
+          tx, id, data.subjectIds, data.classIds || [], tenantId, data.academicYearId || existing.academicYearId
+        );
+        if (rows.length) await tx.teacherSubject.createMany({ data: rows });
       }
     }
 
-    // ✅ Replace classes (soft-delete old, create new)
     if (data.classIds !== undefined) {
-      await tx.teacherClass.updateMany({
-        where: { teacherId: id, isDeleted: false },
-        data: { isDeleted: true, deletedAt: new Date() },
-      });
-
+      await tx.teacherClass.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
       if (data.classIds.length > 0) {
         await tx.teacherClass.createMany({
-          data: data.classIds.map((clsId: string) => ({
-            teacherId: id,
-            classId: clsId,
-          })),
+          data: [...new Set(data.classIds)].map((clsId: string) => ({ teacherId: id, classId: clsId })),
         });
       }
     }
@@ -347,28 +267,12 @@ export const updateTeacher = async (
 // DELETE TEACHER (soft)
 //////////////////////////////////////////////////////
 export const deleteTeacher = async (id: string, tenantId: string, academicYearId?: string) => {
-  const existing = await prisma.teacher.findFirst({
-    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
-  });
-
-  if (!existing) {
-    throw new Error("Teacher not found");
-  }
+  const existing = await prisma.teacher.findFirst({ where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) } });
+  if (!existing) throw new Error("Teacher not found");
 
   await prisma.$transaction(async (tx) => {
-    await tx.teacher.update({
-      where: { id },
-      data: { isDeleted: true, deletedAt: new Date() },
-    });
-
-    await tx.teacherSubject.updateMany({
-      where: { teacherId: id, isDeleted: false },
-      data: { isDeleted: true, deletedAt: new Date() },
-    });
-
-    await tx.teacherClass.updateMany({
-      where: { teacherId: id, isDeleted: false },
-      data: { isDeleted: true, deletedAt: new Date() },
-    });
+    await tx.teacher.update({ where: { id }, data: { isDeleted: true, deletedAt: new Date() } });
+    await tx.teacherSubject.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
+    await tx.teacherClass.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
   });
 };

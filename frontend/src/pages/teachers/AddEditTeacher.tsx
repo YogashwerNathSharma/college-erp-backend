@@ -29,10 +29,15 @@ const AddEditTeacher = () => {
     const [classResult, subjectResult] = await Promise.allSettled([
       axios.get(getFullUrl("/api/class"), { ...authHeaders, params }), axios.get(getFullUrl("/api/subject"), { ...authHeaders, params }),
     ]);
-    if (classResult.status === "fulfilled") { const p = classResult.value.data; const cls = p?.data?.data || p?.data || p || []; setClasses(Array.isArray(cls) ? cls : []); }
-    else { console.error("Failed to fetch teacher form classes:", classResult.reason); setClasses([]); }
-    if (subjectResult.status === "fulfilled") { const p = subjectResult.value.data; const subs = p?.data?.data || p?.data || p || []; setAllSubjects(Array.isArray(subs) ? subs : []); }
-    else { console.error("Failed to fetch teacher form subjects:", subjectResult.reason); setAllSubjects([]); }
+    if (classResult.status === "fulfilled") {
+      const p = classResult.value.data; const cls = p?.data?.data || p?.data || p || [];
+      setClasses(Array.isArray(cls) ? cls : []);
+    } else { console.error("Failed to fetch teacher form classes:", classResult.reason); setClasses([]); }
+    if (subjectResult.status === "fulfilled") {
+      const p = subjectResult.value.data; const subs = p?.data?.data || p?.data || p || [];
+      const normalized = (Array.isArray(subs) ? subs : []).map((s: any) => ({ ...s, classId: s.classId || s.class?.id || "" }));
+      setAllSubjects(normalized);
+    } else { console.error("Failed to fetch teacher form subjects:", subjectResult.reason); setAllSubjects([]); }
     if (classResult.status === "rejected" && subjectResult.status === "rejected") toast.error("Failed to load classes and subjects");
     else if (classResult.status === "rejected") toast.error("Failed to load classes");
   };
@@ -53,31 +58,37 @@ const AddEditTeacher = () => {
     if (!isEdit) { setSelectedClasses([]); setSelectedSubjects([]); }
   }, [academicYearId, isEdit]);
 
-  // On edit, the saved assignment IDs come from the database. Do not erase them
-  // while the academic-year subject list is loading.
+  // In edit mode, DB assignments are authoritative. Options are only the UI
+  // catalogue; they must never clear a saved assignment while loading.
   useEffect(() => {
     if (selectedClasses.length === 0) { setFilteredSubjects([]); if (!isEdit) setSelectedSubjects([]); return; }
     if (allSubjects.length === 0) return;
     const filtered = allSubjects.filter((s) => selectedClasses.includes(s.classId));
     setFilteredSubjects(filtered);
-    setSelectedSubjects((prev) => prev.filter((subjectId) => filtered.some((s) => s.id === subjectId)));
+    if (!isEdit) {
+      setSelectedSubjects((prev) => prev.filter((subjectId) => filtered.some((s) => s.id === subjectId)));
+    }
   }, [selectedClasses, allSubjects, isEdit]);
 
   const fetchTeacher = async () => {
     if (!id) return;
     setFetching(true);
     try {
-      const requestedYear = academicYearId || selectedAcademicYearId || undefined;
-      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), { ...authHeaders, params: { academicYearId: requestedYear } });
+      // The teacher's own academicYearId is authoritative for edit mode.
+      // Do not let a stale global-year selection load a different teacher record.
+      const lookupYear = selectedAcademicYearId || academicYearId || undefined;
+      const res = await axios.get(getFullUrl(`/api/teacher/${id}`), { ...authHeaders, params: lookupYear ? { academicYearId: lookupYear } : undefined });
       if (!res.data.success) throw new Error(res.data.message || "Teacher not found");
-      const t = res.data.data; const yearId = t.academicYearId || requestedYear || "";
+      const t = res.data.data; const yearId = t.academicYearId || lookupYear || "";
+      const rawSubjects = Array.isArray(t.subjects) ? t.subjects : [];
+      const teacherSubjects = rawSubjects.map((s: any) => s.id || s.subjectId || s.subject?.id).filter(Boolean);
+      const subjectClassIds = rawSubjects.map((s: any) => s.classId || s.class?.id || s.subject?.classId || s.subject?.class?.id).filter(Boolean);
       const teacherClasses = (t.classes || []).map((c: any) => c.id || c.classId || c.class?.id).filter(Boolean);
-      const teacherSubjects = (t.subjects || []).map((s: any) => s.id || s.subjectId || s.subject?.id).filter(Boolean);
+      const mergedClasses = [...new Set([...teacherClasses, ...subjectClassIds])];
       setFirstName(t.firstName || ""); setLastName(t.lastName || ""); setEmployeeId(t.employeeId || ""); setEmail(t.email || ""); setPhone(t.phone || ""); setGender(t.gender || ""); setDob(t.dob ? t.dob.split("T")[0] : ""); setMaritalStatus(t.maritalStatus || ""); setPhotoPreview(t.photoUrl || null);
       setAcademicYearId(yearId);
       await fetchOptions(yearId);
-      // Set these after options so the filtering effect cannot wipe valid DB assignments.
-      setSelectedClasses([...new Set(teacherClasses)]);
+      setSelectedClasses(mergedClasses);
       setSelectedSubjects([...new Set(teacherSubjects)]);
     } catch (err: any) { console.error("Failed to fetch teacher data:", err?.response?.data || err); toast.error(err?.response?.data?.message || "Failed to fetch teacher data"); navigate("/teachers"); }
     finally { setFetching(false); }

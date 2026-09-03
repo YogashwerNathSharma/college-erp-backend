@@ -189,16 +189,21 @@ const AddEditTeacher = () => {
     if (photo) formData.append("photo", photo);
 
     try {
-      const requestConfig = { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token") || ""}` } };
+      // Do not set Content-Type manually for FormData. The browser/Axios must
+      // add the multipart boundary; otherwise multer may receive an empty body.
+      const requestConfig = { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } };
       const res = isEdit
         ? await axios.put(getFullUrl(`/api/teacher/${id}`), formData, requestConfig)
         : await axios.post(getFullUrl("/api/teacher"), formData, requestConfig);
-      if (res.data.success) {
+      if (res.data?.success) {
         toast.success(isEdit ? "Teacher updated successfully" : "Teacher created successfully");
         navigate("/teachers");
+      } else {
+        toast.error(res.data?.message || "Teacher could not be saved");
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Something went wrong");
+      console.error("Teacher save failed:", err?.response?.data || err);
+      toast.error(err?.response?.data?.message || "Something went wrong while saving teacher");
     } finally {
       setLoading(false);
     }

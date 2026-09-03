@@ -52,12 +52,24 @@ const resolveTeacherSubjectRows = async (
 
 const assignmentSubjectIds = (data: any): string[] =>
   Array.isArray(data.assignments)
-    ? [...new Set(data.assignments.map((a: any) => a?.subjectId).filter(Boolean))]
+    ? Array.from(
+        new Set<string>(
+          data.assignments
+            .map((a: any) => a?.subjectId)
+            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+        )
+      )
     : [];
 
 const assignmentClassIds = (data: any): string[] =>
   Array.isArray(data.assignments)
-    ? [...new Set(data.assignments.map((a: any) => a?.classId).filter(Boolean))]
+    ? Array.from(
+        new Set<string>(
+          data.assignments
+            .map((a: any) => a?.classId)
+            .filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+        )
+      )
     : [];
 
 export const createTeacher = async (data: any, tenantId: string) => {

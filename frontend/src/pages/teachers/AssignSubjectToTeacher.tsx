@@ -111,7 +111,7 @@ const AssignSubjectToTeacher = () => {
             type: sub.type || "Theory",
           };
         })
-        .filter((a: Assignment) => a.subjectId && a.classId && (!a.className || classes.some((c: any) => c.id === a.classId)));
+        .filter((a: Assignment) => a.subjectId && a.classId);
 
       setAssignments(existing);
     } catch (err) {
@@ -145,13 +145,16 @@ const AssignSubjectToTeacher = () => {
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("academicYearId", selectedYear);
-      formData.append("assignments", JSON.stringify(exactAssignments));
-      formData.append("subjectIds", JSON.stringify(exactAssignments.map((a) => a.subjectId)));
-      formData.append("classIds", JSON.stringify([...new Set(exactAssignments.map((a) => a.classId))]));
-
-      const res = await axios.put(`${API}/teacher/${selectedTeacher}`, formData, auth());
+      // Use JSON rather than multipart here. The academic-year middleware runs
+      // before multer, so JSON lets it read the explicitly selected year from
+      // req.body instead of accidentally using a stale global year.
+      const payload = {
+        academicYearId: selectedYear,
+        assignments: exactAssignments,
+        subjectIds: exactAssignments.map((a) => a.subjectId),
+        classIds: [...new Set(exactAssignments.map((a) => a.classId))],
+      };
+      const res = await axios.put(`${API}/teacher/${selectedTeacher}`, payload, auth());
       if (res.data?.success) {
         toast.success("Assignments saved successfully");
         await loadExistingAssignments();

@@ -11,9 +11,6 @@ import {
   deleteTeacher,
 } from "./teacher.service";
 
-//////////////////////////////////////////////////////
-// MULTER CONFIG (photo upload)
-//////////////////////////////////////////////////////
 const storage = multer.memoryStorage();
 
 export const upload = multer({
@@ -28,10 +25,7 @@ export const upload = multer({
   },
 });
 
-/**
- * Normalize multipart arrays and exact class/subject assignment pairs.
- * PUT is a full replacement from the teacher form/assignment screen.
- */
+/** Normalize multipart arrays and exact class/subject assignment pairs. */
 function parseFormArrays(data: any, method?: string): any {
   const subjectField = data["subjectIds[]"];
   const classField = data["classIds[]"];
@@ -55,21 +49,14 @@ function parseFormArrays(data: any, method?: string): any {
     } catch {}
   }
 
-  // Assignment screen sends exact pairs: [{ classId, subjectId }].
-  // Keep those pairs intact so multiple subjects in the same class work.
   if (typeof data.assignments === "string") {
     try {
       const parsed = JSON.parse(data.assignments);
       if (Array.isArray(parsed)) {
         data.assignments = parsed
           .filter((a: any) => a && a.classId && a.subjectId)
-          .map((a: any) => ({
-            classId: String(a.classId),
-            subjectId: String(a.subjectId),
-          }));
-      } else {
-        data.assignments = undefined;
-      }
+          .map((a: any) => ({ classId: String(a.classId), subjectId: String(a.subjectId) }));
+      } else data.assignments = undefined;
     } catch {
       data.assignments = undefined;
     }
@@ -83,16 +70,14 @@ function parseFormArrays(data: any, method?: string): any {
   return data;
 }
 
-//////////////////////////////////////////////////////
-// CREATE
-//////////////////////////////////////////////////////
 export const create = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const data = parseFormArrays({ ...req.body }, req.method);
-    data.academicYearId = (req as any).academicYearId || data.academicYearId;
+    // Explicit form/body selection wins. Middleware is only the fallback.
+    data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
@@ -103,9 +88,6 @@ export const create = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// GET ALL
-//////////////////////////////////////////////////////
 export const getAll = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -121,17 +103,12 @@ export const getAll = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// GET BY ID
-//////////////////////////////////////////////////////
 export const getById = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // ID is tenant-scoped and immutable; do not let the currently selected
-    // academic year hide a valid teacher during edit/assignment.
     const teacher = await getTeacherById(id, tenantId);
     if (!teacher) return res.status(404).json({ success: false, message: "Teacher not found" });
 
@@ -141,9 +118,6 @@ export const getById = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// UPDATE
-//////////////////////////////////////////////////////
 export const update = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -151,7 +125,8 @@ export const update = async (req: any, res: Response) => {
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const data = parseFormArrays({ ...req.body }, req.method);
-    data.academicYearId = (req as any).academicYearId || data.academicYearId;
+    // Do not overwrite an explicitly selected year with a stale middleware value.
+    data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
@@ -162,9 +137,6 @@ export const update = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// PARTIAL UPDATE (PATCH)
-//////////////////////////////////////////////////////
 export const partialUpdate = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -172,7 +144,7 @@ export const partialUpdate = async (req: any, res: Response) => {
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const data = parseFormArrays({ ...req.body }, req.method);
-    data.academicYearId = (req as any).academicYearId || data.academicYearId;
+    data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
@@ -183,9 +155,6 @@ export const partialUpdate = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// DELETE (soft)
-//////////////////////////////////////////////////////
 export const remove = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -199,9 +168,6 @@ export const remove = async (req: any, res: Response) => {
   }
 };
 
-//////////////////////////////////////////////////////
-// DASHBOARD
-//////////////////////////////////////////////////////
 export const dashboard = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId || (req as any).tenantId;

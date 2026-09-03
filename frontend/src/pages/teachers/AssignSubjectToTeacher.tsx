@@ -83,16 +83,43 @@ const AssignSubjectToTeacher = () => {
 
   const loadExistingAssignments = async () => {
     try {
-      const res = await axios.get(`${API}/teacher/${selectedTeacher}`, { ...auth(), params: { academicYearId: selectedYear } });
-      if (!res.data?.success) return;
-      const t = res.data.data || {};
-      const existing: Assignment[] = (t.subjects || []).map((sub: any, i: number) => ({
-        id: `existing-${i}`,
-        classId: sub.classId || sub.class?.id || "",
-        subjectId: sub.id || sub.subjectId || sub.subject?.id || "",
-        subjectName: sub.name || sub.subject?.name,
-        type: "Theory",
-      })).filter((a: Assignment) => a.subjectId);
+      const [teacherRes, subjectRes] = await Promise.all([
+        axios.get(`${API}/teacher/${selectedTeacher}`, { ...auth(), params: { academicYearId: selectedYear } }),
+        axios.get(`${API}/subject`, { ...auth(), params: { academicYearId: selectedYear } }),
+      ]);
+
+      if (!teacherRes.data?.success) {
+        setAssignments([]);
+        return;
+      }
+
+      const teacher = teacherRes.data.data || {};
+      const yearSubjects = unwrap(subjectRes.data);
+      const teacherSubjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+      const subjectById = new Map(yearSubjects.map((s: any) => [s.id, s]));
+
+      // A teacher subject is stored by subjectId. The class must therefore be
+      // resolved from the subject's classId; do not expect classId on the
+      // flattened teacher.subjects response.
+      const existing: Assignment[] = teacherSubjects
+        .map((sub: any, i: number) => {
+          const subjectId = sub.id || sub.subjectId || sub.subject?.id || "";
+          const resource = subjectById.get(subjectId) || sub.subject || sub;
+          const classId = resource?.classId || resource?.class?.id || sub.classId || sub.class?.id || "";
+          return {
+            id: `existing-${subjectId || i}`,
+            classId,
+            subjectId,
+            className: resource?.class?.name || "",
+            subjectName: resource?.name || sub.name || "",
+            type: "Theory",
+          };
+        })
+        .filter((a: Assignment) => a.subjectId && a.classId);
+
+      // Keep one row per actual teacher-subject assignment. This is important
+      // for class-specific subjects such as Science (VII), Science (VIII) and
+      // S.St (VIII); classIds must never be paired by array position.
       setAssignments(existing);
     } catch (err) {
       console.error("Failed to load teacher assignments", err);
@@ -120,8 +147,12 @@ const AssignSubjectToTeacher = () => {
       const subjectIds = [...new Set(assignments.map((a) => a.subjectId))];
       const classIds = [...new Set(assignments.map((a) => a.classId))];
       const res = await axios.put(`${API}/teacher/${selectedTeacher}`, { subjectIds, classIds, academicYearId: selectedYear }, auth());
-      if (res.data?.success) toast.success("Assignments saved successfully");
-      else toast.error(res.data?.message || "Failed to save assignments");
+      if (res.data?.success) {
+        toast.success("Assignments saved successfully");
+        await loadExistingAssignments();
+      } else {
+        toast.error(res.data?.message || "Failed to save assignments");
+      }
     } catch (err: any) {
       console.error("Assignment save failed", err?.response?.data || err);
       toast.error(err?.response?.data?.message || "Failed to save assignments");
@@ -157,82 +188,36 @@ const AssignSubjectToTeacher = () => {
 
       {selectedTeacher && selectedYear && (
         <div className="w-full min-w-0 rounded-lg shadow overflow-hidden">
-          {/* Desktop/table layout */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full table-auto">
-              <thead className="border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">Class</th>
-                  <th className="px-4 py-3 text-left">Subject</th>
-                  <th className="px-4 py-3 text-left">Type</th>
-                  <th className="px-4 py-3 text-center">Action</th>
+              <thead className="border-b"><tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Class</th><th className="px-4 py-3 text-left">Subject</th><th className="px-4 py-3 text-left">Type</th><th className="px-4 py-3 text-center">Action</th></tr></thead>
+              <tbody>{assignments.map((row, index) => (
+                <tr key={row.id} className="border-b">
+                  <td className="px-4 py-3">{index + 1}</td>
+                  <td className="px-4 py-3"><select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}><option value="">Select Class</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
+                  <td className="px-4 py-3"><select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}><option value="">Select Subject</option>{getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
+                  <td className="px-4 py-3"><select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}><option value="Theory">Theory</option><option value="Practical">Practical</option></select></td>
+                  <td className="px-4 py-3 text-center"><button type="button" onClick={() => removeRow(row.id)} className="p-2 text-red-500 rounded-lg"><FiTrash2 size={18} /></button></td>
                 </tr>
-              </thead>
-              <tbody>
-                {assignments.map((row, index) => (
-                  <tr key={row.id} className="border-b">
-                    <td className="px-4 py-3">{index + 1}</td>
-                    <td className="px-4 py-3"><select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}><option value="">Select Class</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
-                    <td className="px-4 py-3"><select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}><option value="">Select Subject</option>{getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
-                    <td className="px-4 py-3"><select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}><option value="Theory">Theory</option><option value="Practical">Practical</option></select></td>
-                    <td className="px-4 py-3 text-center"><button type="button" onClick={() => removeRow(row.id)} className="p-2 text-red-500 rounded-lg"><FiTrash2 size={18} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
+              ))}</tbody>
             </table>
           </div>
 
-          {/* Mobile/card layout: prevents the 5-column table from being squeezed off-screen */}
           <div className="md:hidden p-3 space-y-3">
-            {assignments.length === 0 && (
-              <div className="rounded-lg border border-slate-600 p-4 text-center text-sm opacity-80">
-                No assignments yet. Tap “Add More” to create one.
-              </div>
-            )}
+            {assignments.length === 0 && <div className="rounded-lg border border-slate-600 p-4 text-center text-sm opacity-80">No assignments yet. Tap “Add More” to create one.</div>}
             {assignments.map((row, index) => (
               <div key={row.id} className="rounded-xl border border-slate-600 p-3 space-y-3 overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">Assignment {index + 1}</span>
-                  <button type="button" onClick={() => removeRow(row.id)} aria-label={`Remove assignment ${index + 1}`} className="p-2 text-red-500 rounded-lg">
-                    <FiTrash2 size={18} />
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">Class</label>
-                  <select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}>
-                    <option value="">Select Class</option>
-                    {classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">Subject</label>
-                  <select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}>
-                    <option value="">Select Subject</option>
-                    {getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium mb-1">Type</label>
-                  <select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}>
-                    <option value="Theory">Theory</option>
-                    <option value="Practical">Practical</option>
-                  </select>
-                </div>
+                <div className="flex items-center justify-between"><span className="text-sm font-semibold">Assignment {index + 1}</span><button type="button" onClick={() => removeRow(row.id)} aria-label={`Remove assignment ${index + 1}`} className="p-2 text-red-500 rounded-lg"><FiTrash2 size={18} /></button></div>
+                <div><label className="block text-xs font-medium mb-1">Class</label><select value={row.classId} onChange={(e) => updateRow(row.id, "classId", e.target.value)} className={selectClass}><option value="">Select Class</option>{classes.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                <div><label className="block text-xs font-medium mb-1">Subject</label><select value={row.subjectId} onChange={(e) => updateRow(row.id, "subjectId", e.target.value)} className={selectClass}><option value="">Select Subject</option>{getFilteredSubjects(row.classId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                <div><label className="block text-xs font-medium mb-1">Type</label><select value={row.type} onChange={(e) => updateRow(row.id, "type", e.target.value)} className={selectClass}><option value="Theory">Theory</option><option value="Practical">Practical</option></select></div>
               </div>
             ))}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-between p-3 sm:p-4 border-t">
-            <button type="button" onClick={addRow} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 border border-primary-600 rounded-lg">
-              <FiPlus size={18} /> Add More
-            </button>
-            <button type="button" onClick={handleSave} disabled={loading} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-5 py-2 bg-primary-600 text-white rounded-lg disabled:opacity-50">
-              <FiSave size={18} /> {loading ? "Saving..." : "Save Assignment"}
-            </button>
+            <button type="button" onClick={addRow} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 border border-primary-600 rounded-lg"><FiPlus size={18} /> Add More</button>
+            <button type="button" onClick={handleSave} disabled={loading} className="w-full sm:w-auto min-h-11 flex items-center justify-center gap-2 px-5 py-2 bg-primary-600 text-white rounded-lg"><FiSave size={18} /> {loading ? "Saving..." : "Save Assignment"}</button>
           </div>
         </div>
       )}

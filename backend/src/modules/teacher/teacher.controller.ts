@@ -29,10 +29,8 @@ export const upload = multer({
 });
 
 /**
- * Normalize FormData arrays without ever pairing subject/class by position.
- * PUT is a full replacement from the teacher form/assignment screen, so an
- * omitted subjectIds[] field means the user intentionally has no subjects.
- * PATCH keeps the old partial-update semantics.
+ * Normalize multipart arrays and exact class/subject assignment pairs.
+ * PUT is a full replacement from the teacher form/assignment screen.
  */
 function parseFormArrays(data: any, method?: string): any {
   const subjectField = data["subjectIds[]"];
@@ -44,8 +42,6 @@ function parseFormArrays(data: any, method?: string): any {
   if (typeof classField === "string") data.classIds = [classField].filter(Boolean);
   else if (Array.isArray(classField)) data.classIds = classField.filter(Boolean);
 
-  // Accept JSON arrays too, which makes API clients independent of multipart
-  // bracket-array parsing.
   if (typeof data.subjectIds === "string") {
     try {
       const parsed = JSON.parse(data.subjectIds);
@@ -57,6 +53,26 @@ function parseFormArrays(data: any, method?: string): any {
       const parsed = JSON.parse(data.classIds);
       if (Array.isArray(parsed)) data.classIds = parsed.filter(Boolean);
     } catch {}
+  }
+
+  // Assignment screen sends exact pairs: [{ classId, subjectId }].
+  // Keep those pairs intact so multiple subjects in the same class work.
+  if (typeof data.assignments === "string") {
+    try {
+      const parsed = JSON.parse(data.assignments);
+      if (Array.isArray(parsed)) {
+        data.assignments = parsed
+          .filter((a: any) => a && a.classId && a.subjectId)
+          .map((a: any) => ({
+            classId: String(a.classId),
+            subjectId: String(a.subjectId),
+          }));
+      } else {
+        data.assignments = undefined;
+      }
+    } catch {
+      data.assignments = undefined;
+    }
   }
 
   if (method === "PUT" && data.subjectIds === undefined) data.subjectIds = [];
@@ -114,8 +130,9 @@ export const getById = async (req: any, res: Response) => {
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
-    const teacher = await getTeacherById(id, tenantId, academicYearId);
+    // ID is tenant-scoped and immutable; do not let the currently selected
+    // academic year hide a valid teacher during edit/assignment.
+    const teacher = await getTeacherById(id, tenantId);
     if (!teacher) return res.status(404).json({ success: false, message: "Teacher not found" });
 
     return res.json({ success: true, data: teacher });

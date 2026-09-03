@@ -36,13 +36,11 @@ const AssignSubjectToTeacher = () => {
         axios.get(`${API}/teacher`, auth()),
         axios.get(`${API}/academic`, auth()),
       ]);
-      setTeachers(unwrap(teacherRes.data));
       const years = unwrap(yearRes.data);
       setAcademicYears(years);
-      if (!selectedYear && years.length) {
-        const current = years.find((y: any) => y.isCurrent) || years.find((y: any) => y.isActive) || years[0];
-        if (current?.id) setSelectedYear(current.id);
-      }
+      const current = years.find((y: any) => y.isCurrent) || years.find((y: any) => y.isActive) || years[0];
+      if (!selectedYear && current?.id) setSelectedYear(current.id);
+      setTeachers(unwrap(teacherRes.data));
     } catch (err) {
       console.error("Failed to load teacher/year options", err);
       toast.error("Failed to load teachers or academic years");
@@ -69,6 +67,7 @@ const AssignSubjectToTeacher = () => {
       console.error("Failed to load academic-year resources", err);
       setClasses([]);
       setSubjects([]);
+      setTeachers([]);
       toast.error("Failed to load classes or subjects for selected year");
     }
   };
@@ -84,7 +83,7 @@ const AssignSubjectToTeacher = () => {
   const loadExistingAssignments = async () => {
     try {
       const [teacherRes, subjectRes] = await Promise.all([
-        axios.get(`${API}/teacher/${selectedTeacher}`, { ...auth(), params: { academicYearId: selectedYear } }),
+        axios.get(`${API}/teacher/${selectedTeacher}`, auth()),
         axios.get(`${API}/subject`, { ...auth(), params: { academicYearId: selectedYear } }),
       ]);
 
@@ -102,17 +101,17 @@ const AssignSubjectToTeacher = () => {
         .map((sub: any, i: number) => {
           const subjectId = sub.id || sub.subjectId || sub.subject?.id || "";
           const resource = subjectById.get(subjectId) || sub.subject || sub;
-          const classId = resource?.classId || resource?.class?.id || sub.classId || sub.class?.id || "";
+          const classId = sub.classId || resource?.classId || resource?.class?.id || sub.class?.id || "";
           return {
-            id: `existing-${subjectId || i}`,
+            id: `existing-${subjectId || i}-${classId}`,
             classId,
             subjectId,
             className: resource?.class?.name || "",
             subjectName: resource?.name || sub.name || "",
-            type: "Theory",
+            type: sub.type || "Theory",
           };
         })
-        .filter((a: Assignment) => a.subjectId && a.classId);
+        .filter((a: Assignment) => a.subjectId && a.classId && (!a.className || classes.some((c: any) => c.id === a.classId)));
 
       setAssignments(existing);
     } catch (err) {
@@ -136,25 +135,21 @@ const AssignSubjectToTeacher = () => {
     if (assignments.length === 0) return toast.error("Please add at least one assignment");
     if (assignments.some((a) => !a.classId || !a.subjectId)) return toast.error("Please fill all fields in each row");
 
-    // Send multipart/form-data because the teacher update route uses multer.
-    // Every selected subject is sent independently; the backend resolves its
-    // authoritative classId from the database. This allows multiple subjects
-    // for the same class without relying on array-position pairing.
-    const duplicatePairs = new Set<string>();
-    for (const row of assignments) {
+    const seen = new Set<string>();
+    const exactAssignments = assignments.map((row) => ({ classId: row.classId, subjectId: row.subjectId }));
+    for (const row of exactAssignments) {
       const key = `${row.classId}:${row.subjectId}`;
-      if (duplicatePairs.has(key)) return toast.error("The same subject cannot be assigned twice to the same class");
-      duplicatePairs.add(key);
+      if (seen.has(key)) return toast.error("The same subject cannot be assigned twice to the same class");
+      seen.add(key);
     }
 
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("academicYearId", selectedYear);
-      for (const row of assignments) {
-        formData.append("subjectIds[]", row.subjectId);
-        formData.append("classIds[]", row.classId);
-      }
+      formData.append("assignments", JSON.stringify(exactAssignments));
+      formData.append("subjectIds", JSON.stringify(exactAssignments.map((a) => a.subjectId)));
+      formData.append("classIds", JSON.stringify([...new Set(exactAssignments.map((a) => a.classId))]));
 
       const res = await axios.put(`${API}/teacher/${selectedTeacher}`, formData, auth());
       if (res.data?.success) {

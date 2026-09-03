@@ -109,9 +109,12 @@ export const getTeachers = async (query: any, tenantId: string) => {
   return { data, meta: buildPaginationMeta(total, page, limit) };
 };
 
-export const getTeacherById = async (id: string, tenantId: string, academicYearId?: string) => {
+// A teacher ID is globally unique within the tenant. Do not apply the currently
+// selected academic year to an ID lookup; otherwise editing a teacher can fail
+// simply because the UI/global year differs from the teacher's stored year.
+export const getTeacherById = async (id: string, tenantId: string, _academicYearId?: string) => {
   const teacher = await prisma.teacher.findFirst({
-    where: { id, tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
+    where: { id, tenantId, isDeleted: false },
     include: {
       subjects: { where: { isDeleted: false }, include: { subject: true } },
       classes: { where: { isDeleted: false }, include: { class: true } },
@@ -126,7 +129,9 @@ export const getTeacherById = async (id: string, tenantId: string, academicYearI
 };
 
 export const updateTeacher = async (id: string, data: any, tenantId: string) => {
-  const existing = await prisma.teacher.findFirst({ where: { id, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) } });
+  // Find the record by immutable ID first. Academic year is validated below,
+  // but must never prevent an existing teacher from being edited.
+  const existing = await prisma.teacher.findFirst({ where: { id, tenantId, isDeleted: false } });
   if (!existing) throw new Error("Teacher not found");
   if (data.email && data.email !== existing.email) {
     const emailExists = await prisma.teacher.findFirst({ where: { email: data.email, tenantId, isDeleted: false, id: { not: id }, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) } });

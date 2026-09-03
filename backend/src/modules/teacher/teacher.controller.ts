@@ -18,33 +18,50 @@ const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|webp/;
     const ext = allowed.test(path.extname(file.originalname).toLowerCase());
     const mime = allowed.test(file.mimetype);
-    if (ext && mime) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files (jpg, png, webp) are allowed"));
-    }
+    if (ext && mime) cb(null, true);
+    else cb(new Error("Only image files (jpg, png, webp) are allowed"));
   },
 });
 
 /**
- * Parse array fields from FormData (handles bracket notation)
+ * Normalize FormData arrays without ever pairing subject/class by position.
+ * PUT is a full replacement from the teacher form/assignment screen, so an
+ * omitted subjectIds[] field means the user intentionally has no subjects.
+ * PATCH keeps the old partial-update semantics.
  */
-function parseFormArrays(data: any): any {
-  if (typeof data["subjectIds[]"] === "string") {
-    data.subjectIds = [data["subjectIds[]"]];
-  } else if (Array.isArray(data["subjectIds[]"])) {
-    data.subjectIds = data["subjectIds[]"];
+function parseFormArrays(data: any, method?: string): any {
+  const subjectField = data["subjectIds[]"];
+  const classField = data["classIds[]"];
+
+  if (typeof subjectField === "string") data.subjectIds = [subjectField].filter(Boolean);
+  else if (Array.isArray(subjectField)) data.subjectIds = subjectField.filter(Boolean);
+
+  if (typeof classField === "string") data.classIds = [classField].filter(Boolean);
+  else if (Array.isArray(classField)) data.classIds = classField.filter(Boolean);
+
+  // Accept JSON arrays too, which makes API clients independent of multipart
+  // bracket-array parsing.
+  if (typeof data.subjectIds === "string") {
+    try {
+      const parsed = JSON.parse(data.subjectIds);
+      if (Array.isArray(parsed)) data.subjectIds = parsed.filter(Boolean);
+    } catch {}
   }
-  if (typeof data["classIds[]"] === "string") {
-    data.classIds = [data["classIds[]"]];
-  } else if (Array.isArray(data["classIds[]"])) {
-    data.classIds = data["classIds[]"];
+  if (typeof data.classIds === "string") {
+    try {
+      const parsed = JSON.parse(data.classIds);
+      if (Array.isArray(parsed)) data.classIds = parsed.filter(Boolean);
+    } catch {}
   }
+
+  if (method === "PUT" && data.subjectIds === undefined) data.subjectIds = [];
+  if (method === "PUT" && data.classIds === undefined) data.classIds = [];
+
   delete data["subjectIds[]"];
   delete data["classIds[]"];
   return data;
@@ -56,16 +73,12 @@ function parseFormArrays(data: any): any {
 export const create = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body });
+    const data = parseFormArrays({ ...req.body }, req.method);
     data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
-    if (req.file) {
-      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
-    }
+    if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
     const teacher = await createTeacher(data, tenantId);
     return res.status(201).json({ success: true, data: teacher });
@@ -80,11 +93,12 @@ export const create = async (req: any, res: Response) => {
 export const getAll = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = await getTeachers({ ...req.query, academicYearId: (req as any).academicYearId || req.query.academicYearId }, tenantId);
+    const data = await getTeachers(
+      { ...req.query, academicYearId: (req as any).academicYearId || req.query.academicYearId },
+      tenantId
+    );
     return res.json({ success: true, data });
   } catch (e: any) {
     return res.status(500).json({ success: false, message: e.message });
@@ -98,14 +112,11 @@ export const getById = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { id } = req.params;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const teacher = await getTeacherById(id, tenantId, (req as any).academicYearId);
-    if (!teacher) {
-      return res.status(404).json({ success: false, message: "Teacher not found" });
-    }
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+    const teacher = await getTeacherById(id, tenantId, academicYearId);
+    if (!teacher) return res.status(404).json({ success: false, message: "Teacher not found" });
 
     return res.json({ success: true, data: teacher });
   } catch (e: any) {
@@ -120,16 +131,12 @@ export const update = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { id } = req.params;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body });
+    const data = parseFormArrays({ ...req.body }, req.method);
     data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
-    if (req.file) {
-      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
-    }
+    if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
     const teacher = await updateTeacher(id, data, tenantId);
     return res.json({ success: true, data: teacher });
@@ -145,16 +152,12 @@ export const partialUpdate = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { id } = req.params;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body });
+    const data = parseFormArrays({ ...req.body }, req.method);
     data.academicYearId = (req as any).academicYearId || data.academicYearId;
 
-    if (req.file) {
-      data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
-    }
+    if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
 
     const teacher = await updateTeacher(id, data, tenantId);
     return res.json({ success: true, data: teacher });
@@ -170,9 +173,7 @@ export const remove = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
     const { id } = req.params;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     await deleteTeacher(id, tenantId, (req as any).academicYearId);
     return res.json({ success: true, message: "Teacher deleted successfully" });
@@ -187,15 +188,12 @@ export const remove = async (req: any, res: Response) => {
 export const dashboard = async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId || (req as any).tenantId;
-    if (!tenantId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const academicYearId = (req as any).academicYearId as string | undefined;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Base counts
     const [total, onLeaveCount, newJoinings, maleCount, femaleCount] = await Promise.all([
       prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) } }),
       prisma.leave.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), status: "APPROVED", endDate: { gte: now }, startDate: { lte: now } } }).catch(() => 0),
@@ -204,7 +202,6 @@ export const dashboard = async (req: any, res: any) => {
       prisma.teacher.count({ where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}), gender: "FEMALE" } }),
     ]);
 
-    // Department distribution
     const teachers = await prisma.teacher.findMany({
       where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
       select: { departmentId: true, createdAt: true },
@@ -214,10 +211,7 @@ export const dashboard = async (req: any, res: any) => {
     let deptMap = new Map<string, string>();
     if (deptIds.length > 0) {
       try {
-        const depts = await prisma.department?.findMany?.({
-          where: { id: { in: deptIds } },
-          select: { id: true, name: true },
-        });
+        const depts = await prisma.department?.findMany?.({ where: { id: { in: deptIds } }, select: { id: true, name: true } });
         if (depts) deptMap = new Map(depts.map((d: any) => [d.id, d.name]));
       } catch {}
     }
@@ -231,7 +225,6 @@ export const dashboard = async (req: any, res: any) => {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
-    // Experience distribution
     const expBuckets: Record<string, number> = { "0-5 yrs": 0, "5-10 yrs": 0, "10-15 yrs": 0, "15+ yrs": 0 };
     teachers.forEach(t => {
       const years = (now.getTime() - new Date(t.createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
@@ -242,7 +235,6 @@ export const dashboard = async (req: any, res: any) => {
     });
     const experienceDistribution = Object.entries(expBuckets).map(([range, count]) => ({ range, count }));
 
-    // Gender distribution
     const genderDistribution = [
       { name: "Male", value: maleCount },
       { name: "Female", value: femaleCount },
@@ -251,7 +243,6 @@ export const dashboard = async (req: any, res: any) => {
 
     const departmentsCount = new Set(teachers.map((t: any) => t.departmentId).filter(Boolean)).size || departmentDistribution.length;
 
-    // Teachers on leave
     let teachersOnLeave: any[] = [];
     try {
       const onLeaveTeachers = await prisma.teacher.findMany({
@@ -278,7 +269,6 @@ export const dashboard = async (req: any, res: any) => {
       }));
     } catch {}
 
-    // Upcoming salary
     let upcomingSalary: any[] = [];
     try {
       const salaries = await prisma.teacherSalary.findMany({

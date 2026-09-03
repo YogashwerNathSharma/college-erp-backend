@@ -50,15 +50,28 @@ const resolveTeacherSubjectRows = async (
   });
 };
 
+const assignmentSubjectIds = (data: any): string[] =>
+  Array.isArray(data.assignments)
+    ? [...new Set(data.assignments.map((a: any) => a?.subjectId).filter(Boolean))]
+    : [];
+
+const assignmentClassIds = (data: any): string[] =>
+  Array.isArray(data.assignments)
+    ? [...new Set(data.assignments.map((a: any) => a?.classId).filter(Boolean))]
+    : [];
+
 export const createTeacher = async (data: any, tenantId: string) => {
+  const assignmentIds = assignmentSubjectIds(data);
+  const assignmentClasses = assignmentClassIds(data);
+  const subjectIds = data.subjectIds?.length ? data.subjectIds : assignmentIds;
+  const classIds = data.classIds?.length ? data.classIds : assignmentClasses;
+
   const existing = await prisma.teacher.findFirst({ where: { email: data.email, tenantId, isDeleted: false, ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}) } });
   if (existing) throw new Error("Teacher already exists with this email");
   if (!data.academicYearId) throw new Error("Academic year is required");
   const year = await prisma.academicYear.findFirst({ where: { id: data.academicYearId, tenantId } });
   if (!year) throw new Error("Invalid academic year");
 
-  const subjectIds = data.subjectIds || [];
-  const classIds = data.classIds || [];
   if (subjectIds.length) {
     const subjects = await prisma.subject.findMany({ where: { id: { in: [...new Set(subjectIds)] }, tenantId, academicYearId: data.academicYearId } });
     if (subjects.length !== [...new Set(subjectIds)].length) throw new Error("Invalid subject(s) for selected academic year");
@@ -109,9 +122,6 @@ export const getTeachers = async (query: any, tenantId: string) => {
   return { data, meta: buildPaginationMeta(total, page, limit) };
 };
 
-// A teacher ID is globally unique within the tenant. Do not apply the currently
-// selected academic year to an ID lookup; otherwise editing a teacher can fail
-// simply because the UI/global year differs from the teacher's stored year.
 export const getTeacherById = async (id: string, tenantId: string, _academicYearId?: string) => {
   const teacher = await prisma.teacher.findFirst({
     where: { id, tenantId, isDeleted: false },
@@ -129,8 +139,6 @@ export const getTeacherById = async (id: string, tenantId: string, _academicYear
 };
 
 export const updateTeacher = async (id: string, data: any, tenantId: string) => {
-  // Find the record by immutable ID first. Academic year is validated below,
-  // but must never prevent an existing teacher from being edited.
   const existing = await prisma.teacher.findFirst({ where: { id, tenantId, isDeleted: false } });
   if (!existing) throw new Error("Teacher not found");
   if (data.email && data.email !== existing.email) {
@@ -141,13 +149,17 @@ export const updateTeacher = async (id: string, data: any, tenantId: string) => 
   const year = await prisma.academicYear.findFirst({ where: { id: yearId, tenantId } });
   if (!year) throw new Error("Invalid academic year");
 
-  const subjectIds = data.subjectIds || [];
-  const classIds = data.classIds || [];
-  if (data.subjectIds !== undefined && subjectIds.length) {
+  const assignmentIds = assignmentSubjectIds(data);
+  const assignmentClasses = assignmentClassIds(data);
+  const hasExactAssignments = Array.isArray(data.assignments);
+  const subjectIds = data.subjectIds?.length ? data.subjectIds : assignmentIds;
+  const classIds = data.classIds?.length ? data.classIds : assignmentClasses;
+
+  if (subjectIds.length) {
     const subjects = await prisma.subject.findMany({ where: { id: { in: [...new Set(subjectIds)] }, tenantId, academicYearId: yearId } });
     if (subjects.length !== [...new Set(subjectIds)].length) throw new Error("Invalid subject(s) for selected academic year");
   }
-  if (data.classIds !== undefined && classIds.length) {
+  if (classIds.length) {
     const classes = await prisma.class.findMany({ where: { id: { in: [...new Set(classIds)] }, tenantId, academicYearId: yearId } });
     if (classes.length !== [...new Set(classIds)].length) throw new Error("Invalid class(es) for selected academic year");
   }
@@ -165,14 +177,16 @@ export const updateTeacher = async (id: string, data: any, tenantId: string) => 
       academicYearId: yearId,
     } });
 
-    if (data.subjectIds !== undefined) {
+    // An explicit assignment payload always replaces active subject rows.
+    // This also works when callers provide assignments without parallel arrays.
+    if (data.subjectIds !== undefined || hasExactAssignments) {
       await tx.teacherSubject.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
       if (subjectIds.length) {
         const rows = await resolveTeacherSubjectRows(tx, id, subjectIds, classIds, tenantId, yearId, data.assignments);
         if (rows.length) await tx.teacherSubject.createMany({ data: rows });
       }
     }
-    if (data.classIds !== undefined) {
+    if (data.classIds !== undefined || hasExactAssignments) {
       await tx.teacherClass.updateMany({ where: { teacherId: id, isDeleted: false }, data: { isDeleted: true, deletedAt: new Date() } });
       if (classIds.length) await tx.teacherClass.createMany({ data: [...new Set(classIds)].map((classId: string) => ({ teacherId: id, classId })) });
     }

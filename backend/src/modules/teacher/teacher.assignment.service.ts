@@ -43,7 +43,9 @@ export const saveTeacherAssignments = async (
     throw new Error("One or more selected subjects do not belong to the selected academic year");
   }
 
-  const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+  const subjectMap = new Map<string, { id: string; classId: string }>(
+    subjects.map((s: { id: string; classId: string }) => [s.id, s])
+  );
   for (const assignment of uniqueAssignments) {
     const subject = subjectMap.get(assignment.subjectId);
     if (!subject || subject.classId !== assignment.classId) {

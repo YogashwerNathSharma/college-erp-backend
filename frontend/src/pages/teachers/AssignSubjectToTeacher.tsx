@@ -39,8 +39,7 @@ const AssignSubjectToTeacher = () => {
       const cfg = { ...auth(yearId), params:{ academicYearId:yearId } };
       const [classRes, subjectRes] = await Promise.all([axios.get(`${API}/class`,cfg), axios.get(`${API}/subject`,cfg)]);
       setClasses(unwrap(classRes.data)); setSubjects(unwrap(subjectRes.data));
-      // Teachers are people, not year-specific options. Keep the full teacher list.
-      const teacherRes = await axios.get(`${API}/teacher`, auth());
+      const teacherRes = await axios.get(`${API}/teacher`, auth(yearId));
       setTeachers(unwrap(teacherRes.data));
     } catch(err){ console.error(err); setClasses([]); setSubjects([]); toast.error("Failed to load classes or subjects for selected year"); }
   };
@@ -72,9 +71,8 @@ const AssignSubjectToTeacher = () => {
     for(const row of exactAssignments){const key=`${row.classId}:${row.subjectId}`;if(seen.has(key))return toast.error("The same subject cannot be assigned twice to the same class");seen.add(key);}
     setLoading(true);
     try {
-      const payload={academicYearId:selectedYear,assignments:exactAssignments,subjectIds:exactAssignments.map(a=>a.subjectId),classIds:[...new Set(exactAssignments.map(a=>a.classId))]};
-      // Middleware gives the header highest priority, so it MUST match the year chosen on this screen.
-      const res=await axios.put(`${API}/teacher/${selectedTeacher}`,payload,auth(selectedYear));
+      const payload={academicYearId:selectedYear,assignments:exactAssignments};
+      const res=await axios.post(`${API}/teacher/${selectedTeacher}/assignments`,payload,auth(selectedYear));
       if(res.data?.success){toast.success("Assignments saved successfully");await loadExistingAssignments();}else toast.error(res.data?.message||"Failed to save assignments");
     } catch(err:any){console.error("Assignment save failed",err?.response?.data||err);toast.error(err?.response?.data?.message||"Failed to save assignments");} finally{setLoading(false);}
   };

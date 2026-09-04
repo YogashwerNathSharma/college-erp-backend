@@ -1,5 +1,6 @@
 import express from "express";
 import { create, getAll, getById, update, partialUpdate, remove, upload, dashboard } from "./teacher.controller";
+import { saveAssignments } from "./teacher.assignment.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
@@ -12,12 +13,8 @@ const router = express.Router();
 router.get("/dashboard", authMiddleware, resolveTenant, resolveAcademicYear, dashboard);
 
 // Teacher management is available to both institution admins and super admins.
-// SUPER_ADMIN is intentionally supported here because academicYear middleware
-// skips year resolution for SUPER_ADMIN and the selected year is carried in the request body/header.
 const teacherAdminRoles = allowRoles("ADMIN", "SUPER_ADMIN");
 
-// CREATE: parse multipart body before resolving academic year so the explicitly
-// selected academicYearId is available to the year middleware.
 router.post(
   "/",
   authMiddleware,
@@ -29,13 +26,20 @@ router.post(
   create
 );
 
-// GET ALL
 router.get("/", authMiddleware, resolveTenant, resolveAcademicYear, getAll);
 
-// GET BY ID
 router.get("/:id", authMiddleware, resolveTenant, resolveAcademicYear, getById);
 
-// FULL UPDATE: parse multipart body before resolving academic year.
+// Dedicated subject-assignment write endpoint. Keep it before /:id PUT/PATCH.
+router.post(
+  "/:id/assignments",
+  authMiddleware,
+  teacherAdminRoles,
+  resolveTenant,
+  resolveAcademicYear,
+  saveAssignments
+);
+
 router.put(
   "/:id",
   authMiddleware,
@@ -46,7 +50,6 @@ router.put(
   update
 );
 
-// PARTIAL UPDATE
 router.patch(
   "/:id",
   authMiddleware,
@@ -57,7 +60,6 @@ router.patch(
   partialUpdate
 );
 
-// DELETE (soft)
 router.delete("/:id", authMiddleware, teacherAdminRoles, resolveTenant, resolveAcademicYear, remove);
 
 export default router;

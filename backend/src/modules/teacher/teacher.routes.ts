@@ -11,12 +11,17 @@ const router = express.Router();
 // DASHBOARD (must be before /:id to avoid matching "dashboard" as an id)
 router.get("/dashboard", authMiddleware, resolveTenant, resolveAcademicYear, dashboard);
 
+// Teacher management is available to both institution admins and super admins.
+// SUPER_ADMIN is intentionally supported here because academicYear middleware
+// skips year resolution for SUPER_ADMIN and the selected year is carried in the request body/header.
+const teacherAdminRoles = allowRoles("ADMIN", "SUPER_ADMIN");
+
 // CREATE: parse multipart body before resolving academic year so the explicitly
 // selected academicYearId is available to the year middleware.
 router.post(
   "/",
   authMiddleware,
-  allowRoles("ADMIN"),
+  teacherAdminRoles,
   resolveTenant,
   upload.single("photo"),
   resolveAcademicYear,
@@ -34,18 +39,18 @@ router.get("/:id", authMiddleware, resolveTenant, resolveAcademicYear, getById);
 router.put(
   "/:id",
   authMiddleware,
-  allowRoles("ADMIN"),
+  teacherAdminRoles,
   resolveTenant,
   upload.single("photo"),
   resolveAcademicYear,
   update
 );
 
-// PARTIAL UPDATE: keep normal auth -> tenant -> upload -> year ordering.
+// PARTIAL UPDATE
 router.patch(
   "/:id",
   authMiddleware,
-  allowRoles("ADMIN"),
+  teacherAdminRoles,
   resolveTenant,
   upload.single("photo"),
   resolveAcademicYear,
@@ -53,6 +58,6 @@ router.patch(
 );
 
 // DELETE (soft)
-router.delete("/:id", authMiddleware, allowRoles("ADMIN"), resolveTenant, resolveAcademicYear, remove);
+router.delete("/:id", authMiddleware, teacherAdminRoles, resolveTenant, resolveAcademicYear, remove);
 
 export default router;

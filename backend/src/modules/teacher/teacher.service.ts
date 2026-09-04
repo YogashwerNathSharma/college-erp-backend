@@ -27,8 +27,8 @@ const resolveTeacherSubjectRows = async (
     const key = `${teacherId}:${subject.id}`;
     if (seen.has(key)) throw new Error("Duplicate subject assignment");
     seen.add(key);
-    // TeacherSubject schema stores teacherId + subjectId. Class is derived from Subject.classId.
-    return { teacherId, subjectId: subject.id };
+    // Persist the exact class/subject pair. TeacherSubject has a required classId.
+    return { teacherId, subjectId: subject.id, classId: subject.classId };
   });
 };
 
@@ -140,7 +140,7 @@ export const updateTeacher = async (id: string, data: any, tenantId: string) => 
       }
       for (const row of rows) {
         const existingRel = await tx.teacherSubject.findFirst({ where: { teacherId: id, subjectId: row.subjectId } });
-        if (existingRel) await tx.teacherSubject.update({ where: { id: existingRel.id }, data: { isDeleted: false, deletedAt: null } });
+        if (existingRel) await tx.teacherSubject.update({ where: { id: existingRel.id }, data: { isDeleted: false, deletedAt: null, classId: row.classId } });
         else await tx.teacherSubject.create({ data: row });
       }
     }

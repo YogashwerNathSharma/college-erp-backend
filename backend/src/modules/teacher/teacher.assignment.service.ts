@@ -33,8 +33,9 @@ export const saveTeacherAssignments = async (
   const subjectIds = [...new Set(uniqueAssignments.map((a) => a.subjectId))];
   const classIds = [...new Set(uniqueAssignments.map((a) => a.classId))];
 
-  // Subject/Class in the active Prisma schema do not expose isDeleted;
-  // academicYearId is the authoritative year boundary for these masters.
+  // Subject/Class in the active Prisma schema use academicYearId as the
+  // authoritative year boundary. TeacherSubject also stores classId, so the
+  // exact class-subject pair must be persisted rather than inferred only at read time.
   const subjects = await prisma.subject.findMany({
     where: { id: { in: subjectIds }, tenantId, academicYearId },
     select: { id: true, classId: true },
@@ -83,11 +84,19 @@ export const saveTeacherAssignments = async (
     if (existing) {
       await prisma.teacherSubject.update({
         where: { id: existing.id },
-        data: { isDeleted: false, deletedAt: null },
+        data: {
+          classId: assignment.classId,
+          isDeleted: false,
+          deletedAt: null,
+        },
       });
     } else {
       await prisma.teacherSubject.create({
-        data: { teacherId, subjectId: assignment.subjectId },
+        data: {
+          teacherId,
+          subjectId: assignment.subjectId,
+          classId: assignment.classId,
+        },
       });
     }
   }

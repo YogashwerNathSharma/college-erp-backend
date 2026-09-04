@@ -125,11 +125,18 @@ const AddEditTeacher = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) return toast.error("First Name is required"); if (!lastName.trim()) return toast.error("Last Name is required"); if (!email.trim()) return toast.error("Email is required"); if (!phone.trim()) return toast.error("Phone is required"); if (!gender) return toast.error("Gender is required"); if (!dob) return toast.error("Date of Birth is required"); if (!academicYearId) return toast.error("Academic Year is required"); if (selectedClasses.length === 0) return toast.error("Please assign at least one class");
+    const assignmentPairs = selectedSubjects.map((subjectId) => {
+      const subject = allSubjects.find((s) => s.id === subjectId);
+      return subject?.classId ? { subjectId, classId: subject.classId } : null;
+    }).filter((a): a is { subjectId: string; classId: string } => Boolean(a));
+    if (assignmentPairs.length !== selectedSubjects.length) return toast.error("One or more selected subjects are invalid for the selected academic year");
     setLoading(true);
     const formData = new FormData();
     formData.append("firstName", firstName.trim()); formData.append("lastName", lastName.trim()); formData.append("name", `${firstName.trim()} ${lastName.trim()}`); formData.append("email", email.trim()); formData.append("phone", phone.trim()); formData.append("gender", gender); formData.append("dob", dob); formData.append("maritalStatus", maritalStatus); formData.append("academicYearId", academicYearId);
     if (employeeId.trim()) formData.append("employeeId", employeeId.trim());
-    selectedSubjects.forEach((subjectId) => formData.append("subjectIds[]", subjectId)); selectedClasses.forEach((classId) => formData.append("classIds[]", classId)); if (photo) formData.append("photo", photo);
+    selectedSubjects.forEach((subjectId) => formData.append("subjectIds[]", subjectId)); selectedClasses.forEach((classId) => formData.append("classIds[]", classId));
+    formData.append("assignments", JSON.stringify(assignmentPairs));
+    if (photo) formData.append("photo", photo);
     try {
       const res = isEdit ? await axios.put(getFullUrl(`/api/teacher/${id}`), formData, getAuthConfig()) : await axios.post(getFullUrl("/api/teacher"), formData, getAuthConfig());
       if (res.data?.success) { toast.success(isEdit ? "Teacher updated successfully" : "Teacher created successfully"); navigate("/teachers"); } else toast.error(res.data?.message || "Teacher could not be saved");

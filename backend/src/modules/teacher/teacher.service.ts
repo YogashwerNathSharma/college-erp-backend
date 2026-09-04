@@ -130,7 +130,9 @@ export const updateTeacher = async (id: string, data: any, tenantId: string) => 
       photoUrl: data.photoUrl !== undefined ? data.photoUrl : existing.photoUrl, academicYearId: yearId,
     } });
     if (hasExactAssignments || data.subjectIds !== undefined) {
-      const rows = hasExactAssignments ? await resolveTeacherSubjectRows(tx, id, subjectIds, classIds, tenantId, yearId, data.assignments) : [];
+      const rows = (hasExactAssignments || data.subjectIds !== undefined)
+        ? await resolveTeacherSubjectRows(tx, id, subjectIds, classIds, tenantId, yearId, data.assignments)
+        : [];
       const desiredSubjectIds = new Set(rows.map((r: any) => r.subjectId));
       const current = await tx.teacherSubject.findMany({ where: { teacherId: id, isDeleted: false }, include: { subject: { select: { academicYearId: true } } } });
       for (const rel of current) {

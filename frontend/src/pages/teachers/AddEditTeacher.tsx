@@ -130,24 +130,37 @@ const AddEditTeacher = () => {
     setLoading(true);
     try {
       if (isEdit && id) {
-        // Update teacher profile separately from subject assignments. The
-        // dedicated assignment endpoint is authoritative for multi-subject
-        // changes and avoids the multipart/profile update path silently
-        // interfering with assignment persistence.
+        // Save the exact assignments first. This makes subject changes independent
+        // of the multipart teacher-profile request and prevents a profile failure
+        // from silently preventing assignment persistence.
+        const auth = getAuthConfig();
+        const assignmentRes = await axios.post(
+          getFullUrl(`/api/teacher/${id}/assignments`),
+          { academicYearId, assignments: assignmentPairs },
+          { ...auth, headers: { ...auth.headers, "x-academic-year-id": academicYearId } }
+        );
+        if (!assignmentRes.data?.success) throw new Error(assignmentRes.data?.message || "Subject assignments could not be updated");
+
+        // Verify the server returned the exact selected subject set before moving on.
+        const verifyRes = await axios.get(
+          getFullUrl(`/api/teacher/${id}`),
+          { ...auth, params: { academicYearId } }
+        );
+        if (!verifyRes.data?.success) throw new Error(verifyRes.data?.message || "Could not verify teacher assignments");
+        const savedIds = new Set<string>((verifyRes.data.data?.subjects || [])
+          .map((s: any) => s?.id || s?.subjectId || s?.subject?.id)
+          .filter(Boolean));
+        const expectedIds = new Set(assignmentPairs.map((a) => a.subjectId));
+        const exactMatch = savedIds.size === expectedIds.size && [...expectedIds].every((subjectId) => savedIds.has(subjectId));
+        if (!exactMatch) throw new Error("Server did not persist the selected subjects. Please try again.");
+
+        // Update teacher profile after the assignment write has been confirmed.
         const formData = new FormData();
         formData.append("firstName", firstName.trim()); formData.append("lastName", lastName.trim()); formData.append("name", `${firstName.trim()} ${lastName.trim()}`); formData.append("email", email.trim()); formData.append("phone", phone.trim()); formData.append("gender", gender); formData.append("dob", dob); formData.append("maritalStatus", maritalStatus); formData.append("academicYearId", academicYearId);
         if (employeeId.trim()) formData.append("employeeId", employeeId.trim());
         if (photo) formData.append("photo", photo);
-
         const profileRes = await axios.put(getFullUrl(`/api/teacher/${id}`), formData, getAuthConfig());
         if (!profileRes.data?.success) throw new Error(profileRes.data?.message || "Teacher profile could not be updated");
-
-        const assignmentRes = await axios.post(
-          getFullUrl(`/api/teacher/${id}/assignments`),
-          { academicYearId, assignments: assignmentPairs },
-          { ...getAuthConfig(), headers: { ...getAuthConfig().headers, "x-academic-year-id": academicYearId } }
-        );
-        if (!assignmentRes.data?.success) throw new Error(assignmentRes.data?.message || "Subject assignments could not be updated");
 
         toast.success("Teacher and subject assignments updated successfully");
         navigate("/teachers");

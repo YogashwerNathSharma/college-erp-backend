@@ -26,7 +26,7 @@ export const upload = multer({
 });
 
 /** Normalize multipart arrays and exact class/subject assignment pairs. */
-function parseFormArrays(data: any, method?: string): any {
+function parseFormArrays(data: any): any {
   const subjectField = data["subjectIds[]"];
   const classField = data["classIds[]"];
 
@@ -62,8 +62,13 @@ function parseFormArrays(data: any, method?: string): any {
     }
   }
 
-  if (method === "PUT" && data.subjectIds === undefined) data.subjectIds = [];
-  if (method === "PUT" && data.classIds === undefined) data.classIds = [];
+  // IMPORTANT: Do not manufacture subjectIds/classIds = [] for PUT.
+  // The teacher edit flow updates assignments through /:id/assignments first,
+  // then sends a profile-only multipart PUT. Injecting empty arrays here caused
+  // that profile PUT to interpret "no assignment fields" as "remove all
+  // assignments", wiping the subjects that were just saved.
+  // If a caller explicitly sends an empty array, it remains intentional and is
+  // handled by updateTeacher as a real request to clear that relation.
 
   delete data["subjectIds[]"];
   delete data["classIds[]"];
@@ -75,7 +80,7 @@ export const create = async (req: any, res: Response) => {
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body }, req.method);
+    const data = parseFormArrays({ ...req.body });
     data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -108,8 +113,6 @@ export const getById = async (req: any, res: Response) => {
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // Pass the resolved/selected academic year through so the assignment list
-    // shown on the page is scoped to the same year used for saving.
     const academicYearId = (req as any).academicYearId || req.query.academicYearId;
     const teacher = await getTeacherById(id, tenantId, academicYearId);
     if (!teacher) return res.status(404).json({ success: false, message: "Teacher not found" });
@@ -126,7 +129,7 @@ export const update = async (req: any, res: Response) => {
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body }, req.method);
+    const data = parseFormArrays({ ...req.body });
     data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -144,7 +147,7 @@ export const partialUpdate = async (req: any, res: Response) => {
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const data = parseFormArrays({ ...req.body }, req.method);
+    const data = parseFormArrays({ ...req.body });
     data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");

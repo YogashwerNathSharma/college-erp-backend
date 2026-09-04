@@ -1162,6 +1162,7 @@ model Class {
 
   teachers        TeacherClass[]
   subjects        Subject[]
+  teacherSubjects TeacherSubject[] @relation("ClassTeacherSubjects")
   sections        Section[]
   enrollments     Enrollment[]
   timetables      Timetable[]
@@ -1654,8 +1655,10 @@ model TeacherSubject {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
   teacherId String  @db.ObjectId
   subjectId String  @db.ObjectId
+  classId   String? @db.ObjectId
   teacher   Teacher @relation(fields: [teacherId], references: [id])
   subject   Subject @relation(fields: [subjectId], references: [id])
+  class     Class?  @relation("ClassTeacherSubjects", fields: [classId], references: [id])
   isDeleted Boolean @default(false)
   deletedAt DateTime?
 

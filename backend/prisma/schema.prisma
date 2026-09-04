@@ -3739,6 +3739,7 @@ model EventCategory {
   color    String   @default("#4f46e5")
   icon     String?
   events   Event[]
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

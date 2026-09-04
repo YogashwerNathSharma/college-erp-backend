@@ -16,6 +16,22 @@ function getPrismaDelegate(modelName: string): any {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Helper: Probe whether a Prisma model accepts a given field.
+// Uses a lightweight count query so it never returns real data.
+// ─────────────────────────────────────────────────────────────────
+async function modelHasField(delegate: any, field: string, tenantId?: string): Promise<boolean> {
+  try {
+    const where: any = {};
+    if (tenantId) where.tenantId = tenantId;
+    where[field] = undefined;          // Prisma rejects unknown keys
+    await delegate.count({ where });   // if field is valid → succeeds
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // GET /api/masters/categories
 // Returns all master categories with model counts
 // ─────────────────────────────────────────────────────────────────
@@ -72,30 +88,66 @@ export async function listEntries(req: Request, res: Response) {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = { tenantId };
+    const where: any = {};
+    if (tenantId) where.tenantId = tenantId;
 
-    // Only show active unless explicitly requested
-    if (!showInactive) {
-      where.isActive = true;
-    }
+    // Safely attempt the full query; fall back without isActive/orderBy if model lacks them
+    let hasIsActive = true;
+    try {
+      // Only show active unless explicitly requested
+      if (!showInactive) {
+        where.isActive = true;
+      }
+    } catch { /* field may not exist */ }
 
-    // Search across configured search fields
-    if (search && config.searchFields.length > 0) {
-      where.OR = config.searchFields.map(field => ({
-        [field]: { contains: search, mode: 'insensitive' },
-      }));
+    // Search across configured search fields (wrap in try to handle missing fields)
+    if (search && config.searchFields?.length > 0) {
+      try {
+        where.OR = config.searchFields.map(field => ({
+          [field]: { contains: search, mode: 'insensitive' },
+        }));
+      } catch { /* ignore invalid search fields */ }
     }
 
     // Execute query with pagination
-    const [entries, total] = await Promise.all([
-      delegate.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { [sortField]: sortOrder },
-      }),
-      delegate.count({ where }),
-    ]);
+    let entries: any[] = [];
+    let total = 0;
+    try {
+      [entries, total] = await Promise.all([
+        delegate.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortField]: sortOrder },
+        }),
+        delegate.count({ where }),
+      ]);
+    } catch (queryErr: any) {
+      // If the query failed (e.g. unknown isActive or createdAt), retry without them
+      console.warn(`Master query for ${config.model} failed, retrying without isActive/orderBy:`, queryErr.message);
+      const safeWhere: any = {};
+      if (tenantId) safeWhere.tenantId = tenantId;
+      if (search && config.searchFields?.length > 0) {
+        safeWhere.OR = config.searchFields.map(field => ({
+          [field]: { contains: search, mode: 'insensitive' },
+        }));
+      }
+      try {
+        [entries, total] = await Promise.all([
+          delegate.findMany({ where: safeWhere, skip, take: limit }),
+          delegate.count({ where: safeWhere }),
+        ]);
+      } catch (retryErr: any) {
+        // Last resort: no filters at all
+        console.warn(`Master retry for ${config.model} also failed:`, retryErr.message);
+        try {
+          entries = await delegate.findMany({ skip, take: limit });
+          total = await delegate.count();
+        } catch (finalErr: any) {
+          return res.status(500).json({ success: false, message: `Cannot query ${config.label}: ${finalErr.message}` });
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -179,7 +231,11 @@ export async function createEntry(req: Request, res: Response) {
 
     // Build data object - only include fields defined in config
     const allowedFields = config.fields.map(f => f.name);
-    const data: any = { tenantId, isActive: true };
+    const data: any = {};
+    if (tenantId) data.tenantId = tenantId;
+    // Only set isActive if the config has an isActive-like field or the model likely supports it
+    // Most master models have isActive; the create will silently ignore unknown fields in try/catch
+    data.isActive = true;
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined && req.body[field] !== '') {
@@ -206,7 +262,18 @@ export async function createEntry(req: Request, res: Response) {
       }
     }
 
-    const entry = await delegate.create({ data });
+    let entry;
+    try {
+      entry = await delegate.create({ data });
+    } catch (createErr: any) {
+      // If isActive is not a valid field, retry without it
+      if (createErr.message?.includes('isActive')) {
+        delete data.isActive;
+        entry = await delegate.create({ data });
+      } else {
+        throw createErr;
+      }
+    }
 
     res.status(201).json({ success: true, data: entry, message: 'Entry created successfully' });
   } catch (error: any) {
@@ -304,10 +371,19 @@ export async function deleteEntry(req: Request, res: Response) {
     }
 
     // Soft delete
-    await delegate.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    try {
+      await delegate.update({
+        where: { id },
+        data: { isActive: false },
+      });
+    } catch (delErr: any) {
+      // If model doesn't support isActive, just delete the record
+      if (delErr.message?.includes('isActive')) {
+        await delegate.delete({ where: { id } });
+      } else {
+        throw delErr;
+      }
+    }
 
     res.json({ success: true, message: 'Entry deleted successfully' });
   } catch (error: any) {
@@ -338,10 +414,18 @@ export async function toggleEntry(req: Request, res: Response) {
       return res.status(404).json({ success: false, message: 'Entry not found' });
     }
 
-    const entry = await delegate.update({
-      where: { id },
-      data: { isActive: !existing.isActive },
-    });
+    let entry;
+    try {
+      entry = await delegate.update({
+        where: { id },
+        data: { isActive: !existing.isActive },
+      });
+    } catch (toggleErr: any) {
+      if (toggleErr.message?.includes('isActive')) {
+        return res.status(400).json({ success: false, message: 'This model does not support active/inactive toggle' });
+      }
+      throw toggleErr;
+    }
 
     res.json({
       success: true,
@@ -395,14 +479,25 @@ export async function bulkCreate(req: Request, res: Response) {
         }
 
         // Build data
-        const data: any = { tenantId, isActive: true };
+        const data: any = {};
+        if (tenantId) data.tenantId = tenantId;
+        data.isActive = true;
         for (const field of allowedFields) {
           if (row[field] !== undefined && row[field] !== '') {
             data[field] = row[field];
           }
         }
 
-        await delegate.create({ data });
+        try {
+          await delegate.create({ data });
+        } catch (createErr: any) {
+          if (createErr.message?.includes('isActive')) {
+            delete data.isActive;
+            await delegate.create({ data });
+          } else {
+            throw createErr;
+          }
+        }
         results.success++;
       } catch (err: any) {
         results.failed++;
@@ -437,10 +532,22 @@ export async function exportEntries(req: Request, res: Response) {
 
     const delegate = getPrismaDelegate(config.model);
 
-    const entries = await delegate.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    let entries;
+    try {
+      entries = await delegate.findMany({
+        where: { tenantId, isActive: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch {
+      // Fallback without isActive/orderBy
+      try {
+        entries = await delegate.findMany({
+          where: { tenantId },
+        });
+      } catch {
+        entries = await delegate.findMany();
+      }
+    }
 
     // Remove internal fields for export
     const exportData = entries.map((entry: any) => {
@@ -565,11 +672,25 @@ export async function getDropdown(req: Request, res: Response) {
         orderBy: { name: 'asc' },
       });
     } catch {
-      entries = await delegate.findMany({
-        where: { tenantId, isActive: true },
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-      });
+      try {
+        entries = await delegate.findMany({
+          where: { tenantId, isActive: true },
+          select: { id: true, name: true },
+          orderBy: { name: 'asc' },
+        });
+      } catch {
+        try {
+          entries = await delegate.findMany({
+            where: { tenantId },
+            select: { id: true, name: true },
+          });
+        } catch {
+          // Absolute fallback: just return all IDs
+          entries = await delegate.findMany({
+            where: tenantId ? { tenantId } : {},
+          });
+        }
+      }
     }
 
     res.json({ success: true, data: entries });

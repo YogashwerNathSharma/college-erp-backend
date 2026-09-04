@@ -76,7 +76,6 @@ export const create = async (req: any, res: Response) => {
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const data = parseFormArrays({ ...req.body }, req.method);
-    // Explicit form/body selection wins. Middleware is only the fallback.
     data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");
@@ -109,7 +108,10 @@ export const getById = async (req: any, res: Response) => {
     const { id } = req.params;
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const teacher = await getTeacherById(id, tenantId);
+    // Pass the resolved/selected academic year through so the assignment list
+    // shown on the page is scoped to the same year used for saving.
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+    const teacher = await getTeacherById(id, tenantId, academicYearId);
     if (!teacher) return res.status(404).json({ success: false, message: "Teacher not found" });
 
     return res.json({ success: true, data: teacher });
@@ -125,7 +127,6 @@ export const update = async (req: any, res: Response) => {
     if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const data = parseFormArrays({ ...req.body }, req.method);
-    // Do not overwrite an explicitly selected year with a stale middleware value.
     data.academicYearId = data.academicYearId || (req as any).academicYearId;
 
     if (req.file) data.photoUrl = await uploadToCloudinary(req.file.buffer, "teachers");

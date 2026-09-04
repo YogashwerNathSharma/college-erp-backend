@@ -12,14 +12,17 @@ const router = express.Router();
 router.get("/dashboard", authMiddleware, resolveTenant, resolveAcademicYear, dashboard);
 
 // CREATE (with photo upload)
+// multer must run before resolveAcademicYear so multipart academicYearId is
+// available to the academic-year middleware. This keeps the selected year
+// authoritative without relying on the current/default year.
 router.post(
   "/",
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
+  upload.single("photo"),
   resolveAcademicYear,
   checkLimit("teachers"),
-  upload.single("photo"),
   create
 );
 
@@ -35,8 +38,8 @@ router.put(
   authMiddleware,
   allowRoles("ADMIN"),
   resolveTenant,
-  resolveAcademicYear,
   upload.single("photo"),
+  resolveAcademicYear,
   update
 );
 
@@ -45,9 +48,9 @@ router.patch(
   "/:id",
   authMiddleware,
   allowRoles("ADMIN"),
+  upload.single("photo"),
   resolveTenant,
   resolveAcademicYear,
-  upload.single("photo"),
   partialUpdate
 );
 

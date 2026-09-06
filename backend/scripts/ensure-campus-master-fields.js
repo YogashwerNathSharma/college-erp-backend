@@ -22,9 +22,9 @@ if (missing.length) modelBlock += `\n${missing.map((field) => fieldDefinitions[f
 // Campus Master requires only name, so legacy required fields must remain optional.
 const lines = modelBlock.split("\n").map((line) => {
   const trimmed = line.trim();
-  if (trimmed.startsWith("capacity ") && trimmed === "capacity  Int") return line.replace(/Int$/, "Int?");
-  if (trimmed.startsWith("location ") && trimmed === "location  String") return line.replace(/String$/, "String?");
-  if (trimmed.startsWith("facilities ") && trimmed === "facilities String[]") return `${line} @default([])`;
+  if (/^capacity\s+Int$/.test(trimmed)) return line.replace(/Int$/, "Int?");
+  if (/^location\s+String$/.test(trimmed)) return line.replace(/String$/, "String?");
+  if (/^facilities\s+String\[\]$/.test(trimmed)) return `${line} @default([])`;
   return line;
 });
 modelBlock = lines.join("\n");
@@ -50,8 +50,15 @@ const finalSchema = fs.readFileSync(schemaPath, "utf8");
 const campusFinalStart = finalSchema.indexOf("model Campus {");
 const campusFinalEnd = finalSchema.indexOf("\n}", campusFinalStart);
 const finalBlock = finalSchema.slice(campusFinalStart, campusFinalEnd);
-for (const marker of ["branchId   String?", "address    String?", "capacity  Int?", "location  String?", "facilities String[] @default([])"]) {
-  if (!finalBlock.includes(marker)) throw new Error(`Campus Master schema verification failed: ${marker}`);
+const requiredPatterns = [
+  /^\s+branchId\s+String\?\s*$/m,
+  /^\s+address\s+String\?\s*$/m,
+  /^\s+capacity\s+Int\?\s*$/m,
+  /^\s+location\s+String\?\s*$/m,
+  /^\s+facilities\s+String\[\]\s+@default\(\[\]\)\s*$/m,
+];
+for (const pattern of requiredPatterns) {
+  if (!pattern.test(finalBlock)) throw new Error(`Campus Master schema verification failed: ${pattern}`);
 }
 
 process.stdout.write(`Campus Master schema verified: ${missing.length ? `added ${missing.join(", ")}` : "fields already present"}.\n`);

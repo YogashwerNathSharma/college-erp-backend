@@ -21,7 +21,9 @@ const block = `if (modelKey === 'syllabus-master') {
   `;
 
 if (!source.includes(marker)) {
-  const anchor = "if (modelKey === 'elective-subject-master')";
+  // Elective Master runs immediately before this script and uses double-quoted
+  // model keys. Accept that generated anchor while keeping the patch scoped.
+  const anchor = "if (modelKey === \"elective-subject-master\")";
   if (!source.includes(anchor)) {
     throw new Error('Could not find master field resolver anchor');
   }

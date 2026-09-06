@@ -4,18 +4,17 @@ const path = require("path");
 const filePath = path.resolve(__dirname, "../src/pages/masters/MasterModule.tsx");
 let source = fs.readFileSync(filePath, "utf8");
 
-// Always normalize the School Master field selector during both postinstall
-// and build. This prevents an old cached source copy from hiding the configured
-// School profile fields in production.
-const replacement = `// School Master exposes every configured profile field.\nfunction getEffectiveFields(_modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {\n  return configuredFields;\n}`;
+// School Master must use every field declared by master.config.ts.
+// Replace only the field-selector function; leave the generic master engine intact.
+const replacement = `// School Master exposes every configured profile field.
+function getEffectiveFields(_modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
+  return configuredFields;
+}`;
 
-const blockPattern = /\/\/ Keep the existing generic master engine intact, but only expose fields that[\\s\\S]*?function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\\s\\S]*?\n\}/;
-const newBlockPattern = /\/\/ School Master exposes every configured profile field\.[\\s\\S]*?function getEffectiveFields\(_modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\\s\\S]*?\n\}/;
+const functionPattern = /(?:\/\/[^\n]*School Master[^\n]*\n(?:\/\/[^\n]*\n)?)?function getEffectiveFields\([^)]*\): FieldConfig\[\] \{[\s\S]*?\n\}/;
 
-if (newBlockPattern.test(source)) {
-  process.stdout.write("School Master frontend fields already enabled.\n");
-} else if (blockPattern.test(source)) {
-  source = source.replace(blockPattern, replacement);
+if (functionPattern.test(source)) {
+  source = source.replace(functionPattern, replacement);
   fs.writeFileSync(filePath, source, "utf8");
   process.stdout.write("School Master frontend fields enabled.\n");
 } else {

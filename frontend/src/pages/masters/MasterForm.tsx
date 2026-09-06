@@ -45,7 +45,9 @@ function LookupField({ field, value, onChange }: { field: FieldConfig; value: an
         const res = await axios.get(getFullUrl(field.lookupUrl || ""), {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        const data = res.data?.data || res.data || [];
+        // API endpoints in the ERP can return either an array, { data: [] },
+        // or paginated { data: { data: [] } }. Normalize all supported shapes.
+        const data = res.data?.data?.data || res.data?.data || res.data || [];
         const labelField = field.lookupLabelField || "name";
         const valueField = field.lookupValueField || "id";
         setOptions(
@@ -222,9 +224,9 @@ export default function MasterForm({
           <textarea
             value={value}
             onChange={(e) => handleChange(field.name, e.target.value)}
+            className={baseClasses}
+            rows={4}
             placeholder={field.placeholder}
-            rows={3}
-            className={`${baseClasses} resize-none`}
           />
         );
 
@@ -237,49 +239,25 @@ export default function MasterForm({
           >
             <option value="">Select {field.label}</option>
             {field.options?.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         );
 
+      case "lookup":
+        return <LookupField field={field} value={value} onChange={(nextValue) => handleChange(field.name, nextValue)} />;
+
       case "boolean":
         return (
-          <label className="flex items-center gap-3 cursor-pointer py-1">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={!!value}
-                onChange={(e) => handleChange(field.name, e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-300 dark:bg-slate-600 rounded-full peer-checked:bg-indigo-600 transition-colors" />
-              <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform peer-checked:translate-x-5" />
-            </div>
-            <span className="text-sm text-gray-700 dark:text-gray-300 select-none">
-              {value ? "Yes" : "No"}
-            </span>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={Boolean(value)}
+              onChange={(e) => handleChange(field.name, e.target.checked)}
+              className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-300">{field.label}</span>
           </label>
-        );
-
-      case "color":
-        return (
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={value || "#4f46e5"}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              className="w-10 h-10 rounded-lg border border-gray-300 dark:border-slate-600 cursor-pointer p-0 bg-transparent"
-            />
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => handleChange(field.name, e.target.value)}
-              placeholder="#4f46e5"
-              className={`${baseClasses} flex-1`}
-            />
-          </div>
         );
 
       case "number":
@@ -288,29 +266,9 @@ export default function MasterForm({
             type="number"
             value={value}
             onChange={(e) => handleChange(field.name, e.target.value)}
-            placeholder={field.placeholder}
             min={field.min}
             max={field.max}
-            className={baseClasses}
-          />
-        );
-
-      case "date":
-        return (
-          <input
-            type="date"
-            value={value ? (typeof value === "string" && value.includes("T") ? value.split("T")[0] : value) : ""}
-            onChange={(e) => handleChange(field.name, e.target.value)}
-            className={baseClasses}
-          />
-        );
-
-      case "datetime":
-        return (
-          <input
-            type="datetime-local"
-            value={value}
-            onChange={(e) => handleChange(field.name, e.target.value)}
+            placeholder={field.placeholder}
             className={baseClasses}
           />
         );
@@ -321,7 +279,7 @@ export default function MasterForm({
             type="email"
             value={value}
             onChange={(e) => handleChange(field.name, e.target.value)}
-            placeholder={field.placeholder || "email@example.com"}
+            placeholder={field.placeholder}
             className={baseClasses}
           />
         );
@@ -332,7 +290,27 @@ export default function MasterForm({
             type="tel"
             value={value}
             onChange={(e) => handleChange(field.name, e.target.value)}
-            placeholder={field.placeholder || "+91 XXXXXXXXXX"}
+            placeholder={field.placeholder}
+            className={baseClasses}
+          />
+        );
+
+      case "date":
+        return (
+          <input
+            type="date"
+            value={value ? String(value).slice(0, 10) : ""}
+            onChange={(e) => handleChange(field.name, e.target.value)}
+            className={baseClasses}
+          />
+        );
+
+      case "datetime":
+        return (
+          <input
+            type="datetime-local"
+            value={value ? String(value).slice(0, 16) : ""}
+            onChange={(e) => handleChange(field.name, e.target.value)}
             className={baseClasses}
           />
         );
@@ -343,98 +321,27 @@ export default function MasterForm({
             type="url"
             value={value}
             onChange={(e) => handleChange(field.name, e.target.value)}
-            placeholder={field.placeholder || "https://"}
+            placeholder={field.placeholder}
             className={baseClasses}
           />
         );
 
-      case "file":
-      case "image":
+      case "color":
         return (
-          <div className="space-y-2">
-            <label className="flex-1 relative group">
-              <input
-                type="file"
-                accept={field.type === "image" ? "image/*" : undefined}
-                onChange={(e) => handleFileUpload(e, field.name)}
-                disabled={uploadingField === field.name}
-                className="sr-only"
-              />
-              <div className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                uploadingField === field.name
-                  ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/20'
-                  : error
-                  ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
-                  : 'border-gray-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700'
-              }`}>
-                {uploadingField === field.name ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="text-sm font-medium">Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} className="text-indigo-600" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload</span>
-                  </>
-                )}
-              </div>
-            </label>
-            {value && (
-              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                <div className="flex items-center gap-2 min-w-0">
-                  {field.type === "image" ? (
-                    <ImageIcon size={14} className="text-indigo-600 flex-shrink-0" />
-                  ) : (
-                    <Upload size={14} className="text-indigo-600 flex-shrink-0" />
-                  )}
-                  <a
-                    href={value}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-indigo-600 hover:underline truncate"
-                    title={value}
-                  >
-                    View uploaded file
-                  </a>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleChange(field.name, '')}
-                  className="text-xs text-red-600 hover:text-red-700 font-medium flex-shrink-0"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={value || "#6366f1"}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              className="w-10 h-10 rounded border cursor-pointer"
+            />
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              className={baseClasses}
+            />
           </div>
-        );
-
-      case "json":
-        return (
-          <textarea
-            value={typeof value === "object" ? JSON.stringify(value, null, 2) : value}
-            onChange={(e) => {
-              const textVal = e.target.value;
-              try {
-                handleChange(field.name, JSON.parse(textVal));
-              } catch {
-                handleChange(field.name, textVal);
-              }
-            }}
-            placeholder={field.placeholder || "{}"}
-            rows={4}
-            className={`${baseClasses} font-mono text-xs resize-none`}
-          />
-        );
-
-      case "lookup":
-        return (
-          <LookupField
-            field={field}
-            value={value}
-            onChange={(val) => handleChange(field.name, val)}
-          />
         );
 
       default:
@@ -451,66 +358,40 @@ export default function MasterForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-fadeIn">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-            {title}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-          >
-            <X size={18} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Form Body - Scroll Container Fixed */}
-        <form onSubmit={handleSubmit} id="masterDynamicForm" className="flex-1 overflow-y-auto p-6 [scrollbar-gutter:stable]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fields.map((field) => {
-              const isFullWidth = ["textarea", "json", "file", "image"].includes(field.type);
-              return (
-                <div key={field.name} className={isFullWidth ? "md:col-span-2" : ""}>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    {field.label}
-                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  {renderField(field)}
-                  {errors[field.name] && (
-                    <p className="mt-1 text-xs text-red-500">{errors[field.name]}</p>
-                  )}
-                </div>
-              );
-            })}
+        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-130px)]">
+          <div className="p-6 space-y-4">
+            {fields.map((field) => (
+              <div key={field.name}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                {renderField(field)}
+                {errors[field.name] && (
+                  <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading || uploadingField !== null} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {loading ? "Saving..." : "Save"}
+            </button>
           </div>
         </form>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-end gap-3 flex-shrink-0 bg-gray-50 dark:bg-slate-800/50">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2.5 rounded-lg text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="masterDynamicForm"
-            disabled={loading}
-            className="px-5 py-2.5 rounded-lg text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <><Loader2 size={14} className="animate-spin" /> Saving...</>
-            ) : (
-              <><Save size={14} /> {initialData ? "Update" : "Create"}</>
-            )}
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "postinstall": "node scripts/ensure-school-master-fields.cjs",
-    "build": "node scripts/ensure-school-master-fields.cjs && vite build",
+    "postinstall": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs",
+    "build": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs && vite build",
     "preview": "vite preview",
     "lint": "eslint ."
   },
@@ -14,7 +14,7 @@
     "axios": "^1.15.2",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
+    "jspdf": "^4.2.0",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "postinstall": "node scripts/ensure-school-master-fields.cjs",
     "build": "node scripts/ensure-school-master-fields.cjs && vite build",
     "preview": "vite preview",
     "lint": "eslint ."

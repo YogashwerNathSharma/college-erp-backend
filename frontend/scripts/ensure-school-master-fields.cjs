@@ -31,14 +31,14 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
   });
 }`;
 
-// Replace only the School Master field-selector function. This is deliberately
-// regex-based so the build does not depend on whitespace/comment formatting.
-const functionPattern = /function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\s\S]*?\n\}/;
+// Replace only the existing School Master selector, bounded by the next
+// function declaration so nested braces cannot cause a partial replacement.
+const functionPattern = /function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\s\S]*?\n\}\n\nfunction getEntryId/;
 
 if (source.includes("const schoolFields: FieldConfig[] = [") && source.includes('{ name: "address", label: "Address"')) {
   process.stdout.write("Complete School Master fields already enabled.\n");
 } else if (functionPattern.test(source)) {
-  source = source.replace(functionPattern, newFunction);
+  source = source.replace(functionPattern, `${newFunction}\n\nfunction getEntryId`);
   fs.writeFileSync(filePath, source, "utf8");
   process.stdout.write("Complete School Master fields enabled.\n");
 } else {

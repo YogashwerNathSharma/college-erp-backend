@@ -69,14 +69,14 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
 
 // Replace only the existing field selector, bounded by the next function
 // declaration so nested braces cannot cause a partial replacement.
-const functionPattern = /function getEffectiveFields\\(modelKey: string, configuredFields: FieldConfig\\[\\]\\): FieldConfig\\[\\] \\{[\\s\\S]*?\\n\\}\\n\\nfunction getEntryId/;
+const functionPattern = /function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\s\S]*?\n\}\n\nfunction getEntryId/;
 
 if (source.includes('modelKey === "campus-master"') && source.includes('{ name: "branchId", label: "Branch"')) {
-  process.stdout.write("Complete Organization Master fields already enabled.\\n");
+  process.stdout.write("Complete Organization Master fields already enabled.\n");
 } else if (functionPattern.test(source)) {
-  source = source.replace(functionPattern, `${newFunction}\\n\\nfunction getEntryId`);
+  source = source.replace(functionPattern, `${newFunction}\n\nfunction getEntryId`);
   fs.writeFileSync(filePath, source, "utf8");
-  process.stdout.write("Complete Organization Master fields enabled.\\n");
+  process.stdout.write("Complete Organization Master fields enabled.\n");
 } else {
   throw new Error("Organization Master field selector was not found; refusing to modify unrelated frontend code.");
 }

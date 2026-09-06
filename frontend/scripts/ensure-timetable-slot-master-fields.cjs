@@ -42,6 +42,10 @@ if (!source.includes('modelKey === "timetable-slot-master"')) {
   source = source.slice(0, absoluteReturnIndex) + block + source.slice(absoluteReturnIndex);
 }
 
+// Persist the generated resolver before verification. This matters on a clean
+// Render checkout where the timetable block is inserted for the first time.
+fs.writeFileSync(filePath, source, "utf8");
+
 const verify = fs.readFileSync(filePath, "utf8");
 const requiredMarkers = [
   'modelKey === "timetable-slot-master"',
@@ -58,5 +62,4 @@ for (const required of requiredMarkers) {
   }
 }
 
-fs.writeFileSync(filePath, source, "utf8");
 process.stdout.write("Timetable Slot Master relation dropdowns verified.\n");

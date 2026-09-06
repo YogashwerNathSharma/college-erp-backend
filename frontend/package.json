@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "postinstall": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs",
-    "build": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs && vite build",
+    "postinstall": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs && node scripts/ensure-master-table-relation-fields.cjs",
+    "build": "node scripts/ensure-school-master-fields.cjs && node scripts/ensure-elective-master-fields.cjs && node scripts/ensure-master-table-relation-fields.cjs && vite build",
     "preview": "vite preview",
     "lint": "eslint ."
   },

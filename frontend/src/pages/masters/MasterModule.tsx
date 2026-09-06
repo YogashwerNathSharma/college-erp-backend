@@ -16,6 +16,7 @@ import {
 import MasterTable from "./MasterTable";
 import MasterForm from "./MasterForm";
 
+// Dashboard-style SOLID colors (matches TenantDashboard quick actions)
 const RECENT_COLORS = [
   { iconBg: "bg-blue-500", lightBg: "bg-blue-50 dark:bg-blue-950/50" },
   { iconBg: "bg-emerald-500", lightBg: "bg-emerald-50 dark:bg-emerald-950/50" },
@@ -47,36 +48,46 @@ function getCategoryIcon(iconName: string, size = 22, colorClass = "text-white")
   return Icon ? <Icon size={size} className={colorClass} /> : <Database size={size} className={colorClass} />;
 }
 
-interface MasterModel { key: string; label: string; icon?: string; description?: string; }
-interface MasterCategory { id: string; label: string; icon: string; description: string; modelCount: number; models: MasterModel[]; }
-interface FieldConfig { name: string; label: string; type: string; required?: boolean; options?: { label: string; value: string }[]; min?: number; max?: number; }
-interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; hasNext: boolean; hasPrev: boolean; }
+interface MasterModel {
+  key: string;
+  label: string;
+  icon?: string;
+  description?: string;
+}
 
-// School Master is an explicit institution-profile form. Other masters continue
-// to use the existing generic configuration unchanged.
+interface MasterCategory {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  modelCount: number;
+  models: MasterModel[];
+}
+
+interface FieldConfig {
+  name: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  options?: { label: string; value: string }[];
+}
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+// Keep the existing generic master engine intact, but only expose fields that
+// are actually persisted by the current SSOT model for School Master.
 function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
-  if (modelKey !== "school-master") return configuredFields;
-
-  const schoolFields: FieldConfig[] = [
-    { name: "name", label: "School Name", type: "text", required: true },
-    { name: "code", label: "School Code", type: "text" },
-    { name: "address", label: "Address", type: "textarea" },
-    { name: "city", label: "City", type: "text" },
-    { name: "state", label: "State", type: "text" },
-    { name: "pincode", label: "Pincode", type: "text" },
-    { name: "phone", label: "Phone", type: "phone" },
-    { name: "email", label: "Email", type: "email" },
-    { name: "website", label: "Website", type: "url" },
-    { name: "logo", label: "Logo", type: "url" },
-    { name: "affiliation", label: "Affiliation", type: "text" },
-    { name: "establishedYear", label: "Established Year", type: "number", min: 1800, max: 2100 },
-    { name: "principalName", label: "Principal Name", type: "text" },
-  ];
-
-  return schoolFields.map((fallback) => {
-    const configured = configuredFields.find((field) => field.name === fallback.name);
-    return configured ? { ...fallback, ...configured } : fallback;
-  });
+  if (modelKey === "school-master") {
+    return configuredFields.filter((field) => field.name === "name" || field.name === "code");
+  }
+  return configuredFields;
 }
 
 function getEntryId(entry: any): string | null {
@@ -88,153 +99,512 @@ export default function MasterModule() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<MasterCategory | null>(null);
-  const [selectedModel, setSelectedModel] = useState<MasterModel | null>(null);
-  const [fields, setFields] = useState<FieldConfig[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [selectedModelLabel, setSelectedModelLabel] = useState<string>("");
+
+  // Workflow State Control: 'categories' | 'child_grid' | 'table_view'
+  const [currentView, setCurrentView] = useState<"categories" | "child_grid" | "table_view">("categories");
+
   const [entries, setEntries] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [fields, setFields] = useState<FieldConfig[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1, limit: 25, total: 0, totalPages: 0, hasNext: false, hasPrev: false,
+  });
+
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
-  const [search, setSearch] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [showExport, setShowExport] = useState(false);
 
-  const api = getFullUrl("/api/masters");
-
-  const loadCategories = useCallback(async () => {
+  const fetchCategories = async () => {
     try {
-      const res = await axios.get(`${api}/categories`);
-      setCategories(res.data?.categories || res.data || []);
-    } catch (error) {
-      console.error("Failed to load master categories", error);
+      const res = await axios.get(getFullUrl("/api/masters/categories"));
+      if (res.data.success) {
+        setCategories(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load master categories:", err);
     }
-  }, [api]);
+  };
 
-  const loadModel = useCallback(async (model: MasterModel) => {
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchEntries = useCallback(async (modelKey: string, page = 1) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${api}/${model.key}`);
-      const data = res.data || {};
-      const configuredFields: FieldConfig[] = data.fields || data.config?.fields || [];
-      setFields(getEffectiveFields(model.key, configuredFields));
-      setEntries(data.entries || data.data || []);
-      setPagination(data.pagination || null);
-    } catch (error) {
-      console.error("Failed to load master", error);
-      setFields(getEffectiveFields(model.key, []));
-      setEntries([]);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "25",
+        search,
+        showInactive: showInactive.toString(),
+      });
+      const res = await axios.get(getFullUrl(`/api/masters/${modelKey}?${params}`));
+      if (res.data.success) {
+        setEntries(res.data.data);
+        setPagination(res.data.pagination);
+        if (res.data.config?.fields) {
+          setFields(getEffectiveFields(modelKey, res.data.config.fields));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load entries:", err);
     } finally {
       setLoading(false);
     }
-  }, [api]);
-
-  useEffect(() => { loadCategories(); }, [loadCategories]);
+  }, [search, showInactive]);
 
   useEffect(() => {
-    if (selectedModel) loadModel(selectedModel);
-  }, [selectedModel, loadModel]);
+    if (selectedModel) {
+      fetchEntries(selectedModel);
+    }
+  }, [selectedModel, search, showInactive, fetchEntries]);
 
-  const openModel = (model: MasterModel) => {
-    setSelectedModel(model);
-    setEditingEntry(null);
-    setShowForm(false);
-    setSearch("");
+  const handleCategoryClick = (category: MasterCategory) => {
+    setSelectedCategory(category);
+    setCurrentView("child_grid");
   };
 
-  const backToCategories = () => {
+  const handleModelClick = (model: MasterModel) => {
+    setSelectedModel(model.key);
+    setSelectedModelLabel(model.label);
+    setSearch("");
+    setPagination({ page: 1, limit: 25, total: 0, totalPages: 0, hasNext: false, hasPrev: false });
+    setCurrentView("table_view");
+  };
+
+  const handleBackToCategories = () => {
     setSelectedCategory(null);
     setSelectedModel(null);
-    setEntries([]);
-    setFields([]);
-    setEditingEntry(null);
-    setShowForm(false);
+    setCurrentView("categories");
   };
 
-  const backToModels = () => {
+  const handleBackToChildGrid = () => {
     setSelectedModel(null);
-    setEntries([]);
-    setFields([]);
-    setEditingEntry(null);
-    setShowForm(false);
+    setCurrentView("child_grid");
   };
 
-  const openCreate = () => { setEditingEntry(null); setShowForm(true); };
+  const handleCreate = () => {
+    setEditingEntry(null);
+    setShowForm(true);
+  };
 
-  const openEdit = (entry: any) => {
+  const handleEdit = (entry: any) => {
     const id = getEntryId(entry);
-    if (!id) return;
+    if (!id) {
+      alert("This School Master record has no valid ID and cannot be edited.");
+      return;
+    }
     setEditingEntry({ ...entry, id });
     setShowForm(true);
   };
 
-  const submitForm = async (formData: Record<string, any>) => {
+  const handleDelete = async (id: string) => {
     if (!selectedModel) return;
-    setLoading(true);
+    if (!window.confirm("Are you sure you want to deactivate this entry?")) return;
     try {
-      const id = editingEntry ? getEntryId(editingEntry) : null;
-      if (editingEntry && !id) throw new Error("Invalid master record id");
-      if (editingEntry) {
-        await axios.put(`${api}/${selectedModel.key}/${id}`, formData);
-      } else {
-        await axios.post(`${api}/${selectedModel.key}`, formData);
-      }
-      setShowForm(false);
-      setEditingEntry(null);
-      await loadModel(selectedModel);
-    } finally {
-      setLoading(false);
+      await axios.delete(getFullUrl(`/api/masters/${selectedModel}/${id}`));
+      fetchEntries(selectedModel, pagination.page);
+    } catch (err) {
+      console.error("Delete failed:", err);
     }
   };
 
-  const filteredEntries = entries.filter((entry) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return Object.values(entry || {}).some((value) => String(value ?? "").toLowerCase().includes(q));
-  });
+  const handleToggle = async (id: string) => {
+    if (!selectedModel) return;
+    try {
+      await axios.put(getFullUrl(`/api/masters/${selectedModel}/${id}/toggle`));
+      fetchEntries(selectedModel, pagination.page);
+    } catch (err) {
+      console.error("Toggle failed:", err);
+    }
+  };
 
-  if (!selectedModel) {
-    if (!selectedCategory) {
-      return (
-        <div className="p-4 md:p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <div><h1 className="text-2xl font-bold">Masters</h1><p className="text-sm text-slate-500">Manage master data</p></div>
-            <button onClick={() => navigate(-1)} className="rounded-lg border px-3 py-2"><ArrowLeft size={18} /></button>
+  const handleClone = async (id: string) => {
+    if (!selectedModel) return;
+    try {
+      await axios.post(getFullUrl(`/api/masters/${selectedModel}/${id}/clone`));
+      fetchEntries(selectedModel, pagination.page);
+    } catch (err) {
+      console.error("Clone failed:", err);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!selectedModel) return;
+    try {
+      const res = await axios.get(getFullUrl(`/api/masters/${selectedModel}/export`));
+      if (res.data.success) {
+        const blob = new Blob([JSON.stringify(res.data.data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${selectedModel}-export.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
+  };
+
+  const handleFormSubmit = async (data: any) => {
+    if (!selectedModel) return;
+    setFormLoading(true);
+    try {
+      if (editingEntry) {
+        const id = getEntryId(editingEntry);
+        if (!id) {
+          throw new Error("This record has no valid ID and cannot be updated.");
+        }
+        await axios.put(getFullUrl(`/api/masters/${selectedModel}/${id}`), data);
+      } else {
+        await axios.post(getFullUrl(`/api/masters/${selectedModel}`), data);
+      }
+      setShowForm(false);
+      setEditingEntry(null);
+      fetchEntries(selectedModel, pagination.page);
+    } catch (err: any) {
+      alert(err.response?.data?.message || err.message || "Operation failed");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-[calc(100vh-64px)] w-full bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
+
+      {/* ═══════ VIEW 1: CATEGORIES GRID (Dashboard Layout Like Image 1000412908.jpg) ═══════ */}
+      {currentView === "categories" && (
+        <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex items-center gap-3">
+            {/* Mobile Back Button — navigates to sidebar/dashboard */}
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="md:hidden p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0 tap-target"
+              aria-label="Back"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+            <h1 className="text-lg md:text-2xl font-bold flex items-center gap-2">
+              <Grid className="text-indigo-500" size={24} />
+              Master Control Setup
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Select any architecture base matrix block to handle child structural models
+            </p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((category, index) => (
-              <button key={category.id} onClick={() => setSelectedCategory(category)} className="rounded-xl border bg-white p-5 text-left shadow-sm dark:bg-slate-900">
-                <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-lg ${RECENT_COLORS[index % RECENT_COLORS.length].iconBg}`}>{getCategoryIcon(category.icon)}</div>
-                <div className="font-semibold">{category.label}</div>
-                <div className="mt-1 text-sm text-slate-500">{category.description}</div>
-                <div className="mt-3 text-xs text-slate-400">{category.modelCount} masters</div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">
+            {categories.map((category, index) => {
+              const color = RECENT_COLORS[index % RECENT_COLORS.length];
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category)}
+                  className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${color.lightBg} hover:scale-105 transition-all duration-200 group relative outline-none active:scale-95 cursor-pointer`}
+                >
+                  <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md sm:rounded-lg ${color.iconBg} flex items-center justify-center`}>
+                    {getCategoryIcon(category.icon, 16)}
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">
+                    {category.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ VIEW 2: CHILD MASTERS HORIZONTAL ICON GRID (With Back Button) ═══════ */}
+      {currentView === "child_grid" && selectedCategory && (
+        <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
+          {/* Header Action Row with Navigation Context */}
+          <div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <button
+              onClick={handleBackToCategories}
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+              title="Back to Main Menu"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <span>{getCategoryIcon(selectedCategory.icon, 20, "text-indigo-400")}</span>
+                <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{selectedCategory.label}</h1>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">Select a master target collection mapping below</p>
+            </div>
+          </div>
+
+          {/* Child Icons layout rendering logic */}
+          <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">
+            {selectedCategory.models.map((model, idx) => (
+              <button
+                key={model.key}
+                onClick={() => handleModelClick(model)}
+                className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].lightBg} hover:scale-105 transition-all duration-200 group outline-none active:scale-95 cursor-pointer`}
+              >
+                <div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md sm:rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].iconBg} flex items-center justify-center`}>
+                  <Database size={14} className="text-white" />
+                </div>
+                <span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">
+                  {model.label}
+                </span>
               </button>
             ))}
           </div>
         </div>
-      );
-    }
+      )}
 
-    return (
-      <div className="p-4 md:p-6">
-        <div className="mb-6 flex items-center gap-3"><button onClick={backToCategories} className="rounded-lg border p-2"><ArrowLeft size={18} /></button><div><h1 className="text-2xl font-bold">{selectedCategory.label}</h1><p className="text-sm text-slate-500">Select a master</p></div></div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {selectedCategory.models.map((model) => <button key={model.key} onClick={() => openModel(model)} className="rounded-xl border bg-white p-5 text-left shadow-sm dark:bg-slate-900"><div className="font-semibold">{model.label}</div><div className="mt-1 text-sm text-slate-500">{model.description}</div></button>)}
+      {/* ═══════ VIEW 3: FULL MASTER DATA TABLE CONTAINER ═══════ */}
+      {currentView === "table_view" && selectedModel && (
+        <div className="max-w-7xl mx-auto space-y-4 animate-fadeIn flex flex-col h-full">
+          {/* Header Controls Menu Panel */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBackToChildGrid}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  title="Back to Models"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                  <h1 className="text-base md:text-lg font-bold text-white truncate max-w-[240px]">
+                    {selectedModelLabel}
+                  </h1>
+                  <p className="text-xs text-slate-400">
+                    {pagination.total} entries found inside dataset matrix
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic Operations Toolbar Wrap */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[130px] sm:flex-initial">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Filter records..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 pr-4 py-1.5 w-full sm:w-44 border border-slate-200 dark:border-slate-800 rounded-lg text-xs bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setShowInactive(!showInactive)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs border flex items-center gap-1 transition-colors cursor-pointer ${
+                    showInactive
+                      ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                      : "border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <Filter size={12} />
+                  {showInactive ? "All" : "Active"}
+                </button>
+
+                <button
+                  onClick={handleExport}
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Download size={12} /> Export
+                </button>
+
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="px-2.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Upload size={12} /> Import
+                </button>
+
+                <button
+                  onClick={handleCreate}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-sm cursor-pointer ml-auto sm:ml-0 font-medium"
+                >
+                  <Plus size={14} /> Add New
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Implementation Engine Panel Wrap */}
+          <div className="flex-1 overflow-x-auto">
+            <MasterTable
+              entries={entries}
+              fields={fields}
+              loading={loading}
+              pagination={pagination}
+              onPageChange={(p) => fetchEntries(selectedModel, p)}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onToggle={handleToggle}
+              onClone={handleClone}
+            />
+          </div>
         </div>
-      </div>
-    );
-  }
+      )}
+
+      {/* Dynamic Structural Operational Modals */}
+      {showForm && (
+        <MasterForm
+          fields={fields}
+          initialData={editingEntry}
+          onSubmit={handleFormSubmit}
+          onClose={() => { setShowForm(false); setEditingEntry(null); }}
+          loading={formLoading}
+          title={editingEntry ? `Edit ${selectedModelLabel}` : `Add ${selectedModelLabel}`}
+        />
+      )}
+
+      {showImport && (
+        <ImportModal
+          modelKey={selectedModel!}
+          modelLabel={selectedModelLabel}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            setShowImport(false);
+            if (selectedModel) fetchEntries(selectedModel);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// IMPORT MODAL COMPONENT (Tailored UI styling alignment maps)
+// ═══════════════════════════════════════════════════════════════════
+function ImportModal({
+  modelKey, modelLabel, onClose, onSuccess,
+}: {
+  modelKey: string;
+  modelLabel: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [jsonData, setJsonData] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      try {
+        const data = JSON.parse(text);
+        setJsonData(JSON.stringify(data, null, 2));
+      } catch {
+        setJsonData(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      let entries;
+      try {
+        entries = JSON.parse(jsonData);
+        if (!Array.isArray(entries)) entries = [entries];
+      } catch {
+        const lines = jsonData.trim().split("\n");
+        const headers = lines[0].split(",").map(h => h.trim());
+        entries = lines.slice(1).map(line => {
+          const values = line.split(",").map(v => v.trim());
+          const obj: any = {};
+          headers.forEach((h, i) => { obj[h] = values[i]; });
+          return obj;
+        });
+      }
+
+      const res = await axios.post(getFullUrl(`/api/masters/${modelKey}/bulk`), { entries });
+      setResult(res.data.data);
+      if (res.data.data.failed === 0) {
+        setTimeout(onSuccess, 1000);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Sync execution error caught");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3"><button onClick={backToModels} className="rounded-lg border p-2"><ArrowLeft size={18} /></button><div><h1 className="text-2xl font-bold">{selectedModel.label}</h1><p className="text-sm text-slate-500">Manage records</p></div></div>
-        <div className="flex flex-wrap gap-2"><button onClick={() => loadModel(selectedModel)} className="rounded-lg border px-3 py-2"><RefreshCw size={17} /></button><button onClick={() => setShowImport(true)} className="rounded-lg border px-3 py-2"><Upload size={17} /></button><button onClick={() => setShowExport(true)} className="rounded-lg border px-3 py-2"><Download size={17} /></button><button onClick={openCreate} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white"><Plus size={17} /> Add New</button></div>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 flex items-center justify-between">
+          <h3 className="text-sm md:text-base font-semibold flex items-center gap-2">
+            <Upload size={16} className="text-indigo-400" />
+            Bulk Import: {modelLabel}
+          </h3>
+        </div>
+
+        <div className="p-4 overflow-y-auto flex-1 space-y-4 [scrollbar-gutter:stable]">
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Select local file target sheet (JSON, CSV)
+            </label>
+            <input
+              type="file"
+              accept=".json,.csv"
+              onChange={handleFileUpload}
+              className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-700 file:text-xs file:font-medium file:bg-slate-800 file:text-slate-200 file:hover:bg-slate-700 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Raw Data Array String Area
+            </label>
+            <textarea
+              value={jsonData}
+              onChange={(e) => setJsonData(e.target.value)}
+              rows={5}
+              className="w-full p-2.5 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono bg-gray-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+              placeholder={`[\n { "code": "X1", "name": "Direct Row Sync" }\n]`}
+            />
+          </div>
+
+          {result && (
+            <div className={`p-3 rounded-lg border text-xs ${result.failed > 0 ? "bg-amber-950/40 border-amber-500/30 text-amber-300" : "bg-emerald-950/40 border-emerald-500/30 text-emerald-300"}`}>
+              <p className="font-semibold">Execution Statistics:</p>
+              <p className="mt-0.5">Success counts: {result.success} | Structural failures: {result.failed}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 bg-gray-50 dark:bg-slate-950 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-3.5 py-1.5 rounded-lg text-xs border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={!jsonData.trim() || importing}
+            className="px-3.5 py-1.5 rounded-lg text-xs bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {importing ? <RefreshCw size={12} className="animate-spin" /> : <Upload size={12} />}
+            Push Integration
+          </button>
+        </div>
       </div>
-      <div className="mb-4 flex items-center gap-2 rounded-lg border bg-white px-3 py-2 dark:bg-slate-900"><Search size={18} className="text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter records..." className="w-full bg-transparent outline-none" /></div>
-      <MasterTable fields={fields} entries={filteredEntries} loading={loading} onEdit={openEdit} />
-      {showForm && <MasterForm fields={fields} initialData={editingEntry} onSubmit={submitForm} onClose={() => { setShowForm(false); setEditingEntry(null); }} loading={loading} title={`${editingEntry ? "Edit" : "Add"} ${selectedModel.label}`} />}
-      {showImport && <div />}
-      {showExport && <div />}
     </div>
   );
 }

@@ -19,13 +19,13 @@ const hasField = (name) => modelBlock.split("\n").some((line) => line.trimStart(
 const missing = Object.keys(fieldDefinitions).filter((field) => !hasField(field));
 if (missing.length) modelBlock += `\n${missing.map((field) => fieldDefinitions[field]).join("\n")}`;
 
-// Campus Master requires only name, so legacy required fields must remain optional.
-// Preserve any existing Prisma attributes/comments while changing only the field type.
+// Campus Master requires only name. Keep legacy Campus fields optional so a
+// clean create does not require fields that are not configured as required.
 const lines = modelBlock.split("\n").map((line) => {
   const trimmed = line.trim();
-  if (/^capacity\s+Int(?!\?)(?:\s|$)/.test(trimmed)) return line.replace(/\bInt\b/, "Int?");
-  if (/^location\s+String(?!\?)(?:\s|$)/.test(trimmed)) return line.replace(/\bString\b/, "String?");
-  if (/^facilities\s+String\[\](?!\s*@default\(\[\]\))(?:\s|$)/.test(trimmed)) return `${line} @default([])`;
+  if (/^capacity\s+Int\b(?!\?)/.test(trimmed)) return line.replace(/\bInt\b/, "Int?");
+  if (/^location\s+String\b(?!\?)/.test(trimmed)) return line.replace(/\bString\b/, "String?");
+  if (/^facilities\s+String\[\](?!\s*@default\(\[\]\))/.test(trimmed)) return `${line} @default([])`;
   return line;
 });
 modelBlock = lines.join("\n");
@@ -33,7 +33,7 @@ modelBlock = lines.join("\n");
 const updatedSchema = `${schema.slice(0, modelStart)}${modelBlock}${schema.slice(modelEnd)}`;
 if (updatedSchema !== schema) fs.writeFileSync(schemaPath, updatedSchema, "utf8");
 
-// Keep the backend config aligned with the String[] Prisma representation.
+// Keep the backend config aligned with Prisma's String[] representation.
 const configPath = path.resolve(__dirname, "../src/modules/masters/master.config.ts");
 let config = fs.readFileSync(configPath, "utf8");
 const campusStart = config.indexOf("key: 'campus-master'");
@@ -47,17 +47,18 @@ if (campusBlock.includes(facilitiesMarker)) {
   fs.writeFileSync(configPath, config, "utf8");
 }
 
+// Verify by field name/type rather than exact indentation or Prisma attributes.
 const finalSchema = fs.readFileSync(schemaPath, "utf8");
 const campusFinalStart = finalSchema.indexOf("model Campus {");
 const campusFinalEnd = finalSchema.indexOf("\n}", campusFinalStart);
 if (campusFinalStart === -1 || campusFinalEnd === -1) throw new Error("Campus Master schema verification block not found");
 const finalBlock = finalSchema.slice(campusFinalStart, campusFinalEnd);
 const requiredPatterns = [
-  /^\s+branchId\s+String\?\s*.*$/m,
-  /^\s+address\s+String\?\s*.*$/m,
-  /^\s+capacity\s+Int\?\s*.*$/m,
-  /^\s+location\s+String\?\s*.*$/m,
-  /^\s+facilities\s+String\[\]\s+@default\(\[\]\)\s*.*$/m,
+  /\bbranchId\s+String\?/,
+  /\baddress\s+String\?/,
+  /\bcapacity\s+Int\?/,
+  /\blocation\s+String\?/,
+  /\bfacilities\s+String\[\]\s+@default\(\[\]\)/,
 ];
 for (const pattern of requiredPatterns) {
   if (!pattern.test(finalBlock)) throw new Error(`Campus Master schema verification failed: ${pattern}`);

@@ -6,17 +6,7 @@ let source = fs.readFileSync(filePath, "utf8");
 
 // School Master must always expose the complete institution profile even when
 // an older backend deployment returns a partial field configuration.
-const oldBlock = `// Keep the existing generic master engine intact, but only expose fields that
-// are actually persisted by the current SSOT model for School Master.
-function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
-  if (modelKey === "school-master") {
-    return configuredFields.filter((field) => field.name === "name" || field.name === "code");
-  }
-  return configuredFields;
-}`;
-
-const newBlock = `// School Master exposes the complete institution profile.
-function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
+const newFunction = `function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
   if (modelKey !== "school-master") return configuredFields;
 
   const schoolFields: FieldConfig[] = [
@@ -39,15 +29,23 @@ function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): 
     const configured = configuredFields.find((field) => field.name === fallback.name);
     return configured ? { ...fallback, ...configured } : fallback;
   });
-}
-`;
+}`;
 
-if (source.includes(newBlock)) {
+// Replace only the School Master field-selector function. This is deliberately
+// regex-based so the build does not depend on whitespace/comment formatting.
+const functionPattern = /function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\s\S]*?\n\}/;
+
+if (source.includes("const schoolFields: FieldConfig[] = [") && source.includes('{ name: "address", label: "Address"')) {
   process.stdout.write("Complete School Master fields already enabled.\n");
-} else if (source.includes(oldBlock)) {
-  source = source.replace(oldBlock, newBlock);
+} else if (functionPattern.test(source)) {
+  source = source.replace(functionPattern, newFunction);
   fs.writeFileSync(filePath, source, "utf8");
   process.stdout.write("Complete School Master fields enabled.\n");
 } else {
-  throw new Error("Expected School Master field selector was not found; refusing to modify unrelated frontend code.");
+  throw new Error("School Master field selector was not found; refusing to modify unrelated frontend code.");
+}
+
+const verify = fs.readFileSync(filePath, "utf8");
+if (!verify.includes('{ name: "address", label: "Address"') || !verify.includes('{ name: "principalName", label: "Principal Name"')) {
+  throw new Error("School Master field patch verification failed.");
 }

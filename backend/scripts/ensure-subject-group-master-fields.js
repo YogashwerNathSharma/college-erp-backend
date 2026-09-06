@@ -31,6 +31,17 @@ const body = modelBlock.endsWith("\n") ? modelBlock : `${modelBlock}\n`;
 const updatedSchema = `${schema.slice(0, modelStart)}${body}${schema.slice(modelEnd)}`;
 if (updatedSchema !== schema) fs.writeFileSync(schemaPath, updatedSchema, "utf8");
 
+// Subject IDs are a list; keep the master configuration aligned with the
+// Prisma type so comma-separated form input is converted to String[].
+const configPath = path.resolve(__dirname, "../src/modules/masters/master.config.ts");
+let config = fs.readFileSync(configPath, "utf8");
+const configMarker = "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'text' }";
+const configReplacement = "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'array' }";
+if (config.includes(configMarker)) {
+  config = config.replace(configMarker, configReplacement);
+  fs.writeFileSync(configPath, config, "utf8");
+}
+
 const finalSchema = fs.readFileSync(schemaPath, "utf8");
 const finalStart = finalSchema.indexOf("model SubjectGroup {");
 const finalOpen = finalSchema.indexOf("{", finalStart);
@@ -48,4 +59,10 @@ const finalBlock = finalSchema.slice(finalStart, finalEnd);
 if (!/(^|\n)\s*subjects\s+String\[\]\s+@default\(\[\]\)/m.test(finalBlock)) {
   throw new Error("Subject Group Master schema verification failed: subjects String[] @default([])");
 }
-process.stdout.write("Subject Group Master schema verified: subjects defaults to an empty array.\n");
+
+const finalConfig = fs.readFileSync(configPath, "utf8");
+if (!finalConfig.includes(configReplacement)) {
+  throw new Error("Subject Group Master config verification failed: subjects must use array type");
+}
+
+process.stdout.write("Subject Group Master verified: subjects is a String[] with an empty-array default and array-aware master config.\n");

@@ -66,9 +66,9 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
   if (modelKey === "subject-group-master") {
     const subjectGroupFields: FieldConfig[] = [
       { name: "name", label: "Group Name", type: "text", required: true },
-      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/masters/Class/dropdown", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/Stream/dropdown", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/masters/Subject/dropdown", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
+      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
     ];
     // Fallback must win for these relation fields so an older backend config
     // cannot turn the UI back into manual ID text boxes.
@@ -105,9 +105,9 @@ const requiredMarkers = [
   '{ name: "branchId", label: "Branch"',
   '{ name: "facilities", label: "Facilities (comma-separated)", type: "array"',
   'modelKey === "subject-group-master"',
-  'lookupUrl: "/api/masters/Class/dropdown"',
-  'lookupUrl: "/api/masters/Stream/dropdown"',
-  'lookupUrl: "/api/masters/Subject/dropdown"',
+  'lookupUrl: "/api/class"',
+  'lookupUrl: "/api/masters/stream-master/dropdown"',
+  'lookupUrl: "/api/subjects"',
 ];
 for (const marker of requiredMarkers) {
   if (!verify.includes(marker)) throw new Error(`Organization Master field patch verification failed: ${marker}`);

@@ -61,14 +61,14 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
     });
   }
 
-  // Subject Group references real Class/Stream records and real Subject IDs.
-  // Never ask the user to type Mongo ObjectIds by hand.
+  // Subject Group references real Class/Stream/Subject records. Users must
+  // select records from the tenant-scoped dropdowns instead of typing IDs.
   if (modelKey === "subject-group-master") {
     return [
       { name: "name", label: "Group Name", type: "text", required: true },
-      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "subjects", label: "Subjects", type: "multilookup", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
+      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/masters/Class/dropdown", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/Stream/dropdown", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/masters/Subject/dropdown", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
     ].map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
       return configured ? { ...fallback, ...configured } : fallback;
@@ -102,10 +102,9 @@ const requiredMarkers = [
   '{ name: "branchId", label: "Branch"',
   '{ name: "facilities", label: "Facilities (comma-separated)", type: "array"',
   'modelKey === "subject-group-master"',
-  'lookupUrl: "/api/class"',
-  'lookupUrl: "/api/masters/stream-master"',
-  'type: "multilookup"',
-  'lookupUrl: "/api/subjects"',
+  'lookupUrl: "/api/masters/Class/dropdown"',
+  'lookupUrl: "/api/masters/Stream/dropdown"',
+  'lookupUrl: "/api/masters/Subject/dropdown"',
 ];
 for (const marker of requiredMarkers) {
   if (!verify.includes(marker)) throw new Error(`Organization Master field patch verification failed: ${marker}`);
@@ -126,11 +125,15 @@ if (!tableVerify.includes(newSelectLookup)) {
 }
 process.stdout.write("Master table select labels verified with numeric/string normalization.\n");
 
-// Subject Group uses a Prisma String[] field. The generic form renders a
-// dedicated comma-separated array input and normalizes it back to String[].
+// Subject Group relations use real lookup dropdowns. Subjects use a multi-select
+// dropdown but are submitted as the Prisma String[] value expected by the API.
 const formPath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
 let formSource = fs.readFileSync(formPath, "utf8");
-const arrayCase = `      case "array":
+const oldArrayCase = /      case "array":\n        return \([\s\S]*?        \);\n\n      case "json":/;
+const newArrayCase = `      case "array":
+        if (field.lookupUrl) {
+          return <MultiLookupField field={field} value={Array.isArray(value) ? value : []} onChange={(nextValue) => handleChange(field.name, nextValue)} />;
+        }
         return (
           <input
             type="text"
@@ -141,20 +144,17 @@ const arrayCase = `      case "array":
           />
         );
 
-`;
-const jsonCaseMarker = '      case "json":';
-if (!formSource.includes('case "array":')) {
+      case "json":`;
+if (oldArrayCase.test(formSource)) {
+  formSource = formSource.replace(oldArrayCase, newArrayCase);
+} else if (!formSource.includes('case "array":')) {
+  const jsonCaseMarker = '      case "json":';
   if (!formSource.includes(jsonCaseMarker)) throw new Error("Master form JSON field case not found; refusing to modify unrelated frontend code.");
-  formSource = formSource.replace(jsonCaseMarker, `${arrayCase}${jsonCaseMarker}`);
+  formSource = formSource.replace(jsonCaseMarker, newArrayCase);
 }
 
-// LookupField existed in the form but was never wired into renderField. Add
-// explicit lookup and multi-lookup rendering for relational master fields.
 const lookupCases = `      case "lookup":
         return <LookupField field={field} value={value} onChange={(nextValue) => handleChange(field.name, nextValue)} />;
-
-      case "multilookup":
-        return <MultiLookupField field={field} value={Array.isArray(value) ? value : []} onChange={(nextValue) => handleChange(field.name, nextValue)} />;
 
 `;
 if (!formSource.includes('case "lookup":')) {
@@ -180,7 +180,7 @@ function MultiLookupField({ field, value, onChange }: { field: FieldConfig; valu
         const valueField = field.lookupValueField || "id";
         setOptions((Array.isArray(data) ? data : []).map((item: any) => ({
           label: item[labelField] || item.name || item.id,
-          value: item[valueField] || item.id,
+          value: String(item[valueField] || item.id),
         })));
       } catch (err) {
         console.error("Multi-lookup fetch failed:", err);
@@ -199,9 +199,9 @@ function MultiLookupField({ field, value, onChange }: { field: FieldConfig; valu
   return (
     <select
       multiple
-      value={value}
+      value={value.map(String)}
       onChange={(e) => onChange(Array.from(e.target.selectedOptions).map((option) => option.value))}
-      className={"w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none min-h-[120px]"}
+      className="w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none min-h-[120px]"
     >
       {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
@@ -216,10 +216,10 @@ if (!formSource.includes('function MultiLookupField')) {
 
 fs.writeFileSync(formPath, formSource, "utf8");
 const formVerify = fs.readFileSync(formPath, "utf8");
-if (!formVerify.includes('case "array":') || !formVerify.includes('value.split(",").map((item) => item.trim()).filter(Boolean)')) {
-  throw new Error("Subject Group array input patch verification failed.");
+if (!formVerify.includes('case "array":') || !formVerify.includes('field.lookupUrl')) {
+  throw new Error("Subject Group lookup-array input patch verification failed.");
 }
-if (!formVerify.includes('case "lookup":') || !formVerify.includes('case "multilookup":') || !formVerify.includes('function MultiLookupField')) {
-  throw new Error("Subject Group lookup rendering patch verification failed.");
+if (!formVerify.includes('case "lookup":') || !formVerify.includes('function MultiLookupField')) {
+  throw new Error("Subject Group relational dropdown rendering patch verification failed.");
 }
-process.stdout.write("Subject Group lookup and array inputs verified.\n");
+process.stdout.write("Subject Group Class/Stream/Subject dropdowns verified.\n");

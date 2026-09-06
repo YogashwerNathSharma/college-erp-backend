@@ -68,7 +68,7 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
       { name: "name", label: "Group Name", type: "text", required: true },
       { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id" },
       { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
+      { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
     ];
     // Fallback must win for these relation fields so an older backend config
     // cannot turn the UI back into manual ID text boxes.
@@ -107,7 +107,7 @@ const requiredMarkers = [
   'modelKey === "subject-group-master"',
   'lookupUrl: "/api/class"',
   'lookupUrl: "/api/masters/stream-master/dropdown"',
-  'lookupUrl: "/api/subjects"',
+  'lookupUrl: "/api/subject"',
 ];
 for (const marker of requiredMarkers) {
   if (!verify.includes(marker)) throw new Error(`Organization Master field patch verification failed: ${marker}`);
@@ -132,8 +132,7 @@ process.stdout.write("Master table select labels verified with numeric/string no
 // dropdown but are submitted as the Prisma String[] value expected by the API.
 const formPath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
 let formSource = fs.readFileSync(formPath, "utf8");
-const oldArrayCase = /      case "array":\n        return \([\s\S]*?        \);\n\n      case "json":/;
-const newArrayCase = `      case "array":
+const newArrayBody = `      case "array":
         if (field.lookupUrl) {
           return <MultiLookupField field={field} value={Array.isArray(value) ? value : []} onChange={(nextValue) => handleChange(field.name, nextValue)} />;
         }
@@ -146,14 +145,16 @@ const newArrayCase = `      case "array":
             className={baseClasses}
           />
         );
-
-      case "json":`;
-if (oldArrayCase.test(formSource)) {
-  formSource = formSource.replace(oldArrayCase, newArrayCase);
-} else if (!formSource.includes('case "array":')) {
+`;
+const arrayCasePattern = /      case "array":\n[\s\S]*?(?=      case "|      default:)/;
+if (arrayCasePattern.test(formSource)) {
+  formSource = formSource.replace(arrayCasePattern, `${newArrayBody}\n`);
+} else {
   const jsonCaseMarker = '      case "json":';
-  if (!formSource.includes(jsonCaseMarker)) throw new Error("Master form JSON field case not found; refusing to modify unrelated frontend code.");
-  formSource = formSource.replace(jsonCaseMarker, newArrayCase);
+  const defaultMarker = '      default:';
+  const marker = formSource.includes(jsonCaseMarker) ? jsonCaseMarker : defaultMarker;
+  if (!formSource.includes(marker)) throw new Error("Master form render switch marker not found; refusing to modify unrelated frontend code.");
+  formSource = formSource.replace(marker, `${newArrayBody}\n${marker}`);
 }
 
 const lookupCases = `      case "lookup":
@@ -178,7 +179,7 @@ function MultiLookupField({ field, value, onChange }: { field: FieldConfig; valu
         const res = await axios.get(getFullUrl(field.lookupUrl || ""), {
           headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,
         });
-        const data = res.data?.data || res.data?.subjects || res.data || [];
+        const data = res.data?.data?.data || res.data?.data || res.data?.subjects || res.data || [];
         const labelField = field.lookupLabelField || "name";
         const valueField = field.lookupValueField || "id";
         setOptions((Array.isArray(data) ? data : []).map((item: any) => ({
@@ -204,7 +205,7 @@ function MultiLookupField({ field, value, onChange }: { field: FieldConfig; valu
       multiple
       value={value.map(String)}
       onChange={(e) => onChange(Array.from(e.target.selectedOptions).map((option) => option.value))}
-      className="w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none min-h-[120px]"
+      className="w-full px-3 py-2.5 border rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none min-h-[120px]"
     >
       {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>

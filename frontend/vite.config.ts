@@ -17,7 +17,7 @@ const electiveMasterBuildFix = () => ({
 
     const replacement = `  if (modelKey === "elective-subject-master") {
     const electiveFields: any[] = [
-      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id", required: true },
       { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
       { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
       { name: "maxStudents", label: "Max Students", type: "number" },
@@ -44,7 +44,6 @@ export default defineConfig({
   plugins: [electiveMasterBuildFix(), react()],
 
   build: {
-    // ── Minification ─────────────────────────────────────────────────────────
     minify: 'terser',
     terserOptions: {
       compress: {
@@ -53,64 +52,50 @@ export default defineConfig({
         passes: 2,
       },
     },
-
-    // ── Output ───────────────────────────────────────────────────────────────
     sourcemap: false,
     cssCodeSplit: true,
     chunkSizeWarningLimit: 800,
-
-    // ── Asset caching: hash in filename so browser caches forever ────────────
     rollupOptions: {
       output: {
         entryFileNames:  'assets/[name]-[hash].js',
         chunkFileNames:  'assets/[name]-[hash].js',
         assetFileNames:  'assets/[name]-[hash][extname]',
-
-        // ── Manual chunks: split big libs into separate cached files ─────────
         manualChunks(id) {
           if (id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/scheduler/')) {
             return 'vendor-react';
           }
-
           if (id.includes('node_modules/react-router') ||
               id.includes('node_modules/@remix-run/')) {
             return 'vendor-router';
           }
-
           if (id.includes('node_modules/recharts') ||
               id.includes('node_modules/d3-') ||
               id.includes('node_modules/victory-')) {
             return 'vendor-charts';
           }
-
           if (id.includes('node_modules/jspdf') ||
               id.includes('node_modules/html2canvas') ||
               id.includes('node_modules/canvg') ||
               id.includes('node_modules/dompurify')) {
             return 'vendor-pdf';
           }
-
           if (id.includes('node_modules/lucide-react') ||
               id.includes('node_modules/react-icons')) {
             return 'vendor-icons';
           }
-
           if (id.includes('node_modules/react-hot-toast') ||
               id.includes('node_modules/sonner')) {
             return 'vendor-toast';
           }
-
           if (id.includes('node_modules/date-fns')) {
             return 'vendor-dates';
           }
-
           if (id.includes('node_modules/axios') ||
               id.includes('node_modules/qs')) {
             return 'vendor-http';
           }
-
           if (id.includes('node_modules/')) {
             return 'vendor-misc';
           }

@@ -88,18 +88,30 @@ const prismaBase = new PrismaClient().$extends({
 
     /////////////////////////////////////////////////////////
     // SCHOOL MASTER COMPATIBILITY
-    // The current Prisma School model persists only name/code,
-    // while the generic master UI may still submit legacy/display
-    // fields such as address, city, state, etc. Strip those fields
-    // at the Prisma boundary so School Master UPDATE never sends
-    // unknown properties to Prisma. No schema/ERP data model change.
+    // School Master fields are intentionally scoped to this
+    // master only. The build step adds these optional fields
+    // to the Prisma School model without touching ERP models.
     /////////////////////////////////////////////////////////
 
     school: {
 
       async update({ args, query }) {
         const data: any = args.data || {};
-        const persistedFields = new Set(["name", "code"]);
+        const persistedFields = new Set([
+          "name",
+          "code",
+          "address",
+          "city",
+          "state",
+          "pincode",
+          "phone",
+          "email",
+          "website",
+          "logo",
+          "affiliation",
+          "establishedYear",
+          "principalName",
+        ]);
 
         for (const key of Object.keys(data)) {
           if (!persistedFields.has(key)) delete data[key];

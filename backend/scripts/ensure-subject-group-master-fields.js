@@ -31,26 +31,26 @@ const body = modelBlock.endsWith("\n") ? modelBlock : `${modelBlock}\n`;
 const updatedSchema = `${schema.slice(0, modelStart)}${body}${schema.slice(modelEnd)}`;
 if (updatedSchema !== schema) fs.writeFileSync(schemaPath, updatedSchema, "utf8");
 
-// Subject Group relations must use the existing lightweight master dropdowns.
-// This prevents users from typing display numbers/labels instead of real ObjectIds.
+// Subject Group relations must use the existing working tenant-scoped APIs.
+// This prevents users from typing display numbers/labels instead of real IDs.
 const configPath = path.resolve(__dirname, "../src/modules/masters/master.config.ts");
 let config = fs.readFileSync(configPath, "utf8");
 const replacements = [
   [
     "{ name: 'classId', label: 'Class (ID)', type: 'text' },",
-    "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/masters/Class/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+    "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id' },",
   ],
   [
     "{ name: 'streamId', label: 'Stream (ID)', type: 'text' },",
-    "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/Stream/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+    "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/stream-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
   ],
   [
     "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'text' },",
-    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects', lookupLabelField: 'name', lookupValueField: 'id' },",
   ],
   [
     "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'array' },",
-    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects', lookupLabelField: 'name', lookupValueField: 'id' },",
   ],
 ];
 for (const [from, to] of replacements) {
@@ -78,9 +78,9 @@ if (!/(^|\n)\s*subjects\s+String\[\]\s+@default\(\[\]\)/m.test(finalBlock)) {
 
 const finalConfig = fs.readFileSync(configPath, "utf8");
 const requiredConfigMarkers = [
-  "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/masters/Class/dropdown'",
-  "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/Stream/dropdown'",
-  "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown'",
+  "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/class'",
+  "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/stream-master/dropdown'",
+  "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects'",
 ];
 for (const marker of requiredConfigMarkers) {
   if (!finalConfig.includes(marker)) {
@@ -88,4 +88,4 @@ for (const marker of requiredConfigMarkers) {
   }
 }
 
-process.stdout.write("Subject Group Master verified: Class/Stream use relational dropdowns and Subjects use a subject lookup list.\n");
+process.stdout.write("Subject Group Master verified: Class/Stream/Subjects use working relational lookup endpoints.\n");

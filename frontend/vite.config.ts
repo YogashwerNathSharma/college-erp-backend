@@ -40,8 +40,52 @@ function getEntryId`
   },
 })
 
+// Timetable Slot Master must never fall back to raw ObjectId text fields.
+// Keep this in the Vite transform as a final deployment-safe guarantee.
+const timetableSlotMasterBuildFix = () => ({
+  name: 'timetable-slot-master-build-fix',
+  transform(code: string, id: string) {
+    if (!id.endsWith('/src/pages/masters/MasterModule.tsx')) return null
+    if (code.includes('modelKey === "timetable-slot-master"')) return null
+
+    const marker = '  return configuredFields;\n}\n\nfunction getEntryId'
+    if (!code.includes(marker)) {
+      throw new Error('Timetable Slot Master build fix: MasterModule marker not found')
+    }
+
+    const replacement = `  if (modelKey === "timetable-slot-master") {
+    const timetableFields: any[] = [
+      { name: "dayOfWeek", label: "Day", type: "select", required: true, options: [
+        { label: "Monday", value: "1" }, { label: "Tuesday", value: "2" }, { label: "Wednesday", value: "3" },
+        { label: "Thursday", value: "4" }, { label: "Friday", value: "5" }, { label: "Saturday", value: "6" }, { label: "Sunday", value: "0" },
+      ] },
+      { name: "periodId", label: "Period", type: "lookup", lookupUrl: "/api/masters/period-master/dropdown", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "sectionId", label: "Section", type: "lookup", lookupUrl: "/api/section", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "teacherId", label: "Teacher", type: "lookup", lookupUrl: "/api/teacher", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "roomId", label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
+    ];
+    return timetableFields.map((fallback) => {
+      const configured = configuredFields.find((field) => field.name === fallback.name);
+      return configured ? { ...configured, ...fallback } : fallback;
+    });
+  }
+
+  return configuredFields;
+}
+
+function getEntryId`
+
+    return {
+      code: code.replace(marker, replacement),
+      map: null,
+    }
+  },
+})
+
 export default defineConfig({
-  plugins: [electiveMasterBuildFix(), react()],
+  plugins: [electiveMasterBuildFix(), timetableSlotMasterBuildFix(), react()],
 
   build: {
     minify: 'terser',

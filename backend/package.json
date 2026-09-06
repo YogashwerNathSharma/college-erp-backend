@@ -36,7 +36,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.2.0",
     "node-cron": "^3.0.3",
-    "nodemailer": "^9.0.0",
+    "nodemailer": "^9.0.1",
     "pdfkit": "^0.19.0",
     "puppeteer-core": "^24.42.0",
     "qrcode": "^1.5.4",

@@ -6,29 +6,52 @@ let schema = fs.readFileSync(schemaPath, "utf8");
 
 const modelStart = schema.indexOf("model Campus {");
 if (modelStart === -1) throw new Error("Campus model not found in prisma/schema.prisma");
-const modelEnd = schema.indexOf("\n}", modelStart);
+
+// Find the actual end of the model instead of relying on a specific closing-brace layout.
+const modelOpen = schema.indexOf("{", modelStart);
+let depth = 0;
+let modelEnd = -1;
+for (let i = modelOpen; i < schema.length; i += 1) {
+  if (schema[i] === "{") depth += 1;
+  else if (schema[i] === "}") {
+    depth -= 1;
+    if (depth === 0) {
+      modelEnd = i;
+      break;
+    }
+  }
+}
 if (modelEnd === -1) throw new Error("Campus model closing brace not found");
 
 let modelBlock = schema.slice(modelStart, modelEnd);
-const fieldDefinitions = {
-  branchId: "  branchId   String?",
-  address: "  address    String?",
-};
 
-const hasField = (name) => modelBlock.split("\n").some((line) => line.trimStart().startsWith(`${name} `));
-const missing = Object.keys(fieldDefinitions).filter((field) => !hasField(field));
-if (missing.length) modelBlock += `\n${missing.map((field) => fieldDefinitions[field]).join("\n")}`;
+function ensureField(block, fieldName, type) {
+  const fieldRegex = new RegExp(`(^\\s*${fieldName}\\s+)([^\\s]+)`, "m");
+  if (fieldRegex.test(block)) {
+    return block.replace(fieldRegex, (_match, prefix, currentType) => {
+      if (currentType === type) return `${prefix}${currentType}`;
+      if (fieldName === "facilities" && currentType === "String[]") return `${prefix}${currentType}`;
+      return `${prefix}${type}`;
+    });
+  }
+  return `${block}\n  ${fieldName} ${type}`;
+}
 
-// Campus Master requires only name. Keep legacy Campus fields optional so a
-// clean create does not require fields that are not configured as required.
-const lines = modelBlock.split("\n").map((line) => {
-  const trimmed = line.trim();
-  if (/^capacity\s+Int\b(?!\?)/.test(trimmed)) return line.replace(/\bInt\b/, "Int?");
-  if (/^location\s+String\b(?!\?)/.test(trimmed)) return line.replace(/\bString\b/, "String?");
-  if (/^facilities\s+String\[\](?!\s*@default\(\[\]\))/.test(trimmed)) return `${line} @default([])`;
-  return line;
-});
-modelBlock = lines.join("\n");
+// Campus Master requires only name. Keep legacy Campus fields optional.
+modelBlock = ensureField(modelBlock, "branchId", "String?");
+modelBlock = ensureField(modelBlock, "address", "String?");
+modelBlock = ensureField(modelBlock, "capacity", "Int?");
+modelBlock = ensureField(modelBlock, "location", "String?");
+modelBlock = ensureField(modelBlock, "facilities", "String[]");
+
+// Ensure facilities has a safe empty-array default without duplicating the attribute.
+const facilitiesLine = /^\s*facilities\s+String\[\](.*)$/m;
+if (facilitiesLine.test(modelBlock)) {
+  modelBlock = modelBlock.replace(facilitiesLine, (_match, suffix) => {
+    if (suffix.includes("@default([])")) return _match;
+    return `${_match} @default([])`;
+  });
+}
 
 const updatedSchema = `${schema.slice(0, modelStart)}${modelBlock}${schema.slice(modelEnd)}`;
 if (updatedSchema !== schema) fs.writeFileSync(schemaPath, updatedSchema, "utf8");
@@ -47,21 +70,33 @@ if (campusBlock.includes(facilitiesMarker)) {
   fs.writeFileSync(configPath, config, "utf8");
 }
 
-// Verify by field name/type rather than exact indentation or Prisma attributes.
+// Verify field names and Prisma types, independent of indentation/comments/attributes.
 const finalSchema = fs.readFileSync(schemaPath, "utf8");
-const campusFinalStart = finalSchema.indexOf("model Campus {");
-const campusFinalEnd = finalSchema.indexOf("\n}", campusFinalStart);
-if (campusFinalStart === -1 || campusFinalEnd === -1) throw new Error("Campus Master schema verification block not found");
-const finalBlock = finalSchema.slice(campusFinalStart, campusFinalEnd);
+const finalStart = finalSchema.indexOf("model Campus {");
+const finalOpen = finalSchema.indexOf("{", finalStart);
+let finalEnd = -1;
+depth = 0;
+for (let i = finalOpen; i < finalSchema.length; i += 1) {
+  if (finalSchema[i] === "{") depth += 1;
+  else if (finalSchema[i] === "}") {
+    depth -= 1;
+    if (depth === 0) {
+      finalEnd = i;
+      break;
+    }
+  }
+}
+if (finalStart === -1 || finalEnd === -1) throw new Error("Campus Master schema verification block not found");
+const finalBlock = finalSchema.slice(finalStart, finalEnd);
 const requiredPatterns = [
-  /\bbranchId\s+String\?/,
-  /\baddress\s+String\?/,
-  /\bcapacity\s+Int\?/,
-  /\blocation\s+String\?/,
-  /\bfacilities\s+String\[\]\s+@default\(\[\]\)/,
+  /(^|\n)\s*branchId\s+String\?/m,
+  /(^|\n)\s*address\s+String\?/m,
+  /(^|\n)\s*capacity\s+Int\?/m,
+  /(^|\n)\s*location\s+String\?/m,
+  /(^|\n)\s*facilities\s+String\[\]\s+.*@default\(\[\]\)/m,
 ];
 for (const pattern of requiredPatterns) {
   if (!pattern.test(finalBlock)) throw new Error(`Campus Master schema verification failed: ${pattern}`);
 }
 
-process.stdout.write(`Campus Master schema verified: ${missing.length ? `added ${missing.join(", ")}` : "fields already present"}.\n`);
+process.stdout.write("Campus Master schema verified: branchId/address/capacity/location/facilities are present with the required optional types.\n");

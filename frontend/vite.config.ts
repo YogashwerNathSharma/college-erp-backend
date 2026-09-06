@@ -1,17 +1,56 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Build-time safety net for Organization/Academic Master relation fields.
+// This runs inside Vite itself, so the Elective Subject dropdown fix cannot be
+// skipped by a deployment that bypasses npm lifecycle scripts.
+const electiveMasterBuildFix = () => ({
+  name: 'elective-subject-master-build-fix',
+  transform(code: string, id: string) {
+    if (!id.endsWith('/src/pages/masters/MasterModule.tsx')) return null
+    if (code.includes('modelKey === "elective-subject-master"')) return null
+
+    const marker = '  return configuredFields;\n}\n\nfunction getEntryId'
+    if (!code.includes(marker)) {
+      throw new Error('Elective Subject Master build fix: MasterModule marker not found')
+    }
+
+    const replacement = `  if (modelKey === "elective-subject-master") {
+    const electiveFields: any[] = [
+      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
+      { name: "maxStudents", label: "Max Students", type: "number" },
+    ];
+    return electiveFields.map((fallback) => {
+      const configured = configuredFields.find((field) => field.name === fallback.name);
+      return configured ? { ...configured, ...fallback } : fallback;
+    });
+  }
+
+  return configuredFields;
+}
+
+function getEntryId`
+
+    return {
+      code: code.replace(marker, replacement),
+      map: null,
+    }
+  },
+})
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [electiveMasterBuildFix(), react()],
 
   build: {
     // ── Minification ─────────────────────────────────────────────────────────
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,      // remove console.log in prod → smaller bundle
+        drop_console: true,
         drop_debugger: true,
-        passes: 2,               // extra compression pass
+        passes: 2,
       },
     },
 
@@ -23,36 +62,29 @@ export default defineConfig({
     // ── Asset caching: hash in filename so browser caches forever ────────────
     rollupOptions: {
       output: {
-        // Content-hash filenames → long-term caching (one year)
         entryFileNames:  'assets/[name]-[hash].js',
         chunkFileNames:  'assets/[name]-[hash].js',
         assetFileNames:  'assets/[name]-[hash][extname]',
 
         // ── Manual chunks: split big libs into separate cached files ─────────
-        // Each chunk is loaded only when that feature is first visited.
-        // On subsequent visits the browser uses the cached version.
         manualChunks(id) {
-          // React core — tiny, changes rarely, always cached first
           if (id.includes('node_modules/react/') ||
               id.includes('node_modules/react-dom/') ||
               id.includes('node_modules/scheduler/')) {
             return 'vendor-react';
           }
 
-          // Router
           if (id.includes('node_modules/react-router') ||
               id.includes('node_modules/@remix-run/')) {
             return 'vendor-router';
           }
 
-          // Charts — large library, only used on dashboard/reports
           if (id.includes('node_modules/recharts') ||
               id.includes('node_modules/d3-') ||
               id.includes('node_modules/victory-')) {
             return 'vendor-charts';
           }
 
-          // PDF / canvas — very large, only used for print/export
           if (id.includes('node_modules/jspdf') ||
               id.includes('node_modules/html2canvas') ||
               id.includes('node_modules/canvg') ||
@@ -60,30 +92,25 @@ export default defineConfig({
             return 'vendor-pdf';
           }
 
-          // Icons — big set, rarely changes
           if (id.includes('node_modules/lucide-react') ||
               id.includes('node_modules/react-icons')) {
             return 'vendor-icons';
           }
 
-          // Toast / UI utils
           if (id.includes('node_modules/react-hot-toast') ||
               id.includes('node_modules/sonner')) {
             return 'vendor-toast';
           }
 
-          // Date utils
           if (id.includes('node_modules/date-fns')) {
             return 'vendor-dates';
           }
 
-          // Axios + other small utils
           if (id.includes('node_modules/axios') ||
               id.includes('node_modules/qs')) {
             return 'vendor-http';
           }
 
-          // Everything else in node_modules → one shared vendor chunk
           if (id.includes('node_modules/')) {
             return 'vendor-misc';
           }
@@ -92,7 +119,6 @@ export default defineConfig({
     },
   },
 
-  // ── Dev server ───────────────────────────────────────────────────────────
   server: {
     port: 5174,
     proxy: {

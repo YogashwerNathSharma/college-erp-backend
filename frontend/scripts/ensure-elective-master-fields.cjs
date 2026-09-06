@@ -9,7 +9,7 @@ let source = fs.readFileSync(filePath, "utf8");
 const marker = "  return configuredFields;\n}\n\nfunction getEntryId";
 const replacement = `  if (modelKey === "elective-subject-master") {
     const electiveFields: FieldConfig[] = [
-      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subjects", lookupLabelField: "name", lookupValueField: "id", required: true },
+      { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id", required: true },
       { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
       { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/stream-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
       { name: "maxStudents", label: "Max Students", type: "number" },
@@ -26,7 +26,7 @@ const replacement = `  if (modelKey === "elective-subject-master") {
 function getEntryId`;
 
 if (source.includes('modelKey === "elective-subject-master"')) {
-  process.stdout.write("Elective Subject Master dropdowns already enabled.\\n");
+  process.stdout.write("Elective Subject Master dropdowns already enabled.\n");
 } else {
   if (!source.includes(marker)) {
     throw new Error("MasterModule getEffectiveFields marker not found; refusing to modify unrelated code.");
@@ -38,7 +38,7 @@ if (source.includes('modelKey === "elective-subject-master"')) {
 const verify = fs.readFileSync(filePath, "utf8");
 const requiredMarkers = [
   'modelKey === "elective-subject-master"',
-  'lookupUrl: "/api/subjects"',
+  'lookupUrl: "/api/subject"',
   'lookupUrl: "/api/class"',
   'lookupUrl: "/api/masters/stream-master/dropdown"',
   '{ name: "subjectId", label: "Subject", type: "lookup"',
@@ -50,4 +50,4 @@ for (const required of requiredMarkers) {
   }
 }
 
-process.stdout.write("Elective Subject Master Subject/Class/Stream dropdowns verified.\\n");
+process.stdout.write("Elective Subject Master Subject/Class/Stream dropdowns verified.\n");

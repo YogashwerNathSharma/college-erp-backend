@@ -28,7 +28,7 @@ source = source.replace(
 if (!source.includes('const [lookupLabels, setLookupLabels]')) {
   source = source.replace(
     '  const menuRef = useRef<HTMLDivElement>(null);\n',
-    `  const menuRef = useRef<HTMLDivElement>(null);\n  const [lookupLabels, setLookupLabels] = useState<Record<string, Record<string, string>>>({});\n\n  useEffect(() => {\n    let cancelled = false;\n    const loadLookups = async () => {\n      const lookupFields = fields.filter((field) => field.type === "lookup" && field.lookupUrl);\n      if (lookupFields.length === 0) {\n        setLookupLabels({});\n        return;\n      }\n      const next: Record<string, Record<string, string>> = {};\n      await Promise.all(lookupFields.map(async (field) => {\n        try {\n          const token = localStorage.getItem("token");\n          const response = await axios.get(getFullUrl(field.lookupUrl || ""), {\n            headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,\n          });\n          const rows = response.data?.data || response.data || [];\n          const labelField = field.lookupLabelField || "name";\n          const valueField = field.lookupValueField || "id";\n          const map: Record<string, string> = {};\n          if (Array.isArray(rows)) {\n            rows.forEach((row: any) => {\n              const value = row?.[valueField] ?? row?.id;\n              const label = row?.[labelField] ?? row?.name ?? value;\n              if (value !== undefined && value !== null) map[String(value)] = String(label);\n            });\n          }\n          next[field.name] = map;\n        } catch (error) {\n          console.error(\"Master table lookup failed:\", field.name, error);\n          next[field.name] = {};\n        }\n      }));\n      if (!cancelled) setLookupLabels(next);\n    };\n    loadLookups();\n    return () => { cancelled = true; };\n  }, [fields]);\n`
+    `  const menuRef = useRef<HTMLDivElement>(null);\n  const [lookupLabels, setLookupLabels] = useState<Record<string, Record<string, string>>>({});\n\n  useEffect(() => {\n    let cancelled = false;\n    const loadLookups = async () => {\n      const lookupFields = fields.filter((field) => field.type === "lookup" && field.lookupUrl);\n      if (lookupFields.length === 0) {\n        setLookupLabels({});\n        return;\n      }\n      const next: Record<string, Record<string, string>> = {};\n      await Promise.all(lookupFields.map(async (field) => {\n        try {\n          const token = localStorage.getItem("token");\n          const response = await axios.get(getFullUrl(field.lookupUrl || ""), {\n            headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,\n          });\n          const rows = response.data?.data?.data || response.data?.data || response.data || [];\n          const labelField = field.lookupLabelField || "name";\n          const valueField = field.lookupValueField || "id";\n          const map: Record<string, string> = {};\n          if (Array.isArray(rows)) {\n            rows.forEach((row: any) => {\n              const value = row?.[valueField] ?? row?.id;\n              const label = row?.[labelField] ?? row?.name ?? value;\n              if (value !== undefined && value !== null) map[String(value)] = String(label);\n            });\n          }\n          next[field.name] = map;\n        } catch (error) {\n          console.error("Master table lookup failed:", field.name, error);\n          next[field.name] = {};\n        }\n      }));\n      if (!cancelled) setLookupLabels(next);\n    };\n    loadLookups();\n    return () => { cancelled = true; };\n  }, [fields]);\n`
   );
 }
 
@@ -50,6 +50,7 @@ source = source.replace(
 const required = [
   'lookupUrl?: string;',
   'const [lookupLabels, setLookupLabels]',
+  'response.data?.data?.data || response.data?.data || response.data || []',
   'field.type === "lookup"',
   'subjectId',
   'classId',
@@ -61,4 +62,4 @@ for (const marker of required) {
 }
 
 fs.writeFileSync(filePath, source, "utf8");
-process.stdout.write("Master relation fields will remain visible with lookup labels.\n");
+process.stdout.write("Master relation fields remain visible with normalized lookup labels.\n");

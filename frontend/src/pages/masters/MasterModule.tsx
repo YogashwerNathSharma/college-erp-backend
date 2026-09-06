@@ -23,13 +23,13 @@ const RECENT_COLORS = [
   { iconBg: "bg-teal-500", lightBg: "bg-teal-50 dark:bg-teal-950/50" },
   { iconBg: "bg-rose-500", lightBg: "bg-rose-50 dark:bg-rose-950/50" },
   { iconBg: "bg-indigo-500", lightBg: "bg-indigo-50 dark:bg-indigo-950/50" },
-  { iconBg: "bg-purple-500", lightBg: "bg-purple-50 dark:bg-purple-950/50" },
+  { iconBg: "bg-purple-500", lightBg: "bg-purple-950/50" },
   { iconBg: "bg-amber-500", lightBg: "bg-amber-50 dark:bg-amber-950/50" },
   { iconBg: "bg-cyan-500", lightBg: "bg-cyan-50 dark:bg-cyan-950/50" },
   { iconBg: "bg-orange-500", lightBg: "bg-orange-50 dark:bg-orange-950/50" },
   { iconBg: "bg-sky-500", lightBg: "bg-sky-50 dark:bg-sky-950/50" },
   { iconBg: "bg-red-500", lightBg: "bg-red-50 dark:bg-red-950/50" },
-  { iconBg: "bg-green-500", lightBg: "bg-green-50 dark:bg-green-950/50" },
+  { iconBg: "bg-green-500", lightBg: "bg-green-950/50" },
   { iconBg: "bg-violet-500", lightBg: "bg-violet-50 dark:bg-violet-950/50" },
   { iconBg: "bg-fuchsia-500", lightBg: "bg-fuchsia-50 dark:bg-fuchsia-950/50" },
   { iconBg: "bg-lime-500", lightBg: "bg-lime-50 dark:bg-lime-950/50" },
@@ -79,6 +79,20 @@ interface PaginationInfo {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+}
+
+// Keep the existing generic master engine intact, but only expose fields that
+// are actually persisted by the current SSOT model for School Master.
+function getEffectiveFields(modelKey: string, configuredFields: FieldConfig[]): FieldConfig[] {
+  if (modelKey === "school-master") {
+    return configuredFields.filter((field) => field.name === "name" || field.name === "code");
+  }
+  return configuredFields;
+}
+
+function getEntryId(entry: any): string | null {
+  const id = entry?.id ?? entry?._id;
+  return id === undefined || id === null || id === "" ? null : String(id);
 }
 
 export default function MasterModule() {
@@ -135,7 +149,7 @@ export default function MasterModule() {
         setEntries(res.data.data);
         setPagination(res.data.pagination);
         if (res.data.config?.fields) {
-          setFields(res.data.config.fields);
+          setFields(getEffectiveFields(modelKey, res.data.config.fields));
         }
       }
     } catch (err) {
@@ -181,7 +195,12 @@ export default function MasterModule() {
   };
 
   const handleEdit = (entry: any) => {
-    setEditingEntry(entry);
+    const id = getEntryId(entry);
+    if (!id) {
+      alert("This School Master record has no valid ID and cannot be edited.");
+      return;
+    }
+    setEditingEntry({ ...entry, id });
     setShowForm(true);
   };
 
@@ -239,7 +258,11 @@ export default function MasterModule() {
     setFormLoading(true);
     try {
       if (editingEntry) {
-        await axios.put(getFullUrl(`/api/masters/${selectedModel}/${editingEntry.id}`), data);
+        const id = getEntryId(editingEntry);
+        if (!id) {
+          throw new Error("This record has no valid ID and cannot be updated.");
+        }
+        await axios.put(getFullUrl(`/api/masters/${selectedModel}/${id}`), data);
       } else {
         await axios.post(getFullUrl(`/api/masters/${selectedModel}`), data);
       }
@@ -247,7 +270,7 @@ export default function MasterModule() {
       setEditingEntry(null);
       fetchEntries(selectedModel, pagination.page);
     } catch (err: any) {
-      alert(err.response?.data?.message || "Operation failed");
+      alert(err.response?.data?.message || err.message || "Operation failed");
     } finally {
       setFormLoading(false);
     }

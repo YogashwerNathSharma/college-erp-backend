@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "postinstall": "node scripts/ensure-school-master-fields.js",
     "build": "npx prisma generate && tsc",
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",

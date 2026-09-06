@@ -41,8 +41,24 @@ if (updatedSchema !== schema) {
   fs.writeFileSync(schemaPath, updatedSchema, "utf8");
 }
 
+// Campus facilities are stored by Prisma as String[]. The generic Master
+// controller already converts comma-separated values to arrays when the
+// configured field type is "array". Normalize the source config at build time
+// so both create and update use the same representation without changing the
+// generic ERP controller.
+const configPath = path.resolve(__dirname, "../src/modules/masters/master.config.ts");
+let config = fs.readFileSync(configPath, "utf8");
+const campusFacilitiesPattern = /(key:\s*'campus-master',[\\s\\S]*?name:\s*'facilities',[^\n]*type:\s*)'text'/;
+const normalizedConfig = config.replace(campusFacilitiesPattern, "$1'array'");
+if (normalizedConfig !== config) {
+  fs.writeFileSync(configPath, normalizedConfig, "utf8");
+}
+
 process.stdout.write(
   missing.length > 0
     ? `Added Campus Master fields: ${missing.join(", ")}\n`
     : "Campus Master fields already present.\n"
 );
+if (normalizedConfig !== config) {
+  process.stdout.write("Normalized Campus facilities field type to array.\n");
+}

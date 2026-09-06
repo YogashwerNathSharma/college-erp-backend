@@ -53,7 +53,7 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
       { name: "branchId", label: "Branch", type: "text" },
       { name: "address", label: "Address", type: "textarea" },
       { name: "capacity", label: "Capacity", type: "number" },
-      { name: "facilities", label: "Facilities (comma-separated)", type: "text" },
+      { name: "facilities", label: "Facilities (comma-separated)", type: "array", defaultValue: [] },
     ];
     return campusFields.map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
@@ -64,12 +64,13 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
   return configuredFields;
 }`;
 
-// Replace only the existing field selector, bounded by the next function
-// declaration so nested braces cannot cause a partial replacement.
 const functionPattern = /function getEffectiveFields\(modelKey: string, configuredFields: FieldConfig\[\]\): FieldConfig\[\] \{[\s\S]*?\n\}\n\nfunction getEntryId/;
 
 if (source.includes('modelKey === "campus-master"') && source.includes('{ name: "branchId", label: "Branch"')) {
-  process.stdout.write("Complete Organization Master fields already enabled.\n");
+  source = source.replace('{ name: "facilities", label: "Facilities (comma-separated)", type: "text" },', '{ name: "facilities", label: "Facilities (comma-separated)", type: "array", defaultValue: [] },');
+  if (functionPattern.test(source)) source = source.replace(functionPattern, `${newFunction}\n\nfunction getEntryId`);
+  fs.writeFileSync(filePath, source, "utf8");
+  process.stdout.write("Complete Organization Master fields already enabled; Campus facilities normalized.\n");
 } else if (functionPattern.test(source)) {
   source = source.replace(functionPattern, `${newFunction}\n\nfunction getEntryId`);
   fs.writeFileSync(filePath, source, "utf8");
@@ -85,15 +86,13 @@ const requiredMarkers = [
   'modelKey === "branch-master"',
   'modelKey === "campus-master"',
   '{ name: "branchId", label: "Branch"',
-  '{ name: "facilities", label: "Facilities (comma-separated)"',
+  '{ name: "facilities", label: "Facilities (comma-separated)", type: "array"',
 ];
 for (const marker of requiredMarkers) {
   if (!verify.includes(marker)) throw new Error(`Organization Master field patch verification failed: ${marker}`);
 }
 
-// The API persists numeric select values (for example dayOfWeek: 1), while
-// master field option values are strings ("1"). Normalize both sides so the
-// table renders the configured weekday label instead of "—".
+// Normalize configured select values in the table when the API returns numbers.
 const tablePath = path.resolve(__dirname, "../src/pages/masters/MasterTable.tsx");
 let tableSource = fs.readFileSync(tablePath, "utf8");
 const oldSelectLookup = 'const opt = field.options.find(o => o.value === value);';
@@ -107,3 +106,31 @@ if (!tableVerify.includes(newSelectLookup)) {
   throw new Error("Master table select-value normalization patch verification failed.");
 }
 process.stdout.write("Master table select labels verified with numeric/string normalization.\n");
+
+// Subject Group uses a Prisma String[] field. The generic form must render a
+// dedicated comma-separated array input and normalize it back to String[].
+const formPath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
+let formSource = fs.readFileSync(formPath, "utf8");
+const arrayCase = `      case "array":
+        return (
+          <input
+            type="text"
+            value={Array.isArray(value) ? value.join(", ") : value}
+            onChange={(e) => handleChange(field.name, e.target.value.split(",").map((item) => item.trim()).filter(Boolean))}
+            placeholder={field.placeholder || "id1, id2, id3"}
+            className={baseClasses}
+          />
+        );
+
+`;
+const jsonCaseMarker = '      case "json":';
+if (!formSource.includes('case "array":')) {
+  if (!formSource.includes(jsonCaseMarker)) throw new Error("Master form JSON field case not found; refusing to modify unrelated frontend code.");
+  formSource = formSource.replace(jsonCaseMarker, `${arrayCase}${jsonCaseMarker}`);
+  fs.writeFileSync(formPath, formSource, "utf8");
+}
+const formVerify = fs.readFileSync(formPath, "utf8");
+if (!formVerify.includes('case "array":') || !formVerify.includes('value.split(",").map((item) => item.trim()).filter(Boolean)')) {
+  throw new Error("Subject Group array input patch verification failed.");
+}
+process.stdout.write("Subject Group array input verified.\n");

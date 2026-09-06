@@ -6,7 +6,6 @@ let source = fs.readFileSync(filePath, "utf8");
 
 // Timetable Slot Master relations must use real records, not ObjectId text inputs.
 // Keep this scoped to the Master module; no timetable/ERP business logic is changed.
-const marker = '  return configuredFields;\n}\n\nfunction getEntryId';
 const block = `  if (modelKey === "timetable-slot-master") {
     const timetableFields: FieldConfig[] = [
       { name: "dayOfWeek", label: "Day", type: "select", required: true, options: [
@@ -26,16 +25,17 @@ const block = `  if (modelKey === "timetable-slot-master") {
     });
   }
 
-  return configuredFields;
-}
-
-function getEntryId`;
+`;
 
 if (!source.includes('modelKey === "timetable-slot-master"')) {
-  if (!source.includes(marker)) {
-    throw new Error("MasterModule getEffectiveFields marker not found; refusing to modify unrelated code.");
+  // Do not depend on the exact formatting or ordering produced by other
+  // Organization Master patch scripts. Insert immediately before getEntryId.
+  const entryMarker = "function getEntryId";
+  const entryIndex = source.indexOf(entryMarker);
+  if (entryIndex < 0 || source.indexOf("function getEffectiveFields") < 0 || entryIndex < source.indexOf("function getEffectiveFields")) {
+    throw new Error("MasterModule field resolver anchor not found; refusing to modify unrelated code.");
   }
-  source = source.replace(marker, block);
+  source = source.slice(0, entryIndex) + block + source.slice(entryIndex);
 }
 
 const verify = fs.readFileSync(filePath, "utf8");

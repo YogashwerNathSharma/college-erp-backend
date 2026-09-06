@@ -23,7 +23,6 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
       { name: "establishedYear", label: "Established Year", type: "number", min: 1800, max: 2100 },
       { name: "principalName", label: "Principal Name", type: "text" },
     ];
-
     return schoolFields.map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
       return configured ? { ...fallback, ...configured } : fallback;
@@ -42,7 +41,6 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
       { name: "email", label: "Email", type: "email" },
       { name: "isMain", label: "Is Main Branch", type: "boolean", defaultValue: false },
     ];
-
     return branchFields.map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
       return configured ? { ...fallback, ...configured } : fallback;
@@ -57,7 +55,6 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
       { name: "capacity", label: "Capacity", type: "number" },
       { name: "facilities", label: "Facilities (comma-separated)", type: "text" },
     ];
-
     return campusFields.map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
       return configured ? { ...fallback, ...configured } : fallback;
@@ -90,9 +87,23 @@ const requiredMarkers = [
   '{ name: "branchId", label: "Branch"',
   '{ name: "facilities", label: "Facilities (comma-separated)"',
 ];
-
 for (const marker of requiredMarkers) {
-  if (!verify.includes(marker)) {
-    throw new Error(`Organization Master field patch verification failed: ${marker}`);
-  }
+  if (!verify.includes(marker)) throw new Error(`Organization Master field patch verification failed: ${marker}`);
 }
+
+// The API persists numeric select values (for example dayOfWeek: 1), while
+// master field option values are strings ("1"). Normalize both sides so the
+// table renders the configured weekday label instead of "—".
+const tablePath = path.resolve(__dirname, "../src/pages/masters/MasterTable.tsx");
+let tableSource = fs.readFileSync(tablePath, "utf8");
+const oldSelectLookup = 'const opt = field.options.find(o => o.value === value);';
+const newSelectLookup = 'const opt = field.options.find(o => String(o.value) === String(value));';
+if (tableSource.includes(oldSelectLookup)) {
+  tableSource = tableSource.replace(oldSelectLookup, newSelectLookup);
+  fs.writeFileSync(tablePath, tableSource, "utf8");
+}
+const tableVerify = fs.readFileSync(tablePath, "utf8");
+if (!tableVerify.includes(newSelectLookup)) {
+  throw new Error("Master table select-value normalization patch verification failed.");
+}
+process.stdout.write("Master table select labels verified with numeric/string normalization.\n");

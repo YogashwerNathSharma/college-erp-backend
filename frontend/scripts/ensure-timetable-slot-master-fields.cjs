@@ -28,14 +28,18 @@ const block = `  if (modelKey === "timetable-slot-master") {
 `;
 
 if (!source.includes('modelKey === "timetable-slot-master"')) {
-  // Do not depend on the exact formatting or ordering produced by other
-  // Organization Master patch scripts. Insert immediately before getEntryId.
-  const entryMarker = "function getEntryId";
-  const entryIndex = source.indexOf(entryMarker);
-  if (entryIndex < 0 || source.indexOf("function getEffectiveFields") < 0 || entryIndex < source.indexOf("function getEffectiveFields")) {
+  const resolverStart = source.indexOf("function getEffectiveFields");
+  const entryMarker = source.indexOf("function getEntryId", resolverStart);
+  const resolverEnd = entryMarker >= 0 ? entryMarker : source.length;
+  const resolver = resolverStart >= 0 ? source.slice(resolverStart, resolverEnd) : "";
+  const returnIndex = resolver.lastIndexOf("  return configuredFields;");
+
+  if (resolverStart < 0 || returnIndex < 0) {
     throw new Error("MasterModule field resolver anchor not found; refusing to modify unrelated code.");
   }
-  source = source.slice(0, entryIndex) + block + source.slice(entryIndex);
+
+  const absoluteReturnIndex = resolverStart + returnIndex;
+  source = source.slice(0, absoluteReturnIndex) + block + source.slice(absoluteReturnIndex);
 }
 
 const verify = fs.readFileSync(filePath, "utf8");

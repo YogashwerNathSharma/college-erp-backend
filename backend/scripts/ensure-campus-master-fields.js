@@ -23,9 +23,9 @@ if (missing.length) modelBlock += `\n${missing.map((field) => fieldDefinitions[f
 // Preserve any existing Prisma attributes/comments while changing only the field type.
 const lines = modelBlock.split("\n").map((line) => {
   const trimmed = line.trim();
-  if (/^capacity\s+Int(?!\?)\b/.test(trimmed)) return line.replace(/(\bInt)(\b)/, "Int?");
-  if (/^location\s+String(?!\?)\b/.test(trimmed)) return line.replace(/(\bString)(\b)/, "String?");
-  if (/^facilities\s+String\[\](?!\s*@default\(\[\]\))/.test(trimmed)) return `${line} @default([])`;
+  if (/^capacity\s+Int(?!\?)(?:\s|$)/.test(trimmed)) return line.replace(/\bInt\b/, "Int?");
+  if (/^location\s+String(?!\?)(?:\s|$)/.test(trimmed)) return line.replace(/\bString\b/, "String?");
+  if (/^facilities\s+String\[\](?!\s*@default\(\[\]\))(?:\s|$)/.test(trimmed)) return `${line} @default([])`;
   return line;
 });
 modelBlock = lines.join("\n");
@@ -53,11 +53,11 @@ const campusFinalEnd = finalSchema.indexOf("\n}", campusFinalStart);
 if (campusFinalStart === -1 || campusFinalEnd === -1) throw new Error("Campus Master schema verification block not found");
 const finalBlock = finalSchema.slice(campusFinalStart, campusFinalEnd);
 const requiredPatterns = [
-  /^\s+branchId\s+String\?\b.*$/m,
-  /^\s+address\s+String\?\b.*$/m,
-  /^\s+capacity\s+Int\?\b.*$/m,
-  /^\s+location\s+String\?\b.*$/m,
-  /^\s+facilities\s+String\[\]\s+@default\(\[\]\)\b.*$/m,
+  /^\s+branchId\s+String\?\s*.*$/m,
+  /^\s+address\s+String\?\s*.*$/m,
+  /^\s+capacity\s+Int\?\s*.*$/m,
+  /^\s+location\s+String\?\s*.*$/m,
+  /^\s+facilities\s+String\[\]\s+@default\(\[\]\)\s*.*$/m,
 ];
 for (const pattern of requiredPatterns) {
   if (!pattern.test(finalBlock)) throw new Error(`Campus Master schema verification failed: ${pattern}`);

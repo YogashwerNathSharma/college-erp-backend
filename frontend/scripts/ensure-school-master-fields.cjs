@@ -64,14 +64,17 @@ const newFunction = `function getEffectiveFields(modelKey: string, configuredFie
   // Subject Group references real Class/Stream/Subject records. Users must
   // select records from the tenant-scoped dropdowns instead of typing IDs.
   if (modelKey === "subject-group-master") {
-    return [
+    const subjectGroupFields: FieldConfig[] = [
       { name: "name", label: "Group Name", type: "text", required: true },
       { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/masters/Class/dropdown", lookupLabelField: "name", lookupValueField: "id" },
       { name: "streamId", label: "Stream", type: "lookup", lookupUrl: "/api/masters/Stream/dropdown", lookupLabelField: "name", lookupValueField: "id" },
       { name: "subjects", label: "Subjects", type: "array", lookupUrl: "/api/masters/Subject/dropdown", lookupLabelField: "name", lookupValueField: "id", defaultValue: [] },
-    ].map((fallback) => {
+    ];
+    // Fallback must win for these relation fields so an older backend config
+    // cannot turn the UI back into manual ID text boxes.
+    return subjectGroupFields.map((fallback) => {
       const configured = configuredFields.find((field) => field.name === fallback.name);
-      return configured ? { ...fallback, ...configured } : fallback;
+      return configured ? { ...configured, ...fallback } : fallback;
     });
   }
 

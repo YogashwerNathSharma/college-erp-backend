@@ -29,7 +29,9 @@ modelBlock = ensureField(modelBlock, "capacity", "Int?");
 modelBlock = ensureField(modelBlock, "location", "String?");
 modelBlock = ensureField(modelBlock, "facilities", "String[]");
 
-const facilitiesRe = /(^\\s*facilities\\s+String\\[\\])(?:\\s+@default\\(\\[\\]\\))?/m;
+// Prisma list fields need a valid default in this existing model so the
+// application can safely persist an empty facilities list.
+const facilitiesRe = /(^\s*facilities\s+String\[\])(?:\s+@default\(\[\]\))?/m;
 modelBlock = modelBlock.replace(facilitiesRe, "$1 @default([])");
 
 const body = modelBlock.endsWith("\n") ? modelBlock : `${modelBlock}\n`;

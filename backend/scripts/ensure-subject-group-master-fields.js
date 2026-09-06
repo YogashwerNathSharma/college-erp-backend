@@ -31,16 +31,32 @@ const body = modelBlock.endsWith("\n") ? modelBlock : `${modelBlock}\n`;
 const updatedSchema = `${schema.slice(0, modelStart)}${body}${schema.slice(modelEnd)}`;
 if (updatedSchema !== schema) fs.writeFileSync(schemaPath, updatedSchema, "utf8");
 
-// Subject IDs are a list; keep the master configuration aligned with the
-// Prisma type so comma-separated form input is converted to String[].
+// Subject Group relations must use the existing lightweight master dropdowns.
+// This prevents users from typing display numbers/labels instead of real ObjectIds.
 const configPath = path.resolve(__dirname, "../src/modules/masters/master.config.ts");
 let config = fs.readFileSync(configPath, "utf8");
-const configMarker = "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'text' }";
-const configReplacement = "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'array' }";
-if (config.includes(configMarker)) {
-  config = config.replace(configMarker, configReplacement);
-  fs.writeFileSync(configPath, config, "utf8");
+const replacements = [
+  [
+    "{ name: 'classId', label: 'Class (ID)', type: 'text' },",
+    "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/masters/Class/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+  ],
+  [
+    "{ name: 'streamId', label: 'Stream (ID)', type: 'text' },",
+    "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/Stream/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+  ],
+  [
+    "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'text' },",
+    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+  ],
+  [
+    "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'array' },",
+    "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },",
+  ],
+];
+for (const [from, to] of replacements) {
+  if (config.includes(from)) config = config.replace(from, to);
 }
+fs.writeFileSync(configPath, config, "utf8");
 
 const finalSchema = fs.readFileSync(schemaPath, "utf8");
 const finalStart = finalSchema.indexOf("model SubjectGroup {");
@@ -61,8 +77,15 @@ if (!/(^|\n)\s*subjects\s+String\[\]\s+@default\(\[\]\)/m.test(finalBlock)) {
 }
 
 const finalConfig = fs.readFileSync(configPath, "utf8");
-if (!finalConfig.includes(configReplacement)) {
-  throw new Error("Subject Group Master config verification failed: subjects must use array type");
+const requiredConfigMarkers = [
+  "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/masters/Class/dropdown'",
+  "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/Stream/dropdown'",
+  "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/masters/Subject/dropdown'",
+];
+for (const marker of requiredConfigMarkers) {
+  if (!finalConfig.includes(marker)) {
+    throw new Error(`Subject Group Master config verification failed: ${marker}`);
+  }
 }
 
-process.stdout.write("Subject Group Master verified: subjects is a String[] with an empty-array default and array-aware master config.\n");
+process.stdout.write("Subject Group Master verified: Class/Stream use relational dropdowns and Subjects use a subject lookup list.\n");

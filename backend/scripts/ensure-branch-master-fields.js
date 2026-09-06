@@ -37,9 +37,9 @@ const branchFields = [
   "  phone     String?",
   "  email     String?",
   "  isMain    Boolean  @default(false)",
-].join("\\n");
+].join("\n");
 
 const updatedModel = modelBlock.replace(insertAfter, `${insertAfter}\n${branchFields}`);
 const updatedSchema = `${schema.slice(0, modelStart)}${updatedModel}${schema.slice(modelEnd)}`;
 fs.writeFileSync(schemaPath, updatedSchema, "utf8");
-process.stdout.write(`Added Branch Master fields: ${missing.join(", ")}\\n`);
+process.stdout.write(`Added Branch Master fields: ${missing.join(", ")}\n`);

@@ -1,5 +1,5 @@
 // MASTER FORM - Dynamic Add/Edit form for any master model
-// Timetable Slot relation dropdowns are resolved here so generated/legacy field configs cannot downgrade them to ID text inputs.
+// Timetable Slot uses an explicit model key so its relation controls cannot be downgraded by backend field metadata.
 
 import { useState, useEffect } from "react";
 import { X, Save, Loader2 } from "lucide-react";
@@ -7,7 +7,7 @@ import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 
 interface FieldConfig { name: string; label: string; type: string; required?: boolean; options?: { label: string; value: string }[]; placeholder?: string; min?: number; max?: number; defaultValue?: any; lookupUrl?: string; lookupLabelField?: string; lookupValueField?: string; }
-interface MasterFormProps { fields: FieldConfig[]; initialData?: any; onSubmit: (data: any) => void; onClose: () => void; loading: boolean; title: string; }
+interface MasterFormProps { modelKey?: string | null; fields: FieldConfig[]; initialData?: any; onSubmit: (data: any) => void; onClose: () => void; loading: boolean; title: string; }
 
 function LookupField({ field, value, onChange }: { field: FieldConfig; value: any; onChange: (val: string) => void }) {
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
@@ -35,7 +35,7 @@ function LookupField({ field, value, onChange }: { field: FieldConfig; value: an
   return <select value={value == null ? "" : String(value)} onChange={(e) => onChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"><option value="">Select {field.label}</option>{options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>;
 }
 
-export default function MasterForm({ fields, initialData, onSubmit, onClose, loading, title }: MasterFormProps) {
+export default function MasterForm({ modelKey, fields, initialData, onSubmit, onClose, loading, title }: MasterFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadingField, setUploadingField] = useState<string | null>(null);
@@ -48,18 +48,14 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
     { name: "teacherId", label: "Teacher", type: "lookup", lookupUrl: "/api/teacher", lookupLabelField: "name", lookupValueField: "id" },
     { name: "roomId", label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
   ];
-  const lookupNames = new Set(timetableFields.slice(1).map((field) => field.name));
-  const isTimetableSlot = title.toLowerCase().includes("timetable slot") || fields.some((field) => lookupNames.has(field.name));
-  const effectiveFields: FieldConfig[] = isTimetableSlot ? timetableFields : fields.map((field) => {
-    const fallback = timetableFields.find((item) => item.name === field.name);
-    return fallback ? { ...field, ...fallback } : field;
-  });
+  const isTimetableSlot = modelKey === "timetable-slot-master";
+  const effectiveFields: FieldConfig[] = isTimetableSlot ? timetableFields : fields;
 
   useEffect(() => {
     const initial: Record<string, any> = {};
     effectiveFields.forEach((field) => { if (initialData && initialData[field.name] !== undefined) initial[field.name] = initialData[field.name]; else if (field.defaultValue !== undefined) initial[field.name] = field.defaultValue; else initial[field.name] = field.type === "boolean" ? false : ""; });
     setFormData(initial); setErrors({});
-  }, [initialData, title, fields]);
+  }, [initialData, modelKey, fields]);
 
   const handleChange = (name: string, value: any) => { setFormData((prev) => ({ ...prev, [name]: value })); if (errors[name]) setErrors((prev) => { const e = { ...prev }; delete e[name]; return e; }); };
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => { const file = e.target.files?.[0]; if (!file) return; setUploadingField(fieldName); try { const body = new FormData(); body.append("file", file); const response = await axios.post(getFullUrl("/api/upload/image"), body, { headers: { "Content-Type": "multipart/form-data" } }); if (response.data.success) { const url = response.data.url || response.data.data?.url; if (url) handleChange(fieldName, url); else setErrors((p) => ({ ...p, [fieldName]: "Upload successful but URL not returned" })); } else setErrors((p) => ({ ...p, [fieldName]: response.data.message || "Upload failed" })); } catch (err: any) { console.error("Upload error:", err); setErrors((p) => ({ ...p, [fieldName]: err.response?.data?.message || "Upload failed. Check console." })); } finally { setUploadingField(null); e.target.value = ""; } };

@@ -9,7 +9,7 @@ import {
 
 /////////////////////////
 // CREATE SECTION
-// ✅ FIXED: Uses middleware academicYearId as fallback
+// Uses middleware academicYearId as fallback
 /////////////////////////
 export const createSection = async (req: Request, res: Response) => {
   try {
@@ -36,21 +36,24 @@ export const createSection = async (req: Request, res: Response) => {
 
 /////////////////////////
 // SECTION DROPDOWN
-// Lightweight endpoint for dependent dropdowns. Avoids the full section
-// relation/include query and always returns id, name and classId.
+// Lightweight endpoint for dependent dropdowns.
+// allYears=true is used by timetable display so a referenced section ID
+// can still be resolved when the timetable row and section have different
+// academic-year scopes. Tenant isolation is always retained.
 /////////////////////////
 export const getSectionDropdown = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string | undefined);
     const classId = req.query.classId as string | undefined;
+    const allYears = req.query.allYears === "true";
 
     if (!tenantId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
     const where: any = { tenantId };
-    if (academicYearId) where.academicYearId = academicYearId;
+    if (!allYears && academicYearId) where.academicYearId = academicYearId;
     if (classId) where.classId = classId;
 
     const sections = await prisma.section.findMany({
@@ -68,7 +71,7 @@ export const getSectionDropdown = async (req: Request, res: Response) => {
 
 /////////////////////////
 // GET ALL SECTIONS
-// ✅ FIXED: Uses middleware academicYearId as primary source
+// Uses middleware academicYearId as primary source
 /////////////////////////
 export const getSections = async (req: Request, res: Response) => {
   try {

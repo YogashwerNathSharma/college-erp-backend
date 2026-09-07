@@ -30,18 +30,25 @@ const TIMETABLE_FIELDS: FieldConfig[] = [
   { name: "dayOfWeek", label: "Day", type: "select" },
   { name: "periodId", label: "Period", type: "lookup", lookupUrl: "/api/masters/period-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
   { name: "classId", label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id" },
-  { name: "sectionId", label: "Section", type: "lookup", lookupUrl: "/api/section", lookupLabelField: "name", lookupValueField: "id" },
+  { name: "sectionId", label: "Section", type: "lookup", lookupUrl: "/api/section/dropdown", lookupLabelField: "name", lookupValueField: "id" },
   { name: "subjectId", label: "Subject", type: "lookup", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id" },
-  { name: "teacherId", label: "Teacher", type: "lookup", lookupUrl: "/api/teacher", lookupLabelField: "name", lookupValueField: "id" },
+  { name: "teacherId", label: "Teacher", type: "lookup", lookupUrl: "/api/teacher", lookupLabelField: "fullName", lookupValueField: "id" },
   { name: "roomId", label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
 ];
 
 function extractRows(payload: any): any[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.results)) return payload.results;
-  return [];
+  const candidates = [
+    payload?.data?.data,
+    payload?.data?.items,
+    payload?.data?.results,
+    payload?.data?.options,
+    payload?.data,
+    payload?.items,
+    payload?.results,
+    payload?.options,
+    payload,
+  ];
+  return candidates.find(Array.isArray) || [];
 }
 
 export default function MasterTable({ entries, fields, loading, pagination, onPageChange, onEdit, onDelete, onToggle, onClone }: MasterTableProps) {
@@ -67,17 +74,21 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
     const loadLookups = async () => {
       const lookupFields = effectiveFields.filter(f => f.type === "lookup" && f.lookupUrl);
       const next: Record<string, Record<string, string>> = {};
+      const token = localStorage.getItem("token");
       await Promise.all(lookupFields.map(async field => {
         try {
-          const res = await axios.get(getFullUrl(field.lookupUrl!));
+          const res = await axios.get(getFullUrl(field.lookupUrl!), {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            params: { limit: 500 },
+          });
           const rows = extractRows(res.data);
           const valueField = field.lookupValueField || "id";
           const labelField = field.lookupLabelField || "name";
           const map: Record<string, string> = {};
           rows.forEach(item => {
             if (!item) return;
-            const value = item[valueField] ?? item.id ?? item._id;
-            const label = item[labelField] ?? item.name ?? item.label ?? item.title ?? item.code ?? value;
+            const value = item[valueField] ?? item.id ?? item._id ?? item.value;
+            const label = item[labelField] ?? item.name ?? item.label ?? item.title ?? item.fullName ?? item.code ?? value;
             if (value !== undefined && value !== null) map[String(value)] = String(label ?? value);
           });
           next[field.name] = map;
@@ -111,12 +122,12 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
     }
     if (field.type === "lookup") {
       const relation = entry?.[field.name.replace(/Id$/, "")];
-      if (relation && typeof relation === "object") return String(relation.name ?? relation.label ?? relation.title ?? relation.code ?? relation.id ?? value);
+      if (relation && typeof relation === "object") return String(relation.name ?? relation.label ?? relation.title ?? relation.fullName ?? relation.code ?? relation.id ?? value);
       const resolved = lookupMaps[field.name]?.[String(value)];
       if (resolved) return resolved;
     }
     if (Array.isArray(value)) return value.join(", ");
-    if (typeof value === "object") return String(value.name ?? value.label ?? value.title ?? value.code ?? value.id ?? "—");
+    if (typeof value === "object") return String(value.name ?? value.label ?? value.title ?? value.fullName ?? value.code ?? value.id ?? "—");
     return String(value);
   };
 

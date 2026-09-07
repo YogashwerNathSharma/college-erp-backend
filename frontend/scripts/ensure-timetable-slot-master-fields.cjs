@@ -3,23 +3,26 @@ const path = require("path");
 
 const filePath = path.resolve(__dirname, "../src/pages/masters/MasterModule.tsx");
 let source = fs.readFileSync(filePath, "utf8");
+const marker = 'if (modelKey === "timetable-slot-master") {';
 
-const modelMarker = 'if (modelKey === "timetable-slot-master") {';
-const start = source.indexOf(modelMarker);
+// Normalize any previous timetable resolver block, then install exactly one canonical block.
+const start = source.indexOf(marker);
 if (start !== -1) {
+  const braceStart = source.indexOf("{", start);
   let depth = 0;
   let end = -1;
-  for (let i = source.indexOf("{", start); i < source.length; i += 1) {
+  for (let i = braceStart; i < source.length; i += 1) {
     if (source[i] === "{") depth += 1;
     else if (source[i] === "}") {
       depth -= 1;
       if (depth === 0) { end = i + 1; break; }
     }
   }
-  if (end !== -1) source = source.slice(0, start) + source.slice(end);
+  if (end === -1) throw new Error("Timetable Slot resolver block is malformed; refusing changes.");
+  source = source.slice(0, start) + source.slice(end);
 }
 
-const markerBlock = `    if (modelKey === "timetable-slot-master") {
+const block = `    if (modelKey === "timetable-slot-master") {
       const timetableFields: FieldConfig[] = [
         { name: "dayOfWeek", label: "Day", type: "select", required: true, options: [
           { label: "Monday", value: "1" }, { label: "Tuesday", value: "2" }, { label: "Wednesday", value: "3" },
@@ -38,22 +41,14 @@ const markerBlock = `    if (modelKey === "timetable-slot-master") {
       });
     }
 `;
-const anchor = "  return configuredFields;\n";
+const anchor = "  return configuredFields;";
 if (!source.includes(anchor)) throw new Error("Timetable Slot resolver anchor not found; refusing unrelated changes.");
-source = source.replace(anchor, markerBlock + anchor);
+source = source.replace(anchor, block + anchor);
 
 fs.writeFileSync(filePath, source, "utf8");
 const verify = fs.readFileSync(filePath, "utf8");
-for (const marker of [
-  modelMarker,
-  'name: "dayOfWeek"',
-  'name: "periodId"',
-  'name: "classId"',
-  'name: "sectionId"',
-  'name: "subjectId"',
-  'name: "teacherId"',
-  'name: "roomId"',
-]) {
-  if (!verify.includes(marker)) throw new Error(`Timetable Slot Master verification failed: ${marker}`);
+if ((verify.match(new RegExp('if \\(modelKey === "timetable-slot-master"\\) \\{', "g")) || []).length !== 1) throw new Error("Expected exactly one Timetable Slot resolver.");
+for (const markerText of ['name: "dayOfWeek"', 'name: "periodId"', 'name: "classId"', 'name: "sectionId"', 'name: "subjectId"', 'name: "teacherId"', 'name: "roomId"']) {
+  if (!verify.includes(markerText)) throw new Error(`Timetable Slot Master verification failed: ${markerText}`);
 }
 process.stdout.write("Timetable Slot Master fields verified.\n");

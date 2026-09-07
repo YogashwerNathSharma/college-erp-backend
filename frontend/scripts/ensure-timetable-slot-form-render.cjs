@@ -4,9 +4,8 @@ const path = require("path");
 const filePath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
 const source = fs.readFileSync(filePath, "utf8");
 
-// Timetable Slot relation dropdowns are implemented directly in MasterForm.tsx.
-// This build guard only verifies that implementation is present; it must never
-// inject another declaration into the component.
+// Verification-only guard. Timetable Slot relation dropdown behavior lives in
+// MasterForm.tsx and must not be injected repeatedly during Render builds.
 const required = [
   'const isTimetableSlotForm = fields.some((item) => item.name === "dayOfWeek") && fields.some((item) => item.name === "periodId");',
   'periodId: { label: "Period", type: "lookup", lookupUrl: "/api/masters/period-master/dropdown"',

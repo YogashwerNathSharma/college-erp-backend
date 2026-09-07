@@ -5,17 +5,17 @@ const filePath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
 let source = fs.readFileSync(filePath, "utf8");
 
 // The Organization/Subject Group patch upgrades the generic array case.
-// Some current MasterForm revisions do not have a json case, so anchor the
-// compatibility case on either json or the safe default branch.
+// MasterForm may be compacted to a single line by a previous safe patch, so
+// locate the switch branches by syntax rather than exact indentation.
 if (!source.includes('case "array":')) {
-  const jsonMarker = '      case "json":';
-  const defaultMarker = '      default:';
+  const jsonMarker = 'case "json":';
+  const defaultMarker = 'default:';
   const marker = source.includes(jsonMarker) ? jsonMarker : defaultMarker;
   if (!source.includes(marker)) {
     throw new Error("MasterForm render switch marker not found; refusing unrelated modification.");
   }
 
-  const arrayCase = `      case "array":
+  const arrayCase = `case "array":
         return (
           <input
             type="text"
@@ -25,8 +25,7 @@ if (!source.includes('case "array":')) {
             className={baseClasses}
           />
         );
-
-`;
+      `;
   source = source.replace(marker, `${arrayCase}${marker}`);
 }
 

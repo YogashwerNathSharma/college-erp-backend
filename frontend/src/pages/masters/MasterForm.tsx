@@ -138,7 +138,6 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
     onSubmit(cleanData);
   };
 
-  const isTimetableSlotForm = fields.some((item) => item.name === "dayOfWeek") && fields.some((item) => item.name === "periodId");
   const timetableLookup: Record<string, Partial<FieldConfig>> = {
     periodId: { label: "Period", type: "lookup", lookupUrl: "/api/masters/period-master/dropdown", lookupLabelField: "name", lookupValueField: "id", required: true },
     classId: { label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
@@ -148,8 +147,11 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
     roomId: { label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
   };
 
+  // Relation fields are identified by their field name, not by whether the
+  // backend happened to return the Timetable Slot model marker correctly.
+  // This prevents any stale/partial master config from rendering ID text boxes.
   const getEffectiveField = (originalField: FieldConfig): FieldConfig => {
-    const override = isTimetableSlotForm ? timetableLookup[originalField.name] : undefined;
+    const override = timetableLookup[originalField.name];
     return override ? { ...originalField, ...override } : originalField;
   };
 

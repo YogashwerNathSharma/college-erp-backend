@@ -36,12 +36,26 @@ interface MasterTableProps {
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
   onClone: (id: string) => void;
+  search?: string;
+  onSearch?: (value: string) => void;
+  showInactive?: boolean;
+  onShowInactive?: (value: boolean) => void;
 }
 
 const DAY_NAMES: Record<string, string> = {
   "0": "Sunday", "1": "Monday", "2": "Tuesday", "3": "Wednesday",
   "4": "Thursday", "5": "Friday", "6": "Saturday",
 };
+
+const TIMETABLE_FIELDS: FieldConfig[] = [
+  { name: "dayOfWeek", label: "Day", type: "select" },
+  { name: "periodId", label: "Period", type: "lookup" },
+  { name: "classId", label: "Class", type: "lookup" },
+  { name: "sectionId", label: "Section", type: "lookup" },
+  { name: "subjectId", label: "Subject", type: "lookup" },
+  { name: "teacherId", label: "Teacher", type: "lookup" },
+  { name: "roomId", label: "Room", type: "lookup" },
+];
 
 export default function MasterTable({
   entries, fields, loading, pagination,
@@ -58,12 +72,18 @@ export default function MasterTable({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [actionMenuId]);
 
-  const isTimetableSlot = fields.some(f => f.name === "dayOfWeek") && fields.some(f => f.name === "periodId");
+  // Detect timetable rows even when the backend config accidentally returns
+  // only dayOfWeek. This was causing the production table to render only Day.
+  const isTimetableSlot =
+    fields.some(f => f.name === "dayOfWeek") ||
+    entries.some(entry => ["periodId", "classId", "sectionId", "subjectId", "teacherId", "roomId"].some(k => entry?.[k] !== undefined));
+
+  const effectiveFields = isTimetableSlot
+    ? TIMETABLE_FIELDS.map(f => fields.find(existing => existing.name === f.name) || f)
+    : fields;
 
   const isHiddenField = (fieldName: string): boolean => {
-    // Timetable Slot Master must show its relationship columns; hiding all *Id
-    // fields here was the reason the table previously displayed only "Day".
-    if (isTimetableSlot && ["dayOfWeek", "periodId", "classId", "sectionId", "subjectId", "teacherId", "roomId"].includes(fieldName)) return false;
+    if (isTimetableSlot && TIMETABLE_FIELDS.some(f => f.name === fieldName)) return false;
     const hiddenPatterns = [
       /^(id|_id)$/i,
       /Id$/,
@@ -72,8 +92,7 @@ export default function MasterTable({
     return hiddenPatterns.some(pattern => pattern.test(fieldName));
   };
 
-  const displayFields = fields.filter(f => !isHiddenField(f.name));
-  const visibleFields = isTimetableSlot ? displayFields.slice(0, 7) : displayFields.slice(0, 6);
+  const visibleFields = effectiveFields.filter(f => !isHiddenField(f.name)).slice(0, isTimetableSlot ? 7 : 6);
 
   const formatValue = (value: any, field: FieldConfig, entry?: any): string => {
     if (field.name === "dayOfWeek") {
@@ -112,7 +131,7 @@ export default function MasterTable({
 
   return <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xs border border-gray-200 dark:border-slate-700 overflow-hidden w-full flex flex-col">
     <div className="overflow-x-auto w-full">
-      <table className="w-full text-sm table-auto min-w-[600px]">
+      <table className="w-full text-sm table-auto min-w-[900px]">
         <thead><tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-700 select-none">
           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">#</th>
           {visibleFields.map(field => <th key={field.name} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{field.label}</th>)}

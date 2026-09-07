@@ -67,8 +67,6 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
   const isTimetableSlot = fields.some(f => f.name === "dayOfWeek") || entries.some(entry => ["periodId", "classId", "sectionId", "subjectId", "teacherId", "roomId"].some(k => entry?.[k] !== undefined));
   const effectiveFields = isTimetableSlot ? TIMETABLE_FIELDS.map(f => fields.find(existing => existing.name === f.name) ? { ...f, ...fields.find(existing => existing.name === f.name) } : f) : fields;
 
-  // Resolve lookup IDs to human-readable names. This is deliberately done in the table
-  // so old records and records without Prisma include() relations still render correctly.
   useEffect(() => {
     let cancelled = false;
     const loadLookups = async () => {
@@ -79,7 +77,10 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
         try {
           const res = await axios.get(getFullUrl(field.lookupUrl!), {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            params: { limit: 500 },
+            params: {
+              limit: 500,
+              ...(isTimetableSlot && field.name === "sectionId" ? { allYears: "true" } : {}),
+            },
           });
           const rows = extractRows(res.data);
           const valueField = field.lookupValueField || "id";

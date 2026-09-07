@@ -2,20 +2,20 @@ const fs = require("fs");
 const path = require("path");
 
 const filePath = path.resolve(__dirname, "../src/pages/masters/MasterForm.tsx");
-let source = fs.readFileSync(filePath, "utf8");
+const source = fs.readFileSync(filePath, "utf8");
 
-const oldLine = "        const data = res.data?.data || res.data || [];";
-const newLine = "        const data = res.data?.data?.data || res.data?.data || res.data || [];";
+// Verification-only guard. Lookup response normalization is implemented in
+// MasterForm itself; this script must never rewrite the form during builds.
+const required = [
+  "const raw = res.data?.data?.data ?? res.data?.data ?? res.data ?? [];",
+  "const data = Array.isArray(raw) ? raw : [];",
+  "function LookupField",
+];
 
-if (source.includes(oldLine)) {
-  source = source.replace(oldLine, newLine);
-} else if (!source.includes(newLine)) {
-  throw new Error("MasterForm lookup response anchor not found; refusing unrelated changes.");
+for (const marker of required) {
+  if (!source.includes(marker)) {
+    throw new Error(`MasterForm lookup response verification failed: ${marker}`);
+  }
 }
 
-if (!source.includes(newLine)) {
-  throw new Error("MasterForm nested lookup normalization verification failed.");
-}
-
-fs.writeFileSync(filePath, source, "utf8");
-process.stdout.write("Master form lookup responses normalized for nested API data.\n");
+process.stdout.write("Master form lookup responses verified.\n");

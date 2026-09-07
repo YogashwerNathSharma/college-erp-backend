@@ -92,6 +92,30 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
             const label = item[labelField] ?? item.name ?? item.label ?? item.title ?? item.fullName ?? item.code ?? value;
             if (value !== undefined && value !== null) map[String(value)] = String(label ?? value);
           });
+
+          // The timetable must resolve the exact referenced Section ID even when
+          // the normal dropdown is filtered/scoped differently. Fetch each missing
+          // section directly by ID; the backend endpoint remains tenant-scoped.
+          if (isTimetableSlot && field.name === "sectionId") {
+            const missingIds = Array.from(new Set(
+              entries.map(entry => entry?.sectionId).filter((id: any) => id != null && !map[String(id)])
+            )).map(String);
+            await Promise.all(missingIds.map(async id => {
+              try {
+                const detail = await axios.get(getFullUrl(`/api/section/${encodeURIComponent(id)}`), {
+                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+                const item = detail?.data?.data ?? detail?.data;
+                if (item) {
+                  const label = item.name ?? item.label ?? item.title ?? item.code;
+                  if (label != null) map[id] = String(label);
+                }
+              } catch (err) {
+                console.warn(`MasterTable section ${id} lookup failed:`, err);
+              }
+            }));
+          }
+
           next[field.name] = map;
         } catch (err) {
           console.warn(`MasterTable lookup failed for ${field.name}:`, err);
@@ -101,7 +125,7 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
     };
     loadLookups();
     return () => { cancelled = true; };
-  }, [fields, isTimetableSlot]);
+  }, [fields, isTimetableSlot, entries]);
 
   const isHiddenField = (name: string) => {
     if (isTimetableSlot && TIMETABLE_FIELDS.some(f => f.name === name)) return false;

@@ -32,7 +32,6 @@ interface MasterFormProps {
   title: string;
 }
 
-
 // ─── Lookup Field Component (fetches options from API) ───────────────────────
 function LookupField({ field, value, onChange }: { field: FieldConfig; value: any; onChange: (val: string) => void }) {
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
@@ -217,6 +216,24 @@ export default function MasterForm({
         ? "border-red-400 bg-red-50 dark:bg-red-950/30 dark:border-red-700 text-gray-900 dark:text-gray-100"
         : "border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200"
     }`;
+
+    // Timetable Slot Master must always render every relation as a real dropdown,
+    // even if an older/generated master config supplies the relation as plain text.
+    const isTimetableSlot = fields.some((item) => item.name === "dayOfWeek") && fields.some((item) => item.name === "periodId");
+    if (isTimetableSlot) {
+      const timetableLookup: Record<string, Partial<FieldConfig>> = {
+        periodId: { label: "Period", type: "lookup", lookupUrl: "/api/masters/period-master/dropdown", lookupLabelField: "name", lookupValueField: "id", required: true },
+        classId: { label: "Class", type: "lookup", lookupUrl: "/api/class", lookupLabelField: "name", lookupValueField: "id", required: true },
+        sectionId: { label: "Section", type: "lookup", lookupUrl: "/api/section", lookupLabelField: "name", lookupValueField: "id" },
+        subjectId: { label: "Subject", type: "lookup", lookupUrl: "/api/subject", lookupLabelField: "name", lookupValueField: "id" },
+        teacherId: { label: "Teacher", type: "lookup", lookupUrl: "/api/teacher", lookupLabelField: "name", lookupValueField: "id" },
+        roomId: { label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
+      };
+      const relation = timetableLookup[field.name];
+      if (relation) {
+        field = { ...field, ...relation };
+      }
+    }
 
     switch (field.type) {
       case "textarea":

@@ -40,20 +40,30 @@ function getEntryId`
   },
 })
 
-// Timetable Slot Master must never fall back to raw ObjectId text fields.
-// Keep this in the Vite transform as a final deployment-safe guarantee.
+// Timetable Slot Master must be canonical at the final Vite transform stage.
+// This deliberately rewrites only the getEffectiveFields resolver so an older
+// or partially patched checkout cannot leave ObjectId text inputs in the UI.
 const timetableSlotMasterBuildFix = () => ({
   name: 'timetable-slot-master-build-fix',
   transform(code: string, id: string) {
     if (!id.endsWith('/src/pages/masters/MasterModule.tsx')) return null
-    if (code.includes('modelKey === "timetable-slot-master"')) return null
 
-    const marker = '  return configuredFields;\n}\n\nfunction getEntryId'
-    if (!code.includes(marker)) {
-      throw new Error('Timetable Slot Master build fix: MasterModule marker not found')
+    const resolverStart = code.indexOf('function getEffectiveFields')
+    const entryMarker = 'function getEntryId'
+    const entryIndex = code.indexOf(entryMarker, resolverStart)
+    if (resolverStart < 0 || entryIndex < 0 || entryIndex <= resolverStart) {
+      throw new Error('Timetable Slot Master build fix: MasterModule resolver not found')
     }
 
-    const replacement = `  if (modelKey === "timetable-slot-master") {
+    const resolver = code.slice(resolverStart, entryIndex)
+    const cleanResolver = resolver.replace(/\n  if \(modelKey === "timetable-slot-master"\) \{[\s\S]*?\n  \}\n(?=\n  return configuredFields;)/, '')
+    const returnMarker = '  return configuredFields;'
+    const returnIndex = cleanResolver.lastIndexOf(returnMarker)
+    if (returnIndex < 0) {
+      throw new Error('Timetable Slot Master build fix: resolver return marker not found')
+    }
+
+    const timetableBlock = `  if (modelKey === "timetable-slot-master") {
     const timetableFields: any[] = [
       { name: "dayOfWeek", label: "Day", type: "select", required: true, options: [
         { label: "Monday", value: "1" }, { label: "Tuesday", value: "2" }, { label: "Wednesday", value: "3" },
@@ -72,13 +82,11 @@ const timetableSlotMasterBuildFix = () => ({
     });
   }
 
-  return configuredFields;
-}
+`
 
-function getEntryId`
-
+    const patchedResolver = cleanResolver.slice(0, returnIndex) + timetableBlock + cleanResolver.slice(returnIndex)
     return {
-      code: code.replace(marker, replacement),
+      code: code.slice(0, resolverStart) + patchedResolver + code.slice(entryIndex),
       map: null,
     }
   },

@@ -27,23 +27,23 @@ const block = `  if (modelKey === "timetable-slot-master") {
 
 `;
 
-if (!source.includes('modelKey === "timetable-slot-master"')) {
-  const resolverStart = source.indexOf("function getEffectiveFields");
-  const entryMarker = source.indexOf("function getEntryId", resolverStart);
-  const resolverEnd = entryMarker >= 0 ? entryMarker : source.length;
-  const resolver = resolverStart >= 0 ? source.slice(resolverStart, resolverEnd) : "";
-  const returnIndex = resolver.lastIndexOf("  return configuredFields;");
-
-  if (resolverStart < 0 || returnIndex < 0) {
-    throw new Error("MasterModule field resolver anchor not found; refusing to modify unrelated code.");
-  }
-
-  const absoluteReturnIndex = resolverStart + returnIndex;
-  source = source.slice(0, absoluteReturnIndex) + block + source.slice(absoluteReturnIndex);
+const resolverStart = source.indexOf("function getEffectiveFields");
+const entryMarker = source.indexOf("function getEntryId", resolverStart);
+if (resolverStart < 0 || entryMarker < 0) {
+  throw new Error("MasterModule field resolver anchor not found; refusing to modify unrelated code.");
 }
 
-// Persist the generated resolver before verification. This matters on a clean
-// Render checkout where the timetable block is inserted for the first time.
+const resolver = source.slice(resolverStart, entryMarker);
+const timetablePattern = /\n  if \(modelKey === "timetable-slot-master"\) \{[\s\S]*?\n  \}\n(?=\n  return configuredFields;)/;
+const cleanedResolver = resolver.replace(timetablePattern, "\n");
+const returnMarker = "  return configuredFields;";
+const returnIndex = cleanedResolver.lastIndexOf(returnMarker);
+if (returnIndex < 0) {
+  throw new Error("MasterModule field resolver return anchor not found; refusing to modify unrelated code.");
+}
+
+const patchedResolver = cleanedResolver.slice(0, returnIndex) + block + cleanedResolver.slice(returnIndex);
+source = source.slice(0, resolverStart) + patchedResolver + source.slice(entryMarker);
 fs.writeFileSync(filePath, source, "utf8");
 
 const verify = fs.readFileSync(filePath, "utf8");

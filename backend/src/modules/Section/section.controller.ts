@@ -71,10 +71,29 @@ export const getSections = async (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId;
     const academicYearId = (req as any).academicYearId || (req.query.academicYearId as string | undefined);
     const classId = req.query.classId as string | undefined;
+    const allYears = req.query.allYears === "true";
+
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Timetable lookup may request all academic years. Use the same lightweight
+    // projection as the dropdown endpoint so this path cannot fail because of
+    // an unrelated relation/include in the normal section listing service.
+    if (allYears) {
+      const where: any = { tenantId };
+      if (classId) where.classId = classId;
+      const sections = await prisma.section.findMany({
+        where,
+        select: { id: true, name: true, classId: true, academicYearId: true, isActive: true },
+        orderBy: { name: "asc" },
+      });
+      return res.status(200).json({ success: true, data: sections });
+    }
+
     const sections = await getSectionsService(tenantId, academicYearId, classId);
     return res.status(200).json({ success: true, data: sections });
   } catch (error: any) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("GET SECTIONS ERROR 👉", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to load sections" });
   }
 };
 

@@ -1,8 +1,8 @@
 // MASTER FORM - Dynamic Add/Edit form for any master model
-// NOTE: Timetable Slot relation dropdown handling is centralized below.
+// Timetable Slot relation dropdowns are resolved here so generated/legacy field configs cannot downgrade them to ID text inputs.
 
 import { useState, useEffect } from "react";
-import { X, Save, Loader2, Upload } from "lucide-react";
+import { X, Save, Loader2 } from "lucide-react";
 import axios from "axios";
 import { getFullUrl } from "../../utils/url";
 
@@ -63,16 +63,10 @@ function LookupField({ field, value, onChange }: { field: FieldConfig; value: an
     return () => { active = false; };
   }, [field.lookupUrl, field.lookupLabelField, field.lookupValueField]);
 
-  if (loading) {
-    return <select disabled className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm"><option>Loading...</option></select>;
-  }
+  if (loading) return <select disabled className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm"><option>Loading...</option></select>;
 
   return (
-    <select
-      value={value == null ? "" : String(value)}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-    >
+    <select value={value == null ? "" : String(value)} onChange={(e) => onChange(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
       <option value="">Select {field.label}</option>
       {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
@@ -100,9 +94,9 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
     if (!file) return;
     setUploadingField(fieldName);
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("file", file);
-      const response = await axios.post(getFullUrl("/api/upload/image"), formDataToSend, { headers: { "Content-Type": "multipart/form-data" } });
+      const body = new FormData();
+      body.append("file", file);
+      const response = await axios.post(getFullUrl("/api/upload/image"), body, { headers: { "Content-Type": "multipart/form-data" } });
       if (response.data.success) {
         const uploadedUrl = response.data.url || response.data.data?.url;
         if (uploadedUrl) handleChange(fieldName, uploadedUrl);
@@ -154,10 +148,13 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
     roomId: { label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
   };
 
+  const getEffectiveField = (originalField: FieldConfig): FieldConfig => {
+    const override = isTimetableSlotForm ? timetableLookup[originalField.name] : undefined;
+    return override ? { ...originalField, ...override } : originalField;
+  };
+
   const renderField = (originalField: FieldConfig) => {
-    const field = isTimetableSlotForm && timetableLookup[originalField.name]
-      ? { ...originalField, ...timetableLookup[originalField.name] }
-      : originalField;
+    const field = getEffectiveField(originalField);
     const value = formData[field.name] ?? "";
     const error = errors[field.name];
     const baseClasses = `w-full px-3 py-2.5 border rounded-lg text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none ${error ? "border-red-400 bg-red-50 dark:bg-red-950/30 dark:border-red-700 text-gray-900 dark:text-gray-100" : "border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200"}`;
@@ -185,7 +182,14 @@ export default function MasterForm({ fields, initialData, onSubmit, onClose, loa
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700"><h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2><button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"><X size={20} /></button></div>
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-130px)]">
           <div className="p-6 space-y-4">
-            {fields.map((field) => <div key={field.name}><label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{field.label} {field.required && <span className="text-red-500">*</span>}</label>{renderField(field)}{errors[field.name] && <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>}</div>)}
+            {fields.map((originalField) => {
+              const field = getEffectiveField(originalField);
+              return <div key={field.name}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{field.label} {field.required && <span className="text-red-500">*</span>}</label>
+                {renderField(originalField)}
+                {errors[field.name] && <p className="text-xs text-red-500 mt-1">{errors[field.name]}</p>}
+              </div>;
+            })}
           </div>
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800"><button type="button" onClick={onClose} className="px-5 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">Cancel</button><button type="submit" disabled={loading || uploadingField !== null} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">{loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}{loading ? "Saving..." : "Save"}</button></div>
         </form>

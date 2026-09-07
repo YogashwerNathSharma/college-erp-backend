@@ -1,0 +1,1 @@
+Timetable Slot Master display fix is already implemented in MasterTable.tsx and MasterModule.tsx. This marker ensures the frontend deployment picks up the latest main-branch bundle.

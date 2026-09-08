@@ -18,13 +18,13 @@ const newResolver = `function getEffectiveFields(modelKey: string, configuredFie
     ],
     "rack-master": [
       { name: "name", label: "Rack Name/Number", type: "text", required: true },
-      { name: "location", label: "Location", type: "text" },
-      { name: "capacity", label: "Capacity (books)", type: "number" },
+      { name: "location", label: "Location", type: "text", required: true },
+      { name: "capacity", label: "Capacity (books)", type: "number", required: true },
     ],
     "shelf-master": [
       { name: "name", label: "Shelf Name", type: "text", required: true },
       { name: "rackId", label: "Rack No.", type: "lookup", required: true, lookupUrl: "/api/masters/rack-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
-      { name: "level", label: "Level Number", type: "number" },
+      { name: "level", label: "Level Number", type: "number", required: true },
     ],
   };
 
@@ -69,9 +69,9 @@ if (source.includes(fetchOld)) {
 }
 
 const clickOld = 'const handleModelClick = (model: MasterModel) => { setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch("");';
-const clickNew = 'const handleModelClick = (model: MasterModel) => { setFields([]); setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch("");';
+const clickNew = 'const handleModelClick = (model: MasterModel) => { setFields(getEffectiveFields(model.key, [])); setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch("");';
 if (source.includes(clickOld)) source = source.replace(clickOld, clickNew);
-else if (!source.includes('const handleModelClick = (model: MasterModel) => { setFields([]);')) throw new Error("MasterModule model click marker not found; refusing unrelated modification.");
+else if (!source.includes('const handleModelClick = (model: MasterModel) => { setFields(getEffectiveFields(model.key, []));')) throw new Error("MasterModule model click marker not found; refusing unrelated modification.");
 
 const required = [
   '"language-master"',
@@ -80,9 +80,9 @@ const required = [
   'label: "Rack No."',
   'lookupUrl: "/api/masters/rack-master/dropdown"',
   'setFields(getEffectiveFields(modelKey, res.data.config?.fields || []));',
-  'setFields([]); setSelectedModel(model.key)',
+  'setFields(getEffectiveFields(model.key, [])); setSelectedModel(model.key)',
 ];
 for (const item of required) if (!source.includes(item)) throw new Error(`Library master verification failed: ${item}`);
 
 fs.writeFileSync(filePath, source, "utf8");
-process.stdout.write("Library Master fields verified: Rack and Shelf fields always render, and Shelf Rack No. is a Rack Master lookup.\n");
+process.stdout.write("Library Master fields verified: Rack and Shelf add forms always have fields, Shelf Rack No. is a Rack Master lookup, and required fields match Prisma.\n");

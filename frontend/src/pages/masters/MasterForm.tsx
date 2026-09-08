@@ -106,7 +106,19 @@ export default function MasterForm({ modelKey, fields, initialData, onSubmit, on
     { name: "roomId", label: "Room", type: "lookup", lookupUrl: "/api/room", lookupLabelField: "name", lookupValueField: "id" },
   ];
   const isTimetableSlot = modelKey === "timetable-slot-master";
-  const effectiveFields = isTimetableSlot ? timetableFields : fields;
+  const isResultTypeMaster = modelKey === "result-type-master";
+  const resultTypeFields: FieldConfig[] = isResultTypeMaster ? [
+    { name: "calculationMode", label: "Calculation Mode", type: "select", options: [
+      { label: "Automatic", value: "AUTOMATIC" },
+      { label: "Manual Formula", value: "MANUAL" },
+    ], defaultValue: "AUTOMATIC" },
+    { name: "formula", label: "Formula", type: "textarea", placeholder: "Manual example: percentage=(totalObtained/totalMaxMarks)*100; cgpa=averageGradePoint" },
+  ] : [];
+  const effectiveFields = isTimetableSlot
+    ? timetableFields
+    : isResultTypeMaster
+      ? [...fields.filter(field => field.name !== "calculationMode" && field.name !== "formula"), ...resultTypeFields]
+      : fields;
 
   useEffect(() => {
     const initial: Record<string, any> = {};

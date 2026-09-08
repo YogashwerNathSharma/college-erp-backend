@@ -23,8 +23,7 @@
     "bcrypt": "^6.0.0",
     "canvas": "^3.2.3",
     "cloudinary": "^2.10.0",
-    "cloudinary": "^2.10.0",
-    "compression": "^2.8.0",
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express-rate-limit": "8.6.0",
@@ -44,6 +43,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "ua-parser-js": "^2.0.0",
+    "winston": "^3.19.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.3.6"
   },

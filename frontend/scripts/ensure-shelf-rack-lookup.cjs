@@ -10,14 +10,25 @@ if (!source.includes(marker)) {
 }
 
 const lookupBlock = `  const shelfRackFields: FieldConfig[] = modelKey === "shelf-master"
-    ? fields.map(field => field.name === "rackId"
-      ? { ...field, label: "Rack No.", type: "lookup", lookupUrl: "/api/masters/rack-master/dropdown", lookupLabelField: "name", lookupValueField: "id" }
-      : field)
+    ? (fields.length > 0
+      ? fields.map(field => field.name === "rackId"
+        ? { ...field, label: "Rack No.", type: "lookup", lookupUrl: "/api/masters/rack-master/dropdown", lookupLabelField: "name", lookupValueField: "id" }
+        : field)
+      : [
+        { name: "name", label: "Shelf Name", type: "text", required: true },
+        { name: "rackId", label: "Rack No.", type: "lookup", required: true, lookupUrl: "/api/masters/rack-master/dropdown", lookupLabelField: "name", lookupValueField: "id" },
+      ])
     : fields;
 `;
 
-if (!source.includes("const shelfRackFields: FieldConfig[]")) {
+const blockStart = "  const shelfRackFields: FieldConfig[] =";
+if (!source.includes(blockStart)) {
   source = source.replace(marker, lookupBlock + marker);
+} else {
+  const start = source.indexOf(blockStart);
+  const end = source.indexOf(marker, start);
+  if (end === -1) throw new Error("Existing shelfRackFields block could not be bounded.");
+  source = source.slice(0, start) + lookupBlock + source.slice(end);
 }
 
 const oldFinal = `      : modelKey === "assessment-master"
@@ -26,24 +37,32 @@ const oldFinal = `      : modelKey === "assessment-master"
 const newFinal = `      : modelKey === "assessment-master"
         ? assessmentFields
         : shelfRackFields;`;
-
 if (source.includes(oldFinal)) {
   source = source.replace(oldFinal, newFinal);
-} else if (!source.includes("? shelfRackFields") && !source.includes(": shelfRackFields;")) {
+} else if (!source.includes(": shelfRackFields;")) {
   throw new Error("MasterForm final field selection marker not found; refusing unrelated modification.");
 }
+
+// Keep labels clearly visible on the dark ERP modal as well.
+source = source.replace(
+  'className="block text-sm font-medium mb-1.5"',
+  'className="block text-sm font-medium mb-1.5 text-gray-800 dark:text-gray-100"'
+);
 
 const required = [
   'modelKey === "shelf-master"',
   'field.name === "rackId"',
+  'label: "Rack No."',
+  'type: "lookup"',
   'lookupUrl: "/api/masters/rack-master/dropdown"',
   'lookupLabelField: "name"',
   'lookupValueField: "id"',
+  'name: "Shelf Name"',
   ': shelfRackFields;',
 ];
 for (const item of required) {
-  if (!source.includes(item)) throw new Error(`Shelf Rack lookup verification failed: ${item}`);
+  if (!source.includes(item)) throw new Error(`Shelf Rack form verification failed: ${item}`);
 }
 
 fs.writeFileSync(filePath, source, "utf8");
-process.stdout.write("Shelf Master Rack No. dropdown verified in MasterForm.\n");
+process.stdout.write("Shelf Master form verified: Shelf Name is visible and Rack No. is a Rack Master dropdown.\n");

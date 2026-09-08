@@ -114,11 +114,30 @@ export default function MasterForm({ modelKey, fields, initialData, onSubmit, on
     ], defaultValue: "AUTOMATIC" },
     { name: "formula", label: "Formula", type: "textarea", placeholder: "Manual example: percentage=(totalObtained/totalMaxMarks)*100; cgpa=averageGradePoint" },
   ] : [];
+  const assessmentNameOptions: SelectOption[] = [
+    { label: "Class Test 1", value: "CLASS_TEST_1" }, { label: "Class Test 2", value: "CLASS_TEST_2" },
+    { label: "Unit Test 1", value: "UNIT_TEST_1" }, { label: "Unit Test 2", value: "UNIT_TEST_2" },
+    { label: "Periodic Test 1", value: "PERIODIC_TEST_1" }, { label: "Periodic Test 2", value: "PERIODIC_TEST_2" },
+    { label: "Mid Term", value: "MID_TERM" }, { label: "Half Yearly", value: "HALF_YEARLY" },
+    { label: "Annual", value: "ANNUAL" }, { label: "Pre-Board", value: "PRE_BOARD" },
+    { label: "Quiz", value: "QUIZ" }, { label: "Assignment", value: "ASSIGNMENT" },
+  ];
+  const existingAssessmentName = typeof initialData?.name === "string" ? initialData.name : "";
+  if (existingAssessmentName && !assessmentNameOptions.some(option => option.value === existingAssessmentName)) {
+    assessmentNameOptions.push({ label: existingAssessmentName, value: existingAssessmentName });
+  }
+  const assessmentFields: FieldConfig[] = modelKey === "assessment-master"
+    ? fields.map(field => field.name === "name"
+      ? { ...field, type: "select", options: assessmentNameOptions }
+      : field)
+    : [];
   const effectiveFields = isTimetableSlot
     ? timetableFields
     : isResultTypeMaster
       ? [...fields.filter(field => field.name !== "calculationMode" && field.name !== "formula"), ...resultTypeFields]
-      : fields;
+      : modelKey === "assessment-master"
+        ? assessmentFields
+        : fields;
 
   useEffect(() => {
     const initial: Record<string, any> = {};

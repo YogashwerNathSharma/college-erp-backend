@@ -30,35 +30,46 @@ const shelfMasterTo = "key: 'shelf-master',\n        label: 'Shelf Master',\n   
 const rackIdFrom = "{ name: 'rackId', label: 'Rack (ID)', type: 'text', required: true },";
 const rackIdTo = "{ name: 'rackId', label: 'Rack No.', type: 'lookup', required: true, lookupUrl: '/api/masters/rack-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },";
 
-patchFile(sourceConfigPath, hodFrom, hodTo);
-patchFile(sourceConfigPath, feeClassesFrom, feeClassesTo);
-patchFile(sourceConfigPath, rackMasterFrom, rackMasterTo);
-patchFile(sourceConfigPath, shelfMasterFrom, shelfMasterTo);
-patchFile(sourceConfigPath, rackIdFrom, rackIdTo);
+const rackRequiredFieldsFrom = "requiredFields: ['name'],\n        searchFields: ['name', 'location'],";
+const rackRequiredFieldsTo = "requiredFields: ['name', 'location', 'capacity'],\n        searchFields: ['name', 'location'],";
+const rackLocationFrom = "{ name: 'location', label: 'Location', type: 'text' },";
+const rackLocationTo = "{ name: 'location', label: 'Location', type: 'text', required: true },";
+const rackCapacityFrom = "{ name: 'capacity', label: 'Capacity (books)', type: 'number' },";
+const rackCapacityTo = "{ name: 'capacity', label: 'Capacity (books)', type: 'number', required: true },";
 
-if (fs.existsSync(distConfigPath)) {
-  patchFile(distConfigPath, hodFrom, hodTo);
-  patchFile(distConfigPath, feeClassesFrom, feeClassesTo);
-  patchFile(distConfigPath, rackMasterFrom, rackMasterTo);
-  patchFile(distConfigPath, shelfMasterFrom, shelfMasterTo);
-  patchFile(distConfigPath, rackIdFrom, rackIdTo);
+const shelfRequiredFieldsFrom = "requiredFields: ['name', 'rackId'],\n        searchFields: ['name'],";
+const shelfRequiredFieldsTo = "requiredFields: ['name', 'rackId', 'level'],\n        searchFields: ['name'],";
+const shelfLevelFrom = "{ name: 'level', label: 'Level Number', type: 'number' },";
+const shelfLevelTo = "{ name: 'level', label: 'Level Number', type: 'number', required: true },";
+
+for (const filePath of [sourceConfigPath, distConfigPath]) {
+  patchFile(filePath, hodFrom, hodTo);
+  patchFile(filePath, feeClassesFrom, feeClassesTo);
+  patchFile(filePath, rackMasterFrom, rackMasterTo);
+  patchFile(filePath, shelfMasterFrom, shelfMasterTo);
+  patchFile(filePath, rackIdFrom, rackIdTo);
+  patchFile(filePath, rackRequiredFieldsFrom, rackRequiredFieldsTo);
+  patchFile(filePath, rackLocationFrom, rackLocationTo);
+  patchFile(filePath, rackCapacityFrom, rackCapacityTo);
+  patchFile(filePath, shelfRequiredFieldsFrom, shelfRequiredFieldsTo);
+  patchFile(filePath, shelfLevelFrom, shelfLevelTo);
 }
 
 const sourceConfig = fs.readFileSync(sourceConfigPath, "utf8");
-if (!sourceConfig.includes(hodTo)) {
-  throw new Error("Department Master HOD lookup verification failed in source config");
-}
-if (!sourceConfig.includes(feeClassesTo)) {
-  throw new Error("Fee Group Master class lookup verification failed in source config");
-}
-if (!sourceConfig.includes(rackMasterTo)) {
-  throw new Error("Rack Master model mapping verification failed in source config");
-}
-if (!sourceConfig.includes(shelfMasterTo)) {
-  throw new Error("Shelf Master model mapping verification failed in source config");
-}
-if (!sourceConfig.includes(rackIdTo)) {
-  throw new Error("Shelf Master Rack No. lookup verification failed in source config");
+const required = [
+  hodTo,
+  feeClassesTo,
+  rackMasterTo,
+  shelfMasterTo,
+  rackIdTo,
+  rackRequiredFieldsTo,
+  rackLocationTo,
+  rackCapacityTo,
+  shelfRequiredFieldsTo,
+  shelfLevelTo,
+];
+for (const marker of required) {
+  if (!sourceConfig.includes(marker)) throw new Error(`Master lookup/required-field verification failed: ${marker}`);
 }
 
-process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, and Shelf Master Rack No. uses Rack Master lookup.\n");
+process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, Shelf Rack No. uses Rack Master lookup, and Rack/Shelf required fields match Prisma.\n");

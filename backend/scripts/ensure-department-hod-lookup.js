@@ -21,12 +21,27 @@ const hodTo = "{ name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUr
 const feeClassesFrom = "{ name: 'classes', label: 'Applicable Classes (comma-separated IDs)', type: 'text' },";
 const feeClassesTo = "{ name: 'classes', label: 'Applicable Classes', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id', multiple: true },";
 
+const rackMasterFrom = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'Rack',";
+const rackMasterTo = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'RackMaster',";
+
+const shelfMasterFrom = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'LibraryShelf',";
+const shelfMasterTo = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'ShelfMaster',";
+
+const rackIdFrom = "{ name: 'rackId', label: 'Rack (ID)', type: 'text', required: true },";
+const rackIdTo = "{ name: 'rackId', label: 'Rack No.', type: 'lookup', required: true, lookupUrl: '/api/masters/rack-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },";
+
 patchFile(sourceConfigPath, hodFrom, hodTo);
 patchFile(sourceConfigPath, feeClassesFrom, feeClassesTo);
+patchFile(sourceConfigPath, rackMasterFrom, rackMasterTo);
+patchFile(sourceConfigPath, shelfMasterFrom, shelfMasterTo);
+patchFile(sourceConfigPath, rackIdFrom, rackIdTo);
 
 if (fs.existsSync(distConfigPath)) {
   patchFile(distConfigPath, hodFrom, hodTo);
   patchFile(distConfigPath, feeClassesFrom, feeClassesTo);
+  patchFile(distConfigPath, rackMasterFrom, rackMasterTo);
+  patchFile(distConfigPath, shelfMasterFrom, shelfMasterTo);
+  patchFile(distConfigPath, rackIdFrom, rackIdTo);
 }
 
 const sourceConfig = fs.readFileSync(sourceConfigPath, "utf8");
@@ -36,5 +51,14 @@ if (!sourceConfig.includes(hodTo)) {
 if (!sourceConfig.includes(feeClassesTo)) {
   throw new Error("Fee Group Master class lookup verification failed in source config");
 }
+if (!sourceConfig.includes(rackMasterTo)) {
+  throw new Error("Rack Master model mapping verification failed in source config");
+}
+if (!sourceConfig.includes(shelfMasterTo)) {
+  throw new Error("Shelf Master model mapping verification failed in source config");
+}
+if (!sourceConfig.includes(rackIdTo)) {
+  throw new Error("Shelf Master Rack No. lookup verification failed in source config");
+}
 
-process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup and Fee Group uses multi-select Class lookup.\n");
+process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, and Shelf Master Rack No. uses Rack Master lookup.\n");

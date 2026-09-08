@@ -12,6 +12,7 @@
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
     "seed-erp": "ts-node prisma/seed-erp.ts",
+    "seed-superadmin": "ts-node prisma/seed-superadmin.ts",
     "seed-superadmin": "ts-node prisma/seed-superadmin.ts"
   },
   "prisma": { "seed": "ts-node prisma/seed.ts" },
@@ -26,6 +27,7 @@
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
+    "express-rate-limit": "8.6.0",
     "firebase-admin": "^14.1.0",
     "helmet": "^8.1.0",
     "jsbarcode": "^3.12.3",

@@ -23,13 +23,13 @@ function patchModelField(modelName, fieldLine, anchorRegex) {
 patchModelField(
   'ResultType',
   '  calculationMode String? @default("AUTOMATIC")',
-  /\\bformula\\s+String\\?/i
+  /\bformula\s+String\?/i
 );
 
 patchModelField(
   'ResultSummary',
   '  cgpa           Float?',
-  /\\bpercentage\\s+Float/i
+  /\bpercentage\s+Float/i
 );
 
 fs.writeFileSync(schemaFile, content, 'utf8');

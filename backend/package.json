@@ -6,9 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "postinstall": "node scripts/ensure-school-master-fields.js && node scripts/ensure-branch-master-fields.js && node scripts/ensure-campus-master-fields.js && node scripts/ensure-subject-group-master-fields.js && node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-type-options.js",
-    "build": "node scripts/ensure-school-master-fields.js && node scripts/ensure-branch-master-fields.js && node scripts/ensure-campus-master-fields.js && node scripts/ensure-subject-group-master-fields.js && node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-type-options.js && npx prisma generate && tsc",
-    "prestart": "node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-type-options.js",
+    "postinstall": "node scripts/ensure-school-master-fields.js && node scripts/ensure-branch-master-fields.js && node scripts/ensure-campus-master-fields.js && node scripts/ensure-subject-group-master-fields.js && node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-calculation-schema.js && node scripts/ensure-result-type-options.js",
+    "build": "node scripts/ensure-school-master-fields.js && node scripts/ensure-branch-master-fields.js && node scripts/ensure-campus-master-fields.js && node scripts/ensure-subject-group-master-fields.js && node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-calculation-schema.js && node scripts/ensure-result-type-options.js && npx prisma generate && tsc",
+    "prestart": "node scripts/ensure-department-hod-lookup.js && node scripts/ensure-fee-group-class-lookup.js && node scripts/ensure-result-calculation-schema.js && node scripts/ensure-result-type-options.js",
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
     "seed-erp": "ts-node prisma/seed-erp.ts",
@@ -40,18 +40,17 @@
     "puppeteer-core": "^24.42.0",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.6",
-    "react-icons": "^5.6.0",
     "redis": "^6.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^4.1.8",
     "ua-parser-js": "^2.0.6",
     "winston": "^3.19.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^4.3.6"
+    "zod": "^6.0.0"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",
-    "@types/bcrypt": "^6.0.0",
+    "@types/bcrypt": "^6.0.3",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",

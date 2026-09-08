@@ -52,10 +52,6 @@ const replacements = [
     "{ name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'array' },",
     "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects', lookupLabelField: 'name', lookupValueField: 'id' },",
   ],
-  [
-    "{ name: 'hodId', label: 'HOD (User ID)', type: 'text' },",
-    "{ name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUrl: '/api/teacher', lookupLabelField: 'name', lookupValueField: 'id' },",
-  ],
 ];
 for (const [from, to] of replacements) {
   if (config.includes(from)) config = config.replace(from, to);
@@ -85,12 +81,11 @@ const requiredConfigMarkers = [
   "{ name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/class'",
   "{ name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/stream-master/dropdown'",
   "{ name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects'",
-  "{ name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUrl: '/api/teacher'",
 ];
 for (const marker of requiredConfigMarkers) {
   if (!finalConfig.includes(marker)) {
-    throw new Error(`Master config verification failed: ${marker}`);
+    throw new Error(`Subject Group Master config verification failed: ${marker}`);
   }
 }
 
-process.stdout.write("Subject Group Master verified: Class/Stream/Subjects use working relational lookup endpoints. Department HOD uses the tenant-scoped Teacher lookup and displays teacher names.\n");
+process.stdout.write("Subject Group Master verified: Class/Stream/Subjects use working relational lookup endpoints.\n");

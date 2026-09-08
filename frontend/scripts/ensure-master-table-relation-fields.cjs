@@ -35,33 +35,20 @@ if (!source.includes('const [lookupLabels, setLookupLabels]')) {
 // Fee Group stores Applicable Classes as an array of class IDs. Resolve each
 // ID independently so the table shows class names instead of a comma-joined
 // list of raw IDs. This is intentionally generic for any multi-value lookup.
-if (!source.includes('const lookupArrayLabels = Array.isArray(value)')) {
+const arrayLookupMarker = 'if (Array.isArray(value)) {\\n        const labels = value.map';
+if (!source.includes(arrayLookupMarker)) {
   source = source.replace(
 `    if (field.type === "lookup") {\n      const relation = entry?.[field.name.replace(/Id$/, "")];`,
 `    if (field.type === "lookup") {\n      if (Array.isArray(value)) {\n        const labels = value.map((item: any) => lookupMaps[field.name]?.[String(item)] || lookupLabels[field.name]?.[String(item)] || String(item));\n        return labels.join(", ");\n      }\n      const relation = entry?.[field.name.replace(/Id$/, "")];`
   );
 }
 
-source = source.replace(
-  '  const formatValue = (value: any, field: FieldConfig): string => {',
-  '  const formatValue = (value: any, field: FieldConfig, labels: Record<string, Record<string, string>> = {}): string => {'
-);
-
-source = source.replace(
-`    if (value === null || value === undefined) return "—";\n    if (field.type === "boolean") return value ? "Yes" : "No";`,
-`    if (value === null || value === undefined) return "—";\n    if (field.type === "lookup") {\n      const labelMap = labels[field.name] || {};\n      if (Array.isArray(value)) return value.map((item) => labelMap[String(item)] || String(item)).join(", ");\n      return labelMap[String(value)] || String(value);\n    }\n    if (field.type === "boolean") return value ? "Yes" : "No";`
-);
-
-source = source.replace(
-  '{formatValue(entry[field.name], field)}',
-  '{formatValue(entry[field.name], field, lookupLabels)}'
-);
-
 const required = [
   'lookupUrl?: string;',
   'const [lookupLabels, setLookupLabels]',
   'response.data?.data?.data || response.data?.data || response.data || []',
   'field.type === "lookup"',
+  'if (Array.isArray(value))',
   'subjectId',
   'classId',
 ];

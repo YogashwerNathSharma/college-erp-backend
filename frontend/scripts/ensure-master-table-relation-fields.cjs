@@ -32,6 +32,16 @@ if (!source.includes('const [lookupLabels, setLookupLabels]')) {
   );
 }
 
+// Fee Group stores Applicable Classes as an array of class IDs. Resolve each
+// ID independently so the table shows class names instead of a comma-joined
+// list of raw IDs. This is intentionally generic for any multi-value lookup.
+if (!source.includes('const lookupArrayLabels = Array.isArray(value)')) {
+  source = source.replace(
+`    if (field.type === "lookup") {\n      const relation = entry?.[field.name.replace(/Id$/, "")];`,
+`    if (field.type === "lookup") {\n      if (Array.isArray(value)) {\n        const labels = value.map((item: any) => lookupMaps[field.name]?.[String(item)] || lookupLabels[field.name]?.[String(item)] || String(item));\n        return labels.join(", ");\n      }\n      const relation = entry?.[field.name.replace(/Id$/, "")];`
+  );
+}
+
 source = source.replace(
   '  const formatValue = (value: any, field: FieldConfig): string => {',
   '  const formatValue = (value: any, field: FieldConfig, labels: Record<string, Record<string, string>> = {}): string => {'

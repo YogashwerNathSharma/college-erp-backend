@@ -21,11 +21,13 @@ const hodTo = "{ name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUr
 const feeClassesFrom = "{ name: 'classes', label: 'Applicable Classes (comma-separated IDs)', type: 'text' },";
 const feeClassesTo = "{ name: 'classes', label: 'Applicable Classes', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id', multiple: true },";
 
-const rackMasterFrom = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'Rack',";
-const rackMasterTo = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'RackMaster',";
+// Keep the master config aligned with the active Prisma schema: Rack -> rack
+// and LibraryShelf -> libraryShelf. Do not use reference-only model names.
+const rackMasterFrom = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'RackMaster',";
+const rackMasterTo = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'Rack',";
 
-const shelfMasterFrom = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'LibraryShelf',";
-const shelfMasterTo = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'ShelfMaster',";
+const shelfMasterFrom = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'ShelfMaster',";
+const shelfMasterTo = "key: 'shelf-master',\n        label: 'Shelf Master',\n        model: 'LibraryShelf',";
 
 const rackIdFrom = "{ name: 'rackId', label: 'Rack (ID)', type: 'text', required: true },";
 const rackIdTo = "{ name: 'rackId', label: 'Rack No.', type: 'lookup', required: true, lookupUrl: '/api/masters/rack-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },";
@@ -72,4 +74,4 @@ for (const marker of required) {
   if (!sourceConfig.includes(marker)) throw new Error(`Master lookup/required-field verification failed: ${marker}`);
 }
 
-process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, Shelf Rack No. uses Rack Master lookup, and Rack/Shelf required fields match Prisma.\n");
+process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, Shelf Rack No. uses Rack lookup, and Rack/Shelf required fields match the active Prisma schema.\n");

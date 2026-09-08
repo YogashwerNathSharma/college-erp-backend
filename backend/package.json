@@ -23,7 +23,7 @@
     "bcrypt": "^6.0.0",
     "canvas": "^3.2.3",
     "cloudinary": "^2.10.0",
-    "compression": "^2.8.0",
+    "compression": "^1.8.0",
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express-rate-limit": "8.6.0",

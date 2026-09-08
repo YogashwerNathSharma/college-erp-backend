@@ -60,6 +60,14 @@ const newResolver = `function getEffectiveFields(modelKey: string, configuredFie
 `;
 source = source.slice(0, start) + newResolver + source.slice(end);
 
+const fetchOld = 'if (res.data.config?.fields) setFields(getEffectiveFields(modelKey, res.data.config.fields));';
+const fetchNew = 'setFields(getEffectiveFields(modelKey, res.data.config?.fields || []));';
+if (source.includes(fetchOld)) {
+  source = source.replace(fetchOld, fetchNew);
+} else if (!source.includes(fetchNew)) {
+  throw new Error("MasterModule config field assignment marker not found; refusing unrelated modification.");
+}
+
 const clickOld = 'const handleModelClick = (model: MasterModel) => { setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch("");';
 const clickNew = 'const handleModelClick = (model: MasterModel) => { setFields([]); setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch("");';
 if (source.includes(clickOld)) source = source.replace(clickOld, clickNew);
@@ -71,9 +79,10 @@ const required = [
   '"shelf-master"',
   'label: "Rack No."',
   'lookupUrl: "/api/masters/rack-master/dropdown"',
+  'setFields(getEffectiveFields(modelKey, res.data.config?.fields || []));',
   'setFields([]); setSelectedModel(model.key)',
 ];
 for (const item of required) if (!source.includes(item)) throw new Error(`Library master verification failed: ${item}`);
 
 fs.writeFileSync(filePath, source, "utf8");
-process.stdout.write("Library Master fields verified: Language, Rack, and Shelf are isolated and Shelf Rack No. is a lookup.\n");
+process.stdout.write("Library Master fields verified: Rack and Shelf fields always render, and Shelf Rack No. is a Rack Master lookup.\n");

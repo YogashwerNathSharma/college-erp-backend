@@ -8,6 +8,7 @@ interface FieldConfig {
   name: string; label: string; type: string; required?: boolean;
   options?: SelectOption[]; placeholder?: string; min?: number; max?: number;
   defaultValue?: any; lookupUrl?: string; lookupLabelField?: string; lookupValueField?: string;
+  multiple?: boolean;
 }
 interface MasterFormProps {
   modelKey?: string | null; fields: FieldConfig[]; initialData?: any;
@@ -31,10 +32,11 @@ function normalizeOptions(payload: any, field: FieldConfig): SelectOption[] {
   }).filter(Boolean) as SelectOption[];
 }
 
-function LookupField({ field, value, onChange, query }: { field: FieldConfig; value: any; onChange: (v: string) => void; query?: Record<string, string> }) {
+function LookupField({ field, value, onChange, query }: { field: FieldConfig; value: any; onChange: (v: any) => void; query?: Record<string, string> }) {
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [loading, setLoading] = useState(Boolean(field.lookupUrl));
   const [failed, setFailed] = useState(false);
+  const multiple = Boolean(field.multiple);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +59,25 @@ function LookupField({ field, value, onChange, query }: { field: FieldConfig; va
     return () => { active = false; };
   }, [field.lookupUrl, field.lookupLabelField, field.lookupValueField, field.options, JSON.stringify(query || {})]);
 
-  if (loading) return <select disabled className="w-full px-3 py-2.5 border rounded-lg border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm"><option>Loading {field.label}...</option></select>;
+  if (loading) return <select multiple={multiple} disabled className="w-full px-3 py-2.5 border rounded-lg border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-sm"><option>Loading {field.label}...</option></select>;
+
+  if (multiple) {
+    const selected = Array.isArray(value) ? value.map(String) : value ? String(value).split(",").map(s => s.trim()).filter(Boolean) : [];
+    return <>
+      <select
+        multiple
+        value={selected}
+        onChange={e => onChange(Array.from(e.target.selectedOptions).map(option => option.value))}
+        className="w-full min-h-28 px-3 py-2.5 border rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+      >
+        {options.map(o => <option key={`${field.name}-${o.value}`} value={o.value}>{o.label}</option>)}
+      </select>
+      <p className="text-xs text-gray-500 mt-1">Ctrl/Cmd + click to select multiple classes.</p>
+      {failed && <p className="text-xs text-amber-600 mt-1">Could not load {field.label} values.</p>}
+      {!failed && options.length === 0 && <p className="text-xs text-gray-500 mt-1">No {field.label} values available.</p>}
+    </>;
+  }
+
   return <>
     <select value={value == null ? "" : String(value)} onChange={e => onChange(e.target.value)} className="w-full px-3 py-2.5 border rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
       <option value="">Select {field.label}</option>
@@ -92,6 +112,12 @@ export default function MasterForm({ modelKey, fields, initialData, onSubmit, on
     const initial: Record<string, any> = {};
     effectiveFields.forEach(field => {
       const raw = initialData?.[field.name];
+      if (field.multiple) {
+        if (Array.isArray(raw)) initial[field.name] = raw.map(String);
+        else if (typeof raw === "string" && raw) initial[field.name] = raw.split(",").map(s => s.trim()).filter(Boolean);
+        else initial[field.name] = [];
+        return;
+      }
       const value = raw && typeof raw === "object" ? raw[field.lookupValueField || "id"] ?? raw.id ?? raw._id : raw;
       initial[field.name] = value !== undefined ? value : field.defaultValue !== undefined ? field.defaultValue : field.type === "boolean" ? false : "";
     });
@@ -120,12 +146,12 @@ export default function MasterForm({ modelKey, fields, initialData, onSubmit, on
     e.preventDefault(); const next: Record<string, string> = {};
     effectiveFields.forEach(field => {
       const value = formData[field.name];
-      if (field.required && (value == null || value === "")) next[field.name] = `${field.label} is required`;
+      if (field.required && (value == null || value === "" || (Array.isArray(value) && value.length === 0))) next[field.name] = `${field.label} is required`;
       if (field.type === "number" && value !== "" && value != null) { const n = Number(value); if (field.min !== undefined && n < field.min) next[field.name] = `Minimum value is ${field.min}`; if (field.max !== undefined && n > field.max) next[field.name] = `Maximum value is ${field.max}`; }
       if (field.type === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) next[field.name] = "Invalid email address";
     });
     if (Object.keys(next).length) { setErrors(next); return; }
-    const clean: Record<string, any> = {}; Object.entries(formData).forEach(([k, v]) => { if (v !== "" && v != null) clean[k] = v; }); onSubmit(clean);
+    const clean: Record<string, any> = {}; Object.entries(formData).forEach(([k, v]) => { if (v !== "" && v != null && (!Array.isArray(v) || v.length > 0)) clean[k] = v; }); onSubmit(clean);
   };
 
   const renderField = (field: FieldConfig) => {

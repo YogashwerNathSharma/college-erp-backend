@@ -1,11 +1,6 @@
 import prisma from "../../utils/prisma";
 import logger from "../../config/logger";
 
-/**
- * Performance-oriented teacher dashboard loader.
- * Keeps tenant + academic-year isolation while avoiding the old N+1 leave query
- * and unnecessary teacher relation payloads.
- */
 export const getTeacherDashboardPerformance = async (
   tenantId: string,
   academicYearId?: string,
@@ -18,8 +13,6 @@ export const getTeacherDashboardPerformance = async (
     ...(academicYearId ? { academicYearId } : {}),
   };
 
-  // Keep the main teacher projection small. Leave/salary/lookup data is loaded
-  // separately so a large teacher table does not create a nested N+1 query.
   const [teachers, departments] = await Promise.all([
     prisma.teacher.findMany({
       where: teacherWhere,
@@ -39,9 +32,8 @@ export const getTeacherDashboardPerformance = async (
   ]);
 
   const teacherIds = teachers.map((t) => t.id);
-  const teacherIdSet = new Set(teacherIds);
+  const teacherIdSet = new Set<string>(teacherIds.map(String));
 
-  // Only current approved leaves are needed for the dashboard.
   const currentLeaves = teacherIds.length
     ? await prisma.leave.findMany({
         where: {
@@ -65,11 +57,16 @@ export const getTeacherDashboardPerformance = async (
       })
     : [];
 
-  const deptMap = new Map(departments.map((d: any) => [d.id, d.name]));
+  const deptMap = new Map<string, string>();
+  for (const department of departments) {
+    deptMap.set(String(department.id), department.name);
+  }
+
   const leaveByTeacher = new Map<string, any>();
   for (const leave of currentLeaves) {
-    if (teacherIdSet.has(leave.teacherId) && !leaveByTeacher.has(leave.teacherId)) {
-      leaveByTeacher.set(leave.teacherId, leave);
+    const teacherId = String(leave.teacherId);
+    if (teacherIdSet.has(teacherId) && !leaveByTeacher.has(teacherId)) {
+      leaveByTeacher.set(teacherId, leave);
     }
   }
 
@@ -85,9 +82,8 @@ export const getTeacherDashboardPerformance = async (
 
   const deptCount = new Map<string, number>();
   for (const teacher of teachers) {
-    const name = teacher.departmentId
-      ? deptMap.get(teacher.departmentId) || "Unassigned"
-      : "Unassigned";
+    const departmentId = teacher.departmentId ? String(teacher.departmentId) : "";
+    const name = departmentId ? deptMap.get(departmentId) || "Unassigned" : "Unassigned";
     deptCount.set(name, (deptCount.get(name) || 0) + 1);
   }
   const departmentDistribution = Array.from(deptCount.entries())
@@ -110,14 +106,15 @@ export const getTeacherDashboardPerformance = async (
   }
 
   const teachersOnLeave = teachers
-    .filter((t) => leaveByTeacher.has(t.id))
+    .filter((t) => leaveByTeacher.has(String(t.id)))
     .slice(0, 10)
     .map((t) => {
-      const leave = leaveByTeacher.get(t.id);
+      const leave = leaveByTeacher.get(String(t.id));
+      const departmentId = t.departmentId ? String(t.departmentId) : "";
       return {
         id: t.id,
         name: t.name,
-        department: t.departmentId ? deptMap.get(t.departmentId) || "N/A" : "N/A",
+        department: departmentId ? deptMap.get(departmentId) || "N/A" : "N/A",
         leaveType: leave?.leaveType || "Leave",
         fromDate: leave?.startDate,
         toDate: leave?.endDate,
@@ -125,8 +122,6 @@ export const getTeacherDashboardPerformance = async (
       };
     });
 
-  // Salary query is independent of the teacher list and can be safely executed
-  // after the small base query; it is bounded to the current month and 10 rows.
   let upcomingSalary: any[] = [];
   try {
     const [pendingSalaries, designations] = await Promise.all([
@@ -150,7 +145,7 @@ export const getTeacherDashboardPerformance = async (
         orderBy: { netSalary: "desc" },
       }),
       (async () => {
-        const ids = [...new Set(teachers.map((t) => t.designationId).filter(Boolean))];
+        const ids = [...new Set(teachers.map((t) => t.designationId).filter(Boolean).map(String))];
         if (!ids.length) return [];
         return (prisma as any).designation?.findMany?.({
           where: { id: { in: ids } },
@@ -163,18 +158,21 @@ export const getTeacherDashboardPerformance = async (
       id: s.id,
       name: s.teacher?.name || "N/A",
       department: s.teacher?.departmentId
-        ? deptMap.get(s.teacher.departmentId) || "N/A"
+        ? deptMap.get(String(s.teacher.departmentId)) || "N/A"
         : "N/A",
       gross: s.basicSalary,
       deductions: s.totalDeductions,
       net: s.netSalary,
     }));
 
-    const designationMap = new Map((designations || []).map((d: any) => [d.id, d.name]));
+    const designationMap = new Map<string, string>();
+    for (const designation of designations || []) {
+      designationMap.set(String(designation.id), designation.name);
+    }
     const designationCount = new Map<string, number>();
     for (const teacher of teachers) {
       if (!teacher.designationId) continue;
-      const name = designationMap.get(teacher.designationId) || "Other";
+      const name = designationMap.get(String(teacher.designationId)) || "Other";
       designationCount.set(name, (designationCount.get(name) || 0) + 1);
     }
 

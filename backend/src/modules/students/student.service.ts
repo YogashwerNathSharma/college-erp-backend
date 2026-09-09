@@ -263,14 +263,30 @@ export const getAllStudents = async (
   const [students, total] = await Promise.all([
     prisma.student.findMany({
       where,
-      include: {
+      // ⚡ PERF: Use select instead of include — only fetch fields the list view needs
+      // Student model has 74 fields, but the table only shows ~15
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        admissionNo: true,
+        gender: true,
+        dob: true,
+        status: true,
+        phone: true,
+        fatherName: true,
+        fatherPhone: true,
+        photoUrl: true,
+        category: true,
+        admissionDate: true,
+        createdAt: true,
         enrollments: {
           where: {
             status: "active",
             isDeleted: false,
             ...(academicYearId ? { academicYearId } : {}),
           },
-          include: {
+          select: {
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
             academicYear: { select: { id: true, name: true } },

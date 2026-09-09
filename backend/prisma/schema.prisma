@@ -1332,6 +1332,8 @@ model Student {
   @@index([tenantId, academicYearId])
   @@index([tenantId, status, gender])
   @@index([tenantId, dob])
+  @@index([tenantId, academicYearId, classId, status])
+  @@index([tenantId, firstName, lastName])
   @@map("students")
 }
 
@@ -1407,6 +1409,7 @@ model StudentHistory {
 
   @@index([studentId])
   @@index([tenantId, action])
+  @@index([tenantId, studentId])
   @@map("student_histories")
 }
 
@@ -1648,6 +1651,7 @@ model Teacher {
   @@index([tenantId])
   @@index([academicYearId])
   @@index([employeeId])
+  @@index([tenantId, academicYearId])
   @@map("teachers")
 }
 
@@ -1834,6 +1838,8 @@ model TeacherSettings {
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
+  @@index([tenantId])
+  @@index([tenantId, academicYearId])
   @@map("teacher_settings")
 }
 
@@ -1877,6 +1883,8 @@ model Attendance {
   @@index([studentId, date])
   @@index([classId, sectionId, date])
   @@index([tenantId, academicYearId])
+  @@index([tenantId, classId, sectionId, date])
+  @@index([tenantId, studentId, academicYearId])
   @@map("attendances")
 }
 
@@ -2389,6 +2397,8 @@ model ExamResult {
   @@index([tenantId])
   @@index([studentId])
   @@index([examId])
+  @@index([tenantId, examId, studentId])
+  @@index([tenantId, academicYearId])
   @@map("exam_results")
 }
 
@@ -2510,6 +2520,7 @@ model LibrarySetting {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("library_settings")
 }
 
@@ -2666,6 +2677,7 @@ model TransportSetting {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("transport_settings")
 }
 
@@ -3578,6 +3590,7 @@ model AuditLog {
   @@index([tenantId])
   @@index([userId])
   @@index([entity, entityId])
+  @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
 
@@ -3785,6 +3798,7 @@ model GatePassSetting {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("gate_pass_settings")
 }
 
@@ -4326,6 +4340,7 @@ model LanguageConfig {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("language_configs")
 }
 
@@ -4527,6 +4542,7 @@ model BackupSettings {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("backup_settings")
 }
 

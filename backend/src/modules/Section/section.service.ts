@@ -54,6 +54,17 @@ export const getSectionsService = async (tenantId: string, academicYearId?: stri
   if (academicYearId) where.academicYearId = academicYearId;
   if (classId) where.classId = classId;
 
+  // ⚡ FIX: Only fetch sections with valid (non-deleted) classes
+  // to prevent "Field class is required to return data, got null" crash
+  const validClasses = await prisma.class.findMany({
+    where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
+    select: { id: true },
+  });
+  const validClassIds = validClasses.map((c: any) => c.id);
+  if (validClassIds.length > 0) {
+    where.classId = where.classId ? where.classId : { in: validClassIds };
+  }
+
   return prisma.section.findMany({
     where,
     orderBy: { createdAt: "desc" },

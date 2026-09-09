@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
-import { cacheAside, invalidateCache } from "../../utils/cache";
+import { cacheAside, invalidateCache, CACHE_TTL } from "../../utils/cache";
 
-// ⚡ Cache TTL: 30 minutes (1800 seconds)
-const DASHBOARD_CACHE_TTL = 1800;
+// ⚡ P2: Use tiered cache TTL from shared constants
 
 export const getDashboard = async (
   req: Request,
@@ -59,7 +58,7 @@ export const getDashboard = async (
             message: Number(growth) > 70 ? "Most tenants are active 🚀" : Number(growth) > 40 ? "Platform is growing steadily 📈" : "Need more active tenants ⚠️",
           },
         };
-      }, DASHBOARD_CACHE_TTL);
+      }, CACHE_TTL.DASHBOARD);
 
       const elapsed = Date.now() - _startTime;
       console.log(`✅ Super Admin Dashboard loaded in ${elapsed}ms`);
@@ -170,14 +169,21 @@ export const getDashboard = async (
       // Class records: scope by academicYearId
       const classYearFilter = academicYearId ? { academicYearId } : {};
 
-      const [maleCount, femaleCount, totalAttendanceToday, presentToday, classRecords] = await Promise.all([
-        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "MALE", ...genderEnrollmentFilter } }),
-        prisma.student.count({ where: { tenantId, isDeleted: false, gender: "FEMALE", ...genderEnrollmentFilter } }),
+      // ⚡ P3: Replace 2 separate gender count() calls with single groupBy
+      const [genderGroups, totalAttendanceToday, presentToday, classRecords] = await Promise.all([
+        prisma.student.groupBy({
+          by: ["gender"],
+          where: { tenantId, isDeleted: false, ...genderEnrollmentFilter },
+          _count: true,
+        }),
         prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, ...attendanceYearFilter } }),
         prisma.attendance.count({ where: { tenantId, date: { gte: today, lt: tomorrow }, status: { in: ["PRESENT", "LATE"] }, ...attendanceYearFilter } }),
         prisma.class.findMany({ where: { tenantId, isDeleted: false, ...classYearFilter }, select: { id: true, name: true } }),
       ]);
 
+      // ⚡ P3: Parse groupBy result
+      const maleCount = genderGroups.find((g: any) => g.gender === "MALE")?._count ?? 0;
+      const femaleCount = genderGroups.find((g: any) => g.gender === "FEMALE")?._count ?? 0;
       const attendanceToday = totalAttendanceToday > 0 ? Math.round((presentToday / totalAttendanceToday) * 100) : null;
       const otherGenderCount = totalStudents - maleCount - femaleCount;
 
@@ -249,20 +255,24 @@ export const getDashboard = async (
           select: { balanceAmount: true, enrollment: { select: { student: { select: { firstName: true, lastName: true } }, class: { select: { name: true } }, section: { select: { name: true } } } } },
         }),
         prisma.event.findMany({ where: { tenantId, startDate: { gte: new Date() } }, orderBy: { startDate: "asc" }, take: 10, select: { title: true, startDate: true, type: true, venue: true } }),
-        // Birthdays: filter students with enrollment in selected year
-        prisma.student.findMany({
-          where: {
-            tenantId,
-            isDeleted: false,
-            ...(academicYearId
-              ? { enrollments: { some: { academicYearId, status: "active", isDeleted: false } } }
-              : {}),
-          },
-          select: {
+        // ⚡ P1: Birthdays — only fetch dob+name+enrollment (not all students)
+        (() => {
+          const todayDate = new Date();
+          const dayOfMonth = todayDate.getDate();
+          const monthOfYear = todayDate.getMonth() + 1; // 1-indexed
+          return prisma.student.findMany({
+            where: {
+              tenantId,
+              isDeleted: false,
+              ...(academicYearId
+                ? { enrollments: { some: { academicYearId, status: "active", isDeleted: false } } }
+                : {}),
+            },
+            select: {
             firstName: true,
             lastName: true,
             dob: true,
-            enrollments: {
+              enrollments: {
               where: {
                 isDeleted: false,
                 status: "active",
@@ -272,8 +282,9 @@ export const getDashboard = async (
               take: 1,
               select: { class: { select: { name: true } }, section: { select: { name: true } } },
             },
-          },
-        }),
+            },
+          });
+        })(),
       ]);
 
       // ─── PROCESS RESULTS ───
@@ -368,7 +379,7 @@ export const getDashboard = async (
         // Include academicYearId in response for frontend confirmation
         academicYearId: academicYearId || null,
       };
-    }, DASHBOARD_CACHE_TTL);
+    }, CACHE_TTL.DASHBOARD);
 
     const elapsed = Date.now() - _startTime;
     console.log(`✅ Dashboard loaded in ${elapsed}ms (year: ${academicYearId || "all"})`);

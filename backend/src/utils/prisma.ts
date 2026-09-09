@@ -1,6 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 
-const prismaBase = new PrismaClient().$extends({
+// ⚡ P6: Enable query event logging in development for slow query detection
+const prismaBase = new PrismaClient({
+  log: process.env.NODE_ENV === "development"
+    ? [
+        { level: "query", emit: "event" },
+        { level: "warn", emit: "stdout" },
+      ]
+    : [{ level: "error", emit: "stdout" }],
+}).$extends({
 
   query: {
 
@@ -188,7 +196,19 @@ const prismaBase = new PrismaClient().$extends({
 
 });
 
-// Export as any to bypass strict Prisma type checking for models
+// ⚡ P6: Log slow Prisma queries (> 200ms) in development
+// Uses $on on the base client before extension wrapping
+if (process.env.NODE_ENV === "development") {
+  try {
+    (prismaBase as any).$on?.("query", (e: any) => {
+      if (e.duration > 200) {
+        console.warn(`🐢 Slow Query (${e.duration}ms): ${e.query?.slice(0, 200)}`);
+      }
+    });
+  } catch {} // Silently ignore if $on not available on extended client
+}
+
+// Export as any to bypass strict Prisma type checking for models  
 // that exist in DB but may have been renamed/merged in schema
 const prisma: any = prismaBase;
 export default prisma;

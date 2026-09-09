@@ -2,14 +2,11 @@
 import prisma from "../../utils/prisma";
 
 export const getFeeDashboard = async (tenantId: string, academicYearId?: string) => {
-  const filters: any = { tenantId, isDeleted: false };
-
   // Get academic year filter
   let ayFilter: any = {};
   if (academicYearId) {
     ayFilter = { academicYearId };
   } else {
-    // Get current active academic year
     const activeAY = await prisma.academicYear.findFirst({
       where: { tenantId, isActive: true, isDeleted: false },
       select: { id: true },
@@ -17,100 +14,105 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
     if (activeAY) ayFilter = { academicYearId: activeAY.id };
   }
 
-  // 1. Total Students (active enrollments)
-  const totalStudents = await prisma.enrollment.count({
-    where: { tenantId, status: "active", isDeleted: false, ...ayFilter },
-  });
+  const enrollmentScope = { ...ayFilter, isDeleted: false };
+  const feeBaseWhere = { tenantId, isDeleted: false, enrollment: enrollmentScope };
+  const paymentBaseWhere = { tenantId, isDeleted: false, studentFee: { isDeleted: false, enrollment: enrollmentScope } };
 
-  // 2. Total Receivable (sum of all StudentFee.netAmount)
-  const receivableAgg = await prisma.studentFee.aggregate({
-    where: {
-      tenantId,
-      isDeleted: false,
-      enrollment: { ...ayFilter, isDeleted: false },
-    },
-    _sum: { netAmount: true },
-  });
-  const totalReceivable = receivableAgg._sum.netAmount || 0;
-
-  // 3. Total Collected (sum of all Payment.amount)
-  const collectedAgg = await prisma.payment.aggregate({
-    where: {
-      tenantId,
-      isDeleted: false,
-      studentFee: {
-        isDeleted: false,
-        enrollment: { ...ayFilter, isDeleted: false },
-      },
-    },
-    _sum: { amount: true },
-  });
-  const totalCollected = collectedAgg._sum.amount || 0;
-
-  // 4. Outstanding
-  const outstanding = totalReceivable - totalCollected;
-
-  // 5a. Overdue Amount — fees where dueDate has passed and balance > 0
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-  const overdueAgg = await prisma.studentFee.aggregate({
-    where: {
-      tenantId,
-      isDeleted: false,
-      balanceAmount: { gt: 0 },
-      dueDate: { lt: today },
-      enrollment: { ...ayFilter, isDeleted: false },
-    },
-    _sum: { balanceAmount: true },
-  });
+
+  // ⚡ PERF: Run ALL independent queries in parallel (was 9 sequential → 1 batch)
+  const [
+    totalStudents,
+    receivableAgg,
+    collectedAgg,
+    overdueAgg,
+    discountAgg,
+    fineAgg,
+    payments,
+    classwiseData,
+    recentPayments,
+  ] = await Promise.all([
+    // 1. Total enrolled students
+    prisma.enrollment.count({
+      where: { tenantId, status: "active", isDeleted: false, ...ayFilter },
+    }),
+    // 2. Total Receivable
+    prisma.studentFee.aggregate({
+      where: feeBaseWhere,
+      _sum: { netAmount: true },
+    }),
+    // 3. Total Collected
+    prisma.payment.aggregate({
+      where: paymentBaseWhere,
+      _sum: { amount: true },
+    }),
+    // 4. Overdue Amount
+    prisma.studentFee.aggregate({
+      where: { ...feeBaseWhere, balanceAmount: { gt: 0 }, dueDate: { lt: today } },
+      _sum: { balanceAmount: true },
+    }),
+    // 5. Total Discounts
+    prisma.studentFee.aggregate({
+      where: { ...feeBaseWhere, discountAmount: { gt: 0 } },
+      _sum: { discountAmount: true },
+    }),
+    // 6. Total Fines
+    prisma.studentFee.aggregate({
+      where: { ...feeBaseWhere, fineAmount: { gt: 0 } },
+      _sum: { fineAmount: true },
+    }),
+    // 7. Monthly payments (for chart)
+    prisma.payment.findMany({
+      where: paymentBaseWhere,
+      select: { amount: true, paymentDate: true },
+    }),
+    // 8. Class-wise outstanding (groupBy)
+    prisma.studentFee.groupBy({
+      by: ["feeStructureId"],
+      where: feeBaseWhere,
+      _sum: { balanceAmount: true },
+    }),
+    // 9. Recent 10 payments
+    prisma.payment.findMany({
+      where: paymentBaseWhere,
+      select: {
+        receiptNo: true,
+        paymentDate: true,
+        amount: true,
+        method: true,
+        collectedBy: true,
+        studentFee: {
+          select: {
+            enrollment: {
+              select: {
+                student: { select: { firstName: true, lastName: true } },
+                class: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { paymentDate: "desc" },
+      take: 10,
+    }),
+  ]);
+
+  const totalReceivable = receivableAgg._sum.netAmount || 0;
+  const totalCollected = collectedAgg._sum.amount || 0;
+  const outstanding = totalReceivable - totalCollected;
   const overdueAmount = overdueAgg._sum.balanceAmount || 0;
-
-  // 5b. Total Discounts Given (sum of discountAmount across all student fees)
-  const discountAgg = await prisma.studentFee.aggregate({
-    where: {
-      tenantId,
-      isDeleted: false,
-      discountAmount: { gt: 0 },
-      enrollment: { ...ayFilter, isDeleted: false },
-    },
-    _sum: { discountAmount: true },
-  });
   const totalDiscount = discountAgg._sum.discountAmount || 0;
-
-  // 5c. Total Fine Collected (sum of fineAmount across all student fees)
-  const fineAgg = await prisma.studentFee.aggregate({
-    where: {
-      tenantId,
-      isDeleted: false,
-      fineAmount: { gt: 0 },
-      enrollment: { ...ayFilter, isDeleted: false },
-    },
-    _sum: { fineAmount: true },
-  });
   const totalFine = fineAgg._sum.fineAmount || 0;
 
-  // 6. Monthly Collection (grouped by month)
-  const payments = await prisma.payment.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      studentFee: {
-        isDeleted: false,
-        enrollment: { ...ayFilter, isDeleted: false },
-      },
-    },
-    select: { amount: true, paymentDate: true },
-  });
-
-  // Group by month (Apr=0 to Mar=11 for Indian academic year)
+  // Monthly collection chart (Apr-Mar academic year)
   const monthNames = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
   const monthlyMap: { [key: string]: { collected: number } } = {};
   monthNames.forEach((m) => { monthlyMap[m] = { collected: 0 }; });
 
-  payments.forEach((p) => {
+  payments.forEach((p: any) => {
     const d = new Date(p.paymentDate);
-    const monthIdx = d.getMonth(); // 0=Jan
-    // Map to academic year: Apr(3)=0, May(4)=1, ..., Mar(2)=11
+    const monthIdx = d.getMonth();
     const academicMonthIdx = (monthIdx - 3 + 12) % 12;
     const monthName = monthNames[academicMonthIdx];
     if (monthlyMap[monthName]) {
@@ -118,7 +120,6 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
     }
   });
 
-  // Calculate monthly receivable (total / 12 as approximation, or from studentFees)
   const monthlyReceivable = totalReceivable / 12;
   const monthlyCollection = monthNames.map((month) => ({
     month,
@@ -126,28 +127,19 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
     collected: Math.round(monthlyMap[month].collected),
   }));
 
-  // 6. Class-wise Outstanding
-  const classwiseData = await prisma.studentFee.groupBy({
-    by: ["feeStructureId"],
-    where: {
-      tenantId,
-      isDeleted: false,
-      enrollment: { ...ayFilter, isDeleted: false },
-    },
-    _sum: { balanceAmount: true },
-  });
-
-  // Get class names for fee structures
-  const structureIds = classwiseData.map((d) => d.feeStructureId);
-  const structures = await prisma.feeStructure.findMany({
-    where: { id: { in: structureIds } },
-    include: { class: { select: { id: true, name: true } } },
-  });
+  // Class-wise outstanding
+  const structureIds = classwiseData.map((d: any) => d.feeStructureId);
+  const structures = structureIds.length > 0
+    ? await prisma.feeStructure.findMany({
+        where: { id: { in: structureIds } },
+        select: { id: true, classId: true, class: { select: { name: true } } },
+      })
+    : [];
 
   const classMap: { [classId: string]: { className: string; outstanding: number } } = {};
-  classwiseData.forEach((item) => {
-    const structure = structures.find((s) => s.id === item.feeStructureId);
-    if (structure) {
+  classwiseData.forEach((item: any) => {
+    const structure = structures.find((s: any) => s.id === item.feeStructureId);
+    if (structure?.class) {
       const classId = structure.classId;
       if (!classMap[classId]) {
         classMap[classId] = { className: structure.class.name, outstanding: 0 };
@@ -159,37 +151,16 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
   const classwiseOutstanding = Object.values(classMap)
     .sort((a, b) => b.outstanding - a.outstanding);
 
-  // 7. Recent Collections (last 10)
-  const recentPayments = await prisma.payment.findMany({
-    where: {
-      tenantId,
-      isDeleted: false,
-      studentFee: {
-        isDeleted: false,
-        enrollment: { ...ayFilter, isDeleted: false },
-      },
-    },
-    include: {
-      studentFee: {
-        include: {
-          enrollment: {
-            include: {
-              student: { select: { firstName: true, lastName: true } },
-              class: { select: { name: true } },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { paymentDate: "desc" },
-    take: 10,
-  });
-
-  const recentCollections = recentPayments.map((p) => ({
+  // Recent collections
+  const recentCollections = recentPayments.map((p: any) => ({
     receiptNo: p.receiptNo,
     date: p.paymentDate ? new Date(p.paymentDate).toISOString() : null,
-    studentName: (() => { const fn = p.studentFee.enrollment.student.firstName ?? ""; const ln = p.studentFee.enrollment.student.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })() || "Unknown",
-    className: p.studentFee.enrollment.class.name,
+    studentName: (() => {
+      const fn = p.studentFee?.enrollment?.student?.firstName ?? "";
+      const ln = p.studentFee?.enrollment?.student?.lastName ?? "";
+      return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim();
+    })() || "Unknown",
+    className: p.studentFee?.enrollment?.class?.name || "N/A",
     amount: p.amount,
     collectedBy: p.collectedBy || "Admin",
     method: p.method,
@@ -202,4 +173,3 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
     recentCollections,
   };
 };
-

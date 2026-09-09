@@ -16,6 +16,35 @@ function getPrismaDelegate(modelName: string): any {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Helper: Discover which fields a Prisma model actually accepts by
+// introspecting the DMMF (Prisma's internal data-model metadata).
+// Returns a Set of writeable scalar field names for the given model.
+// ─────────────────────────────────────────────────────────────────
+function getModelFields(modelName: string): Set<string> {
+  try {
+    const dmmf = (prisma as any)._baseDmmf || (prisma as any)._dmmf;
+    const model = dmmf?.modelMap?.[modelName]
+      || dmmf?.datamodel?.models?.find?.((m: any) => m.name === modelName);
+    if (model?.fields) {
+      return new Set(model.fields.filter((f: any) => f.kind === 'scalar').map((f: any) => f.name));
+    }
+  } catch (e) {
+    console.warn(`Could not introspect fields for ${modelName}:`, e);
+  }
+  return new Set(); // empty = skip filtering (allow all, let Prisma validate)
+}
+
+// Helper: strip keys from `data` that the Prisma model does not recognise
+function filterToModelFields(data: Record<string, any>, modelName: string): Record<string, any> {
+  const fields = getModelFields(modelName);
+  if (fields.size === 0) return data; // introspection unavailable → pass through
+  const filtered: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (fields.has(key)) filtered[key] = value;
+  }
+  return filtered;
+}
+// ─────────────────────────────────────────────────────────────────
 // Helper: Probe whether a Prisma model accepts a given field.
 // Uses a lightweight count query so it never returns real data.
 // ─────────────────────────────────────────────────────────────────
@@ -262,14 +291,18 @@ export async function createEntry(req: Request, res: Response) {
       }
     }
 
+    // Strip fields the Prisma model does not recognise (config may define
+    // aspirational fields that haven't been added to the schema yet).
+    const safeData = filterToModelFields(data, config.model);
+
     let entry;
     try {
-      entry = await delegate.create({ data });
+      entry = await delegate.create({ data: safeData });
     } catch (createErr: any) {
       // If isActive is not a valid field, retry without it
       if (createErr.message?.includes('isActive')) {
-        delete data.isActive;
-        entry = await delegate.create({ data });
+        delete safeData.isActive;
+        entry = await delegate.create({ data: safeData });
       } else {
         throw createErr;
       }
@@ -335,9 +368,12 @@ export async function updateEntry(req: Request, res: Response) {
       }
     }
 
+    // Strip fields the Prisma model does not recognise
+    const safeData = filterToModelFields(data, config.model);
+
     const entry = await delegate.update({
       where: { id },
-      data,
+      data: safeData,
     });
 
     res.json({ success: true, data: entry, message: 'Entry updated successfully' });
@@ -488,12 +524,14 @@ export async function bulkCreate(req: Request, res: Response) {
           }
         }
 
+        const safeData = filterToModelFields(data, config.model);
+
         try {
-          await delegate.create({ data });
+          await delegate.create({ data: safeData });
         } catch (createErr: any) {
           if (createErr.message?.includes('isActive')) {
-            delete data.isActive;
-            await delegate.create({ data });
+            delete safeData.isActive;
+            await delegate.create({ data: safeData });
           } else {
             throw createErr;
           }
@@ -600,7 +638,9 @@ export async function cloneEntry(req: Request, res: Response) {
       data.name = `${data.name} (Copy)`;
     }
 
-    const clone = await delegate.create({ data });
+    // Strip any non-schema fields that might have been populated on the existing record
+    const safeData = filterToModelFields(data, config.model);
+    const clone = await delegate.create({ data: safeData });
 
     res.status(201).json({ success: true, data: clone, message: 'Entry cloned successfully' });
   } catch (error: any) {

@@ -22,6 +22,7 @@ import masterRoutes from "./modules/masters/master.routes";
 import compression from "compression";
 import cors from "cors";
 import { autoCacheMiddleware } from "./middleware/autoCache.middleware";
+import { timingMiddleware } from "./middleware/timing.middleware";
 import swaggerUi from "swagger-ui-express";
 import path from "path";
 import settingsRoutes from "./modules/settings/settings.routes";
@@ -128,6 +129,11 @@ import notificationRoutes from "./modules/notifications/notification.routes";
 import reportRoutes from "./modules/reports/report.routes";
 
 const app = express();
+
+//////////////////////////////////////////////////////
+// ⚡ P6: REQUEST TIMING (must be first — measures total response time)
+//////////////////////////////////////////////////////
+app.use(timingMiddleware);
 
 //////////////////////////////////////////////////////
 // GZIP COMPRESSION

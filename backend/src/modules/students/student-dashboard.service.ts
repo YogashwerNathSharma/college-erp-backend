@@ -31,8 +31,14 @@ export const getFullDashboardData = async (
   // Normalize empty string to undefined
   if (!academicYearId) academicYearId = undefined;
 
-  const safeCall = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
-    try { return await fn(); } catch (e) { console.error("Dashboard sub-query failed:", e); return fallback; }
+  const safeCall = async <T>(fn: () => Promise<T>, fallback: T, label?: string): Promise<T> => {
+    try {
+      const result = await fn();
+      return result;
+    } catch (e: any) {
+      console.error(`❌ Student Dashboard sub-query FAILED [${label || "unknown"}]:`, e.message || e);
+      return fallback;
+    }
   };
 
   const [
@@ -47,16 +53,16 @@ export const getFullDashboardData = async (
     birthdayStudents,
     feeDefaultersList,
   ] = await Promise.all([
-    safeCall(() => getDashboardStats(tenantId, academicYearId), {} as DashboardStats),
-    safeCall(() => getClassStrength(tenantId, academicYearId), []),
-    safeCall(() => getSectionStrength(tenantId, academicYearId), []),
-    safeCall(() => getCategoryDistribution(tenantId, academicYearId), []),
-    safeCall(() => getGenderRatio(tenantId, academicYearId), { male: 0, female: 0, other: 0, total: 0 } as any),
-    safeCall(() => getMonthlyAdmissionTrend(tenantId, academicYearId), []),
-    safeCall(() => getStudentGrowth(tenantId), []),
-    safeCall(() => getRecentAdmissions(tenantId, 10, academicYearId), []),
-    safeCall(() => getBirthdayToday(tenantId, academicYearId), []),
-    safeCall(() => getFeeDefaulters(tenantId, academicYearId), []),
+    safeCall(() => getDashboardStats(tenantId, academicYearId), {} as DashboardStats, "stats"),
+    safeCall(() => getClassStrength(tenantId, academicYearId), [], "classStrength"),
+    safeCall(() => getSectionStrength(tenantId, academicYearId), [], "sectionStrength"),
+    safeCall(() => getCategoryDistribution(tenantId, academicYearId), [], "categoryDistribution"),
+    safeCall(() => getGenderRatio(tenantId, academicYearId), { male: 0, female: 0, other: 0, total: 0 } as any, "genderRatio"),
+    safeCall(() => getMonthlyAdmissionTrend(tenantId, academicYearId), [], "monthlyAdmission"),
+    safeCall(() => getStudentGrowth(tenantId), [], "studentGrowth"),
+    safeCall(() => getRecentAdmissions(tenantId, 10, academicYearId), [], "recentAdmissions"),
+    safeCall(() => getBirthdayToday(tenantId, academicYearId), [], "birthdayToday"),
+    safeCall(() => getFeeDefaulters(tenantId, academicYearId), [], "feeDefaulters"),
   ]);
 
   return {
@@ -95,11 +101,7 @@ export const getDashboardStats = async (
   }
 
   const [
-    totalStudents,
-    activeStudents,
-    inactiveStudents,
-    boys,
-    girls,
+    genderStatusGroups,
     newAdmissions,
     leavingStudents,
     transportStudents,
@@ -108,15 +110,11 @@ export const getDashboardStats = async (
     feeDefaulters,
     birthdayToday,
   ] = await Promise.all([
-    prisma.student.count({ where: baseWhere }),
-    // Active = enrolled students (active + pending + verified)
-    prisma.student.count({ where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] } } }),
-    prisma.student.count({ where: { ...baseWhere, status: { notIn: [...ACTIVE_STATUSES] } } }),
-    prisma.student.count({
-      where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] }, gender: "MALE" },
-    }),
-    prisma.student.count({
-      where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] }, gender: "FEMALE" },
+    // ⚡ PERF: Single groupBy replaces 5 separate count() calls
+    prisma.student.groupBy({
+      by: ["status", "gender"],
+      where: baseWhere,
+      _count: true,
     }),
     getNewAdmissionsCount(tenantId, 30, academicYearId),
     getLeavingStudentsCount(tenantId, 30),
@@ -126,6 +124,18 @@ export const getDashboardStats = async (
     getFeeDefaulterCount(tenantId, academicYearId),
     getBirthdayTodayCount(tenantId, academicYearId),
   ]);
+
+  // ⚡ Parse groupBy results into individual counts
+  const groups = genderStatusGroups as any[];
+  const totalStudents = groups.reduce((sum: number, g: any) => sum + g._count, 0);
+  const activeStatusSet = new Set<string>(ACTIVE_STATUSES);
+  const activeGroups = groups.filter((g: any) => activeStatusSet.has(g.status));
+  const activeStudents = activeGroups.reduce((sum: number, g: any) => sum + g._count, 0);
+  const inactiveStudents = totalStudents - activeStudents;
+  const boys = activeGroups.filter((g: any) => g.gender === "MALE")
+    .reduce((sum: number, g: any) => sum + g._count, 0);
+  const girls = activeGroups.filter((g: any) => g.gender === "FEMALE")
+    .reduce((sum: number, g: any) => sum + g._count, 0);
 
   return {
     totalStudents,
@@ -170,18 +180,35 @@ export const getBirthdayToday = async (
     };
   }
 
-  // Fetch enrolled students and filter by DOB day/month in app layer
-  // (MongoDB does not support day/month extraction natively via Prisma)
-  const students = await prisma.student.findMany({
+  // ⚡ PERF: Only fetch dob + minimal fields first (no includes)
+  // Then filter by birthday in JS, then fetch full data for matches only
+  const allStudentsDob = await prisma.student.findMany({
     where: studentWhere,
-    include: {
+    select: { id: true, dob: true },
+  });
+
+  // Filter students whose birthday is today
+  const birthdayIds = allStudentsDob.filter((s: any) => {
+    if (!s.dob) return false;
+    const dob = new Date(s.dob);
+    return dob.getMonth() + 1 === month && dob.getDate() === day;
+  }).map((s: any) => s.id);
+
+  if (birthdayIds.length === 0) return [];
+
+  // Only fetch full details for birthday students (usually 0-5 students)
+  const birthdayStudents = await prisma.student.findMany({
+    where: { id: { in: birthdayIds } },
+    select: {
+      id: true, firstName: true, lastName: true, admissionNo: true,
+      dob: true, photoUrl: true, fatherPhone: true,
       enrollments: {
         where: {
           status: "active",
           isDeleted: false,
           ...(academicYearId ? { academicYearId } : {}),
         },
-        include: {
+        select: {
           class: { select: { name: true } },
           section: { select: { name: true } },
         },
@@ -191,14 +218,8 @@ export const getBirthdayToday = async (
     },
   });
 
-  // Filter students whose birthday is today
-  const birthdayStudents = students.filter((s) => {
-    const dob = new Date(s.dob);
-    return dob.getMonth() + 1 === month && dob.getDate() === day;
-  });
-
   return birthdayStudents.map((s) => {
-    const enrollment = s.enrollments[0];
+    const enrollment = (s as any).enrollments?.[0];
     const dob = new Date(s.dob);
     const age = today.getFullYear() - dob.getFullYear();
 
@@ -244,10 +265,12 @@ export const getClassStrength = async (
           status: "active",
           isDeleted: false,
           ...(academicYearId ? { academicYearId } : {}),
-          student: { isNot: null },
+          // Removed student: { isNot: null } — Prisma MongoDB does not support isNot
+          // Null students are filtered in the .filter() below instead
         },
-        include: {
-          student: { select: { gender: true } },
+        select: {
+          id: true,
+          student: { select: { gender: true, isDeleted: true } },
         },
       },
     },
@@ -288,10 +311,30 @@ export const getSectionStrength = async (
     sectionWhere.academicYearId = academicYearId;
   }
 
+  // Step 1: Get valid classIds for this tenant/year (avoids orphan section crash)
+  const validClasses = await prisma.class.findMany({
+    where: {
+      tenantId,
+      isDeleted: false,
+      ...(academicYearId ? { academicYearId } : {}),
+    },
+    select: { id: true, name: true },
+  });
+  const classMap = new Map(validClasses.map((c: any) => [c.id, c.name]));
+  const validClassIds = validClasses.map((c: any) => c.id);
+
+  // Step 2: Fetch sections only for valid classes (prevents "Field class required, got null")
+  if (validClassIds.length === 0) return [];
+
   const sections = await prisma.section.findMany({
-    where: sectionWhere,
-    include: {
-      class: { select: { id: true, name: true } },
+    where: {
+      ...sectionWhere,
+      classId: { in: validClassIds },
+    },
+    select: {
+      id: true,
+      name: true,
+      classId: true,
       enrollments: {
         where: {
           status: "active",
@@ -301,12 +344,12 @@ export const getSectionStrength = async (
         select: { id: true },
       },
     },
-    orderBy: [{ class: { name: "asc" } }, { name: "asc" }],
+    orderBy: { name: "asc" },
   });
 
-  return sections.filter((s) => s.class != null).map((s) => ({
-    classId: s.class?.id || "",
-    className: s.class?.name || "N/A",
+  return sections.map((s: any) => ({
+    classId: s.classId,
+    className: classMap.get(s.classId) || "N/A",
     sectionId: s.id,
     sectionName: s.name,
     count: s.enrollments.length,

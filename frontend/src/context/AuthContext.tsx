@@ -13,7 +13,7 @@ interface User {
   name: string;
   email: string;
   role: string;
-  tenantId: string;
+  tenantId: string | null;
   photo?: string;
 }
 
@@ -29,10 +29,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// Tenant/session-scoped browser state must never survive a change of identity.
+// In particular, dashboard_cache:<academicYearId> was previously shared by all tenants.
+function clearTenantScopedBrowserState() {
+  localStorage.removeItem("tenant");
+  localStorage.removeItem("selectedAcademicYearId");
+  localStorage.removeItem("academicYearExplicitSelection");
+
+  // Remove all dashboard snapshots created by the old, non-tenant-scoped cache key.
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key?.startsWith("dashboard_cache:")) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem("user");
-    return stored ? JSON.parse(stored) : null;
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
   });
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [loading, setLoading] = useState(false);
@@ -53,6 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await axios.post(getFullUrl("/api/auth/login"), { email, password });
       const { token: newToken, user: userData } = res.data.data;
+
+      // IMPORTANT: do this before installing the new identity so a previous
+      // tenant's cached dashboard/tenant/academic-year state cannot leak into it.
+      clearTenantScopedBrowserState();
+
       localStorage.setItem("token", newToken);
       localStorage.setItem("user", JSON.stringify(userData));
       setToken(newToken);
@@ -63,9 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    clearTenantScopedBrowserState();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("tenant");
     setToken(null);
     setUser(null);
     navigate("/");

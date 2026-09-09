@@ -21,6 +21,12 @@ const hodTo = "{ name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUr
 const feeClassesFrom = "{ name: 'classes', label: 'Applicable Classes (comma-separated IDs)', type: 'text' },";
 const feeClassesTo = "{ name: 'classes', label: 'Applicable Classes', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id', multiple: true },";
 
+// Hostel Block Master must select an existing Hostel by name while submitting
+// the real hostel ObjectId as hostelId. This keeps the database relation intact
+// and prevents admins from manually entering internal IDs.
+const hostelBlockFrom = "{ name: 'hostelId', label: 'Hostel (ID)', type: 'text', required: true },";
+const hostelBlockTo = "{ name: 'hostelId', label: 'Hostel', type: 'lookup', required: true, lookupUrl: '/api/hostel/hostels', lookupLabelField: 'name', lookupValueField: 'id' },";
+
 // Keep the master config aligned with the active Prisma schema: Rack -> rack
 // and LibraryShelf -> libraryShelf. Do not use reference-only model names.
 const rackMasterFrom = "key: 'rack-master',\n        label: 'Rack Master',\n        model: 'RackMaster',";
@@ -47,6 +53,7 @@ const shelfLevelTo = "{ name: 'level', label: 'Level Number', type: 'number', re
 for (const filePath of [sourceConfigPath, distConfigPath]) {
   patchFile(filePath, hodFrom, hodTo);
   patchFile(filePath, feeClassesFrom, feeClassesTo);
+  patchFile(filePath, hostelBlockFrom, hostelBlockTo);
   patchFile(filePath, rackMasterFrom, rackMasterTo);
   patchFile(filePath, shelfMasterFrom, shelfMasterTo);
   patchFile(filePath, rackIdFrom, rackIdTo);
@@ -61,6 +68,7 @@ const sourceConfig = fs.readFileSync(sourceConfigPath, "utf8");
 const required = [
   hodTo,
   feeClassesTo,
+  hostelBlockTo,
   rackMasterTo,
   shelfMasterTo,
   rackIdTo,
@@ -74,4 +82,4 @@ for (const marker of required) {
   if (!sourceConfig.includes(marker)) throw new Error(`Master lookup/required-field verification failed: ${marker}`);
 }
 
-process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, Shelf Rack No. uses Rack lookup, and Rack/Shelf required fields match the active Prisma schema.\n");
+process.stdout.write("Master lookup verification passed: HOD uses Teacher lookup, Fee Group uses multi-select Class lookup, Hostel Block uses Hostel-name lookup, Shelf Rack No. uses Rack lookup, and Rack/Shelf required fields match the active Prisma schema.\n");

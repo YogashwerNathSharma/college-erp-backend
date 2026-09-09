@@ -25,7 +25,7 @@ const feeClassesTo = "{ name: 'classes', label: 'Applicable Classes', type: 'loo
 // the real hostel ObjectId as hostelId. This keeps the database relation intact
 // and prevents admins from manually entering internal IDs.
 const hostelBlockFrom = "{ name: 'hostelId', label: 'Hostel (ID)', type: 'text', required: true },";
-const hostelBlockTo = "{ name: 'hostelId', label: 'Hostel', type: 'lookup', required: true, lookupUrl: '/api/hostel/hostels', lookupLabelField: 'name', lookupValueField: 'id' },";
+const hostelBlockTo = "{ name: 'hostelId', label: 'Hostel Name', type: 'lookup', required: true, lookupUrl: '/api/hostel/hostels', lookupLabelField: 'name', lookupValueField: 'id' },";
 
 // Keep the master config aligned with the active Prisma schema: Rack -> rack
 // and LibraryShelf -> libraryShelf. Do not use reference-only model names.

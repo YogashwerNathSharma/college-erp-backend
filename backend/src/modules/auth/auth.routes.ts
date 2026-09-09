@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { login, register, registerTenant, registerSuperAdmin, changePassword, forgotPassword, resetPassword } from "./auth.controller";
 import { acceptTenantAgreement, getTenantAgreementStatus } from "./tenantAgreement.controller";
+import { requireTenantAgreementAcceptance } from "./tenantAgreementRegistration.middleware";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowInitialSuperAdminSetup } from "./super-admin-bootstrap.middleware";
 import { refreshTokenHandler } from "./auth.refresh";
@@ -14,13 +15,15 @@ router.post("/login", login);
 // Refresh token endpoint
 router.post("/refresh-token", refreshTokenHandler);
 
-// Existing public school/college signup flow.
+// Public tenant signup: the current SaaS agreement is mandatory before the
+// tenant/admin creation endpoint can execute.
 router.post(
   "/register-tenant",
   upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "background", maxCount: 1 },
   ]),
+  requireTenantAgreementAcceptance,
   registerTenant
 );
 

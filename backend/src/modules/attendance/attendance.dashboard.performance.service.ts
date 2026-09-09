@@ -1,8 +1,6 @@
 import prisma from "../../config/prisma";
 
 // Fast, tenant/year-scoped dashboard aggregation.
-// The existing attendance.service remains untouched so all other attendance
-// operations keep their current behavior.
 export const getAttendanceDashboardPerformance = async (
   tenantId: string,
   academicYearId: string
@@ -16,7 +14,6 @@ export const getAttendanceDashboardPerformance = async (
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Only fetch fields needed to build the dashboard. These four reads run in parallel.
   const [enrollments, todayRecords, weekRecords, overall] = await Promise.all([
     prisma.enrollment.findMany({
       where: { tenantId, academicYearId, isDeleted: false, status: "active" },
@@ -70,9 +67,7 @@ export const getAttendanceDashboardPerformance = async (
   const classWise = classes.map(cls => {
     const v = classToday.get(cls.id) || { present: 0, absent: 0, marked: 0 };
     const total = classTotals.get(cls.id) || 0;
-    const percentage = v.marked > 0
-      ? Math.round((v.present / v.marked) * 100)
-      : (allRecords > 0 ? Math.round(parseFloat(attendancePercentage)) : 0);
+    const percentage = v.marked > 0 ? Math.round((v.present / v.marked) * 100) : 0;
     return { className: cls.name, present: v.present, absent: v.absent, total, percentage };
   }).sort((a, b) => a.className.localeCompare(b.className, undefined, { numeric: true }));
 
@@ -81,7 +76,7 @@ export const getAttendanceDashboardPerformance = async (
     const key = r.date.toISOString().split("T")[0];
     const v = dateMap.get(key) || { present: 0, absent: 0 };
     if (r.status === "PRESENT") v.present++;
-    else v.absent++;
+    else if (r.status === "ABSENT" || r.status === "LATE") v.absent++;
     dateMap.set(key, v);
   }
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -91,6 +86,7 @@ export const getAttendanceDashboardPerformance = async (
   }).sort((a, b) => a.date.localeCompare(b.date));
 
   const weekClassDay = new Map<string, { present: number; total: number }>();
+  const studentAbsentDays = new Map<string, Set<string>>();
   for (const r of weekRecords) {
     const classId = enrollmentClass.get(r.studentId) || r.classId;
     if (!classId) continue;
@@ -100,6 +96,11 @@ export const getAttendanceDashboardPerformance = async (
     v.total++;
     if (r.status === "PRESENT") v.present++;
     weekClassDay.set(key, v);
+    if (r.status === "ABSENT") {
+      const set = studentAbsentDays.get(r.studentId) || new Set<string>();
+      set.add(dateKey);
+      studentAbsentDays.set(r.studentId, set);
+    }
   }
 
   const heatmapData = classes.map(cls => {
@@ -130,7 +131,14 @@ export const getAttendanceDashboardPerformance = async (
     });
     absentStudents = students.map(s => {
       const e = s.enrollments?.[0];
-      return { id: s.id, name: `${s.firstName} ${s.lastName || ""}`.trim(), className: e?.class?.name || "", section: e?.section?.name || "", contact: s.phone || "", daysAbsent: 1 };
+      return {
+        id: s.id,
+        name: `${s.firstName} ${s.lastName || ""}`.trim(),
+        className: e?.class?.name || "",
+        section: e?.section?.name || "",
+        contact: s.phone || "",
+        daysAbsent: studentAbsentDays.get(s.id)?.size || 1,
+      };
     });
   }
 

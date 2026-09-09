@@ -50,11 +50,15 @@ export default function TenantAgreement({ onClose, onAccept }: TenantAgreementPr
         <section><h2 className="text-base font-bold text-slate-900">19. Governing Law and Disputes</h2><p>This Agreement is intended to be governed by applicable laws of India. The parties should first attempt to resolve disputes in good faith. Any jurisdiction clause or dispute mechanism may be supplemented by a separately signed commercial agreement.</p></section>
         <section><h2 className="text-base font-bold text-slate-900">20. Acceptance and Electronic Record</h2><p>By selecting “I Agree &amp; Continue” and subsequently submitting the tenant registration, the authorized representative confirms that they have read and accepted this Agreement on behalf of the School. The ERP records the tenant, agreement version, accepting name/email, timestamp and technical request information for audit purposes.</p></section>
 
-        <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+        <section className="rounded-xl border border-indigo-200 bg-white p-4 opacity-100">
           <h2 className="text-base font-bold text-indigo-950">Provider / Software Owner</h2>
           <div className="mt-3 flex items-center gap-4">
-            <img src="/ynlogo.png" alt="YN Software logo" className="h-16 w-16 object-contain rounded-xl bg-white p-1 border border-indigo-100" />
-            <div><div className="font-bold text-slate-900">Yogashwer Nath Sharma</div><div className="text-slate-600">Owner &amp; Developer · YN Software</div><div className="text-slate-600">Software: YN Software School ERP</div></div>
+            <img src="/ynlogo.png" alt="YN Software logo" className="h-16 w-16 object-contain rounded-xl bg-slate-100 p-1 border border-indigo-100" />
+            <div className="opacity-100">
+              <div className="font-bold text-slate-950">Yogashwer Nath Sharma</div>
+              <div className="text-slate-700">Owner &amp; Developer · YN Software</div>
+              <div className="text-slate-700">Software: YN Software School ERP</div>
+            </div>
           </div>
         </section>
 

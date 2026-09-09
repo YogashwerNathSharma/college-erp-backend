@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -20,10 +20,16 @@ export default function RegisterSchool() {
   const [freeTrialBlocked, setFreeTrialBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState("");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [showAgreement, setShowAgreement] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(true);
   const [agreementRecorded, setAgreementRecorded] = useState(false);
   const [agreementError, setAgreementError] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Every new tenant registration must see the current agreement before registration.
+    setShowAgreement(true);
+    setAgreementAccepted(false);
+  }, []);
 
   const handleRegister = async () => {
     if (!schoolName || !name || !email) {
@@ -32,6 +38,7 @@ export default function RegisterSchool() {
     }
 
     if (!agreementAccepted) {
+      setShowAgreement(true);
       alert("Please read and accept the YN Software School ERP SaaS Subscription & License Agreement.");
       return;
     }
@@ -61,7 +68,6 @@ export default function RegisterSchool() {
       if (res.data?.success) {
         const tenantId = res.data?.tenantId;
 
-        // Record the electronic acceptance against the newly-created tenant.
         try {
           const agreementRes = await axios.post(getFullUrl("/api/auth/tenant-agreement/accept"), {
             tenantId,
@@ -102,6 +108,11 @@ export default function RegisterSchool() {
     }
   };
 
+  const acceptAgreement = () => {
+    setAgreementAccepted(true);
+    setShowAgreement(false);
+  };
+
   return (
     <div
       style={{
@@ -111,7 +122,6 @@ export default function RegisterSchool() {
         position: "relative",
       }}
     >
-      {/* LEFT SIDE */}
       <div
         style={{
           width: "35%",
@@ -138,7 +148,6 @@ export default function RegisterSchool() {
         </div>
       </div>
 
-      {/* RIGHT SIDE */}
       <div
         style={{
           width: "65%",
@@ -155,11 +164,9 @@ export default function RegisterSchool() {
             <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 15px", fontSize: "28px", color: "#fff" }}>
               ✓
             </div>
-
             <h2 style={{ fontSize: "24px", marginBottom: "10px", color: "#1e293b" }}>
               🎉 Registration Successful!
             </h2>
-
             <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
               {freeTrialBlocked ? (
                 <>
@@ -174,20 +181,17 @@ export default function RegisterSchool() {
                 <>Your school has been registered with a <b>14-day free trial</b>.</>
               )}
             </p>
-
             <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "15px", marginBottom: "15px", textAlign: "left" }}>
               <p style={{ fontSize: "13px", color: "#166534", marginBottom: "8px" }}><b>Login Credentials:</b></p>
               <p style={{ fontSize: "14px", color: "#1e293b" }}>📧 Email: <b>{email}</b></p>
               <p style={{ fontSize: "14px", color: "#1e293b" }}>🔑 Password: <b>{adminPassword}</b></p>
               <p style={{ fontSize: "12px", color: "#64748b", marginTop: "8px" }}>⚠️ Please change your password after first login.</p>
             </div>
-
             <div style={{ background: agreementRecorded ? "#eff6ff" : "#fff7ed", border: `1px solid ${agreementRecorded ? "#bfdbfe" : "#fed7aa"}`, borderRadius: "10px", padding: "12px", marginBottom: "20px", textAlign: "left", fontSize: "12px", color: agreementRecorded ? "#1e40af" : "#9a3412" }}>
               {agreementRecorded
                 ? `✓ SaaS Agreement v${TENANT_AGREEMENT_VERSION} accepted and recorded for this tenant.`
                 : `⚠ ${agreementError || "Agreement acceptance record is pending."}`}
             </div>
-
             <button onClick={() => navigate("/")} style={{ width: "100%", padding: "13px", borderRadius: "8px", background: "linear-gradient(135deg, #1E90FF, #8A2BE2)", color: "#fff", fontSize: "16px", fontWeight: "600", border: "none", cursor: "pointer" }}>
               Go to Login →
             </button>
@@ -198,7 +202,6 @@ export default function RegisterSchool() {
             <p style={{ marginBottom: "20px", fontSize: "14px", color: "#64748b" }}>Get started with 14 days free trial</p>
 
             <h4 style={sectionTitle}>Basic Information</h4>
-
             <div style={rowStyle}>
               <div style={{ flex: 2 }}>
                 <label style={labelStyle}>School / Institute Name <span style={{ color: "red" }}>*</span></label>
@@ -253,26 +256,16 @@ export default function RegisterSchool() {
               </div>
             </div>
 
-            {/* ===== LEGAL ACCEPTANCE ===== */}
-            <div style={{ marginTop: "8px", marginBottom: "14px", padding: "12px", border: "1px solid #c7d2fe", background: "#eef2ff", borderRadius: "10px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <input
-                  id="tenantAgreement"
-                  type="checkbox"
-                  checked={agreementAccepted}
-                  onChange={(e) => setAgreementAccepted(e.target.checked)}
-                  style={{ marginTop: "3px", width: "16px", height: "16px", cursor: "pointer" }}
-                />
-                <label htmlFor="tenantAgreement" style={{ fontSize: "12px", lineHeight: 1.6, color: "#3730a3", cursor: "pointer" }}>
-                  I am authorized to register this institution and I have read and agree to the{" "}
-                  <button type="button" onClick={() => setShowAgreement(true)} style={{ border: "none", background: "transparent", color: "#1d4ed8", fontWeight: 700, textDecoration: "underline", padding: 0, cursor: "pointer" }}>
-                    YN Software School ERP SaaS Subscription &amp; License Agreement
-                  </button>{" "}
-                  (Version {TENANT_AGREEMENT_VERSION}).
-                </label>
+            <div style={{ marginTop: "12px", marginBottom: "14px", padding: "14px", border: "2px solid #4f46e5", background: "#eef2ff", borderRadius: "10px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "#312e81", marginBottom: "6px" }}>🔐 Legal Agreement Required</div>
+              <div style={{ fontSize: "12px", lineHeight: 1.6, color: "#3730a3" }}>
+                Before creating a tenant, the authorized institution representative must review and accept the <b>YN Software School ERP SaaS Subscription &amp; License Agreement</b> (Version {TENANT_AGREEMENT_VERSION}).
               </div>
-              <div style={{ marginTop: "6px", marginLeft: "26px", fontSize: "11px", color: "#475569" }}>
-                Software owner: <b>Yogashwer Nath Sharma · YN Software</b>. ERP access is subscription-based; source-code ownership is not transferred.
+              <button type="button" onClick={() => setShowAgreement(true)} style={{ marginTop: "10px", border: "none", background: "#4338ca", color: "#fff", fontWeight: 700, borderRadius: "7px", padding: "8px 12px", cursor: "pointer" }}>
+                {agreementAccepted ? "✓ Agreement Accepted · Review Again" : "Open & Review Full Agreement"}
+              </button>
+              <div style={{ marginTop: "7px", fontSize: "11px", color: "#475569" }}>
+                Software owner: <b>Yogashwer Nath Sharma · YN Software</b>. Source-code ownership is not transferred by subscription.
               </div>
             </div>
 
@@ -288,9 +281,9 @@ export default function RegisterSchool() {
         )}
       </div>
 
-      {showAgreement && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.72)", padding: "20px", overflowY: "auto" }}>
-          <TenantAgreement onClose={() => setShowAgreement(false)} />
+      {showAgreement && !success && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.78)", padding: "14px", overflowY: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <TenantAgreement onClose={() => setShowAgreement(false)} onAccept={acceptAgreement} />
         </div>
       )}
     </div>

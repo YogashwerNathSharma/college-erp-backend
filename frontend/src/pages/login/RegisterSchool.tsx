@@ -1,10 +1,9 @@
-
-
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import { getFullUrl } from "../../utils/url";
+import TenantAgreement, { TENANT_AGREEMENT_VERSION } from "./TenantAgreement";
 
 export default function RegisterSchool() {
   const [schoolName, setSchoolName] = useState("");
@@ -13,71 +12,103 @@ export default function RegisterSchool() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [logo, setLogo] = useState<File | null>(null);           
+  const [logo, setLogo] = useState<File | null>(null);
   const [background, setBackground] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [freeTrialBlocked, setFreeTrialBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState("");
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
+  const [agreementRecorded, setAgreementRecorded] = useState(false);
+  const [agreementError, setAgreementError] = useState("");
   const navigate = useNavigate();
 
- const handleRegister = async () => {
-  if (!schoolName || !name || !email) {
-    alert("School Name, Admin Name and Email are required!");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    // ✅ FormData — supports file upload
-    const formData = new FormData();
-    formData.append("schoolName", schoolName.trim());
-    formData.append("name", name.trim());
-    formData.append("email", email.toLowerCase().trim());
-    formData.append("phone", phone.trim());
-    formData.append("address", address.trim());
-    if (logo) formData.append("logo", logo);
-    if (background) formData.append("background", background);
-
-    const res = await axios.post(getFullUrl("/api/auth/register-tenant"),
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
-    );
-
-    console.log("REGISTER RESPONSE:", res.data);
-
-    if (res.data?.success) {
-      setAdminPassword(res.data?.adminPassword || "123456");
-
-      if (res.data?.freeTrialBlocked) {
-        setFreeTrialBlocked(true);
-        setBlockReason(res.data?.blockReason || "Free trial already used");
-      }
-
-      setSuccess(true);
-    } else {
-      alert(res.data?.message || "Registration failed");
+  const handleRegister = async () => {
+    if (!schoolName || !name || !email) {
+      alert("School Name, Admin Name and Email are required!");
+      return;
     }
-  } catch (err: any) {
-    console.log("REGISTER ERROR:", err);
-    alert(
-      err?.response?.data?.message ||
-        err?.message ||
-        "Registration Failed ❌"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+
+    if (!agreementAccepted) {
+      alert("Please read and accept the YN Software School ERP SaaS Subscription & License Agreement.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setAgreementError("");
+
+      const formData = new FormData();
+      formData.append("schoolName", schoolName.trim());
+      formData.append("type", type);
+      formData.append("name", name.trim());
+      formData.append("email", email.toLowerCase().trim());
+      formData.append("phone", phone.trim());
+      formData.append("address", address.trim());
+      if (logo) formData.append("logo", logo);
+      if (background) formData.append("background", background);
+
+      const res = await axios.post(
+        getFullUrl("/api/auth/register-tenant"),
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      console.log("REGISTER RESPONSE:", res.data);
+
+      if (res.data?.success) {
+        const tenantId = res.data?.tenantId;
+
+        // Record the electronic acceptance against the newly-created tenant.
+        try {
+          const agreementRes = await axios.post(getFullUrl("/api/auth/tenant-agreement/accept"), {
+            tenantId,
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            agreementVersion: TENANT_AGREEMENT_VERSION,
+          });
+          setAgreementRecorded(Boolean(agreementRes.data?.success));
+        } catch (agreementErr: any) {
+          console.error("TENANT AGREEMENT RECORDING ERROR:", agreementErr);
+          setAgreementRecorded(false);
+          setAgreementError(
+            agreementErr?.response?.data?.message ||
+            "Registration completed, but agreement acceptance could not be recorded. Please contact YN Software support before using the tenant."
+          );
+        }
+
+        setAdminPassword(res.data?.adminPassword || "123456");
+
+        if (res.data?.freeTrialBlocked) {
+          setFreeTrialBlocked(true);
+          setBlockReason(res.data?.blockReason || "Free trial already used");
+        }
+
+        setSuccess(true);
+      } else {
+        alert(res.data?.message || "Registration failed");
+      }
+    } catch (err: any) {
+      console.log("REGISTER ERROR:", err);
+      alert(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Registration Failed ❌"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        minHeight: "100vh",
         fontFamily: "sans-serif",
+        position: "relative",
       }}
     >
       {/* LEFT SIDE */}
@@ -91,38 +122,20 @@ export default function RegisterSchool() {
           justifyContent: "center",
           alignItems: "center",
           padding: "20px",
+          minHeight: "100vh",
         }}
       >
-        <img
-          src="/ynlogo.png"
-          alt="logo"
-          style={{
-            width: "180px",
-            marginBottom: "20px",
-          }}
-        />
-
-        <h1
-          style={{
-            fontSize: "42px",
-            fontWeight: "bold",
-            marginBottom: "10px",
-            textAlign: "center",
-          }}
-        >
+        <img src="/ynlogo.png" alt="YN Software logo" style={{ width: "180px", marginBottom: "20px" }} />
+        <h1 style={{ fontSize: "42px", fontWeight: "bold", marginBottom: "10px", textAlign: "center" }}>
           School ERP
         </h1>
-
-        <p
-          style={{
-            fontSize: "18px",
-            opacity: 0.9,
-            textAlign: "center",
-            maxWidth: "280px",
-          }}
-        >
+        <p style={{ fontSize: "18px", opacity: 0.9, textAlign: "center", maxWidth: "280px" }}>
           Register your school and get 14 days free trial!
         </p>
+        <div style={{ marginTop: "30px", fontSize: "13px", opacity: 0.9, textAlign: "center" }}>
+          <b>YN Software</b><br />
+          Owned &amp; developed by Yogashwer Nath Sharma
+        </div>
       </div>
 
       {/* RIGHT SIDE */}
@@ -134,45 +147,20 @@ export default function RegisterSchool() {
           justifyContent: "center",
           padding: "40px 60px",
           background: "#fff",
+          position: "relative",
         }}
       >
-        {/* SUCCESS STATE */}
         {success ? (
-          <div style={{ textAlign: "center", maxWidth: "400px", margin: "0 auto" }}>
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "50%",
-                background: "#10b981",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 15px",
-                fontSize: "28px",
-                color: "#fff",
-              }}
-            >
+          <div style={{ textAlign: "center", maxWidth: "520px", margin: "0 auto" }}>
+            <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 15px", fontSize: "28px", color: "#fff" }}>
               ✓
             </div>
 
-            <h2
-              style={{
-                fontSize: "24px",
-                marginBottom: "10px",
-                color: "#1e293b",
-              }}
-            >
+            <h2 style={{ fontSize: "24px", marginBottom: "10px", color: "#1e293b" }}>
               🎉 Registration Successful!
             </h2>
 
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#64748b",
-                marginBottom: "20px",
-              }}
-            >
+            <p style={{ fontSize: "14px", color: "#64748b", marginBottom: "20px" }}>
               {freeTrialBlocked ? (
                 <>
                   Your school has been registered.{" "}
@@ -183,114 +171,42 @@ export default function RegisterSchool() {
                   Please purchase a plan after login.
                 </>
               ) : (
-                <>
-                  Your school has been registered with a{" "}
-                  <b>14-day free trial</b>.
-                </>
+                <>Your school has been registered with a <b>14-day free trial</b>.</>
               )}
             </p>
 
-            <div
-              style={{
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
-                borderRadius: "10px",
-                padding: "15px",
-                marginBottom: "20px",
-                textAlign: "left",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "#166534",
-                  marginBottom: "8px",
-                }}
-              >
-                <b>Login Credentials:</b>
-              </p>
-              <p style={{ fontSize: "14px", color: "#1e293b" }}>
-                📧 Email: <b>{email}</b>
-              </p>
-              <p style={{ fontSize: "14px", color: "#1e293b" }}>
-                🔑 Password: <b>{adminPassword}</b>
-              </p>
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#64748b",
-                  marginTop: "8px",
-                }}
-              >
-                ⚠️ Please change your password after first login.
-              </p>
+            <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "15px", marginBottom: "15px", textAlign: "left" }}>
+              <p style={{ fontSize: "13px", color: "#166534", marginBottom: "8px" }}><b>Login Credentials:</b></p>
+              <p style={{ fontSize: "14px", color: "#1e293b" }}>📧 Email: <b>{email}</b></p>
+              <p style={{ fontSize: "14px", color: "#1e293b" }}>🔑 Password: <b>{adminPassword}</b></p>
+              <p style={{ fontSize: "12px", color: "#64748b", marginTop: "8px" }}>⚠️ Please change your password after first login.</p>
             </div>
 
-            <button
-              onClick={() => navigate("/")}
-              style={{
-                width: "100%",
-                padding: "13px",
-                borderRadius: "8px",
-                background: "linear-gradient(135deg, #1E90FF, #8A2BE2)",
-                color: "#fff",
-                fontSize: "16px",
-                fontWeight: "600",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
+            <div style={{ background: agreementRecorded ? "#eff6ff" : "#fff7ed", border: `1px solid ${agreementRecorded ? "#bfdbfe" : "#fed7aa"}`, borderRadius: "10px", padding: "12px", marginBottom: "20px", textAlign: "left", fontSize: "12px", color: agreementRecorded ? "#1e40af" : "#9a3412" }}>
+              {agreementRecorded
+                ? `✓ SaaS Agreement v${TENANT_AGREEMENT_VERSION} accepted and recorded for this tenant.`
+                : `⚠ ${agreementError || "Agreement acceptance record is pending."}`}
+            </div>
+
+            <button onClick={() => navigate("/")} style={{ width: "100%", padding: "13px", borderRadius: "8px", background: "linear-gradient(135deg, #1E90FF, #8A2BE2)", color: "#fff", fontSize: "16px", fontWeight: "600", border: "none", cursor: "pointer" }}>
               Go to Login →
             </button>
           </div>
         ) : (
           <>
-            {/* HEADER */}
-            <h2
-              style={{
-                marginBottom: "4px",
-                fontSize: "26px",
-                color: "#1e293b",
-              }}
-            >
-              Register Your School
-            </h2>
-            <p
-              style={{
-                marginBottom: "20px",
-                fontSize: "14px",
-                color: "#64748b",
-              }}
-            >
-              Get started with 14 days free trial
-            </p>
+            <h2 style={{ marginBottom: "4px", fontSize: "26px", color: "#1e293b" }}>Register Your School</h2>
+            <p style={{ marginBottom: "20px", fontSize: "14px", color: "#64748b" }}>Get started with 14 days free trial</p>
 
-            {/* ===== BASIC INFORMATION ===== */}
             <h4 style={sectionTitle}>Basic Information</h4>
 
-            {/* ROW 1: School Name + Type */}
             <div style={rowStyle}>
               <div style={{ flex: 2 }}>
-                <label style={labelStyle}>
-                  School / Institute Name <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Delhi Public School"
-                  value={schoolName}
-                  onChange={(e) => setSchoolName(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelStyle}>School / Institute Name <span style={{ color: "red" }}>*</span></label>
+                <input type="text" placeholder="e.g. Delhi Public School" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>
-                  Type <span style={{ color: "red" }}>*</span>
-                </label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  style={inputStyle}
-                >
+                <label style={labelStyle}>Type <span style={{ color: "red" }}>*</span></label>
+                <select value={type} onChange={(e) => setType(e.target.value)} style={inputStyle}>
                   <option value="School">School</option>
                   <option value="College">College</option>
                   <option value="Institute">Institute</option>
@@ -299,155 +215,88 @@ export default function RegisterSchool() {
               </div>
             </div>
 
-            {/* ROW 2: Admin Name + Phone */}
             <div style={rowStyle}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>
-                  Admin Name <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Rajesh Kumar"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={inputStyle}
-                />
+                <label style={labelStyle}>Admin Name <span style={{ color: "red" }}>*</span></label>
+                <input type="text" placeholder="e.g. Rajesh Kumar" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Phone</label>
-                <input
-                  type="text"
-                  placeholder="+91 98765 43210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  style={inputStyle}
-                />
+                <input type="text" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
               </div>
             </div>
 
-            {/* ROW 3: Email + Address */}
             <div style={rowStyle}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>
-                  Email <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="admin@school.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value.trimStart())}
-                  style={inputStyle}
-                />
+                <label style={labelStyle}>Email <span style={{ color: "red" }}>*</span></label>
+                <input type="email" placeholder="admin@school.com" value={email} onChange={(e) => setEmail(e.target.value.trimStart())} style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Address</label>
+                <input type="text" placeholder="Full address..." value={address} onChange={(e) => setAddress(e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "8px 12px", marginTop: "16px", marginBottom: "16px", fontSize: "12px", color: "#1e40af" }}>
+              ℹ️ Default password: <b>123456</b> | Role: <b>Admin</b> (pre-assigned). Change password after first login.
+            </div>
+
+            <h4 style={sectionTitle}>Branding (Optional)</h4>
+            <div style={rowStyle}>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>School Logo</label>
+                <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) setLogo(file); }} style={{ fontSize: "13px" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={labelStyle}>Background Image</label>
+                <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) setBackground(file); }} style={{ fontSize: "13px" }} />
+              </div>
+            </div>
+
+            {/* ===== LEGAL ACCEPTANCE ===== */}
+            <div style={{ marginTop: "8px", marginBottom: "14px", padding: "12px", border: "1px solid #c7d2fe", background: "#eef2ff", borderRadius: "10px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                 <input
-                  type="text"
-                  placeholder="Full address..."
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  style={inputStyle}
+                  id="tenantAgreement"
+                  type="checkbox"
+                  checked={agreementAccepted}
+                  onChange={(e) => setAgreementAccepted(e.target.checked)}
+                  style={{ marginTop: "3px", width: "16px", height: "16px", cursor: "pointer" }}
                 />
+                <label htmlFor="tenantAgreement" style={{ fontSize: "12px", lineHeight: 1.6, color: "#3730a3", cursor: "pointer" }}>
+                  I am authorized to register this institution and I have read and agree to the{" "}
+                  <button type="button" onClick={() => setShowAgreement(true)} style={{ border: "none", background: "transparent", color: "#1d4ed8", fontWeight: 700, textDecoration: "underline", padding: 0, cursor: "pointer" }}>
+                    YN Software School ERP SaaS Subscription &amp; License Agreement
+                  </button>{" "}
+                  (Version {TENANT_AGREEMENT_VERSION}).
+                </label>
+              </div>
+              <div style={{ marginTop: "6px", marginLeft: "26px", fontSize: "11px", color: "#475569" }}>
+                Software owner: <b>Yogashwer Nath Sharma · YN Software</b>. ERP access is subscription-based; source-code ownership is not transferred.
               </div>
             </div>
 
-            {/* INFO BOX */}
-            <div
-              style={{
-                background: "#eff6ff",
-                border: "1px solid #bfdbfe",
-                borderRadius: "8px",
-                padding: "8px 12px",
-                marginTop: "16px",
-                marginBottom: "16px",
-                fontSize: "12px",
-                color: "#1e40af",
-              }}
-            >
-              ℹ️ Default password: <b>123456</b> | Role: <b>Admin</b>{" "}
-              (pre-assigned). Change password after first login.
-            </div>
-              {/* ===== BRANDING (Logo + Background) ===== */}
-              <h4 style={sectionTitle}>Branding (Optional)</h4>
-
-              <div style={rowStyle}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>School Logo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setLogo(file);
-                    }}
-                    style={{ fontSize: "13px" }}
-                  />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Background Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) setBackground(file);
-                    }}
-                    style={{ fontSize: "13px" }}
-                  />
-                </div>
-              </div>
-            {/* REGISTER BUTTON */}
-            <button
-              onClick={handleRegister}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "13px",
-                borderRadius: "8px",
-                background: loading
-                  ? "#999"
-                  : "linear-gradient(135deg, #8A2BE2, #1E90FF)",
-                color: "#fff",
-                fontSize: "16px",
-                fontWeight: "600",
-                border: "none",
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
+            <button onClick={handleRegister} disabled={loading || !agreementAccepted} style={{ width: "100%", padding: "13px", borderRadius: "8px", background: loading || !agreementAccepted ? "#94a3b8" : "linear-gradient(135deg, #8A2BE2, #1E90FF)", color: "#fff", fontSize: "16px", fontWeight: "600", border: "none", cursor: loading || !agreementAccepted ? "not-allowed" : "pointer" }}>
               {loading ? "Registering..." : "Register School 🚀"}
             </button>
 
-            {/* LOGIN LINK */}
-            <p
-              style={{
-                textAlign: "center",
-                marginTop: "14px",
-                fontSize: "14px",
-                color: "#64748b",
-              }}
-            >
+            <p style={{ textAlign: "center", marginTop: "14px", fontSize: "14px", color: "#64748b" }}>
               Already have an account?{" "}
-              <span
-                onClick={() => navigate("/")}
-                style={{
-                  color: "#1E90FF",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                Login
-              </span>
+              <span onClick={() => navigate("/")} style={{ color: "#1E90FF", fontWeight: "600", cursor: "pointer", textDecoration: "underline" }}>Login</span>
             </p>
           </>
         )}
       </div>
+
+      {showAgreement && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.72)", padding: "20px", overflowY: "auto" }}>
+          <TenantAgreement onClose={() => setShowAgreement(false)} />
+        </div>
+      )}
     </div>
   );
 }
 
-// ===== STYLES =====
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
@@ -481,4 +330,3 @@ const sectionTitle: React.CSSProperties = {
   borderBottom: "1px solid #e2e8f0",
   paddingBottom: "4px",
 };
-

@@ -16,6 +16,29 @@
     <link rel="dns-prefetch" href="https://2p8.onrender.com" />
     <link rel="preconnect" href="https://2p8.onrender.com" crossorigin />
 
+    <!-- ── Registration-page branding cleanup ──────────────────────────── -->
+    <style>
+      /* Keep the registration branding focused: logo + School ERP only. */
+      .register-panel-brand > p,
+      .register-panel-brand > div {
+        display: none !important;
+      }
+
+      @media (max-width: 768px) {
+        .register-panel-brand {
+          padding-bottom: 48px !important;
+        }
+
+        .register-panel-brand img {
+          margin-bottom: 10px !important;
+        }
+
+        .register-panel-brand h1 {
+          margin-bottom: 0 !important;
+        }
+      }
+    </style>
+
     <!-- ── PWA-ready: allow browser to cache assets aggressively ────────
          NOTE: We intentionally do NOT add no-cache / no-store meta tags.
          All JS/CSS assets have content-hash filenames so they are safe

@@ -33,6 +33,8 @@ const router = Router();
 router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 
 // ── Dashboard Cache (30 minutes) ──────────────────────────────────────────────
+// Cache is always tenant-scoped. "all" is used only when a tenant has no
+// current academic year yet, so it can never collide with a real year ID.
 const dashboardCache = new Map<string, { data: any; expiry: number; createdAt: number }>();
 const CACHE_TTL = 30 * 60 * 1000;
 
@@ -52,9 +54,22 @@ function requireAcademicYearId(req: any): string {
 router.get("/full", async (req: any, res: Response) => {
   try {
     const _start = Date.now();
-    const yearId = requireAcademicYearId(req);
+    const yearId = resolveAcademicYearId(req);
+
+    // A newly provisioned tenant may legitimately have no academic year yet.
+    // The full dashboard service already supports an optional academicYearId,
+    // so do not turn that valid state into a 500 response. When a year exists,
+    // retain the existing academic-year adapter (including transport/hostel
+    // year-scoped counts) exactly as before.
+    if (!req.tenantId) {
+      return res.status(403).json({
+        success: false,
+        message: "Tenant context is missing. Access denied.",
+      });
+    }
+
     const forceRefresh = req.query.refresh === "true";
-    const cacheKey = `${req.tenantId}|${yearId}`;
+    const cacheKey = `${req.tenantId}|${yearId || "all"}`;
 
     if (forceRefresh) dashboardCache.delete(cacheKey);
 
@@ -66,7 +81,9 @@ router.get("/full", async (req: any, res: Response) => {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(() => resolve("TIMEOUT"), 30000);
     });
-    const dataPromise = getFullDashboardDataAcademicYear(req.tenantId, yearId);
+    const dataPromise = yearId
+      ? getFullDashboardDataAcademicYear(req.tenantId, yearId)
+      : getFullDashboardData(req.tenantId);
     const result = await Promise.race([dataPromise, timeoutPromise]);
 
     if (result === "TIMEOUT") {

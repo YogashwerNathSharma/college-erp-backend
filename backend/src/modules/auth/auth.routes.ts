@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { login, register, registerTenant, registerSuperAdmin, changePassword, forgotPassword, resetPassword } from "./auth.controller";
+import { acceptTenantAgreement, getTenantAgreementStatus } from "./tenantAgreement.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowInitialSuperAdminSetup } from "./super-admin-bootstrap.middleware";
 import { refreshTokenHandler } from "./auth.refresh";
@@ -22,6 +23,10 @@ router.post(
   ]),
   registerTenant
 );
+
+// Tenant SaaS agreement: public acceptance is tied to a verified tenant admin.
+router.get("/tenant-agreement/status", getTenantAgreementStatus);
+router.post("/tenant-agreement/accept", acceptTenantAgreement);
 
 // One-time bootstrap only: once a SUPER_ADMIN exists, this endpoint is closed.
 router.post("/super-admin", allowInitialSuperAdminSetup, registerSuperAdmin);

@@ -1,0 +1,1 @@
+Schema recovery is handled by the build guard script. This file can remain as a recovery note.

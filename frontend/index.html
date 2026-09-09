@@ -85,6 +85,44 @@
       }
     </style>
 
+    <!-- ── TENANT ISOLATION: namespace dashboard cache by authenticated tenant ── -->
+    <script>
+      (() => {
+        const originalGetItem = Storage.prototype.getItem;
+        const originalSetItem = Storage.prototype.setItem;
+        const originalRemoveItem = Storage.prototype.removeItem;
+        const tenantScopedKey = (key) => {
+          if (!key.startsWith("dashboard_cache:")) return key;
+          try {
+            const userRaw = originalGetItem.call(localStorage, "user");
+            const user = userRaw ? JSON.parse(userRaw) : null;
+            const tenantId = user?.tenantId || user?.tenant?.id || null;
+            return tenantId ? `dashboard_cache:${tenantId}:${key.slice("dashboard_cache:".length)}` : null;
+          } catch {
+            return null;
+          }
+        };
+
+        Storage.prototype.getItem = function (key) {
+          const scopedKey = tenantScopedKey(String(key));
+          if (String(key).startsWith("dashboard_cache:") && !scopedKey) return null;
+          return originalGetItem.call(this, scopedKey || key);
+        };
+
+        Storage.prototype.setItem = function (key, value) {
+          const scopedKey = tenantScopedKey(String(key));
+          if (String(key).startsWith("dashboard_cache:") && !scopedKey) return;
+          return originalSetItem.call(this, scopedKey || key, value);
+        };
+
+        Storage.prototype.removeItem = function (key) {
+          const scopedKey = tenantScopedKey(String(key));
+          if (String(key).startsWith("dashboard_cache:") && !scopedKey) return;
+          return originalRemoveItem.call(this, scopedKey || key);
+        };
+      })();
+    </script>
+
     <!-- ── PWA-ready: allow browser to cache assets aggressively ────────
          NOTE: We intentionally do NOT add no-cache / no-store meta tags.
          All JS/CSS assets have content-hash filenames so they are safe

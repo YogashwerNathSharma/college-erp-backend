@@ -49,9 +49,7 @@ const TTL_MS = 30_000; // 30 seconds cache
 
 /**
  * Generate cache key from request.
- * Includes tenantId AND academicYearId for proper isolation:
- *   "tenantId:academicYearId:originalUrl"
- * This prevents data from one academic year bleeding into another year's cache.
+ * Includes tenantId AND academicYearId for proper isolation.
  */
 function getCacheKey(req: Request): string {
   const tenantId = (req as any).tenantId || (req as any).user?.tenantId || "global";
@@ -60,15 +58,24 @@ function getCacheKey(req: Request): string {
 }
 
 /**
- * Check if this request should be cached
+ * Check if this request should be cached.
  */
 function isCacheable(req: Request): boolean {
   if (req.method !== "GET") return false;
+
+  // CRITICAL SECURITY RULE:
+  // autoCacheMiddleware is mounted before module auth middleware in app.ts.
+  // Therefore req.user is normally unset here. Never cache such a request,
+  // otherwise all tenants can share the same "global" cache entry.
+  if (!(req as any).user) return false;
+
+  // SUPER_ADMIN may use cross-tenant routes, but cache keys for those requests
+  // must remain isolated from normal tenant users.
   return CACHEABLE_PATTERNS.some(pattern => pattern.test(req.originalUrl));
 }
 
 /**
- * Check if this request should invalidate cache entries
+ * Check if this request should invalidate cache entries.
  */
 function shouldInvalidate(req: Request): boolean {
   if (req.method === "GET") return false; // Only mutations invalidate

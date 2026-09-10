@@ -58,13 +58,13 @@ export const resolveAcademicYear = async (
     }
 
     // Student Management > Student List is a tenant-wide roster.
-    // It must not inherit the globally selected academic-year header,
-    // otherwise students from another year disappear from the list/search.
-    // An explicit query/body year is still respected for API callers.
+    // Do not allow the globally selected academic-year header to hide students.
+    // Match the mounted endpoint by originalUrl as well as baseUrl/path because
+    // Express changes baseUrl/path depending on where this middleware is mounted.
+    const requestPath = req.originalUrl.split("?")[0];
     const isStudentListRequest =
-      req.baseUrl === "/api/students" &&
       req.method === "GET" &&
-      (req.path === "/" || req.path === "");
+      (requestPath === "/api/students" || requestPath === "/api/students/");
 
     // ─── 1. Extract academicYearId from request ───
     // For Student List, deliberately ignore x-academic-year-id because the
@@ -78,6 +78,8 @@ export const resolveAcademicYear = async (
     // Do not silently force the current academic year for the Student List.
     // This keeps the tenant-wide roster searchable across academic years.
     if (isStudentListRequest && !academicYearId) {
+      // Explicitly clear any value a preceding/global middleware may have set.
+      (req as any).academicYearId = undefined;
       return next();
     }
 

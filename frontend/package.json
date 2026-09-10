@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "postinstall": "",
-    "build": "node scripts/ensure-master-table-relation-fields.cjs && node scripts/ensure-library-master-fields.cjs && node scripts/ensure-result-type-ui.cjs && node scripts/ensure-result-calculation-ui.cjs && vite build",
+    "build": "node scripts/ensure-master-table-relation-fields.cjs && node scripts/ensure-library-master-fields.cjs && node scripts/ensure-result-type-ui.cjs && node scripts/ensure-result-calculation-ui.cjs && node scripts/fix-student-list-search.cjs && vite build",
     "preview": "vite preview",
     "lint": "eslint ."
   },

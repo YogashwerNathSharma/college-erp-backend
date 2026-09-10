@@ -67,13 +67,14 @@ export const createStudentHandler = async (req: any, res: any) => {
 
 export const getAllStudentsHandler = async (req: any, res: any) => {
   try {
-    const { classId, sectionId, academicYearId: queryAcademicYearId, status, admissionStatus, search, gender, page, limit, dateFrom, dateTo } = req.query;
-    // Use middleware-injected academicYearId as primary, fall back to query param
-    const academicYearId = req.academicYearId || queryAcademicYearId;
+    const { classId, sectionId, status, admissionStatus, search, gender, page, limit, dateFrom, dateTo } = req.query;
+    // Student Management > All Students is intentionally tenant-wide and searchable
+    // across academic years. Never inherit the global academic-year context here.
+    // Class/section/year-specific screens pass their own filters explicitly.
     const result = await getAllStudents(req.tenantId, {
       classId,
       sectionId,
-      academicYearId,
+      academicYearId: undefined,
       status,
       admissionStatus,
       dateFrom,

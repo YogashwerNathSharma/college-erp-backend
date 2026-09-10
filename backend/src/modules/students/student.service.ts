@@ -131,11 +131,18 @@ export const getAllStudents = async (tenantId: string, filters: StudentFilters) 
       { fullName: { contains: q, mode: "insensitive" } },
       { admissionNo: { contains: q, mode: "insensitive" } },
       { srNo: { contains: q, mode: "insensitive" } },
-      { rollNumber: { contains: q, mode: "insensitive" } },
       { fatherName: { contains: q, mode: "insensitive" } },
       { fatherPhone: { contains: q, mode: "insensitive" } },
       { phone: { contains: q, mode: "insensitive" } },
       { email: { contains: q, mode: "insensitive" } },
+      {
+        enrollments: {
+          some: {
+            isDeleted: false,
+            rollNumber: { contains: q, mode: "insensitive" },
+          },
+        },
+      },
     ];
   }
 
@@ -157,7 +164,6 @@ export const getAllStudents = async (tenantId: string, filters: StudentFilters) 
         fullName: true,
         admissionNo: true,
         srNo: true,
-        rollNumber: true,
         gender: true,
         dob: true,
         status: true,
@@ -172,6 +178,7 @@ export const getAllStudents = async (tenantId: string, filters: StudentFilters) 
         enrollments: {
           where: { status: "active", isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
           select: {
+            rollNumber: true,
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
             academicYear: { select: { id: true, name: true } },
@@ -187,7 +194,12 @@ export const getAllStudents = async (tenantId: string, filters: StudentFilters) 
     prisma.student.count({ where }),
   ]);
 
-  return { students, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
+  const normalizedStudents = students.map((student: any) => ({
+    ...student,
+    rollNumber: student.enrollments?.[0]?.rollNumber ?? null,
+  }));
+
+  return { students: normalizedStudents, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
 };
 
 export const getStudentById = async (id: string, tenantId: string) => prisma.student.findFirst({
@@ -223,13 +235,19 @@ export const updateStudent = async (id: string, data: any, tenantId: string) => 
     updateData.bloodGroup = data.bloodGroup ? bgMap[data.bloodGroup] || data.bloodGroup : null;
   }
   if (data.status) updateData.status = data.status;
-  if (data.rollNumber !== undefined) updateData.rollNumber = data.rollNumber || null;
   if (data.religionId !== undefined) updateData.religionId = data.religionId || null;
   if (data.casteId !== undefined) updateData.casteId = data.casteId || null;
   if (data.categoryId !== undefined) updateData.categoryId = data.categoryId || null;
   if (data.nationalityId !== undefined) updateData.nationalityId = data.nationalityId || null;
 
   const result = await prisma.student.updateMany({ where: { id, tenantId, isDeleted: false }, data: updateData });
+
+  if (data.rollNumber !== undefined) {
+    const enrollmentWhere: any = { studentId: id, tenantId, isDeleted: false };
+    if (data.academicYearId) enrollmentWhere.academicYearId = data.academicYearId;
+    else enrollmentWhere.status = "active";
+    await prisma.enrollment.updateMany({ where: enrollmentWhere, data: { rollNumber: data.rollNumber || null } });
+  }
   if (data.status && ["active", "inactive"].includes(data.status)) {
     await prisma.enrollment.updateMany({ where: { studentId: id, tenantId, isDeleted: false }, data: { status: data.status } });
   }

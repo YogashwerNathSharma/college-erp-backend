@@ -64,6 +64,18 @@ export const resolveAcademicYear = async (
       req.body?.academicYearId ||
       undefined;
 
+    // Student List is explicitly an "All Students" tenant roster.
+    // Do not silently force the current academic year when no year was
+    // explicitly selected; this allows students from previous years to be
+    // loaded and searched. An explicit header/query/body year still applies.
+    const isStudentListRequest =
+      req.baseUrl === "/api/students" &&
+      req.method === "GET" &&
+      (req.path === "/" || req.path === "");
+    if (isStudentListRequest && !academicYearId) {
+      return next();
+    }
+
     // ─── 2. If provided, validate it belongs to this tenant ───
     if (academicYearId) {
       const year = await prisma.academicYear.findFirst({

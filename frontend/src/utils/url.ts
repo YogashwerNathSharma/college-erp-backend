@@ -15,6 +15,16 @@ export function getFullUrl(path: string | null | undefined): string | undefined;
 export function getFullUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
   if (path.startsWith("http")) return path;
+
+  // Student List must always read the current API result. The list page is
+  // client-filtered, so a cached GET can make both loading and search appear
+  // stale/empty after an admission. Add a lightweight cache-buster only to
+  // the student collection endpoint; do not affect other API/file URLs.
+  if (path.startsWith("/api/students")) {
+    const separator = path.includes("?") ? "&" : "?";
+    return `${API_BASE_URL}${path}${separator}_ts=${Date.now()}`;
+  }
+
   if (path.startsWith("/")) return `${API_BASE_URL}${path}`;
   return `${API_BASE_URL}/uploads/${path}`;
 }

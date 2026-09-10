@@ -1,14 +1,8 @@
 import { API_BASE_URL } from "../config/api";
 
 /**
- * Convert a relative file path (from backend) to a full URL.
+ * Convert a relative file/API path to a full URL.
  * Works on both localhost (API_BASE_URL = "") and production.
- *
- * Examples:
- *   "/uploads/logo.png" → "https://backend.onrender.com/uploads/logo.png"
- *   "logo.png"          → "https://backend.onrender.com/uploads/logo.png"
- *   "https://..."       → "https://..." (unchanged)
- *   null/undefined      → undefined
  */
 export function getFullUrl(path: string): string;
 export function getFullUrl(path: string | null | undefined): string | undefined;
@@ -16,13 +10,16 @@ export function getFullUrl(path: string | null | undefined): string | undefined 
   if (!path) return undefined;
   if (path.startsWith("http")) return path;
 
-  // Student List must always read the current API result. The list page is
-  // client-filtered, so a cached GET can make both loading and search appear
-  // stale/empty after an admission. Add a lightweight cache-buster only to
-  // the student collection endpoint; do not affect other API/file URLs.
-  if (path.startsWith("/api/students")) {
-    const separator = path.includes("?") ? "&" : "?";
-    return `${API_BASE_URL}${path}${separator}_ts=${Date.now()}`;
+  // Student Management loads the roster client-side for instant local search.
+  // Never let the list request become an accidentally huge 2,000-row payload;
+  // keep it bounded to the largest page size supported by the UI while still
+  // bypassing stale intermediary caches.
+  if (path === "/api/students" || path.startsWith("/api/students?")) {
+    const url = new URL(path, window.location.origin);
+    const requestedLimit = Number(url.searchParams.get("limit") || "0");
+    if (requestedLimit > 1000) url.searchParams.set("limit", "1000");
+    url.searchParams.set("_ts", Date.now().toString());
+    return `${API_BASE_URL}${url.pathname}${url.search}`;
   }
 
   if (path.startsWith("/")) return `${API_BASE_URL}${path}`;

@@ -1,4 +1,3 @@
-
 import prisma from "../../utils/prisma";
 import { generateSrNumber, generateAdmissionNumber, syncAdmissionCounter } from "./admission-number.service";
 import { cached } from "../../utils/cache";
@@ -65,7 +64,23 @@ export const getAllStudents = async (tenantId: string, filters: { classId?: stri
   return { students, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
 };
 
-export const getStudentById = async (id: string, tenantId: string) => prisma.student.findFirst({ where: { id, tenantId, isDeleted: false }, include: { enrollments: { where: { isDeleted: false }, include: { class: { select: { id: true, name: true } }, section: { select: { id: true, name: true } }, academicYear: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } } });
+export const getStudentById = async (id: string, tenantId: string) => {
+  const student = await prisma.student.findFirst({
+    where: { id, tenantId, isDeleted: false },
+    include: {
+      enrollments: {
+        where: { isDeleted: false },
+        include: {
+          class: { select: { id: true, name: true } },
+          section: { select: { id: true, name: true } },
+          academicYear: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+  return student;
+};
 
 export const updateStudent = async (id: string, data: any, tenantId: string) => {
   const { firstName, lastName, gender, dob, email, phone, address, bloodGroup, aadharNo, fatherName, motherName, fatherPhone, motherPhone, fatherOccupation, motherOccupation, guardianName, guardianPhone, guardianRelation, status, rollNumber, photoUrl, religionId, casteId, categoryId, nationalityId, religion, caste, category, nationality } = data;

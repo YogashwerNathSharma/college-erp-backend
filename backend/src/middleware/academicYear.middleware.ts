@@ -57,21 +57,26 @@ export const resolveAcademicYear = async (
       return next();
     }
 
-    // ─── 1. Extract academicYearId from request ───
-    let academicYearId: string | undefined =
-      (req.headers["x-academic-year-id"] as string) ||
-      (req.query.academicYearId as string) ||
-      req.body?.academicYearId ||
-      undefined;
-
-    // Student List is explicitly an "All Students" tenant roster.
-    // Do not silently force the current academic year when no year was
-    // explicitly selected; this allows students from previous years to be
-    // loaded and searched. An explicit header/query/body year still applies.
+    // Student Management > Student List is a tenant-wide roster.
+    // It must not inherit the globally selected academic-year header,
+    // otherwise students from another year disappear from the list/search.
+    // An explicit query/body year is still respected for API callers.
     const isStudentListRequest =
       req.baseUrl === "/api/students" &&
       req.method === "GET" &&
       (req.path === "/" || req.path === "");
+
+    // ─── 1. Extract academicYearId from request ───
+    // For Student List, deliberately ignore x-academic-year-id because the
+    // page is an "All Students" roster and has no year filter of its own.
+    let academicYearId: string | undefined =
+      (isStudentListRequest ? undefined : (req.headers["x-academic-year-id"] as string)) ||
+      (req.query.academicYearId as string) ||
+      req.body?.academicYearId ||
+      undefined;
+
+    // Do not silently force the current academic year for the Student List.
+    // This keeps the tenant-wide roster searchable across academic years.
     if (isStudentListRequest && !academicYearId) {
       return next();
     }

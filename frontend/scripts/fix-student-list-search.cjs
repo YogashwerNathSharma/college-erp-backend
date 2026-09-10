@@ -13,7 +13,7 @@ if (start < 0 || end < 0) {
   throw new Error("StudentsPage search block not found; refusing unrelated modification.");
 }
 
-const replacement = `    // Search: keep this client-side filter aligned with the backend search fields.\n    if (search.trim()) {\n      const q = search.trim().toLowerCase();\n      const contains = (value: unknown) => String(value ?? "").toLowerCase().includes(q);\n\n      result = result.filter((s) =>\n        contains(s.fullName || \\`${"${s.firstName || ""}"} ${"${s.lastName || ""}"}\\`) ||\n        contains(s.firstName) ||\n        contains(s.lastName) ||\n        contains(s.admissionNo) ||\n        contains(s.srNo) ||\n        contains(s.rollNumber) ||\n        contains(s.email) ||\n        contains(s.fatherName) ||\n        contains(s.phone) ||\n        contains(s.fatherPhone)\n      );\n    }\n`;
+const replacement = `    // Search: keep this client-side filter aligned with the backend search fields.\n    if (search.trim()) {\n      const q = search.trim().toLowerCase();\n      const contains = (value: unknown) => String(value ?? "").toLowerCase().includes(q);\n\n      result = result.filter((s) =>\n        contains(s.fullName || ((s.firstName || "") + " " + (s.lastName || ""))) ||\n        contains(s.firstName) ||\n        contains(s.lastName) ||\n        contains(s.admissionNo) ||\n        contains(s.srNo) ||\n        contains(s.rollNumber) ||\n        contains(s.email) ||\n        contains(s.fatherName) ||\n        contains(s.phone) ||\n        contains(s.fatherPhone)\n      );\n    }\n`;
 
 source = source.slice(0, start) + replacement + source.slice(end);
 

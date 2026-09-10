@@ -11,41 +11,14 @@ const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
 // ============================================
 export const createStudent = async (data: any, tenantId: string, userId: string) => {
   const {
-    firstName,
-    lastName,
-    gender,
-    dob,
-    email,
-    phone,
-    address,
-    admissionNo,
-    bloodGroup,
-    religion,
-    caste,
-    category,
-    nationality,
-    aadharNo,
-    fatherName,
-    fatherPhone,
-    fatherOccupation,
-    motherName,
-    motherPhone,
-    motherOccupation,
-    guardianName,
-    guardianPhone,
-    guardianRelation,
-    photoUrl,
-    classId,
-    sectionId,
-    academicYearId,
-    rollNumber,
-    religionId,
-    casteId,
-    categoryId,
-    nationalityId,
+    firstName, lastName, gender, dob, email, phone, address, admissionNo,
+    bloodGroup, religion, caste, category, nationality, aadharNo,
+    fatherName, fatherPhone, fatherOccupation, motherName, motherPhone,
+    motherOccupation, guardianName, guardianPhone, guardianRelation, photoUrl,
+    classId, sectionId, academicYearId, rollNumber, religionId, casteId,
+    categoryId, nationalityId,
   } = data;
 
-  // Auto-generate admission number if not provided
   let finalAdmissionNo = admissionNo;
   if (!finalAdmissionNo) {
     try {
@@ -53,7 +26,6 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
       console.log(`✅ Generated admission number: ${finalAdmissionNo}`);
     } catch (err: any) {
       console.error("❌ Failed to generate admission number:", err.message);
-      // Sync counter and retry once using the static import
       await syncAdmissionCounter(tenantId, academicYearId);
       finalAdmissionNo = await generateAdmissionNumber(tenantId, academicYearId);
       console.log(`✅ Generated after sync: ${finalAdmissionNo}`);
@@ -61,15 +33,12 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
   }
 
   const srNo = await generateSrNumber(tenantId, finalAdmissionNo);
-
-  // Resolve master data: if string name provided (not ObjectId), find or create
   const isObjectId = (val: string) => /^[a-f0-9]{24}$/i.test(val);
 
   let resolvedReligionId = religionId || null;
   if (!resolvedReligionId && religion) {
-    if (isObjectId(religion)) {
-      resolvedReligionId = religion;
-    } else {
+    if (isObjectId(religion)) resolvedReligionId = religion;
+    else {
       const found = await prisma.religion.findFirst({ where: { tenantId, name: { equals: religion, mode: "insensitive" } } });
       resolvedReligionId = found?.id || null;
     }
@@ -77,9 +46,8 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
 
   let resolvedCategoryId = categoryId || null;
   if (!resolvedCategoryId && category) {
-    if (isObjectId(category)) {
-      resolvedCategoryId = category;
-    } else {
+    if (isObjectId(category)) resolvedCategoryId = category;
+    else {
       const found = await prisma.category.findFirst({ where: { tenantId, name: { equals: category, mode: "insensitive" } } });
       resolvedCategoryId = found?.id || null;
     }
@@ -87,15 +55,13 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
 
   let resolvedNationalityId = nationalityId || null;
   if (!resolvedNationalityId && nationality) {
-    if (isObjectId(nationality)) {
-      resolvedNationalityId = nationality;
-    } else {
+    if (isObjectId(nationality)) resolvedNationalityId = nationality;
+    else {
       const found = await prisma.nationality.findFirst({ where: { tenantId, name: { equals: nationality, mode: "insensitive" } } });
       resolvedNationalityId = found?.id || null;
     }
   }
 
-  // Normalize gender to enum value
   const normalizeGender = (g: string): string => {
     if (!g) return "MALE";
     const upper = g.toUpperCase();
@@ -104,89 +70,48 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
     return "OTHER";
   };
 
-  // Normalize blood group to enum value
   const normalizeBloodGroup = (bg: string): string | null => {
     if (!bg) return null;
     const map: Record<string, string> = {
-      "A+": "A_POSITIVE", "A-": "A_NEGATIVE",
-      "B+": "B_POSITIVE", "B-": "B_NEGATIVE",
-      "O+": "O_POSITIVE", "O-": "O_NEGATIVE",
-      "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE",
+      "A+": "A_POSITIVE", "A-": "A_NEGATIVE", "B+": "B_POSITIVE", "B-": "B_NEGATIVE",
+      "O+": "O_POSITIVE", "O-": "O_NEGATIVE", "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE",
     };
     return map[bg] || map[bg.toUpperCase()] || null;
   };
 
-  // 1. Create Student (no transaction — avoids MongoDB replica set timeout)
   const student = await prisma.student.create({
     data: {
-      firstName,
-      lastName,
-      fullName: `${firstName} ${lastName}`,
-      gender: normalizeGender(gender),
-      dob: new Date(dob),
-      email: email || null,
-      phone: phone || null,
-      address: address || "N/A",
-      admissionNo: finalAdmissionNo,
-      srNo,
-      bloodGroup: normalizeBloodGroup(bloodGroup) as any,
-      religionId: resolvedReligionId || null,
-      casteId: casteId || null,
-      categoryId: resolvedCategoryId || null,
-      nationalityId: resolvedNationalityId || null,
-      aadharNo: aadharNo || null,
-      fatherName: fatherName || "N/A",
-      fatherPhone: fatherPhone || "N/A",
-      fatherOccupation: fatherOccupation || null,
-      motherName: motherName || "N/A",
-      motherPhone: motherPhone || null,
-      motherOccupation: motherOccupation || null,
-      guardianName: guardianName || null,
-      guardianPhone: guardianPhone || null,
-      guardianRelation: guardianRelation || null,
-      photoUrl: photoUrl || null,
-      admissionDate: new Date(),
-      status: "pending",
-      isDeleted: false,
-      tenant: { connect: { id: tenantId } },
-      academicYear: { connect: { id: academicYearId } },
+      firstName, lastName, fullName: `${firstName} ${lastName}`, gender: normalizeGender(gender),
+      dob: new Date(dob), email: email || null, phone: phone || null, address: address || "N/A",
+      admissionNo: finalAdmissionNo, srNo, bloodGroup: normalizeBloodGroup(bloodGroup) as any,
+      religionId: resolvedReligionId || null, casteId: casteId || null, categoryId: resolvedCategoryId || null,
+      nationalityId: resolvedNationalityId || null, aadharNo: aadharNo || null,
+      fatherName: fatherName || "N/A", fatherPhone: fatherPhone || "N/A", fatherOccupation: fatherOccupation || null,
+      motherName: motherName || "N/A", motherPhone: motherPhone || null, motherOccupation: motherOccupation || null,
+      guardianName: guardianName || null, guardianPhone: guardianPhone || null, guardianRelation: guardianRelation || null,
+      photoUrl: photoUrl || null, admissionDate: new Date(), status: "pending", isDeleted: false,
+      tenant: { connect: { id: tenantId } }, academicYear: { connect: { id: academicYearId } },
     },
   });
 
-  // 2. Create Enrollment (if classId provided)
   let enrollment = null;
   if (classId && sectionId) {
-    const enrollmentData: any = {
-      student: { connect: { id: student.id } },
-      class: { connect: { id: classId } },
-      section: { connect: { id: sectionId } },
-      academicYear: { connect: { id: academicYearId } },
-      tenant: { connect: { id: tenantId } },
-      rollNumber: rollNumber || null,
-      status: "active",
-    };
-    enrollment = await prisma.enrollment.create({ data: enrollmentData });
+    enrollment = await prisma.enrollment.create({
+      data: {
+        student: { connect: { id: student.id } }, class: { connect: { id: classId } }, section: { connect: { id: sectionId } },
+        academicYear: { connect: { id: academicYearId } }, tenant: { connect: { id: tenantId } },
+        rollNumber: rollNumber || null, status: "active",
+      },
+    });
   }
 
-  // 3. Log to StudentHistory (fire-and-forget — non-critical)
   prisma.studentHistory.create({
     data: {
-      studentId: student.id,
-      tenantId,
-      action: "ADMISSION",
-      details: JSON.stringify({
-        admissionNo: finalAdmissionNo,
-        classId,
-        sectionId,
-        academicYearId,
-        rollNumber: rollNumber || null,
-      }),
-      toClassId: classId || null,
-      toSectionId: sectionId || null,
-      academicYearId,
-      performedBy: userId || "system",
+      studentId: student.id, tenantId, action: "ADMISSION",
+      details: JSON.stringify({ admissionNo: finalAdmissionNo, classId, sectionId, academicYearId, rollNumber: rollNumber || null }),
+      toClassId: classId || null, toSectionId: sectionId || null, academicYearId, performedBy: userId || "system",
     },
-  }).catch(() => {}); // Don't block admission if history fails
+  }).catch(() => {});
 
   return { student, enrollment };
 };
@@ -197,30 +122,20 @@ export const createStudent = async (data: any, tenantId: string, userId: string)
 export const getAllStudents = async (
   tenantId: string,
   filters: {
-    classId?: string;
-    sectionId?: string;
-    academicYearId?: string;
-    status?: string;
-    admissionStatus?: string;
-    search?: string;
-    gender?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    page?: number;
-    limit?: number;
+    classId?: string; sectionId?: string; academicYearId?: string; status?: string; admissionStatus?: string;
+    search?: string; gender?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number;
   }
 ) => {
   const { classId, sectionId, academicYearId, status, admissionStatus, search, gender, dateFrom, dateTo, page = 1, limit = 50 } = filters;
 
-  const where: any = {
-    tenantId,
-    isDeleted: false,
-  };
+  // SUPER_ADMIN has no tenantId in the request by design. For the all-students
+  // list, an absent tenantId means the caller is allowed to see all tenants.
+  const where: any = { isDeleted: false };
+  if (tenantId) where.tenantId = tenantId;
 
   if (status) where.status = status;
   if (admissionStatus) where.status = admissionStatus;
 
-  // Gender filter — DB now stores normalized enum: MALE / FEMALE / OTHER
   if (gender) {
     const g = gender.toUpperCase();
     if (g === "MALE" || g === "M") where.gender = "MALE";
@@ -243,72 +158,36 @@ export const getAllStudents = async (
     ];
   }
 
-  // Academic year scoping: When academicYearId is provided, ALWAYS filter students
-  // by their enrollment in that year. This ensures switching academic year changes the roster.
-  const enrollmentFilter: any = {
-    status: "active",
-    isDeleted: false,
-  };
+  const enrollmentFilter: any = { status: "active", isDeleted: false };
   if (classId) enrollmentFilter.classId = classId;
   if (sectionId) enrollmentFilter.sectionId = sectionId;
   if (academicYearId) enrollmentFilter.academicYearId = academicYearId;
 
-  // When academicYearId is present, always scope through enrollment (even without class/section)
   if (academicYearId || classId || sectionId) {
-    where.enrollments = {
-      some: enrollmentFilter,
-    };
+    where.enrollments = { some: enrollmentFilter };
   }
 
   const [students, total] = await Promise.all([
     prisma.student.findMany({
       where,
-      // ⚡ PERF: Use select instead of include — only fetch fields the list view needs
-      // Student model has 74 fields, but the table only shows ~15
       select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        admissionNo: true,
-        gender: true,
-        dob: true,
-        status: true,
-        phone: true,
-        fatherName: true,
-        fatherPhone: true,
-        photoUrl: true,
-        category: true,
-        admissionDate: true,
-        createdAt: true,
+        id: true, firstName: true, lastName: true, admissionNo: true, gender: true, dob: true, status: true,
+        phone: true, fatherName: true, fatherPhone: true, photoUrl: true, category: true, admissionDate: true, createdAt: true,
         enrollments: {
-          where: {
-            status: "active",
-            isDeleted: false,
-            ...(academicYearId ? { academicYearId } : {}),
-          },
+          where: { status: "active", isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
           select: {
-            class: { select: { id: true, name: true } },
-            section: { select: { id: true, name: true } },
+            class: { select: { id: true, name: true } }, section: { select: { id: true, name: true } },
             academicYear: { select: { id: true, name: true } },
           },
-          orderBy: { createdAt: "desc" },
-          take: 1,
+          orderBy: { createdAt: "desc" }, take: 1,
         },
       },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
+      orderBy: { createdAt: "desc" }, skip: (page - 1) * limit, take: limit,
     }),
     prisma.student.count({ where }),
   ]);
 
-  return {
-    students,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-  };
+  return { students, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
 // ============================================
@@ -321,8 +200,7 @@ export const getStudentById = async (id: string, tenantId: string) => {
       enrollments: {
         where: { isDeleted: false },
         include: {
-          class: { select: { id: true, name: true } },
-          section: { select: { id: true, name: true } },
+          class: { select: { id: true, name: true } }, section: { select: { id: true, name: true } },
           academicYear: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -337,13 +215,9 @@ export const getStudentById = async (id: string, tenantId: string) => {
 // ============================================
 export const updateStudent = async (id: string, data: any, tenantId: string) => {
   const {
-    firstName, lastName, gender, dob, email, phone, address,
-    bloodGroup, aadharNo, fatherName, motherName,
-    fatherPhone, motherPhone, fatherOccupation, motherOccupation,
-    guardianName, guardianPhone, guardianRelation,
-    status, rollNumber, photoUrl,
-    religionId, casteId, categoryId, nationalityId,
-    religion, caste, category, nationality,
+    firstName, lastName, gender, dob, email, phone, address, bloodGroup, aadharNo, fatherName, motherName,
+    fatherPhone, motherPhone, fatherOccupation, motherOccupation, guardianName, guardianPhone, guardianRelation,
+    status, rollNumber, photoUrl, religionId, casteId, categoryId, nationalityId, religion, caste, category, nationality,
   } = data;
 
   let normalizedGender = gender;
@@ -364,12 +238,7 @@ export const updateStudent = async (id: string, data: any, tenantId: string) => 
   if (phone !== undefined) updateData.phone = phone || null;
   if (address !== undefined) updateData.address = address;
   if (bloodGroup !== undefined) {
-    const bgMap: Record<string, string> = {
-      "A+": "A_POSITIVE", "A-": "A_NEGATIVE",
-      "B+": "B_POSITIVE", "B-": "B_NEGATIVE",
-      "O+": "O_POSITIVE", "O-": "O_NEGATIVE",
-      "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE",
-    };
+    const bgMap: Record<string, string> = { "A+": "A_POSITIVE", "A-": "A_NEGATIVE", "B+": "B_POSITIVE", "B-": "B_NEGATIVE", "O+": "O_POSITIVE", "O-": "O_NEGATIVE", "AB+": "AB_POSITIVE", "AB-": "AB_NEGATIVE" };
     updateData.bloodGroup = bloodGroup ? (bgMap[bloodGroup] || bloodGroup) : null;
   }
   if (aadharNo !== undefined) updateData.aadharNo = aadharNo || null;
@@ -395,17 +264,10 @@ export const updateStudent = async (id: string, data: any, tenantId: string) => 
   if (finalCategoryId !== undefined) updateData.categoryId = finalCategoryId || null;
   if (finalNationalityId !== undefined) updateData.nationalityId = finalNationalityId || null;
 
-  const student = await prisma.student.updateMany({
-    where: { id, tenantId, isDeleted: false },
-    data: updateData,
-  });
+  const student = await prisma.student.updateMany({ where: { id, tenantId, isDeleted: false }, data: updateData });
 
-  // If status changed, also update enrollment status so dashboard stats stay in sync
   if (status && (status === "active" || status === "inactive")) {
-    await prisma.enrollment.updateMany({
-      where: { studentId: id, tenantId, isDeleted: false },
-      data: { status },
-    });
+    await prisma.enrollment.updateMany({ where: { studentId: id, tenantId, isDeleted: false }, data: { status } });
   }
 
   return student;
@@ -415,20 +277,14 @@ export const updateStudent = async (id: string, data: any, tenantId: string) => 
 // SOFT DELETE STUDENT
 // ============================================
 export const softDeleteStudent = async (id: string, tenantId: string) => {
-  return prisma.student.updateMany({
-    where: { id, tenantId },
-    data: { isDeleted: true, deletedAt: new Date(), status: "inactive" },
-  });
+  return prisma.student.updateMany({ where: { id, tenantId }, data: { isDeleted: true, deletedAt: new Date(), status: "inactive" } });
 };
 
 // ============================================
 // RESTORE STUDENT
 // ============================================
 export const restoreStudent = async (id: string, tenantId: string) => {
-  return prisma.student.updateMany({
-    where: { id, tenantId, isDeleted: true },
-    data: { isDeleted: false, deletedAt: null, status: "active" },
-  });
+  return prisma.student.updateMany({ where: { id, tenantId, isDeleted: true }, data: { isDeleted: false, deletedAt: null, status: "active" } });
 };
 
 // ============================================
@@ -440,12 +296,9 @@ export const getDeletedStudents = async (tenantId: string) => {
     include: {
       enrollments: {
         include: {
-          class: { select: { name: true } },
-          section: { select: { name: true } },
-          academicYear: { select: { name: true } },
+          class: { select: { name: true } }, section: { select: { name: true } }, academicYear: { select: { name: true } },
         },
-        orderBy: { createdAt: "desc" },
-        take: 1,
+        orderBy: { createdAt: "desc" }, take: 1,
       },
     },
     orderBy: { deletedAt: "desc" },
@@ -460,11 +313,7 @@ export const getDeletedStudents = async (tenantId: string) => {
 export const getStudentStats = async (tenantId: string, academicYearId?: string) => {
   return cached(`student-stats:${tenantId}:${academicYearId || "all"}`, 20000, async () => {
     if (academicYearId) {
-      const enrollments = await prisma.enrollment.findMany({
-        where: { tenantId, academicYearId, isDeleted: false },
-        include: { student: { select: { gender: true, createdAt: true, status: true } } },
-      });
-
+      const enrollments = await prisma.enrollment.findMany({ where: { tenantId, academicYearId, isDeleted: false }, include: { student: { select: { gender: true, createdAt: true, status: true } } } });
       const total = enrollments.length;
       const getStatus = (e: any) => e.student.status || e.status;
       const active = enrollments.filter((e) => ACTIVE_STATUSES.includes(getStatus(e))).length;
@@ -472,16 +321,13 @@ export const getStudentStats = async (tenantId: string, academicYearId?: string)
       const left = enrollments.filter((e) => getStatus(e) === "left" || e.status === "left").length;
       const boys = enrollments.filter((e) => e.student.gender === "MALE" && ACTIVE_STATUSES.includes(getStatus(e))).length;
       const girls = enrollments.filter((e) => e.student.gender === "FEMALE" && ACTIVE_STATUSES.includes(getStatus(e))).length;
-
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const newAdmissions = enrollments.filter((e) => new Date(e.student.createdAt) >= monthStart).length;
-
       return { total, active, inactive, left, boys, girls, newAdmissions, totalStudents: total };
     }
 
     const baseWhere: any = { tenantId, isDeleted: false };
-
     const [total, active, inactive, left, boys, girls] = await Promise.all([
       prisma.student.count({ where: baseWhere }),
       prisma.student.count({ where: { ...baseWhere, status: { in: [...ACTIVE_STATUSES] } } }),
@@ -490,13 +336,9 @@ export const getStudentStats = async (tenantId: string, academicYearId?: string)
       prisma.student.count({ where: { ...baseWhere, gender: "MALE" } }),
       prisma.student.count({ where: { ...baseWhere, gender: "FEMALE" } }),
     ]);
-
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newAdmissions = await prisma.student.count({
-      where: { ...baseWhere, createdAt: { gte: monthStart } },
-    });
-
+    const newAdmissions = await prisma.student.count({ where: { ...baseWhere, createdAt: { gte: monthStart } } });
     return { total, active, inactive, left, boys, girls, newAdmissions, totalStudents: total };
   });
 };
@@ -509,23 +351,12 @@ export const createEnrollmentForStudent = async (
   data: { classId: string; sectionId: string; academicYearId: string; rollNumber?: string },
   tenantId: string
 ) => {
-  const existing = await prisma.enrollment.findFirst({
-    where: { studentId, academicYearId: data.academicYearId, isDeleted: false },
-  });
-
-  if (existing) {
-    throw new Error("Student already has enrollment for this academic year");
-  }
-
+  const existing = await prisma.enrollment.findFirst({ where: { studentId, academicYearId: data.academicYearId, isDeleted: false } });
+  if (existing) throw new Error("Student already has enrollment for this academic year");
   return prisma.enrollment.create({
     data: {
-      student: { connect: { id: studentId } },
-      class: { connect: { id: data.classId } },
-      section: { connect: { id: data.sectionId } },
-      academicYear: { connect: { id: data.academicYearId } },
-      tenant: { connect: { id: tenantId } },
-      rollNumber: data.rollNumber || null,
-      status: "active",
+      student: { connect: { id: studentId } }, class: { connect: { id: data.classId } }, section: { connect: { id: data.sectionId } },
+      academicYear: { connect: { id: data.academicYearId } }, tenant: { connect: { id: tenantId } }, rollNumber: data.rollNumber || null, status: "active",
     },
   });
 };
@@ -534,31 +365,17 @@ export const createEnrollmentForStudent = async (
 // BULK CREATE ENROLLMENT
 // ============================================
 export const bulkCreateEnrollments = async (
-  students: { studentId: string; rollNumber?: string }[],
-  classId: string,
-  sectionId: string,
-  academicYearId: string,
-  tenantId: string
+  students: { studentId: string; rollNumber?: string }[], classId: string, sectionId: string, academicYearId: string, tenantId: string
 ) => {
   const results = { created: 0, skipped: 0, errors: [] as string[] };
-
   for (const s of students) {
     try {
-      const existing = await prisma.enrollment.findFirst({
-        where: { studentId: s.studentId, academicYearId, isDeleted: false },
-      });
-
+      const existing = await prisma.enrollment.findFirst({ where: { studentId: s.studentId, academicYearId, isDeleted: false } });
       if (existing) { results.skipped++; continue; }
-
       await prisma.enrollment.create({
         data: {
-          student: { connect: { id: s.studentId } },
-          class: { connect: { id: classId } },
-          section: { connect: { id: sectionId } },
-          academicYear: { connect: { id: academicYearId } },
-          tenant: { connect: { id: tenantId } },
-          rollNumber: s.rollNumber || null,
-          status: "active",
+          student: { connect: { id: s.studentId } }, class: { connect: { id: classId } }, section: { connect: { id: sectionId } },
+          academicYear: { connect: { id: academicYearId } }, tenant: { connect: { id: tenantId } }, rollNumber: s.rollNumber || null, status: "active",
         },
       });
       results.created++;
@@ -566,6 +383,5 @@ export const bulkCreateEnrollments = async (
       results.errors.push(`${s.studentId}: ${err.message}`);
     }
   }
-
   return results;
 };

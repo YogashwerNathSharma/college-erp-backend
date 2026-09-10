@@ -263,14 +263,34 @@ export const getAllStudents = async (
   const [students, total] = await Promise.all([
     prisma.student.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        fullName: true,
+        gender: true,
+        dob: true,
+        bloodGroup: true,
+        admissionNo: true,
+        srNo: true,
+        rollNumber: true,
+        phone: true,
+        email: true,
+        photoUrl: true,
+        fatherName: true,
+        motherName: true,
+        fatherPhone: true,
+        status: true,
+        isDeleted: true,
+        createdAt: true,
+        _count: { select: { documents: true } },
         enrollments: {
           where: {
             status: "active",
             isDeleted: false,
             ...(academicYearId ? { academicYearId } : {}),
           },
-          include: {
+          select: {
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
             academicYear: { select: { id: true, name: true } },

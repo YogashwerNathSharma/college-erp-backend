@@ -138,7 +138,10 @@ export const batchSchema = z.object({
   code: z.string().trim().min(1).max(50),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
-});
+}).refine(
+  (value) => !value.startDate || !value.endDate || value.startDate <= value.endDate,
+  { message: "Batch endDate must be on or after startDate", path: ["endDate"] }
+);
 
 export const courseSchema = z.object({
   programId: idSchema.optional(),

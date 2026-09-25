@@ -5770,6 +5770,7 @@ model UniversityFaculty {
   @@unique([tenantId, code])
   @@index([tenantId, campusId])
   @@map("university_faculties")
+  @@index([tenantId, isActive, name])
 }
 
 model UniversityProgram {
@@ -5796,6 +5797,7 @@ model UniversityProgram {
   @@unique([tenantId, code])
   @@index([tenantId, facultyId, departmentId])
   @@map("university_programs")
+  @@index([tenantId, isActive, name])
 }
 
 model UniversitySemester {
@@ -5816,6 +5818,7 @@ model UniversitySemester {
   @@unique([tenantId, programId, number])
   @@index([tenantId, programId])
   @@map("university_semesters")
+  @@index([tenantId, isActive, name])
 }
 
 model UniversityBatch {
@@ -5840,6 +5843,7 @@ model UniversityBatch {
   @@index([tenantId, programId, semesterId])
   @@index([tenantId, academicYearId])
   @@map("university_batches")
+  @@index([tenantId, isActive, name])
 }
 
 model UniversityCourse {
@@ -5861,6 +5865,7 @@ model UniversityCourse {
   @@unique([tenantId, code])
   @@index([tenantId, programId])
   @@map("university_courses")
+  @@index([tenantId, isActive, name])
 }
 
 model UniversityCurriculum {
@@ -5881,6 +5886,7 @@ model UniversityCurriculum {
   @@unique([tenantId, semesterId, courseId])
   @@index([tenantId, courseId])
   @@map("university_curricula")
+  @@index([tenantId, isActive, createdAt])
 }
 
 model UniversityEnrollment {
@@ -5909,6 +5915,7 @@ model UniversityEnrollment {
   @@index([tenantId, admissionNo])
   @@index([tenantId, rollNumber])
   @@map("university_enrollments")
+  @@index([tenantId, isDeleted, createdAt])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -58,6 +58,8 @@ router.post("/:id/status", allowRoles("ADMIN"), async (req: any, res: Response) 
       return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
     }
     // Direct update without full status change service (simpler for admission flow)
+    const studentCheck = await prisma.student.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, isDeleted: false } });
+    if (!studentCheck) return res.status(404).json({ success: false, message: "Student not found" });
     const updated = await prisma.student.update({
       where: { id: req.params.id },
       data: {

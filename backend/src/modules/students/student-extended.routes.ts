@@ -28,6 +28,8 @@ router.get("/:id/medical", async (req: any, res: Response) => {
 router.put("/:id/medical", async (req: any, res: Response) => {
   try {
     const { medicalConditions, allergies, medications, emergencyContact, emergencyPhone, insuranceId, lastMedicalCheckup } = req.body;
+    const studentCheck = await prisma.student.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, isDeleted: false } });
+    if (!studentCheck) return res.status(404).json({ success: false, message: "Student not found" });
     const student = await prisma.student.update({
       where: { id: req.params.id },
       data: {
@@ -74,6 +76,8 @@ router.post("/:id/achievements", async (req: any, res: Response) => {
 
 router.put("/:id/achievements/:aid", async (req: any, res: Response) => {
   try {
+    const achievementCheck = await prisma.studentAchievement.findFirst({ where: { id: req.params.aid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!achievementCheck) return res.status(404).json({ success: false, message: "Achievement not found" });
     const achievement = await prisma.studentAchievement.update({
       where: { id: req.params.aid },
       data: { ...req.body, ...(req.body.date && { date: new Date(req.body.date) }) },
@@ -84,6 +88,8 @@ router.put("/:id/achievements/:aid", async (req: any, res: Response) => {
 
 router.delete("/:id/achievements/:aid", async (req: any, res: Response) => {
   try {
+    const achievementCheck = await prisma.studentAchievement.findFirst({ where: { id: req.params.aid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!achievementCheck) return res.status(404).json({ success: false, message: "Achievement not found" });
     await prisma.studentAchievement.delete({ where: { id: req.params.aid } });
     res.json({ success: true, message: "Achievement deleted" });
   } catch (e: any) { res.status(400).json({ success: false, message: e.message }); }
@@ -118,6 +124,8 @@ router.post("/:id/disciplinary", async (req: any, res: Response) => {
 
 router.put("/:id/disciplinary/:did", async (req: any, res: Response) => {
   try {
+    const recordCheck = await prisma.studentDisciplinaryRecord.findFirst({ where: { id: req.params.did, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!recordCheck) return res.status(404).json({ success: false, message: "Disciplinary record not found" });
     const record = await prisma.studentDisciplinaryRecord.update({
       where: { id: req.params.did },
       data: { ...req.body, ...(req.body.date && { date: new Date(req.body.date) }), ...(req.body.resolvedAt && { resolvedAt: new Date(req.body.resolvedAt) }) },
@@ -128,6 +136,8 @@ router.put("/:id/disciplinary/:did", async (req: any, res: Response) => {
 
 router.delete("/:id/disciplinary/:did", async (req: any, res: Response) => {
   try {
+    const recordCheck = await prisma.studentDisciplinaryRecord.findFirst({ where: { id: req.params.did, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!recordCheck) return res.status(404).json({ success: false, message: "Disciplinary record not found" });
     await prisma.studentDisciplinaryRecord.delete({ where: { id: req.params.did } });
     res.json({ success: true, message: "Record deleted" });
   } catch (e: any) { res.status(400).json({ success: false, message: e.message }); }

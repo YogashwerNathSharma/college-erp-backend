@@ -47,6 +47,7 @@ const INVALIDATION_PREFIXES = [
 ];
 
 const TTL_MS = 30_000; // 30 seconds cache
+const MAX_CACHE_ENTRIES = 5_000; // prevent unbounded process-memory growth
 
 /**
  * Generate cache key from request (includes tenantId for multi-tenant isolation)
@@ -144,6 +145,7 @@ export function autoCacheMiddleware(req: Request, res: Response, next: NextFunct
 
   // Cache HIT
   if (existing && existing.expiry > now) {
+    res.setHeader("Cache-Control", "private, no-cache");
     res.status(existing.status).json(existing.body);
     return;
   }
@@ -153,6 +155,11 @@ export function autoCacheMiddleware(req: Request, res: Response, next: NextFunct
   res.json = function (body: any) {
     // Only cache successful responses
     if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (cache.size >= MAX_CACHE_ENTRIES && !cache.has(key)) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey) cache.delete(oldestKey);
+      }
+
       cache.set(key, { body, status: res.statusCode, expiry: now + TTL_MS });
       res.setHeader("Cache-Control", "private, no-cache");
     }

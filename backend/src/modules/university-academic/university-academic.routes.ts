@@ -173,12 +173,20 @@ async function handle(
   try {
     return res.json(await work());
   } catch (error: any) {
-    const status = error?.statusCode || (error?.code === "P2002" ? 409 : 500);
+    const status =
+      error?.statusCode ||
+      (error?.code === "P2002"
+        ? 409
+        : error?.name === "ZodError"
+          ? 400
+          : 500);
     return res.status(status).json({
       message:
         error?.code === "P2002"
           ? "A record with the same unique value already exists"
-          : error?.message || "University academic operation failed",
+          : error?.name === "ZodError"
+            ? "Invalid request data"
+            : error?.message || "University academic operation failed",
     });
   }
 }

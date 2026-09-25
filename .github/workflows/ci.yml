@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, erp-unified, university-advanced-v1-phase1, university-advanced-v1-phase2]
   pull_request:
-    branches: [main, erp-unified]
+    branches: [main, erp-unified, university-advanced-v1-phase1]
 
 jobs:
   lint-and-build:

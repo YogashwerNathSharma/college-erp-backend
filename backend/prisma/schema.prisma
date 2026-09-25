@@ -634,7 +634,7 @@ model Tenant {
   universityBatches   UniversityBatch[]
   universityCourses  UniversityCourse[]
   universityCurricula UniversityCurriculum[]
-  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent") @relation("UniversityEnrollmentAcademicYear")
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   bloodGroupLookups  BloodGroupLookup[]
   paymentModes       PaymentMode[]
   libraryShelves     LibraryShelf[]

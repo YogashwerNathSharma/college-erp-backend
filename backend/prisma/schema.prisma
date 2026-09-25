@@ -627,6 +627,13 @@ model Tenant {
   schools            School[]
   branches           Branch[]
   campuses           Campus[]
+  universityPrograms  UniversityProgram[]
+  universityFacultyLinks UniversityFaculty[]
+  universitySemesters UniversitySemester[]
+  universityBatches   UniversityBatch[]
+  universityCourses  UniversityCourse[]
+  universityCurricula UniversityCurriculum[]
+  universityEnrollments UniversityEnrollment[]
   bloodGroupLookups  BloodGroupLookup[]
   paymentModes       PaymentMode[]
   libraryShelves     LibraryShelf[]
@@ -682,12 +689,15 @@ model Department {
   name        String
   code        String
   hodId       String?  @db.ObjectId
+  facultyId   String?  @db.ObjectId
+  faculty     UniversityFaculty? @relation("UniversityFacultyDepartment", fields: [facultyId], references: [id])
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   designations Designation[]
+  universityPrograms  UniversityProgram[]
 
   @@unique([tenantId, code])
   @@map("departments")
@@ -1302,6 +1312,7 @@ model Student {
 
   documents           StudentDocument[]
   enrollments         Enrollment[]
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   studentHistories    StudentHistory[]
   attendance          Attendance[]
   promotions          Promotion[]
@@ -5734,6 +5745,179 @@ model APIProvider {
   @@map("api_providers")
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTION: UNIVERSITY ADVANCED ACADEMIC FOUNDATION
+// These models extend the existing school/college flow without replacing it.
+// All records are tenant-scoped and indexed for large university datasets.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model UniversityFaculty {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  campusId    String?  @db.ObjectId
+  campus      Campus?  @relation("UniversityFacultyCampus", fields: [campusId], references: [id])
+  name        String
+  code        String
+  description String?
+  departments Department[] @relation("UniversityFacultyDepartment")
+  programs    UniversityProgram[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, campusId])
+  @@map("university_faculties")
+  @@index([tenantId, isActive, name])
+}
+
+model UniversityProgram {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  facultyId   String?  @db.ObjectId
+  faculty     UniversityFaculty? @relation(fields: [facultyId], references: [id])
+  departmentId String? @db.ObjectId
+  department  Department? @relation(fields: [departmentId], references: [id])
+  name        String
+  code        String
+  level       String?
+  durationYears Int?
+  description String?
+  semesters   UniversitySemester[]
+  batches     UniversityBatch[]
+  courses     UniversityCourse[]
+  enrollments UniversityEnrollment[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, facultyId, departmentId])
+  @@map("university_programs")
+  @@index([tenantId, isActive, name])
+}
+
+model UniversitySemester {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  programId   String   @db.ObjectId
+  program     UniversityProgram @relation(fields: [programId], references: [id])
+  name        String
+  number      Int
+  credits     Float?   @default(0)
+  curricula   UniversityCurriculum[]
+  batches     UniversityBatch[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, programId, number])
+  @@index([tenantId, programId])
+  @@map("university_semesters")
+  @@index([tenantId, isActive, name])
+}
+
+model UniversityBatch {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  programId   String   @db.ObjectId
+  program     UniversityProgram @relation(fields: [programId], references: [id])
+  semesterId  String?  @db.ObjectId
+  semester    UniversitySemester? @relation(fields: [semesterId], references: [id])
+  academicYearId String? @db.ObjectId
+  name        String
+  code        String
+  startDate   DateTime?
+  endDate     DateTime?
+  enrollments UniversityEnrollment[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, programId, semesterId])
+  @@index([tenantId, academicYearId])
+  @@map("university_batches")
+  @@index([tenantId, isActive, name])
+}
+
+model UniversityCourse {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  programId   String?  @db.ObjectId
+  program     UniversityProgram? @relation(fields: [programId], references: [id])
+  name        String
+  code        String
+  credits     Float   @default(0)
+  courseType  String?
+  description String?
+  curricula   UniversityCurriculum[]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, programId])
+  @@map("university_courses")
+  @@index([tenantId, isActive, name])
+}
+
+model UniversityCurriculum {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  semesterId  String   @db.ObjectId
+  semester    UniversitySemester @relation(fields: [semesterId], references: [id])
+  courseId    String   @db.ObjectId
+  course      UniversityCourse @relation(fields: [courseId], references: [id])
+  courseType  String?
+  credits     Float   @default(0)
+  isElective  Boolean @default(false)
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, semesterId, courseId])
+  @@index([tenantId, courseId])
+  @@map("university_curricula")
+  @@index([tenantId, isActive, createdAt])
+}
+
+model UniversityEnrollment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  studentId     String   @db.ObjectId
+  student       Student  @relation("UniversityEnrollmentStudent", fields: [studentId], references: [id])
+  programId     String   @db.ObjectId
+  program       UniversityProgram @relation(fields: [programId], references: [id])
+  batchId       String   @db.ObjectId
+  batch         UniversityBatch @relation(fields: [batchId], references: [id])
+  currentSemesterId String? @db.ObjectId
+  admissionNo   String?
+  rollNumber    String?
+  status        String   @default("ACTIVE")
+  joinedAt      DateTime @default(now())
+  completedAt   DateTime?
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, studentId, programId])
+  @@index([tenantId, programId, batchId])
+  @@index([tenantId, studentId, status])
+  @@index([tenantId, admissionNo])
+  @@index([tenantId, rollNumber])
+  @@map("university_enrollments")
+  @@index([tenantId, isDeleted, createdAt])
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SECTION: MASTERS UI LOOKUP MODELS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5775,6 +5959,7 @@ model Campus {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  universityFacultyLinks UniversityFaculty[] @relation("UniversityFacultyCampus")
 
   @@index([tenantId])
   @@map("campuses")

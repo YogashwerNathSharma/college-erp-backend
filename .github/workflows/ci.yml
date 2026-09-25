@@ -2,14 +2,16 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, erp-unified, university-advanced-v1-phase1]
+    branches: [main, erp-unified, university-advanced-v1-phase1, university-advanced-v1-phase2]
   pull_request:
-    branches: [main, erp-unified]
+    branches: [main, erp-unified, university-advanced-v1-phase1]
 
 jobs:
   lint-and-build:
     name: Lint & Build
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: mongodb://127.0.0.1:27017/erp_ci
 
     steps:
       - name: Checkout code
@@ -25,6 +27,10 @@ jobs:
       - name: Install dependencies
         working-directory: ./backend
         run: npm ci
+
+      - name: Validate Prisma Schema
+        working-directory: ./backend
+        run: npx prisma validate
 
       - name: Generate Prisma Client
         working-directory: ./backend

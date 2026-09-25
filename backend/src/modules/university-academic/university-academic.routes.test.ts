@@ -56,6 +56,15 @@ describe("University academic input validation", () => {
     assert.equal(curriculumSchema.safeParse({ semesterId: "s1" }).success, false);
   });
 
+  it("keeps enrollment identity requirements explicit", () => {
+    assert.equal(enrollmentSchema.safeParse({
+      studentId: "st1",
+      programId: "p1",
+      batchId: "b1",
+      status: "ACTIVE",
+    }).success, false);
+  });
+
   it("requires student, program and batch for enrollment", () => {
     assert.equal(enrollmentSchema.safeParse({
       studentId: "st1",

@@ -1141,7 +1141,6 @@ model AcademicYear {
   students            Student[]
   teachers            Teacher[]
   enrollments         Enrollment[]
-  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   feeStructures       FeeStructure[]
   leaves              Leave[]
   teacherSalaries     TeacherSalary[]
@@ -1313,6 +1312,7 @@ model Student {
 
   documents           StudentDocument[]
   enrollments         Enrollment[]
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   studentHistories    StudentHistory[]
   attendance          Attendance[]
   promotions          Promotion[]

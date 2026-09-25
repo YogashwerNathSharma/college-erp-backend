@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, erp-unified, phase-1-scalability-security]
   pull_request:
     branches: [main]
 
@@ -37,6 +37,10 @@ jobs:
       - name: Security Audit
         working-directory: ./backend
         run: npm audit --audit-level=high || true
+
+      - name: Automated Tests
+        working-directory: ./backend
+        run: npm test -- --test-reporter=spec
 
   # Uncomment when you add tests:
   # test:

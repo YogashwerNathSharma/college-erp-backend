@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
     "seed-erp": "ts-node prisma/seed.ts",
-    "seed-superadmin": "ts-node prisma/seed-superadmin.ts"
+    "seed-superadmin": "ts-node prisma/seed-superadmin.ts",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

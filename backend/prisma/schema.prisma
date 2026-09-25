@@ -697,7 +697,6 @@ model Department {
   updatedAt   DateTime @updatedAt
 
   designations Designation[]
-  universityFaculties UniversityFaculty[]
   universityPrograms  UniversityProgram[]
 
   @@unique([tenantId, code])
@@ -1142,6 +1141,7 @@ model AcademicYear {
   students            Student[]
   teachers            Teacher[]
   enrollments         Enrollment[]
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   feeStructures       FeeStructure[]
   leaves              Leave[]
   teacherSalaries     TeacherSalary[]
@@ -1153,7 +1153,6 @@ model AcademicYear {
   examTerms           ExamTerm[]
   examResults         ExamResult[]
   hostelAllocations   HostelAllocation[]
-  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentAcademicYear")
   studentHistories    StudentHistory[]
 
   isDeleted Boolean   @default(false)

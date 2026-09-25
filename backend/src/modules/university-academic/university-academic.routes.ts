@@ -35,6 +35,43 @@ async function ensureTenantEntity(model: string, id: string, tenantId: string) {
   return entity;
 }
 
+function invalidRelation(message: string): never {
+  const error = new Error(message);
+  (error as any).statusCode = 400;
+  throw error;
+}
+
+async function ensureProgramSemester(
+  semesterId: string,
+  programId: string,
+  tenantId: string
+) {
+  const semester = await prisma.universitySemester.findFirst({
+    where: { id: semesterId, tenantId },
+    select: { id: true, programId: true },
+  });
+  if (!semester) invalidRelation("Semester not found in this tenant");
+  if (semester.programId !== programId) {
+    invalidRelation("Semester does not belong to the selected program");
+  }
+}
+
+async function ensureProgramBatch(
+  batchId: string,
+  programId: string,
+  tenantId: string
+) {
+  const batch = await prisma.universityBatch.findFirst({
+    where: { id: batchId, tenantId },
+    select: { id: true, programId: true, semesterId: true },
+  });
+  if (!batch) invalidRelation("Batch not found in this tenant");
+  if (batch.programId !== programId) {
+    invalidRelation("Batch does not belong to the selected program");
+  }
+  return batch;
+}
+
 async function paginated(
   model: string,
   tenantId: string,
@@ -195,7 +232,9 @@ router.post("/batches", (req, res) =>
     const tenantId = tenantIdOf(req);
     const input = batchSchema.parse(req.body);
     await ensureTenantEntity("universityProgram", input.programId, tenantId);
-    if (input.semesterId) await ensureTenantEntity("universitySemester", input.semesterId, tenantId);
+    if (input.semesterId) {
+      await ensureProgramSemester(input.semesterId, input.programId, tenantId);
+    }
     if (input.academicYearId) await ensureTenantEntity("academicYear", input.academicYearId, tenantId);
     return prisma.universityBatch.create({ data: { ...input, tenantId } });
   })
@@ -244,8 +283,21 @@ router.post("/curricula", (req, res) =>
   handle(res, async () => {
     const tenantId = tenantIdOf(req);
     const input = curriculumSchema.parse(req.body);
-    await ensureTenantEntity("universitySemester", input.semesterId, tenantId);
-    await ensureTenantEntity("universityCourse", input.courseId, tenantId);
+    const semester = await prisma.universitySemester.findFirst({
+      where: { id: input.semesterId, tenantId },
+      select: { id: true, programId: true },
+    });
+    if (!semester) invalidRelation("Semester not found in this tenant");
+
+    const course = await prisma.universityCourse.findFirst({
+      where: { id: input.courseId, tenantId },
+      select: { id: true, programId: true },
+    });
+    if (!course) invalidRelation("Course not found in this tenant");
+    if (course.programId && course.programId !== semester.programId) {
+      invalidRelation("Course does not belong to the semester's program");
+    }
+
     return prisma.universityCurriculum.create({ data: { ...input, tenantId } });
   })
 );
@@ -289,8 +341,10 @@ router.post("/enrollments", (req, res) =>
     const input = enrollmentSchema.parse(req.body);
     await ensureTenantEntity("student", input.studentId, tenantId);
     await ensureTenantEntity("universityProgram", input.programId, tenantId);
-    await ensureTenantEntity("universityBatch", input.batchId, tenantId);
-    if (input.currentSemesterId) await ensureTenantEntity("universitySemester", input.currentSemesterId, tenantId);
+    await ensureProgramBatch(input.batchId, input.programId, tenantId);
+    if (input.currentSemesterId) {
+      await ensureProgramSemester(input.currentSemesterId, input.programId, tenantId);
+    }
     return prisma.universityEnrollment.create({ data: { ...input, tenantId } });
   })
 );

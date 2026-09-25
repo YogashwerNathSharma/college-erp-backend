@@ -58,6 +58,7 @@ import sectionRoutes from "./modules/Section/section.routes";
 import studentRoutes from "./modules/students/student.routes";
 import teacherRoutes from "./modules/teacher/teacher.routes";
 import subjectRoutes from "./modules/subject/subject.routes";
+import universityAcademicRoutes from "./modules/university-academic/university-academic.routes";
 
 // STUDENT MODULE - ENTERPRISE ENHANCED ROUTES
 import studentDashboardRoutes from "./modules/students/student-dashboard.routes";
@@ -276,6 +277,7 @@ app.use("/api/student-portal", studentPortalRoutes);
 //////////////////////////////////////////////////////
 
 app.use("/api/academic", academicRoutes);
+app.use("/api/university-academic", universityAcademicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
 app.use("/api/students", studentRoutes);

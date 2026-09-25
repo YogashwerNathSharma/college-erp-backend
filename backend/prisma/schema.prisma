@@ -5907,6 +5907,7 @@ model UniversityEnrollment {
   @@index([tenantId, programId, batchId])
   @@index([tenantId, studentId, status])
   @@index([tenantId, admissionNo])
+  @@index([tenantId, rollNumber])
   @@map("university_enrollments")
 }
 

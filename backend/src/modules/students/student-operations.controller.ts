@@ -1414,7 +1414,6 @@ export const updateVaccinationHandler = async (req: any, res: Response) => {
     });
     if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
 
-  try {
     const { vaccineName, doseNumber, dateGiven, nextDueDate, hospital, doctorName, batchNo, remarks, documentUrl } = req.body;
 
     const vaccination = await prisma.studentVaccination.update({
@@ -1451,7 +1450,6 @@ export const deleteVaccinationHandler = async (req: any, res: Response) => {
     });
     if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
 
-  try {
     await prisma.studentVaccination.delete({ where: { id: req.params.vid } });
     res.json({ success: true, message: "Vaccination record deleted" });
   } catch (err: any) {

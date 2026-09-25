@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
 interface CacheEntry {
   body: any;
@@ -51,8 +52,40 @@ const TTL_MS = 30_000; // 30 seconds cache
  * Generate cache key from request (includes tenantId for multi-tenant isolation)
  */
 function getCacheKey(req: Request): string {
-  const tenantId = (req as any).tenantId || (req as any).user?.tenantId || "global";
-  return `${tenantId}:${req.originalUrl}`;
+  const user = (req as any).user;
+  const tenantId = user?.tenantId || "global";
+  const userId = user?.userId || "anonymous";
+  const role = user?.role || "unknown";
+
+  // Dashboard/report responses can be permission- and user-scope-sensitive.
+  // Include authenticated identity in the key to prevent cross-user cache reuse.
+  return tenantId + ":" + userId + ":" + role + ":" + req.originalUrl;
+}
+
+/**
+ * Authentication is currently router-level, but this cache runs before routers.
+ * Authenticate cacheable requests here so a cache HIT can never bypass auth.
+ */
+function authenticateForCache(req: Request): boolean {
+  if ((req as any).user) return true;
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return false;
+
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0] !== "Bearer") return false;
+
+  try {
+    const decoded = jwt.verify(
+      parts[1],
+      process.env.JWT_SECRET!
+    ) as { userId: string; tenantId: string; role: string };
+
+    (req as any).user = decoded;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -100,6 +133,11 @@ export function autoCacheMiddleware(req: Request, res: Response, next: NextFunct
     return next();
   }
 
+  // Never cache anonymous requests. Cacheable ERP endpoints are personalized.
+  if (!authenticateForCache(req)) {
+    return next();
+  }
+
   const key = getCacheKey(req);
   const now = Date.now();
   const existing = cache.get(key);
@@ -116,6 +154,7 @@ export function autoCacheMiddleware(req: Request, res: Response, next: NextFunct
     // Only cache successful responses
     if (res.statusCode >= 200 && res.statusCode < 300) {
       cache.set(key, { body, status: res.statusCode, expiry: now + TTL_MS });
+      res.setHeader("Cache-Control", "private, no-cache");
     }
     return originalJson(body);
   } as any;

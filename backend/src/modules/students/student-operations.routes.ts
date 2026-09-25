@@ -359,6 +359,8 @@ router.put("/:id/vaccinations/:vid", async (req: any, res: Response) => {
     const data: any = { ...req.body };
     if (data.dateGiven) data.dateGiven = new Date(data.dateGiven);
     if (data.nextDueDate) data.nextDueDate = new Date(data.nextDueDate);
+    const vaccinationCheck = await prisma.studentVaccination.findFirst({ where: { id: req.params.vid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
     const vaccination = await prisma.studentVaccination.update({
       where: { id: req.params.vid },
       data,
@@ -371,6 +373,8 @@ router.put("/:id/vaccinations/:vid", async (req: any, res: Response) => {
 
 router.delete("/:id/vaccinations/:vid", async (req: any, res: Response) => {
   try {
+    const vaccinationCheck = await prisma.studentVaccination.findFirst({ where: { id: req.params.vid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
     await prisma.studentVaccination.delete({ where: { id: req.params.vid } });
     res.json({ success: true, message: "Vaccination record deleted" });
   } catch (err: any) {

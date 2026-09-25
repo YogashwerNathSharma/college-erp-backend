@@ -8,7 +8,7 @@ const router = Router();
 
 router.use(authMiddleware, resolveTenant);
 
-const pageQuery = z.object({
+export const pageQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   search: z.string().trim().max(100).optional(),
@@ -106,14 +106,14 @@ async function paginated(
   };
 }
 
-const facultySchema = z.object({
+export const facultySchema = z.object({
   name: z.string().trim().min(1).max(150),
   code: z.string().trim().min(1).max(50),
   campusId: idSchema.optional(),
   description: z.string().trim().max(1000).optional(),
 });
 
-const programSchema = z.object({
+export const programSchema = z.object({
   name: z.string().trim().min(1).max(150),
   code: z.string().trim().min(1).max(50),
   facultyId: idSchema.optional(),
@@ -123,14 +123,14 @@ const programSchema = z.object({
   description: z.string().trim().max(1000).optional(),
 });
 
-const semesterSchema = z.object({
+export const semesterSchema = z.object({
   programId: idSchema,
   name: z.string().trim().min(1).max(100),
   number: z.number().int().min(1).max(20),
   credits: z.number().min(0).max(1000).optional(),
 });
 
-const batchSchema = z.object({
+export const batchSchema = z.object({
   programId: idSchema,
   semesterId: idSchema.optional(),
   academicYearId: idSchema.optional(),
@@ -140,7 +140,7 @@ const batchSchema = z.object({
   endDate: z.coerce.date().optional(),
 });
 
-const courseSchema = z.object({
+export const courseSchema = z.object({
   programId: idSchema.optional(),
   name: z.string().trim().min(1).max(150),
   code: z.string().trim().min(1).max(50),
@@ -149,7 +149,7 @@ const courseSchema = z.object({
   description: z.string().trim().max(1000).optional(),
 });
 
-const curriculumSchema = z.object({
+export const curriculumSchema = z.object({
   semesterId: idSchema,
   courseId: idSchema,
   courseType: z.string().trim().max(50).optional(),
@@ -157,7 +157,7 @@ const curriculumSchema = z.object({
   isElective: z.boolean().default(false),
 });
 
-const enrollmentSchema = z.object({
+export const enrollmentSchema = z.object({
   studentId: idSchema,
   programId: idSchema,
   batchId: idSchema,

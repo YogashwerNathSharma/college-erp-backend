@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 import {
   createWorkflow,
   listWorkflows,
@@ -19,7 +20,7 @@ import {
 const router = Router();
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, resolveTenant);
 
 // ═══════════════════════════════════════════
 // WORKFLOW TEMPLATES

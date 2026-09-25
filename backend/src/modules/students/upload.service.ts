@@ -59,8 +59,8 @@ export const uploadStudentPhoto = async (
   }
 
   // Update student record
-  await prisma.student.update({
-    where: { id: studentId },
+  await prisma.student.updateMany({
+    where: { id: studentId, tenantId, isDeleted: false },
     data: { photoUrl },
   });
   console.log("[Photo Upload] ✅ Student photo updated in DB for:", studentId);
@@ -156,8 +156,8 @@ export const deleteStudentPhoto = async (
     await deleteFromCloudinary(student.photoUrl);
   }
 
-  await prisma.student.update({
-    where: { id: studentId },
+  await prisma.student.updateMany({
+    where: { id: studentId, tenantId, isDeleted: false },
     data: { photoUrl: null },
   });
 

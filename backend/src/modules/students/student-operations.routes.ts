@@ -58,6 +58,8 @@ router.post("/:id/status", allowRoles("ADMIN"), async (req: any, res: Response) 
       return res.status(400).json({ success: false, message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
     }
     // Direct update without full status change service (simpler for admission flow)
+    const studentCheck = await prisma.student.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, isDeleted: false } });
+    if (!studentCheck) return res.status(404).json({ success: false, message: "Student not found" });
     const updated = await prisma.student.update({
       where: { id: req.params.id },
       data: {
@@ -359,6 +361,8 @@ router.put("/:id/vaccinations/:vid", async (req: any, res: Response) => {
     const data: any = { ...req.body };
     if (data.dateGiven) data.dateGiven = new Date(data.dateGiven);
     if (data.nextDueDate) data.nextDueDate = new Date(data.nextDueDate);
+    const vaccinationCheck = await prisma.studentVaccination.findFirst({ where: { id: req.params.vid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
     const vaccination = await prisma.studentVaccination.update({
       where: { id: req.params.vid },
       data,
@@ -371,6 +375,8 @@ router.put("/:id/vaccinations/:vid", async (req: any, res: Response) => {
 
 router.delete("/:id/vaccinations/:vid", async (req: any, res: Response) => {
   try {
+    const vaccinationCheck = await prisma.studentVaccination.findFirst({ where: { id: req.params.vid, tenantId: req.tenantId, studentId: req.params.id } });
+    if (!vaccinationCheck) return res.status(404).json({ success: false, message: "Vaccination record not found" });
     await prisma.studentVaccination.delete({ where: { id: req.params.vid } });
     res.json({ success: true, message: "Vaccination record deleted" });
   } catch (err: any) {

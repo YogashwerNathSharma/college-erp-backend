@@ -149,7 +149,7 @@ const processExistingImportJob = async (req: any, res: any) => {
     return res.json({ success: true, data: { processedRows: result.totalRows, successRows: result.successCount, failedRows: result.failedCount, errors: result.errors || [], importedStudentIds: result.importedStudentIds || [] }, message: `Import completed: ${result.successCount} successful, ${result.failedCount} failed` });
   } catch (error: any) {
     const message = error?.message || "Real student import failed";
-    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED", completedAt: new Date(), errors: [{ row: 0, field: "general", message }] }).catch(() => {});
+    await prisma.importJob.update({ where: { id: jobId }, data: { status: "FAILED", completedAt: new Date(), errors: [{ row: 0, field: "general", message }] } }).catch(() => {});
     return res.status(400).json({ success: false, message });
   }
 };

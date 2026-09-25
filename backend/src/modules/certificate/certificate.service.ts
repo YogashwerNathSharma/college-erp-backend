@@ -95,9 +95,16 @@ export const approveTC = async (id: string, tenantId: string, approvedBy: string
   if (!tc) throw new Error("TC not found");
   if (tc.status === "APPROVED") throw new Error("TC is already approved");
 
-  // Update student status to tc_issued
+  // Defense-in-depth: ensure the certificate's student belongs to the same tenant.
+  const student = await prisma.student.findFirst({
+    where: { id: tc.studentId, tenantId, isDeleted: false },
+    select: { id: true },
+  });
+  if (!student) throw new Error("Student not found");
+
+  // Update only the verified tenant-owned student.
   await prisma.student.update({
-    where: { id: tc.studentId },
+    where: { id: student.id },
     data: { status: "tc_issued" },
   });
 

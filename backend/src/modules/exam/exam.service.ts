@@ -65,8 +65,14 @@ export const updateExamService = async (
   data: UpdateExamInput,
   tenantId: string
 ) => {
+  const existingExam = await prisma.exam.findFirst({
+    where: { id: examId, tenantId, isDeleted: false },
+  });
+
+  if (!existingExam) throw new Error("Exam not found");
+
   return prisma.exam.update({
-    where: { id: examId },
+    where: { id: existingExam.id },
     data: {
       ...(data.name && { name: data.name }),
       ...(data.type && { type: data.type }),
@@ -150,8 +156,14 @@ export const deleteExamService = async (
   examId: string,
   tenantId: string
 ) => {
+  const existingExam = await prisma.exam.findFirst({
+    where: { id: examId, tenantId, isDeleted: false },
+  });
+
+  if (!existingExam) throw new Error("Exam not found");
+
   return prisma.exam.update({
-    where: { id: examId },
+    where: { id: existingExam.id },
     data: { isDeleted: true, deletedAt: new Date() },
   });
 };
@@ -525,7 +537,7 @@ export const getReportCardService = async (
   if (!exam) throw new Error("Exam not found");
 
   const student = await prisma.student.findFirst({
-    where: { id: studentId, isDeleted: false },
+    where: { id: studentId, tenantId, isDeleted: false },
   });
   if (!student) throw new Error("Student not found");
 

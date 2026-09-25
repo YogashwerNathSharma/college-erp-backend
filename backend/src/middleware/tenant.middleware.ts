@@ -68,13 +68,41 @@ export const resolveTenant = (
   res: Response,
   next: NextFunction
 ) => {
-  // Inject tenantId directly on req for route handlers that read req.tenantId
-  (req as any).tenantId = req.user?.tenantId || null;
-
-  // For authenticated users, tenantId already comes from JWT (set by authMiddleware)
-  // This middleware ensures it's also available in req.body for downstream services
-  if (req.user?.tenantId && req.body && typeof req.body === "object") {
-    req.body.tenantId = req.user.tenantId;
+  // SUPER_ADMIN is the only role allowed to operate across tenants.
+  if (req.user?.role === "SUPER_ADMIN") {
+    (req as any).tenantId = null;
+    return next();
   }
+
+  // Every tenant-scoped route must have a tenant context.
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) {
+    return res.status(403).json({
+      success: false,
+      message: "Tenant context is missing. Access denied.",
+    });
+  }
+
+  // Never trust a client-supplied tenantId. If one is supplied, it must
+  // exactly match the tenant encoded in the authenticated JWT.
+  const providedTenantId =
+    req.body?.tenantId ||
+    req.params?.tenantId ||
+    req.query?.tenantId;
+
+  if (providedTenantId && providedTenantId !== tenantId) {
+    return res.status(403).json({
+      success: false,
+      message: "Cross-tenant access is forbidden.",
+    });
+  }
+
+  // Make the authenticated tenant the canonical context for downstream code.
+  (req as any).tenantId = tenantId;
+
+  if (req.body && typeof req.body === "object") {
+    req.body.tenantId = tenantId;
+  }
+
   next();
 };

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 import {
   uploadFiles,
   getFiles,
@@ -15,7 +16,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, resolveTenant);
 
 // File operations
 router.post("/upload", uploadFiles);

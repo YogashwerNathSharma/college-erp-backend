@@ -407,3 +407,122 @@ export const processImport = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const listImportJobs = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const { module, status, page = "1", limit = "20" } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const take = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    const where: any = { tenantId };
+    if (module) where.module = module;
+    if (status) where.status = status;
+    const [jobs, total] = await Promise.all([
+      prisma.importJob.findMany({ where, orderBy: { createdAt: "desc" }, skip: (pageNum - 1) * take, take }),
+      prisma.importJob.count({ where }),
+    ]);
+    return res.json({ success: true, data: jobs, pagination: { total, page: pageNum, limit: take, totalPages: Math.ceil(total / take) } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to list import jobs" });
+  }
+};
+
+export const getImportTemplate = async (req: Request, res: Response) => {
+  try {
+    const module = String(req.params.module || "");
+    if (!MODULE_FIELDS[module]) return res.status(400).json({ success: false, message: `Unknown module: ${module}. Supported: ${Object.keys(MODULE_FIELDS).join(", ")}` });
+    const fields = MODULE_FIELDS[module];
+    return res.json({ success: true, data: { module, fields, requiredFields: fields.filter((f) => f.required).map((f) => f.label), optionalFields: fields.filter((f) => !f.required).map((f) => f.label), sampleHeaders: fields.map((f) => f.label), customTemplate: null } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to get import template" });
+  }
+};
+
+export const generateExport = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const userId = (req as any).user?.id || (req as any).user?.userId || "system";
+    const { module, format = "EXCEL", filters, columns } = req.body;
+    if (!module) return res.status(400).json({ success: false, message: "Module is required" });
+    if (!["EXCEL", "CSV", "PDF"].includes(format)) return res.status(400).json({ success: false, message: "Format must be EXCEL, CSV, or PDF" });
+    const job = await prisma.exportJob.create({ data: { tenantId, module, format, filters: filters || undefined, columns: columns || MODULE_FIELDS[module]?.map((f) => f.field) || [], status: "PROCESSING", createdBy: userId } });
+    return res.json({ success: true, data: { jobId: job.id, fileUrl: null, totalRecords: 0, format }, message: "Export job created" });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to generate export" });
+  }
+};
+
+export const listExportJobs = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const { module, status, page = "1", limit = "20" } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const take = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    const where: any = { tenantId };
+    if (module) where.module = module;
+    if (status) where.status = status;
+    const [jobs, total] = await Promise.all([
+      prisma.exportJob.findMany({ where, orderBy: { createdAt: "desc" }, skip: (pageNum - 1) * take, take }),
+      prisma.exportJob.count({ where }),
+    ]);
+    return res.json({ success: true, data: jobs, pagination: { total, page: pageNum, limit: take, totalPages: Math.ceil(total / take) } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to list export jobs" });
+  }
+};
+
+export const downloadExport = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const jobId = String(req.params.id || "");
+    const job = await prisma.exportJob.findFirst({ where: { id: jobId, tenantId, status: "COMPLETED" } });
+    if (!job || !job.fileUrl) return res.status(404).json({ success: false, message: "Export not found or not ready" });
+    return res.json({ success: true, data: { downloadUrl: job.fileUrl, format: job.format, records: job.totalRecords } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to download export" });
+  }
+};
+
+export const cancelImportJob = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const jobId = String(req.params.id || "");
+    const job = await prisma.importJob.findFirst({ where: { id: jobId, tenantId } });
+    if (!job) return res.status(404).json({ success: false, message: "Job not found" });
+    if (job.status === "PROCESSING") {
+      await prisma.importJob.update({ where: { id: jobId }, data: { status: "CANCELLED" } });
+      return res.json({ success: true, message: "Job cancelled" });
+    }
+    await prisma.importJob.delete({ where: { id: jobId } });
+    return res.json({ success: true, message: "Job deleted" });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to cancel import job" });
+  }
+};
+
+export const clearUnvalidatedImportJobs = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const result = await prisma.importJob.deleteMany({ where: { tenantId, status: "PENDING", processedRows: 0 } });
+    return res.json({ success: true, data: { deleted: result.count }, message: `Cleared ${result.count} unvalidated import job(s)` });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to clear unvalidated import jobs" });
+  }
+};
+
+export const getStats = async (req: Request, res: Response) => {
+  try {
+    const tenantId = (req as any).tenantId as string;
+    const [totalImports, successfulImports, totalExports, pendingJobs, recentImports, recentExports] = await Promise.all([
+      prisma.importJob.count({ where: { tenantId } }),
+      prisma.importJob.count({ where: { tenantId, status: "COMPLETED" } }),
+      prisma.exportJob.count({ where: { tenantId } }),
+      prisma.importJob.count({ where: { tenantId, status: { in: ["PENDING", "PROCESSING"] } } }),
+      prisma.importJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 }),
+      prisma.exportJob.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" }, take: 5 }),
+    ]);
+    return res.json({ success: true, data: { totalImports, successfulImports, totalExports, pendingJobs, recentImports, recentExports, supportedModules: Object.keys(MODULE_FIELDS) } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error?.message || "Failed to load import/export stats" });
+  }
+};

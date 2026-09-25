@@ -2,6 +2,7 @@
 
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
+import { resolveTenant } from "../../middleware/tenant.middleware";
 
 import { addTransportFeeToStudent, addHostelFeeToStudent, removeTransportFeeFromStudent, removeHostelFeeFromStudent, addModuleFeeToStudent } from "./feeIntegration.service";
 // Existing sub-module routes
@@ -49,7 +50,7 @@ import { getStudentLedgerController, searchStudentForLedgerController } from "./
 const router = Router();
 
 // All routes are protected
-router.use(authMiddleware);
+router.use(authMiddleware, resolveTenant);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // EXISTING SUB-MODULE ROUTES

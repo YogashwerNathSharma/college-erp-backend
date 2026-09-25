@@ -627,13 +627,14 @@ model Tenant {
   schools            School[]
   branches           Branch[]
   campuses           Campus[]
-  universityFaculties UniversityFaculty[]
+  universityFaculties UniversityFaculty[] @relation("UniversityFacultyDepartment")
   universityPrograms  UniversityProgram[]
+  universityFacultyLinks UniversityFaculty[] @relation("UniversityFacultyCampus")
   universitySemesters UniversitySemester[]
   universityBatches   UniversityBatch[]
   universityCourses  UniversityCourse[]
   universityCurricula UniversityCurriculum[]
-  universityEnrollments UniversityEnrollment[]
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent") @relation("UniversityEnrollmentAcademicYear")
   bloodGroupLookups  BloodGroupLookup[]
   paymentModes       PaymentMode[]
   libraryShelves     LibraryShelf[]
@@ -5889,7 +5890,7 @@ model UniversityEnrollment {
   tenantId      String   @db.ObjectId
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
   studentId     String   @db.ObjectId
-  student       Student  @relation(fields: [studentId], references: [id])
+  student       Student  @relation("UniversityEnrollmentStudent", fields: [studentId], references: [id])
   programId     String   @db.ObjectId
   program       UniversityProgram @relation(fields: [programId], references: [id])
   batchId       String   @db.ObjectId

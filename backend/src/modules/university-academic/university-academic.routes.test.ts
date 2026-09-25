@@ -61,7 +61,10 @@ describe("University academic input validation", () => {
       studentId: "st1",
       programId: "p1",
       batchId: "b1",
-      status: "ACTIVE",
+    }).success, true);
+    assert.equal(enrollmentSchema.safeParse({
+      studentId: "st1",
+      programId: "p1",
     }).success, false);
   });
 

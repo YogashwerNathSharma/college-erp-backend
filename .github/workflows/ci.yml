@@ -38,6 +38,10 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=high || true
 
+      - name: Automated Tests
+        working-directory: ./backend
+        run: npm test -- --test-reporter=spec
+
   # Uncomment when you add tests:
   # test:
   #   name: Run Tests

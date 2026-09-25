@@ -174,6 +174,8 @@ router.get("/:id/custom-fields", async (req: any, res: Response) => {
 
 router.put("/:id/custom-fields", async (req: any, res: Response) => {
   try {
+    const studentCheck = await prisma.student.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, isDeleted: false } });
+    if (!studentCheck) return res.status(404).json({ success: false, message: "Student not found" });
     const student = await prisma.student.update({
       where: { id: req.params.id },
       data: { customFields: req.body },
@@ -189,6 +191,8 @@ router.put("/:id/custom-fields", async (req: any, res: Response) => {
 router.put("/:id/identification", async (req: any, res: Response) => {
   try {
     const { rfidCardNo, qrCode, biometricId, previousSchool, previousClass } = req.body;
+    const studentCheck = await prisma.student.findFirst({ where: { id: req.params.id, tenantId: req.tenantId, isDeleted: false } });
+    if (!studentCheck) return res.status(404).json({ success: false, message: "Student not found" });
     const student = await prisma.student.update({
       where: { id: req.params.id },
       data: { rfidCardNo, qrCode, biometricId, previousSchool, previousClass },

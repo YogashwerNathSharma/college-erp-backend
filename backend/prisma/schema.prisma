@@ -1153,7 +1153,6 @@ model AcademicYear {
   examTerms           ExamTerm[]
   examResults         ExamResult[]
   hostelAllocations   HostelAllocation[]
-  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
   universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentAcademicYear")
   studentHistories    StudentHistory[]
 

@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, erp-unified]
+    branches: [main, erp-unified, phase-1-scalability-security]
   pull_request:
     branches: [main]
 

@@ -690,7 +690,7 @@ model Department {
   code        String
   hodId       String?  @db.ObjectId
   facultyId   String?  @db.ObjectId
-  faculty     UniversityFaculty? @relation(fields: [facultyId], references: [id])
+  faculty     UniversityFaculty? @relation("UniversityFacultyDepartment", fields: [facultyId], references: [id])
   description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -5764,6 +5764,7 @@ model UniversityFaculty {
   description String?
   departments Department[]
   programs    UniversityProgram[]
+  departmentLinks Department[]
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -24,7 +24,7 @@ function tenantIdOf(req: Request): string {
 
 async function ensureTenantEntity(model: string, id: string, tenantId: string) {
   const entity = await (prisma as any)[model].findFirst({
-    where: { id, tenantId, isDeleted: false },
+    where: { id, tenantId },
     select: { id: true },
   });
   if (!entity) {

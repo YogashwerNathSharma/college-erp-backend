@@ -37,6 +37,13 @@ describe("University academic input validation", () => {
   it("requires batch program and code", () => {
     assert.equal(batchSchema.safeParse({ programId: "p1", name: "2026", code: "B26" }).success, true);
     assert.equal(batchSchema.safeParse({ programId: "p1", name: "2026", code: "" }).success, false);
+    assert.equal(batchSchema.safeParse({
+      programId: "p1",
+      name: "2026",
+      code: "B26",
+      startDate: "2026-08-01",
+      endDate: "2026-07-31",
+    }).success, false);
   });
 
   it("requires course identity and keeps credits non-negative", () => {

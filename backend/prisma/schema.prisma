@@ -627,14 +627,13 @@ model Tenant {
   schools            School[]
   branches           Branch[]
   campuses           Campus[]
-  universityFaculties UniversityFaculty[] @relation("UniversityFacultyDepartment")
   universityPrograms  UniversityProgram[]
-  universityFacultyLinks UniversityFaculty[] @relation("UniversityFacultyCampus")
+  universityFacultyLinks UniversityFaculty[]
   universitySemesters UniversitySemester[]
   universityBatches   UniversityBatch[]
   universityCourses  UniversityCourse[]
   universityCurricula UniversityCurriculum[]
-  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
+  universityEnrollments UniversityEnrollment[]
   bloodGroupLookups  BloodGroupLookup[]
   paymentModes       PaymentMode[]
   libraryShelves     LibraryShelf[]
@@ -1154,7 +1153,8 @@ model AcademicYear {
   examTerms           ExamTerm[]
   examResults         ExamResult[]
   hostelAllocations   HostelAllocation[]
-  universityEnrollments UniversityEnrollment[]
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentStudent")
+  universityEnrollments UniversityEnrollment[] @relation("UniversityEnrollmentAcademicYear")
   studentHistories    StudentHistory[]
 
   isDeleted Boolean   @default(false)
@@ -5759,7 +5759,7 @@ model UniversityFaculty {
   tenantId    String   @db.ObjectId
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   campusId    String?  @db.ObjectId
-  campus      Campus?  @relation(fields: [campusId], references: [id])
+  campus      Campus?  @relation("UniversityFacultyCampus", fields: [campusId], references: [id])
   name        String
   code        String
   description String?
@@ -5953,6 +5953,7 @@ model Campus {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  universityFacultyLinks UniversityFaculty[] @relation("UniversityFacultyCampus")
 
   @@index([tenantId])
   @@map("campuses")

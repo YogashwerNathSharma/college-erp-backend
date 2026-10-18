@@ -1,0 +1,56 @@
+// ══════════════════════════════════════════════════════════
+// GLOBAL SEARCH ENGINE - Prisma Models
+// ══════════════════════════════════════════════════════════
+
+model SearchIndex {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Entity reference
+  entityType  String // STUDENT, STAFF, RECEIPT, BOOK, VEHICLE, CERTIFICATE, ASSET, VISITOR, EVENT
+  entityId    String @db.ObjectId
+
+  // Searchable content
+  title       String  // Primary text (e.g., student name)
+  subtitle    String? // Secondary text (e.g., class - section)
+  description String? // Additional context
+  keywords    String[] // Additional searchable terms
+
+  // Navigation
+  route       String  // Frontend route to navigate to (e.g., /students/edit/123)
+  icon        String? // Lucide icon name
+
+  // Metadata
+  metadata    Json?   // Additional data for display (e.g., { class: "10th", photo: "url" })
+  category    String? // Grouping category for search results
+
+  // Status
+  isActive    Boolean @default(true)
+
+  // Tenant
+  tenantId    String @db.ObjectId
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, entityType])
+  @@index([tenantId, title])
+  @@unique([tenantId, entityType, entityId])
+}
+
+model SearchHistory {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  query     String
+  userId    String @db.ObjectId
+  resultCount Int @default(0)
+  selectedEntityType String?
+  selectedEntityId   String? @db.ObjectId
+
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId, createdAt])
+}

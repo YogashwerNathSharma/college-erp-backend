@@ -1,0 +1,58 @@
+// ══════════════════════════════════════════════════════════
+// SCHEDULER MODULE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model ScheduledTask {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String    @db.ObjectId
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+
+  name            String
+  description     String?
+  type            String    // BACKUP | SMS | EMAIL | REPORT | REMINDER | CUSTOM
+  cronExpression  String    // e.g. "0 2 * * *" for daily 2AM
+  handler         String    // function/service to call
+  params          Json?     // parameters to pass to handler
+
+  isActive        Boolean   @default(true)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  lastStatus      String?   // SUCCESS | FAILED | RUNNING
+  lastError       String?
+  runCount        Int       @default(0)
+
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  logs            SchedulerLog[]
+
+  @@index([tenantId])
+  @@index([isActive, nextRunAt])
+}
+
+model SchedulerLog {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String    @db.ObjectId
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  taskId      String    @db.ObjectId
+  task        ScheduledTask @relation(fields: [taskId], references: [id])
+
+  status      String    // SUCCESS | FAILED | SKIPPED
+  startedAt   DateTime
+  completedAt DateTime?
+  duration    Int?      // milliseconds
+  output      String?
+  error       String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([taskId, createdAt])
+}
+
+// Add to Tenant model:
+// scheduledTasks    ScheduledTask[]
+// schedulerLogs    SchedulerLog[]

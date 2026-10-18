@@ -1,0 +1,17 @@
+{
+  "name": "yn-udp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YN-UDP Visual Template Designer - Microservice for designing certificates, ID cards, report cards",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "cd client && npm install --include=dev && npm rebuild esbuild && npm run build:local && cd ../server && npm install --include=dev && npx prisma generate && npm run build:local",
+    "start": "npm --prefix server run start",
+    "install:all": "npm --prefix client install && npm --prefix server install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

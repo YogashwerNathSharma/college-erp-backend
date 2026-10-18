@@ -1,0 +1,132 @@
+// ══════════════════════════════════════════════════
+// PAYMENT GATEWAY - Prisma Models
+// ══════════════════════════════════════════════════
+
+model PaymentGatewayConfig {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  provider        String   // RAZORPAY, PAYTM, PHONEPE, CCAVENUE, STRIPE
+  merchantId      String?
+  apiKey          String?
+  apiSecret       String?
+  webhookSecret   String?
+  callbackUrl     String?
+  
+  // Provider-specific config
+  config          Json?    // Additional provider-specific settings
+  
+  isActive        Boolean  @default(true)
+  isTest          Boolean  @default(true)  // true = test mode, false = live
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  onlinePayments  OnlinePayment[]
+
+  @@unique([tenantId, provider])
+}
+
+model OnlinePayment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  // Order details
+  orderId         String   @unique // Internal order ID (e.g. ORD-2026-0001)
+  gatewayOrderId  String?  // Razorpay order_id / Paytm txn_token etc
+  gatewayPaymentId String? // razorpay_payment_id
+  
+  // Amount
+  amount          Float
+  currency        String   @default("INR")
+  
+  // Context
+  studentId       String?  @db.ObjectId
+  studentName     String?
+  feeId           String?  @db.ObjectId
+  purpose         String   // FEE_PAYMENT, ADMISSION_FEE, TRANSPORT_FEE, HOSTEL_FEE, MISC
+  description     String?
+  
+  // Status
+  status          String   @default("CREATED") // CREATED, PENDING, SUCCESS, FAILED, REFUNDED, PARTIALLY_REFUNDED
+  
+  // Payment method used
+  paymentMethod   String?  // UPI, CARD, NETBANKING, WALLET
+  bankName        String?
+  
+  // Gateway response
+  gatewayResponse Json?
+  gatewaySignature String?
+  
+  // Refund
+  refundAmount    Float?
+  refundId        String?
+  refundedAt      DateTime?
+  refundReason    String?
+  
+  // Timestamps
+  paidAt          DateTime?
+  expiredAt       DateTime?
+  
+  // Config reference
+  configId        String?  @db.ObjectId
+  config          PaymentGatewayConfig? @relation(fields: [configId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  paymentLinks    PaymentLink[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+  @@index([tenantId, createdAt])
+}
+
+model PaymentLink {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  // Student info
+  studentId       String   @db.ObjectId
+  studentName     String
+  parentPhone     String?
+  parentEmail     String?
+  
+  // Link details
+  amount          Float
+  purpose         String
+  description     String?
+  linkUrl         String
+  shortUrl        String?
+  
+  // Validity
+  expiresAt       DateTime
+  maxPayments     Int      @default(1)
+  
+  // Status
+  status          String   @default("ACTIVE") // ACTIVE, PAID, EXPIRED, CANCELLED
+  
+  // Payment reference
+  paymentId       String?  @db.ObjectId
+  payment         OnlinePayment? @relation(fields: [paymentId], references: [id])
+  paidAt          DateTime?
+  
+  // Notification
+  smsSent         Boolean  @default(false)
+  emailSent       Boolean  @default(false)
+  whatsappSent    Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+}
+
+// Add to Tenant model:
+// paymentGatewayConfigs  PaymentGatewayConfig[]
+// onlinePayments         OnlinePayment[]
+// paymentLinks           PaymentLink[]

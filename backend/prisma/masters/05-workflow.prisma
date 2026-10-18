@@ -1,0 +1,72 @@
+// ══════════════════════════════════════════════════════════
+// WORKFLOW ENGINE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model Workflow {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String
+  module       String   // e.g. "LEAVE", "FEE_DISCOUNT", "GATE_PASS", "PURCHASE", "ADMISSION"
+  triggerEvent String   // e.g. "LEAVE_APPLIED", "DISCOUNT_REQUESTED", "GATE_PASS_CREATED"
+  description  String?
+
+  // Steps as JSON array:
+  // [{ level: 1, approverRole: "HOD", approverUserId?: "...", action: "APPROVE/REJECT/FORWARD", timeoutHours: 24, autoApproveOnTimeout: false, notifyChannels: ["IN_APP", "EMAIL"] }]
+  steps        Json
+
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdBy    String?  @db.ObjectId
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instances    WorkflowInstance[]
+
+  @@index([tenantId, module])
+  @@index([tenantId, isActive])
+}
+
+model WorkflowInstance {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  workflowId   String   @db.ObjectId
+  workflow     Workflow  @relation(fields: [workflowId], references: [id])
+
+  entityId     String   // ID of the entity (leave request, gate pass, etc.)
+  entityType   String   // "LEAVE", "GATE_PASS", "FEE_DISCOUNT", etc.
+
+  currentStep  Int      @default(1)
+  totalSteps   Int      @default(1)
+  status       String   @default("PENDING") // PENDING, IN_PROGRESS, APPROVED, REJECTED, CANCELLED, EXPIRED
+
+  initiatedBy  String   @db.ObjectId
+  initiatorName String?
+
+  // Snapshot of the entity data at initiation
+  data         Json?
+
+  // History log of all actions taken:
+  // [{ step: 1, action: "APPROVED", by: "userId", byName: "John", at: "2026-01-01T...", remarks: "OK" }]
+  history      Json     @default("[]")
+
+  // Current assignee(s)
+  currentAssignees Json? // ["userId1", "userId2"]
+
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, workflowId])
+  @@index([tenantId, initiatedBy])
+}
+
+// Also add to Tenant model:
+// workflows          Workflow[]
+// workflowInstances  WorkflowInstance[]

@@ -1,0 +1,91 @@
+// ══════════════════════════════════════════════════════
+// REPORT BUILDER MODELS
+// ══════════════════════════════════════════════════════
+
+model ReportTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  module      String   // STUDENT, FEES, ATTENDANCE, EXAM, HR, TRANSPORT, LIBRARY, HOSTEL, INVENTORY
+  description String?
+  query       Json     // { collection, fields[], conditions[], joins?[] }
+  columns     Json     // [{ field, label, width, format?, aggregate? (SUM/COUNT/AVG/MIN/MAX) }]
+  filters     Json?    // [{ field, label, type (TEXT/DATE/SELECT/RANGE), options?[] }]
+  chartType   String?  // BAR, LINE, PIE, DONUT, AREA, TABLE_ONLY
+  chartConfig Json?    // { xAxis, yAxis, series[], colors[] }
+  groupBy     String?
+  sortBy      String?
+  sortOrder   String?  @default("asc") // asc, desc
+  format      String   @default("PDF") // PDF, EXCEL, CSV
+  pageSize    String?  @default("A4") // A4, LETTER, LEGAL
+  orientation String?  @default("PORTRAIT") // PORTRAIT, LANDSCAPE
+  headerHtml  String?
+  footerHtml  String?
+  isPublic    Boolean  @default(false)
+  createdBy   String   @db.ObjectId
+
+  generatedReports GeneratedReport[]
+  scheduledReports ScheduledReport[]
+
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GeneratedReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  templateId   String   @db.ObjectId
+  template     ReportTemplate @relation(fields: [templateId], references: [id])
+
+  name         String
+  parameters   Json?    // { dateFrom, dateTo, classId, ...applied filters }
+  fileUrl      String?
+  filePath     String?
+  fileSize     Int?
+  format       String   // PDF, EXCEL, CSV
+  rowCount     Int?
+  status       String   @default("GENERATING") // GENERATING, COMPLETED, FAILED
+  error        String?
+  generatedBy  String   @db.ObjectId
+  expiresAt    DateTime?
+
+  createdAt    DateTime @default(now())
+}
+
+model ScheduledReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  templateId   String   @db.ObjectId
+  template     ReportTemplate @relation(fields: [templateId], references: [id])
+
+  name         String
+  frequency    String   // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  dayOfWeek    Int?     // 0-6 for WEEKLY
+  dayOfMonth   Int?     // 1-31 for MONTHLY
+  time         String   // HH:mm format
+  recipients   String[] // email addresses
+  format       String   @default("PDF")
+  parameters   Json?    // fixed filter parameters
+
+  isActive     Boolean  @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  lastStatus   String?  // SUCCESS, FAILED
+  runCount     Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Add to Tenant model:
+// reportTemplates    ReportTemplate[]
+// generatedReports   GeneratedReport[]
+// scheduledReports   ScheduledReport[]

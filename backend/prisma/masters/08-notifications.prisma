@@ -1,0 +1,148 @@
+// ══════════════════════════════════════════════════════
+// NOTIFICATION ENGINE MODELS
+// ══════════════════════════════════════════════════════
+
+model NotificationConfig {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel     String   // SMS, EMAIL, WHATSAPP, PUSH, IN_APP
+  provider    String   // TWILIO, SENDGRID, MSG91, FIREBASE, CUSTOM
+  apiKey      String?
+  apiSecret   String?
+  senderId    String?  // SMS sender ID or email from address
+  baseUrl     String?
+  webhookUrl  String?
+  maxRetries  Int      @default(3)
+  retryDelay  Int      @default(60) // seconds
+  dailyLimit  Int?     // max messages per day
+  monthlyLimit Int?
+
+  isActive    Boolean  @default(true)
+  isVerified  Boolean  @default(false)
+  lastTestedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationQueue {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel      String   // SMS, EMAIL, WHATSAPP, PUSH, IN_APP
+  templateId   String?  @db.ObjectId
+  to           String   // phone number, email, or userId
+  toName       String?
+  from         String?
+  subject      String?
+  body         String
+  htmlBody     String?
+  data         Json?    // template variables, metadata
+  attachments  Json?    // [{ name, url, type }]
+
+  status       String   @default("QUEUED") // QUEUED, PROCESSING, SENT, DELIVERED, FAILED, CANCELLED
+  attempts     Int      @default(0)
+  maxAttempts  Int      @default(3)
+  lastAttemptAt DateTime?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+  error        String?
+  externalId   String?  // Provider message ID
+
+  priority     String   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  scheduledAt  DateTime?
+  batchId      String?  // for bulk sends
+
+  module       String?  // which module triggered this (FEES, ATTENDANCE, etc)
+  entityId     String?  // related entity ID
+  entityType   String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model NotificationLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel      String
+  to           String
+  toName       String?
+  subject      String?
+  body         String?
+  status       String   // SENT, DELIVERED, READ, FAILED, BOUNCED
+  messageId    String?  // external provider message ID
+  cost         Float?   // cost per message if applicable
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  bouncedAt    DateTime?
+  error        String?
+
+  module       String?
+  entityId     String?
+  batchId      String?
+
+  createdAt    DateTime @default(now())
+}
+
+model InAppNotification {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  userId       String   @db.ObjectId
+  title        String
+  body         String
+  type         String   // INFO, SUCCESS, WARNING, ERROR, ALERT
+  category     String?  // ATTENDANCE, FEES, EXAM, GENERAL, SYSTEM
+  icon         String?
+  actionUrl    String?
+  actionLabel  String?
+  imageUrl     String?
+  data         Json?
+
+  isRead       Boolean  @default(false)
+  readAt       DateTime?
+  isDismissed  Boolean  @default(false)
+  dismissedAt  DateTime?
+  expiresAt    DateTime?
+
+  createdAt    DateTime @default(now())
+}
+
+model NotificationSchedule {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String
+  description  String?
+  event        String   // FEE_DUE, FEE_OVERDUE, BIRTHDAY, ATTENDANCE_ABSENT, EXAM_RESULT, HOLIDAY, CUSTOM
+  channel      String[] // ["SMS", "WHATSAPP", "PUSH"]
+  templateId   String?  // reference to SMS/Email/WhatsApp template
+  templateBody String?  // inline body if no template
+
+  recipients   Json     // { type: "ALL_STUDENTS/ALL_PARENTS/CLASS/SECTION/INDIVIDUAL", classId?, sectionId?, userIds?[] }
+  timing       Json     // { type: "IMMEDIATE/DELAYED/RECURRING", delay?: "2h", cron?: "0 8 * * *", daysBeforeDue?: 3 }
+  conditions   Json?    // [{ field, operator, value }] - extra filtering
+
+  isActive     Boolean  @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  runCount     Int      @default(0)
+  lastStatus   String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Add to Tenant model:
+// notificationConfigs    NotificationConfig[]
+// notificationQueue      NotificationQueue[]
+// notificationLogs       NotificationLog[]
+// inAppNotifications     InAppNotification[]
+// notificationSchedules  NotificationSchedule[]

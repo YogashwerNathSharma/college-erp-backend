@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model DesignTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  name        String
+  type        String   // certificate, id-card, report-card, custom
+  category    String?  // character-certificate, transfer-certificate, bonafide, etc.
+  canvasJSON  Json     // Full Fabric.js canvas serialization
+  pageWidth   Int      @default(794)
+  pageHeight  Int      @default(1123)
+  orientation String   @default("portrait")
+  thumbnail   String?  // Base64 thumbnail for list view
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, type])
+  @@index([tenantId, isDeleted])
+}

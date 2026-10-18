@@ -1,0 +1,3682 @@
+// ============================================
+// SOURCE: enterprise\digital-signature\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════
+// DIGITAL SIGNATURE - Prisma Models
+// ══════════════════════════════════════════════════
+
+model DigitalSignature {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  userId          String   @db.ObjectId
+  name            String   // Signer name (e.g. "Dr. R.K. Sharma")
+  designation     String   // "Principal", "HOD", "Clerk"
+  department      String?
+  
+  // Signature images
+  signatureImage  String   // Base64 or file URL of signature
+  stampImage      String?  // Official stamp/seal image
+  initialsImage   String?  // Short initials image
+  
+  // Metadata
+  signatureType   String   @default("DRAWN") // DRAWN, UPLOADED, TYPED
+  isDefault       Boolean  @default(false)
+  
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  signedDocuments SignedDocument[]
+
+  @@index([tenantId, userId])
+}
+
+model SignedDocument {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  documentId      String   // Reference to the document being signed
+  documentType    String   // CERTIFICATE, REPORT_CARD, TC, BONAFIDE, NOTICE, LETTER
+  documentTitle   String?
+  
+  // Signature reference
+  signatureId     String   @db.ObjectId
+  signature       DigitalSignature @relation(fields: [signatureId], references: [id])
+  
+  // Signer info (snapshot at time of signing)
+  signedBy        String   // userId
+  signerName      String
+  signerDesignation String
+  
+  signedAt        DateTime @default(now())
+  
+  // Verification
+  hash            String   // SHA-256 hash of document content at signing time
+  verificationCode String  @unique // 8-char alphanumeric code for verification
+  
+  // QR for verification
+  qrData          String?  // URL or data for verification QR
+  
+  // Status
+  isValid         Boolean  @default(true)
+  revokedAt       DateTime?
+  revokeReason    String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([tenantId, documentType])
+  @@index([verificationCode])
+}
+
+// Add to Tenant model:
+// digitalSignatures   DigitalSignature[]
+// signedDocuments     SignedDocument[]
+
+
+// ============================================
+// SOURCE: enterprise\payment-gateway\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════
+// PAYMENT GATEWAY - Prisma Models
+// ══════════════════════════════════════════════════
+
+model PaymentGatewayConfig {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  provider        String   // RAZORPAY, PAYTM, PHONEPE, CCAVENUE, STRIPE
+  merchantId      String?
+  apiKey          String?
+  apiSecret       String?
+  webhookSecret   String?
+  callbackUrl     String?
+  
+  // Provider-specific config
+  config          Json?    // Additional provider-specific settings
+  
+  isActive        Boolean  @default(true)
+  isTest          Boolean  @default(true)  // true = test mode, false = live
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  onlinePayments  OnlinePayment[]
+
+  @@unique([tenantId, provider])
+}
+
+model OnlinePayment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  // Order details
+  orderId         String   @unique // Internal order ID (e.g. ORD-2026-0001)
+  gatewayOrderId  String?  // Razorpay order_id / Paytm txn_token etc
+  gatewayPaymentId String? // razorpay_payment_id
+  
+  // Amount
+  amount          Float
+  currency        String   @default("INR")
+  
+  // Context
+  studentId       String?  @db.ObjectId
+  studentName     String?
+  feeId           String?  @db.ObjectId
+  purpose         String   // FEE_PAYMENT, ADMISSION_FEE, TRANSPORT_FEE, HOSTEL_FEE, MISC
+  description     String?
+  
+  // Status
+  status          String   @default("CREATED") // CREATED, PENDING, SUCCESS, FAILED, REFUNDED, PARTIALLY_REFUNDED
+  
+  // Payment method used
+  paymentMethod   String?  // UPI, CARD, NETBANKING, WALLET
+  bankName        String?
+  
+  // Gateway response
+  gatewayResponse Json?
+  gatewaySignature String?
+  
+  // Refund
+  refundAmount    Float?
+  refundId        String?
+  refundedAt      DateTime?
+  refundReason    String?
+  
+  // Timestamps
+  paidAt          DateTime?
+  expiredAt       DateTime?
+  
+  // Config reference
+  configId        String?  @db.ObjectId
+  config          PaymentGatewayConfig? @relation(fields: [configId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  paymentLinks    PaymentLink[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+  @@index([tenantId, createdAt])
+}
+
+model PaymentLink {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  // Student info
+  studentId       String   @db.ObjectId
+  studentName     String
+  parentPhone     String?
+  parentEmail     String?
+  
+  // Link details
+  amount          Float
+  purpose         String
+  description     String?
+  linkUrl         String
+  shortUrl        String?
+  
+  // Validity
+  expiresAt       DateTime
+  maxPayments     Int      @default(1)
+  
+  // Status
+  status          String   @default("ACTIVE") // ACTIVE, PAID, EXPIRED, CANCELLED
+  
+  // Payment reference
+  paymentId       String?  @db.ObjectId
+  payment         OnlinePayment? @relation(fields: [paymentId], references: [id])
+  paidAt          DateTime?
+  
+  // Notification
+  smsSent         Boolean  @default(false)
+  emailSent       Boolean  @default(false)
+  whatsappSent    Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, studentId])
+}
+
+// Add to Tenant model:
+// paymentGatewayConfigs  PaymentGatewayConfig[]
+// onlinePayments         OnlinePayment[]
+// paymentLinks           PaymentLink[]
+
+
+// ============================================
+// SOURCE: enterprise\qr-barcode\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════
+// QR CODE & BARCODE SYSTEM - Prisma Models
+// ══════════════════════════════════════════════════
+
+model QRCode {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  entityType    String   // STUDENT_ID, STAFF_ID, BOOK, ASSET, RECEIPT, GATE_PASS, CERTIFICATE
+  entityId      String
+  data          String   // The actual data encoded in QR/Barcode
+  qrImageUrl    String?  // Stored QR image path
+  barcodeImageUrl String? // Stored barcode image path
+  format        String   @default("QR") // QR, CODE128, EAN13, CODE39
+  size          Int      @default(200)
+
+  isActive      Boolean  @default(true)
+  scannedCount  Int      @default(0)
+  lastScannedAt DateTime?
+  lastScannedBy String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, data])
+}
+
+model QRScanLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  qrCodeId      String?  @db.ObjectId
+  data          String   // Scanned data
+  scannedBy     String   // userId
+  scannedByName String
+  purpose       String?  // ATTENDANCE, LIBRARY, GATE_PASS, VERIFICATION
+  location      String?
+  deviceInfo    String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// Add to Tenant model:
+// qrCodes          QRCode[]
+// qrScanLogs       QRScanLog[]
+
+
+// ============================================
+// SOURCE: foundation\audit\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// AUDIT & ACTIVITY TRACKING - Prisma Models
+// ══════════════════════════════════════════════════════════
+
+model AuditLog {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Who
+  userId    String @db.ObjectId
+  userName  String
+  userRole  String
+
+  // What
+  action    String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT, PRINT, APPROVE, REJECT, VIEW
+  module    String // student, fee, exam, attendance, etc.
+  entityId  String? @db.ObjectId
+  entityType String? // Student, Payment, Exam, etc.
+
+  // Data Changes
+  previousData Json?
+  newData      Json?
+  changes      Json? // [{field, oldValue, newValue}]
+
+  // Context
+  ipAddress   String?
+  userAgent   String?
+  browser     String?
+  device      String?
+  os          String?
+  sessionId   String?
+  duration    Int? // in milliseconds (for page views)
+
+  // Rollback
+  isRollbackable Boolean @default(false)
+  rolledBack     Boolean @default(false)
+  rolledBackBy   String? @db.ObjectId
+  rolledBackAt   DateTime?
+
+  // Tenant
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, userId])
+  @@index([tenantId, module])
+  @@index([tenantId, action])
+  @@index([tenantId, entityType, entityId])
+}
+
+model LoginHistory {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId    String @db.ObjectId
+  userName  String
+  userRole  String
+
+  action    String // LOGIN, LOGOUT, FAILED_LOGIN, SESSION_EXPIRED
+  ipAddress String?
+  userAgent String?
+  browser   String?
+  device    String?
+  os        String?
+  location  String? // geo-location from IP
+
+  sessionId   String?
+  loginAt     DateTime @default(now())
+  logoutAt    DateTime?
+  duration    Int? // session duration in seconds
+
+  isSuccessful Boolean @default(true)
+  failReason   String? // WRONG_PASSWORD, ACCOUNT_LOCKED, etc.
+
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+
+// ============================================
+// SOURCE: foundation\dashboard-builder\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════════
+
+model DashboardLayout {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  userId     String   @db.ObjectId
+  name       String
+  isDefault  Boolean  @default(false)
+  widgets    Json     // Array of WidgetInstance objects
+  gridConfig Json?    // { cols: 12, rowHeight: 80, gap: 16 }
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId, userId])
+}
+
+model DashboardWidget {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  name       String
+  type       String   // STAT_CARD, BAR_CHART, LINE_CHART, DONUT_CHART, TABLE, CALENDAR, ACTIVITY, CLOCK
+  dataSource String   // Key identifying what data to fetch
+  config     Json     // Widget-specific configuration
+  isPublic   Boolean  @default(false)
+  createdBy  String   @db.ObjectId
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD TO TENANT MODEL:
+// ══════════════════════════════════════════════════════════════
+// dashboardLayouts    DashboardLayout[]
+// dashboardWidgets    DashboardWidget[]
+
+
+// ============================================
+// SOURCE: foundation\file-manager\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// FILE MANAGER - Prisma Models
+// ══════════════════════════════════════════════════════════
+
+model FileStorage {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+
+  fileName     String  // stored filename (uuid + extension)
+  originalName String  // user's original filename
+  path         String  // relative path in uploads/
+  url          String  // full URL to access
+  mimeType     String  // image/png, application/pdf, etc.
+  size         Int     // in bytes
+  extension    String  // png, pdf, docx, etc.
+
+  // Categorization
+  category     String  // STUDENT_PHOTO, DOCUMENT, CERTIFICATE, HOMEWORK, STAFF, GENERAL, ATTACHMENT
+  folderId     String? @db.ObjectId
+
+  // Entity association (optional - links file to specific record)
+  entityId     String? @db.ObjectId
+  entityType   String? // Student, Teacher, Certificate, etc.
+
+  // Metadata
+  uploadedBy   String @db.ObjectId
+  uploadedByName String?
+  description  String?
+  tags         String[] // searchable tags
+
+  // Status
+  isPublic     Boolean @default(false)
+  isDeleted    Boolean @default(false)
+  deletedAt    DateTime?
+  deletedBy    String? @db.ObjectId
+
+  // Tenant
+  tenantId     String @db.ObjectId
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, category])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, folderId])
+  @@index([tenantId, isDeleted])
+}
+
+model FileFolder {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name      String
+  parentId  String? @db.ObjectId // null = root folder
+  path      String  // full path like "/Documents/Students/2024"
+  color     String? // folder color
+  icon      String? // folder icon
+
+  createdBy String @db.ObjectId
+  createdByName String?
+
+  isActive  Boolean @default(true)
+
+  // Tenant
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, parentId])
+  @@index([tenantId, path])
+}
+
+
+// ============================================
+// SOURCE: foundation\form-builder\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// DYNAMIC FORM BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model FormTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  description String?
+  module      String?  // Optional: link to a module (ADMISSION, ENQUIRY, FEEDBACK, VISITOR, etc.)
+
+  // Fields JSON array:
+  // [{ id: "field_1", label: "Full Name", type: "TEXT", required: true, placeholder: "Enter name",
+  //    options: [], validation: { minLength: 2, maxLength: 100, pattern: "" }, order: 1, width: "FULL/HALF",
+  //    helpText: "", defaultValue: "", conditional: { dependsOn: "field_id", value: "..." } }]
+  fields      Json     @default("[]")
+
+  // Settings JSON:
+  // { allowAnonymous: false, requireLogin: true, submitLabel: "Submit", successMessage: "Thank you!",
+  //   redirectUrl: "", notifyOnSubmission: true, notifyEmails: [], maxSubmissions: 0 (unlimited),
+  //   startDate: null, endDate: null, showProgressBar: true }
+  settings    Json     @default("{}")
+
+  isPublished Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+
+  createdBy   String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  submissions FormSubmission[]
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, module])
+}
+
+model FormSubmission {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  formId         String   @db.ObjectId
+  form           FormTemplate @relation(fields: [formId], references: [id])
+
+  // Submitted data as key-value JSON: { "field_1": "John Doe", "field_2": "john@email.com" }
+  data           Json
+
+  submittedBy    String?  @db.ObjectId   // userId if logged in
+  submittedByName String?
+  submittedByEmail String?
+
+  status         String   @default("SUBMITTED") // DRAFT, SUBMITTED, REVIEWED, APPROVED, REJECTED
+  reviewedBy     String?  @db.ObjectId
+  reviewRemarks  String?
+  reviewedAt     DateTime?
+
+  ipAddress      String?
+  userAgent      String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId, formId])
+  @@index([tenantId, status])
+  @@index([formId, createdAt])
+}
+
+// Also add to Tenant model:
+// formTemplates     FormTemplate[]
+// formSubmissions   FormSubmission[]
+
+
+// ============================================
+// SOURCE: foundation\import-export\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// IMPORT/EXPORT ENGINE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model ImportJob {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String    // STUDENT | TEACHER | FEE_STRUCTURE | BOOK | ASSET | MARKS
+  fileName       String
+  fileUrl        String
+  totalRows      Int       @default(0)
+  processedRows  Int       @default(0)
+  successRows    Int       @default(0)
+  failedRows     Int       @default(0)
+  status         String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED | CANCELLED
+  errors         Json?     // [{ row: 5, field: "email", message: "Invalid format" }]
+  mapping        Json?     // { "Column A": "firstName", "Column B": "lastName" }
+
+  createdBy      String
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model ExportJob {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String    // STUDENT | TEACHER | FEE | ATTENDANCE | LIBRARY | ASSET | MARKS
+  format         String    // EXCEL | CSV | PDF
+  filters        Json?     // { classId: "...", status: "active" }
+  columns        String[]  // ["name", "email", "class", "section"]
+  fileUrl        String?
+  status         String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  totalRecords   Int       @default(0)
+
+  createdBy      String
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model ImportTemplate {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String
+  name           String
+  columns        Json      // [{ field: "name", label: "Student Name", required: true, type: "string" }]
+  sampleFileUrl  String?
+  mapping        Json?     // default mapping
+  isActive       Boolean   @default(true)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, module])
+}
+
+// Add to Tenant model:
+// importJobs       ImportJob[]
+// exportJobs       ExportJob[]
+// importTemplates  ImportTemplate[]
+
+
+// ============================================
+// SOURCE: foundation\notification-engine\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════
+// NOTIFICATION ENGINE MODELS
+// ══════════════════════════════════════════════════════
+
+model NotificationConfig {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel     String   // SMS, EMAIL, WHATSAPP, PUSH, IN_APP
+  provider    String   // TWILIO, SENDGRID, MSG91, FIREBASE, CUSTOM
+  apiKey      String?
+  apiSecret   String?
+  senderId    String?  // SMS sender ID or email from address
+  baseUrl     String?
+  webhookUrl  String?
+  maxRetries  Int      @default(3)
+  retryDelay  Int      @default(60) // seconds
+  dailyLimit  Int?     // max messages per day
+  monthlyLimit Int?
+
+  isActive    Boolean  @default(true)
+  isVerified  Boolean  @default(false)
+  lastTestedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NotificationQueue {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel      String   // SMS, EMAIL, WHATSAPP, PUSH, IN_APP
+  templateId   String?  @db.ObjectId
+  to           String   // phone number, email, or userId
+  toName       String?
+  from         String?
+  subject      String?
+  body         String
+  htmlBody     String?
+  data         Json?    // template variables, metadata
+  attachments  Json?    // [{ name, url, type }]
+
+  status       String   @default("QUEUED") // QUEUED, PROCESSING, SENT, DELIVERED, FAILED, CANCELLED
+  attempts     Int      @default(0)
+  maxAttempts  Int      @default(3)
+  lastAttemptAt DateTime?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+  error        String?
+  externalId   String?  // Provider message ID
+
+  priority     String   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  scheduledAt  DateTime?
+  batchId      String?  // for bulk sends
+
+  module       String?  // which module triggered this (FEES, ATTENDANCE, etc)
+  entityId     String?  // related entity ID
+  entityType   String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model NotificationLog {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  channel      String
+  to           String
+  toName       String?
+  subject      String?
+  body         String?
+  status       String   // SENT, DELIVERED, READ, FAILED, BOUNCED
+  messageId    String?  // external provider message ID
+  cost         Float?   // cost per message if applicable
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  bouncedAt    DateTime?
+  error        String?
+
+  module       String?
+  entityId     String?
+  batchId      String?
+
+  createdAt    DateTime @default(now())
+}
+
+model InAppNotification {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  userId       String   @db.ObjectId
+  title        String
+  body         String
+  type         String   // INFO, SUCCESS, WARNING, ERROR, ALERT
+  category     String?  // ATTENDANCE, FEES, EXAM, GENERAL, SYSTEM
+  icon         String?
+  actionUrl    String?
+  actionLabel  String?
+  imageUrl     String?
+  data         Json?
+
+  isRead       Boolean  @default(false)
+  readAt       DateTime?
+  isDismissed  Boolean  @default(false)
+  dismissedAt  DateTime?
+  expiresAt    DateTime?
+
+  createdAt    DateTime @default(now())
+}
+
+model NotificationSchedule {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String
+  description  String?
+  event        String   // FEE_DUE, FEE_OVERDUE, BIRTHDAY, ATTENDANCE_ABSENT, EXAM_RESULT, HOLIDAY, CUSTOM
+  channel      String[] // ["SMS", "WHATSAPP", "PUSH"]
+  templateId   String?  // reference to SMS/Email/WhatsApp template
+  templateBody String?  // inline body if no template
+
+  recipients   Json     // { type: "ALL_STUDENTS/ALL_PARENTS/CLASS/SECTION/INDIVIDUAL", classId?, sectionId?, userIds?[] }
+  timing       Json     // { type: "IMMEDIATE/DELAYED/RECURRING", delay?: "2h", cron?: "0 8 * * *", daysBeforeDue?: 3 }
+  conditions   Json?    // [{ field, operator, value }] - extra filtering
+
+  isActive     Boolean  @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  runCount     Int      @default(0)
+  lastStatus   String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Add to Tenant model:
+// notificationConfigs    NotificationConfig[]
+// notificationQueue      NotificationQueue[]
+// notificationLogs       NotificationLog[]
+// inAppNotifications     InAppNotification[]
+// notificationSchedules  NotificationSchedule[]
+
+
+// ============================================
+// SOURCE: foundation\queue\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// QUEUE SYSTEM - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model QueueJob {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String    @db.ObjectId
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  type          String    // SMS | EMAIL | PDF_GENERATION | BACKUP | BULK_OPERATION | REPORT
+  payload       Json      // job-specific data
+  priority      String    @default("NORMAL") // LOW | NORMAL | HIGH | CRITICAL
+  status        String    @default("QUEUED") // QUEUED | PROCESSING | COMPLETED | FAILED | RETRYING
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  lastError     String?
+  processedAt   DateTime?
+  completedAt   DateTime?
+  result        Json?     // output/result data
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status, priority])
+  @@index([type, status])
+}
+
+model QueueConfig {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String    @db.ObjectId
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  type          String    // SMS | EMAIL | PDF_GENERATION | BACKUP | BULK_OPERATION | REPORT
+  maxConcurrent Int       @default(5)
+  retryDelay    Int       @default(60000) // milliseconds
+  maxRetries    Int       @default(3)
+  isActive      Boolean   @default(true)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tenantId, type])
+}
+
+// Add to Tenant model:
+// queueJobs       QueueJob[]
+// queueConfigs    QueueConfig[]
+
+
+// ============================================
+// SOURCE: foundation\report-builder\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════
+// REPORT BUILDER MODELS
+// ══════════════════════════════════════════════════════
+
+model ReportTemplate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  module      String   // STUDENT, FEES, ATTENDANCE, EXAM, HR, TRANSPORT, LIBRARY, HOSTEL, INVENTORY
+  description String?
+  query       Json     // { collection, fields[], conditions[], joins?[] }
+  columns     Json     // [{ field, label, width, format?, aggregate? (SUM/COUNT/AVG/MIN/MAX) }]
+  filters     Json?    // [{ field, label, type (TEXT/DATE/SELECT/RANGE), options?[] }]
+  chartType   String?  // BAR, LINE, PIE, DONUT, AREA, TABLE_ONLY
+  chartConfig Json?    // { xAxis, yAxis, series[], colors[] }
+  groupBy     String?
+  sortBy      String?
+  sortOrder   String?  @default("asc") // asc, desc
+  format      String   @default("PDF") // PDF, EXCEL, CSV
+  pageSize    String?  @default("A4") // A4, LETTER, LEGAL
+  orientation String?  @default("PORTRAIT") // PORTRAIT, LANDSCAPE
+  headerHtml  String?
+  footerHtml  String?
+  isPublic    Boolean  @default(false)
+  createdBy   String   @db.ObjectId
+
+  generatedReports GeneratedReport[]
+  scheduledReports ScheduledReport[]
+
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GeneratedReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  templateId   String   @db.ObjectId
+  template     ReportTemplate @relation(fields: [templateId], references: [id])
+
+  name         String
+  parameters   Json?    // { dateFrom, dateTo, classId, ...applied filters }
+  fileUrl      String?
+  filePath     String?
+  fileSize     Int?
+  format       String   // PDF, EXCEL, CSV
+  rowCount     Int?
+  status       String   @default("GENERATING") // GENERATING, COMPLETED, FAILED
+  error        String?
+  generatedBy  String   @db.ObjectId
+  expiresAt    DateTime?
+
+  createdAt    DateTime @default(now())
+}
+
+model ScheduledReport {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  templateId   String   @db.ObjectId
+  template     ReportTemplate @relation(fields: [templateId], references: [id])
+
+  name         String
+  frequency    String   // DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY
+  dayOfWeek    Int?     // 0-6 for WEEKLY
+  dayOfMonth   Int?     // 1-31 for MONTHLY
+  time         String   // HH:mm format
+  recipients   String[] // email addresses
+  format       String   @default("PDF")
+  parameters   Json?    // fixed filter parameters
+
+  isActive     Boolean  @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  lastStatus   String?  // SUCCESS, FAILED
+  runCount     Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Add to Tenant model:
+// reportTemplates    ReportTemplate[]
+// generatedReports   GeneratedReport[]
+// scheduledReports   ScheduledReport[]
+
+
+// ============================================
+// SOURCE: foundation\scheduler\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// SCHEDULER MODULE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model ScheduledTask {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String    @db.ObjectId
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+
+  name            String
+  description     String?
+  type            String    // BACKUP | SMS | EMAIL | REPORT | REMINDER | CUSTOM
+  cronExpression  String    // e.g. "0 2 * * *" for daily 2AM
+  handler         String    // function/service to call
+  params          Json?     // parameters to pass to handler
+
+  isActive        Boolean   @default(true)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  lastStatus      String?   // SUCCESS | FAILED | RUNNING
+  lastError       String?
+  runCount        Int       @default(0)
+
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  logs            SchedulerLog[]
+
+  @@index([tenantId])
+  @@index([isActive, nextRunAt])
+}
+
+model SchedulerLog {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String    @db.ObjectId
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  taskId      String    @db.ObjectId
+  task        ScheduledTask @relation(fields: [taskId], references: [id])
+
+  status      String    // SUCCESS | FAILED | SKIPPED
+  startedAt   DateTime
+  completedAt DateTime?
+  duration    Int?      // milliseconds
+  output      String?
+  error       String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([taskId, createdAt])
+}
+
+// Add to Tenant model:
+// scheduledTasks    ScheduledTask[]
+// schedulerLogs    SchedulerLog[]
+
+
+// ============================================
+// SOURCE: foundation\search\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// GLOBAL SEARCH ENGINE - Prisma Models
+// ══════════════════════════════════════════════════════════
+
+model SearchIndex {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+
+  // Entity reference
+  entityType  String // STUDENT, STAFF, RECEIPT, BOOK, VEHICLE, CERTIFICATE, ASSET, VISITOR, EVENT
+  entityId    String @db.ObjectId
+
+  // Searchable content
+  title       String  // Primary text (e.g., student name)
+  subtitle    String? // Secondary text (e.g., class - section)
+  description String? // Additional context
+  keywords    String[] // Additional searchable terms
+
+  // Navigation
+  route       String  // Frontend route to navigate to (e.g., /students/edit/123)
+  icon        String? // Lucide icon name
+
+  // Metadata
+  metadata    Json?   // Additional data for display (e.g., { class: "10th", photo: "url" })
+  category    String? // Grouping category for search results
+
+  // Status
+  isActive    Boolean @default(true)
+
+  // Tenant
+  tenantId    String @db.ObjectId
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, entityType])
+  @@index([tenantId, title])
+  @@unique([tenantId, entityType, entityId])
+}
+
+model SearchHistory {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+
+  query     String
+  userId    String @db.ObjectId
+  resultCount Int @default(0)
+  selectedEntityType String?
+  selectedEntityId   String? @db.ObjectId
+
+  tenantId  String @db.ObjectId
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId, createdAt])
+}
+
+
+// ============================================
+// SOURCE: foundation\theme\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════
+// THEME BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════════
+
+model ThemeConfig {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  name            String
+  primaryColor    String   @default("#4f46e5")
+  secondaryColor  String   @default("#7c3aed")
+  accentColor     String   @default("#06b6d4")
+  sidebarBg       String   @default("#1e2a4a")
+  sidebarText     String   @default("#e2e8f0")
+  topbarBg        String   @default("#ffffff")
+  topbarText      String   @default("#1e293b")
+  bodyBg          String   @default("#f8fafc")
+  cardBg          String   @default("#ffffff")
+  fontFamily      String   @default("Inter, system-ui, sans-serif")
+  fontSize        String   @default("14px")
+  borderRadius    String   @default("12px")
+  logoUrl         String?
+  faviconUrl      String?
+  loginBg         String?
+  isDark          Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD TO TENANT MODEL:
+// ══════════════════════════════════════════════════════════════
+// themeConfigs    ThemeConfig[]
+
+
+// ============================================
+// SOURCE: foundation\workflow\prisma-models.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════
+// WORKFLOW ENGINE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model Workflow {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String
+  module       String   // e.g. "LEAVE", "FEE_DISCOUNT", "GATE_PASS", "PURCHASE", "ADMISSION"
+  triggerEvent String   // e.g. "LEAVE_APPLIED", "DISCOUNT_REQUESTED", "GATE_PASS_CREATED"
+  description  String?
+
+  // Steps as JSON array:
+  // [{ level: 1, approverRole: "HOD", approverUserId?: "...", action: "APPROVE/REJECT/FORWARD", timeoutHours: 24, autoApproveOnTimeout: false, notifyChannels: ["IN_APP", "EMAIL"] }]
+  steps        Json
+
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdBy    String?  @db.ObjectId
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instances    WorkflowInstance[]
+
+  @@index([tenantId, module])
+  @@index([tenantId, isActive])
+}
+
+model WorkflowInstance {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  workflowId   String   @db.ObjectId
+  workflow     Workflow  @relation(fields: [workflowId], references: [id])
+
+  entityId     String   // ID of the entity (leave request, gate pass, etc.)
+  entityType   String   // "LEAVE", "GATE_PASS", "FEE_DISCOUNT", etc.
+
+  currentStep  Int      @default(1)
+  totalSteps   Int      @default(1)
+  status       String   @default("PENDING") // PENDING, IN_PROGRESS, APPROVED, REJECTED, CANCELLED, EXPIRED
+
+  initiatedBy  String   @db.ObjectId
+  initiatorName String?
+
+  // Snapshot of the entity data at initiation
+  data         Json?
+
+  // History log of all actions taken:
+  // [{ step: 1, action: "APPROVED", by: "userId", byName: "John", at: "2026-01-01T...", remarks: "OK" }]
+  history      Json     @default("[]")
+
+  // Current assignee(s)
+  currentAssignees Json? // ["userId1", "userId2"]
+
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, workflowId])
+  @@index([tenantId, initiatedBy])
+}
+
+// Also add to Tenant model:
+// workflows          Workflow[]
+// workflowInstances  WorkflowInstance[]
+
+
+// ============================================
+// SOURCE: masters\01-core-academic-student-staff-masters.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MASTER MODELS - Part 1: Organization + Academic + Student + Staff
+// ══════════════════════════════════════════════════════════════════════════════
+// APPEND these models to backend/prisma/schema.prisma
+// Also add the relation arrays listed at the bottom to the Tenant model.
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 1. ORGANIZATION MASTERS                                                    ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model SchoolMaster {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  name            String
+  code            String
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  email           String?
+  website         String?
+  logo            String?
+  affiliation     String?
+  establishedYear Int?
+  principalName   String?
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BranchMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  code      String
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  phone     String?
+  email     String?
+  isMain    Boolean  @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campuses  CampusMaster[]
+
+  @@index([tenantId])
+}
+
+model CampusMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  branchId   String   @db.ObjectId
+  branch     BranchMaster @relation(fields: [branchId], references: [id])
+
+  name       String
+  address    String?
+  capacity   Int?
+  facilities String[]
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([branchId])
+}
+
+model AcademicSessionMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ShiftMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  startTime String   // "08:00"
+  endTime   String   // "14:00"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workingDays WorkingDayMaster[]
+
+  @@index([tenantId])
+}
+
+model WorkingDayMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  dayOfWeek Int      // 0=Sunday, 1=Monday ... 6=Saturday
+  isWorking Boolean  @default(true)
+  halfDay   Boolean  @default(false)
+  startTime String?  // Override shift time if needed
+  endTime   String?
+
+  shiftId   String?  @db.ObjectId
+  shift     ShiftMaster? @relation(fields: [shiftId], references: [id])
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([shiftId])
+}
+
+model HolidayMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  date        DateTime
+  type        String   // NATIONAL | STATE | SCHOOL | RESTRICTED
+  isOptional  Boolean  @default(false)
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([date])
+}
+
+model HouseMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  color       String?  // Hex color e.g. "#FF5733"
+  motto       String?
+  captain     String?  // Student name or ID
+  viceCaptain String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SchoolTimingMaster {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String   @db.ObjectId
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+
+  name             String   // e.g. "Summer Timing", "Winter Timing"
+  assemblyStart    String   // "07:30"
+  assemblyEnd      String   // "07:45"
+  firstPeriodStart String   // "07:50"
+  lastPeriodEnd    String   // "13:30"
+  lunchStart       String?  // "12:00"
+  lunchEnd         String?  // "12:30"
+  dispersalTime    String   // "13:45"
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 2. ACADEMIC MASTERS                                                        ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model StreamMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Science, Commerce, Arts, etc.
+  code        String
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjectGroups   SubjectGroupMaster[]
+  electiveSubjects ElectiveSubjectMaster[]
+
+  @@index([tenantId])
+}
+
+model SubjectGroupMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // e.g. "PCM Group", "Commerce Core"
+  classId   String?  @db.ObjectId
+  streamId  String?  @db.ObjectId
+  stream    StreamMaster? @relation(fields: [streamId], references: [id])
+  subjects  String[] // Array of subject IDs
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([streamId])
+}
+
+model ElectiveSubjectMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  subjectId   String   @db.ObjectId
+  classId     String   @db.ObjectId
+  streamId    String?  @db.ObjectId
+  stream      StreamMaster? @relation(fields: [streamId], references: [id])
+  maxStudents Int?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([classId])
+  @@index([streamId])
+}
+
+model MediumMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindi, English, Urdu, etc.
+  code     String
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BoardMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Central Board of Secondary Education
+  code        String   // CBSE, ICSE, STATE, IB, IGCSE
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  syllabi     SyllabusMaster[]
+
+  @@index([tenantId])
+}
+
+model CourseMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // B.Tech, BCA, MBA, etc.
+  code         String
+  duration     Int      // e.g. 4 (years), 6 (semesters)
+  durationUnit String   // YEAR | SEMESTER | MONTH
+  description  String?
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SyllabusMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  classId   String   @db.ObjectId
+  subjectId String   @db.ObjectId
+  boardId   String?  @db.ObjectId
+  board     BoardMaster? @relation(fields: [boardId], references: [id])
+  content   String?  // Rich text / JSON syllabus content
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([classId])
+  @@index([boardId])
+}
+
+model PeriodMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // "Period 1", "Lunch Break"
+  number    Int      // Order sequence
+  startTime String   // "08:00"
+  endTime   String   // "08:40"
+  duration  Int      // Minutes, e.g. 40
+  type      String   // REGULAR | BREAK | LUNCH | FREE
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetableSlots TimetableSlotMaster[]
+
+  @@index([tenantId])
+}
+
+model TimetableSlotMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  dayOfWeek  Int      // 0=Sunday ... 6=Saturday
+  periodId   String   @db.ObjectId
+  period     PeriodMaster @relation(fields: [periodId], references: [id])
+  classId    String   @db.ObjectId
+  sectionId  String   @db.ObjectId
+  subjectId  String?  @db.ObjectId
+  teacherId  String?  @db.ObjectId
+  roomId     String?  @db.ObjectId
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([periodId])
+  @@index([classId, sectionId, dayOfWeek])
+  @@index([teacherId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 3. STUDENT MASTERS                                                         ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model AdmissionTypeMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // New Admission, Transfer, RTE, Management Quota
+  code        String
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model CategoryMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // General, OBC, SC, ST, EWS
+  code        String   // GEN, OBC, SC, ST, EWS
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  castes      CasteMaster[]
+
+  @@index([tenantId])
+}
+
+model ReligionMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindu, Muslim, Christian, Sikh, Buddhist, Jain, Other
+  code     String?
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model CasteMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String
+  categoryId String   @db.ObjectId
+  category   CategoryMaster @relation(fields: [categoryId], references: [id])
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([categoryId])
+}
+
+model NationalityMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Indian, Nepalese, etc.
+  code     String?  // IN, NP, etc.
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BloodGroupMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // A+, A-, B+, B-, O+, O-, AB+, AB-
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model MotherTongueMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Hindi, English, Punjabi, Tamil, Telugu, etc.
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model StudentStatusMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Active, Left, TC Issued, Passed Out, Suspended, Expelled
+  code     String   // ACTIVE, LEFT, TC, PASSOUT, SUSPENDED, EXPELLED
+  color    String?  // Hex color for UI badge
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SiblingRelationMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Brother, Sister, Twin, Step-Brother, Step-Sister
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+// ┃ 4. STAFF MASTERS                                                           ┃
+// ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+model DepartmentMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Mathematics, Science, English, Hindi, Computer, Admin, etc.
+  code        String
+  hodId       String?  @db.ObjectId  // Head of Department (Teacher ID)
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  designations DesignationMaster[]
+
+  @@index([tenantId])
+}
+
+model DesignationMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // Principal, Vice Principal, HOD, PGT, TGT, PRT, Lab Assistant, etc.
+  code         String
+  level        Int?     // Hierarchy level (1=highest)
+  description  String?
+  departmentId String?  @db.ObjectId
+  department   DepartmentMaster? @relation(fields: [departmentId], references: [id])
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([departmentId])
+}
+
+model EmploymentTypeMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // Permanent, Contract, Temporary, Ad-hoc, Part-time, Guest Faculty
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model QualificationMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Ph.D., M.Tech, M.Sc., B.Ed., B.A., 12th, D.El.Ed.
+  level    String   // PHD, MASTERS, BACHELORS, DIPLOMA, 12TH, 10TH
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model LeaveTypeMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // Casual Leave, Sick Leave, Earned Leave, Maternity, Paternity
+  code         String   // CL, SL, EL, ML, PL
+  maxDays      Int      // Max days per year
+  carryForward Boolean  @default(false)
+  encashable   Boolean  @default(false)
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model StaffCategoryMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Teaching, Non-Teaching, Administrative, Support, Contract
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SalaryGradeMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // Grade A, Grade B, Level-7, etc.
+  minPay    Float    // Minimum pay in this grade
+  maxPay    Float    // Maximum pay in this grade
+  increment Float?   // Annual increment amount
+  level     Int?     // Hierarchy level
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BankMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // State Bank of India, Punjab National Bank, etc.
+  code     String   // IFSC prefix, e.g. "SBIN", "PUNB"
+  branch   String?  // Branch name
+
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TENANT MODEL ADDITIONS
+// ══════════════════════════════════════════════════════════════════════════════
+// Add these relation arrays inside the existing Tenant model:
+//
+// // Organization Masters
+// schoolMasters          SchoolMaster[]
+// branchMasters          BranchMaster[]
+// campusMasters          CampusMaster[]
+// academicSessionMasters AcademicSessionMaster[]
+// shiftMasters           ShiftMaster[]
+// workingDayMasters      WorkingDayMaster[]
+// holidayMasters         HolidayMaster[]
+// houseMasters           HouseMaster[]
+// schoolTimingMasters    SchoolTimingMaster[]
+//
+// // Academic Masters
+// streamMasters          StreamMaster[]
+// subjectGroupMasters    SubjectGroupMaster[]
+// electiveSubjectMasters ElectiveSubjectMaster[]
+// mediumMasters          MediumMaster[]
+// boardMasters           BoardMaster[]
+// courseMasters          CourseMaster[]
+// syllabusMasters        SyllabusMaster[]
+// periodMasters          PeriodMaster[]
+// timetableSlotMasters   TimetableSlotMaster[]
+//
+// // Student Masters
+// admissionTypeMasters   AdmissionTypeMaster[]
+// categoryMasters        CategoryMaster[]
+// religionMasters        ReligionMaster[]
+// casteMasters           CasteMaster[]
+// nationalityMasters     NationalityMaster[]
+// bloodGroupMasters      BloodGroupMaster[]
+// motherTongueMasters    MotherTongueMaster[]
+// studentStatusMasters   StudentStatusMaster[]
+// siblingRelationMasters SiblingRelationMaster[]
+//
+// // Staff Masters
+// departmentMasters      DepartmentMaster[]
+// designationMasters     DesignationMaster[]
+// employmentTypeMasters  EmploymentTypeMaster[]
+// qualificationMasters   QualificationMaster[]
+// leaveTypeMasters       LeaveTypeMaster[]
+// staffCategoryMasters   StaffCategoryMaster[]
+// salaryGradeMasters     SalaryGradeMaster[]
+// bankMasters            BankMaster[]
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ============================================
+// SOURCE: masters\02-fee-exam-attendance-library-hostel-transport-inventory-masters.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MASTER MODELS - Part 2
+// Fee, Examination, Attendance, Library, Hostel, Transport, Inventory Masters
+// ══════════════════════════════════════════════════════════════════════════════
+// DATABASE: MongoDB with Prisma ORM
+// ALL models have tenantId relation to Tenant
+// Append these to: backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 5. FEE MASTERS                                                          │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model FeeGroupMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  description String?
+  classes     String[] // Array of class IDs or class names this fee group applies to
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("fee_group_masters")
+}
+
+model FeeTypeMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String
+  code         String
+  isRefundable Boolean  @default(false)
+  isMandatory  Boolean  @default(true)
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("fee_type_masters")
+}
+
+model ConcessionMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String
+  type       String   // PERCENTAGE | AMOUNT
+  value      Float    // If PERCENTAGE: e.g. 10 means 10%, If AMOUNT: flat discount amount
+  reason     String?
+  categoryId String?  @db.ObjectId // Optional: link to CategoryMaster for category-based concessions
+  criteria   String?  // JSON or text describing eligibility criteria
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("concession_masters")
+}
+
+model ScholarshipMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  provider    String   // Who provides the scholarship (Govt/Trust/School/NGO)
+  type        String   // MERIT | NEED | SPORTS | MINORITY
+  amount      Float    // Fixed scholarship amount
+  percentage  Float?   // Alternative: percentage-based scholarship
+  criteria    String?  // Eligibility criteria description or JSON
+  maxStudents Int?     // Maximum students who can avail this scholarship
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("scholarship_masters")
+}
+
+model PaymentModeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // CASH | CHEQUE | ONLINE | UPI | CARD | BANK_TRANSFER
+  code     String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("payment_mode_masters")
+}
+
+model ReceiptSeriesMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  prefix        String   // e.g. "REC-", "FEE-"
+  startNumber   Int      // Starting receipt number
+  currentNumber Int      // Current (next to use) receipt number
+  suffix        String?  // Optional suffix
+  format        String   // Format pattern e.g. "PREFIX-YYYY-NNNN" or "PREFIX/NNNN/SUFFIX"
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("receipt_series_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 6. EXAMINATION MASTERS                                                  │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model ExamTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // UNIT_TEST | MID_TERM | FINAL | PRACTICAL | ORAL
+  weightage Float   // Percentage weightage in final result calculation
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("exam_type_masters")
+}
+
+model ExamTermMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String   // e.g. "Term 1", "Term 2", "Pre-Board"
+  startDate      DateTime
+  endDate        DateTime
+  academicYearId String   @db.ObjectId
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, academicYearId])
+  @@map("exam_term_masters")
+}
+
+model ResultTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // MARKS | GRADE | CGPA
+  formula  String?  // Optional formula for calculating result (e.g. weighted average)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("result_type_masters")
+}
+
+model MarkingSchemeMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String   // e.g. "Standard 100 marks", "50 marks practical"
+  maxMarks       Float
+  passingMarks   Float
+  practicalMarks Float?   // Optional practical component max marks
+  internalMarks  Float?   // Optional internal assessment max marks
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("marking_scheme_masters")
+}
+
+model AssessmentMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // e.g. "Written Test 1", "Lab Practical", "Group Project"
+  type     String   // WRITTEN | ORAL | PRACTICAL | PROJECT | ASSIGNMENT
+  maxScore Float
+  weightage Float   // Percentage weightage in overall assessment
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("assessment_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 7. ATTENDANCE MASTERS                                                   │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model AttendanceStatusMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String   // PRESENT | ABSENT | LATE | HALF_DAY | LEAVE | HOLIDAY
+  code           String   // Short code: P, A, L, HD, LV, H
+  color          String   // Hex color for UI display e.g. "#22c55e" for present
+  countAsPresent Boolean  @default(false) // Whether this status counts toward attendance %
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("attendance_status_masters")
+}
+
+model LateFineMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  afterMinutes Int      // Fine applies after these many minutes late
+  fineAmount   Float    // Fine amount in INR
+  frequency    String   // DAILY | WEEKLY | MONTHLY (how often fine is applied)
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("late_fine_masters")
+}
+
+model LeaveReasonMaster {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String   @db.ObjectId
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+
+  name             String   // e.g. "Medical", "Family Emergency", "Personal"
+  requiresDocument Boolean  @default(false) // Whether document upload is mandatory
+  maxDays          Int?     // Maximum days allowed for this reason (optional)
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("leave_reason_masters")
+}
+
+model AttendanceShiftMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // e.g. "Morning Shift", "Afternoon Shift"
+  startTime    String   // HH:MM format e.g. "08:00"
+  endTime      String   // HH:MM format e.g. "14:00"
+  graceMinutes Int      @default(15) // Grace period in minutes before marking late
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("attendance_shift_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 8. LIBRARY MASTERS                                                      │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model PublisherMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String
+  address  String?
+  phone    String?
+  email    String?
+  website  String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("publisher_masters")
+}
+
+model AuthorMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  nationality String?
+  biography   String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("author_masters")
+}
+
+model LanguageMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // e.g. "English", "Hindi", "Sanskrit"
+  code     String   // e.g. "EN", "HI", "SA"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("language_masters")
+}
+
+model RackMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // e.g. "Rack A1", "Rack B3"
+  location String   // e.g. "Ground Floor - Hall 1"
+  capacity Int      // Number of books this rack can hold
+
+  shelves  ShelfMaster[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("rack_masters")
+}
+
+model ShelfMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  rackId   String   @db.ObjectId
+  rack     RackMaster @relation(fields: [rackId], references: [id])
+
+  name     String   // e.g. "Shelf 1", "Top Shelf"
+  level    Int      // Shelf level/number (1 = bottom, higher = top)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([rackId])
+  @@map("shelf_masters")
+}
+
+model BookConditionMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // NEW | GOOD | FAIR | DAMAGED | LOST
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("book_condition_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 9. HOSTEL MASTERS                                                       │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model BlockMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  hostelId String   @db.ObjectId // Reference to existing Hostel model
+  name     String   // e.g. "Block A", "Wing 1"
+  floors   Int      // Number of floors in this block
+
+  floorMasters FloorMaster[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([hostelId])
+  @@map("block_masters")
+}
+
+model FloorMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  blockId   String   @db.ObjectId
+  block     BlockMaster @relation(fields: [blockId], references: [id])
+
+  name      String   // e.g. "Ground Floor", "1st Floor"
+  number    Int      // Floor number (0 = ground, 1, 2, 3...)
+  roomCount Int      // Number of rooms on this floor
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([blockId])
+  @@map("floor_masters")
+}
+
+model BedMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  roomId    String   @db.ObjectId // Reference to existing HostelRoom model
+  bedNumber String   // e.g. "B1", "B2", "Bunk-Top"
+  type      String   // SINGLE | DOUBLE | BUNK
+  status    String   @default("AVAILABLE") // AVAILABLE | OCCUPIED | MAINTENANCE
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([roomId])
+  @@map("bed_masters")
+}
+
+model HostelTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // BOYS | GIRLS | STAFF
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("hostel_type_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 10. TRANSPORT MASTERS                                                   │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model DriverMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String
+  phone          String
+  licenseNumber  String
+  licenseExpiry  DateTime
+  address        String?
+  photo          String?  // URL or path to driver photo
+  experience     Int      // Years of driving experience
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, licenseNumber])
+  @@map("driver_masters")
+}
+
+model ConductorMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String
+  phone    String
+  address  String?
+  photo    String?  // URL or path to conductor photo
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("conductor_masters")
+}
+
+model FuelTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // DIESEL | PETROL | CNG | ELECTRIC
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("fuel_type_masters")
+}
+
+model GPSDeviceMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  deviceId  String   // Unique device identifier
+  vehicleId String?  @db.ObjectId // Optional: linked vehicle
+  provider  String   // GPS service provider name
+  simNumber String   // SIM card number in the device
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, deviceId])
+  @@map("gps_device_masters")
+}
+
+
+// ┌─────────────────────────────────────────────────────────────────────────┐
+// │ 11. INVENTORY MASTERS                                                   │
+// └─────────────────────────────────────────────────────────────────────────┘
+
+model ItemCategoryMaster {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId         String   @db.ObjectId
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+
+  name             String   // e.g. "Electronics", "Furniture", "Stationery"
+  code             String
+  parentCategoryId String?  @db.ObjectId // Self-referencing for sub-categories
+
+  itemGroups       ItemGroupMaster[]
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("item_category_masters")
+}
+
+model ItemGroupMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String   // e.g. "Desks", "Chairs", "Projectors"
+  categoryId String   @db.ObjectId
+  category   ItemCategoryMaster @relation(fields: [categoryId], references: [id])
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("item_group_masters")
+}
+
+model UnitMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // PCS | KG | LTR | BOX | SET | PACK | DOZEN | METER | REAM
+  code     String   // Short code for display
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
+  @@map("unit_masters")
+}
+
+model BrandMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // e.g. "HP", "Dell", "Godrej", "Navneet"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("brand_masters")
+}
+
+model SupplierMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  name          String
+  contactPerson String
+  phone         String
+  email         String?
+  address       String?
+  gstNumber     String?  // GST registration number
+  panNumber     String?  // PAN card number
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("supplier_masters")
+}
+
+model WarehouseMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // e.g. "Main Warehouse", "Lab Store"
+  address   String?
+  capacity  Int      // Maximum items capacity
+  managerId String?  @db.ObjectId // Staff member managing this warehouse
+
+  stores    StoreMaster[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("warehouse_masters")
+}
+
+model StoreMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // e.g. "Science Lab Store", "Sports Room"
+  warehouseId String?  @db.ObjectId
+  warehouse   WarehouseMaster? @relation(fields: [warehouseId], references: [id])
+  location    String   // Physical location description
+  managerId   String?  @db.ObjectId // Staff member managing this store
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([warehouseId])
+  @@map("store_masters")
+}
+
+model StockTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // CONSUMABLE | NON_CONSUMABLE | RETURNABLE
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("stock_type_masters")
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TENANT MODEL ADDITIONS
+// Add these relation arrays to the existing Tenant model in schema.prisma:
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// // Fee Masters
+// feeGroupMasters        FeeGroupMaster[]
+// feeTypeMasters         FeeTypeMaster[]
+// concessionMasters      ConcessionMaster[]
+// scholarshipMasters     ScholarshipMaster[]
+// paymentModeMasters     PaymentModeMaster[]
+// receiptSeriesMasters   ReceiptSeriesMaster[]
+//
+// // Examination Masters
+// examTypeMasters        ExamTypeMaster[]
+// examTermMasters        ExamTermMaster[]
+// resultTypeMasters      ResultTypeMaster[]
+// markingSchemeMasters   MarkingSchemeMaster[]
+// assessmentMasters      AssessmentMaster[]
+//
+// // Attendance Masters
+// attendanceStatusMasters  AttendanceStatusMaster[]
+// lateFineMasters          LateFineMaster[]
+// leaveReasonMasters       LeaveReasonMaster[]
+// attendanceShiftMasters   AttendanceShiftMaster[]
+//
+// // Library Masters
+// publisherMasters       PublisherMaster[]
+// authorMasters          AuthorMaster[]
+// languageMasters        LanguageMaster[]
+// rackMasters            RackMaster[]
+// shelfMasters           ShelfMaster[]
+// bookConditionMasters   BookConditionMaster[]
+//
+// // Hostel Masters
+// blockMasters           BlockMaster[]
+// floorMasters           FloorMaster[]
+// bedMasters             BedMaster[]
+// hostelTypeMasters      HostelTypeMaster[]
+//
+// // Transport Masters
+// driverMasters          DriverMaster[]
+// conductorMasters       ConductorMaster[]
+// fuelTypeMasters        FuelTypeMaster[]
+// gpsDeviceMasters       GPSDeviceMaster[]
+//
+// // Inventory Masters
+// itemCategoryMasters    ItemCategoryMaster[]
+// itemGroupMasters       ItemGroupMaster[]
+// unitMasters            UnitMaster[]
+// brandMasters           BrandMaster[]
+// supplierMasters        SupplierMaster[]
+// warehouseMasters       WarehouseMaster[]
+// storeMasters           StoreMaster[]
+// stockTypeMasters       StockTypeMaster[]
+//
+// ══════════════════════════════════════════════════════════════════════════════
+// TOTAL NEW MODELS IN THIS FILE: 38
+// Categories: Fee (6) + Exam (5) + Attendance (4) + Library (6) +
+//             Hostel (4) + Transport (4) + Inventory (8) + Document(0) = 37+1(relation)
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+// ============================================
+// SOURCE: masters\03-hr-communication-certificate-security-system-masters.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════════
+// MASTER MODELS - Part 3
+// HR, Communication, Certificate, User/Security, Document,
+// Event, Visitor, AI, and System Masters
+// ══════════════════════════════════════════════════════════════════
+// DATABASE: MongoDB with Prisma ORM
+// ALL models have tenantId + Tenant relation
+// Append these to: backend/prisma/schema.prisma
+// Also add corresponding relation arrays to the Tenant model
+// ══════════════════════════════════════════════════════════════════
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  12. HR MASTERS                                              │
+// └──────────────────────────────────────────────────────────────┘
+
+model PayrollHeadMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  type      String   // EARNING | DEDUCTION
+  isFixed   Boolean  @default(true)
+  formula   String?  // e.g. "basic * 0.12" for PF
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SalaryComponentMaster {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  name            String
+  type            String   // BASIC | HRA | DA | TA | MEDICAL | PF_DEDUCTION | TAX | OTHER
+  calculationType String   // FIXED | PERCENTAGE
+  baseComponent   String?  // Reference component for percentage calc (e.g. "BASIC")
+  percentage      Float?   // If calculationType is PERCENTAGE
+
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model PFMaster {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId              String   @db.ObjectId
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+
+  employeeContribution  Float    // e.g. 12.0 (percentage)
+  employerContribution  Float    // e.g. 12.0
+  adminCharges          Float    @default(0) // e.g. 0.5
+  ceiling               Float    // e.g. 15000 (max basic for PF calculation)
+
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ESIMaster {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId              String   @db.ObjectId
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+
+  employeeContribution  Float    // e.g. 0.75 (percentage)
+  employerContribution  Float    // e.g. 3.25
+  ceiling               Float    // e.g. 21000 (gross salary ceiling)
+
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model TaxSlabMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  fromAmount    Float
+  toAmount      Float
+  percentage    Float
+  surcharge     Float?   @default(0)
+  cess          Float?   @default(4) // Health & Education Cess
+  regime        String   // OLD | NEW
+  financialYear String   // e.g. "2025-26"
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model IncrementTypeMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String
+  type       String   // ANNUAL | PROMOTION | SPECIAL
+  percentage Float?
+  amount     Float?
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  13. COMMUNICATION MASTERS                                   │
+// └──────────────────────────────────────────────────────────────┘
+
+model SMSTemplateMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  name          String
+  content       String   // Template body with {{variable}} placeholders
+  variables     String[] // List of variable names: ["studentName", "className", "amount"]
+  category      String   // FEE_REMINDER | ATTENDANCE | EXAM | GENERAL | BIRTHDAY | EVENT
+  dltTemplateId String?  // DLT registered template ID (required in India)
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model EmailTemplateMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  subject   String   // Subject line with {{variable}} placeholders
+  body      String   // HTML body with {{variable}} placeholders
+  variables String[] // List of variable names
+  category  String   // FEE_REMINDER | ATTENDANCE | EXAM | GENERAL | WELCOME | REPORT
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model WhatsAppTemplateMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String
+  content   String   // Message body with {{variable}} placeholders
+  variables String[] // List of variable names
+  category  String   // FEE_REMINDER | ATTENDANCE | EXAM | GENERAL | BIRTHDAY
+  mediaType String?  // IMAGE | VIDEO | DOCUMENT | null (text only)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model NotificationTemplateMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String
+  title    String   // Notification title with {{variable}} placeholders
+  body     String   // Notification body with {{variable}} placeholders
+  type     String   // PUSH | IN_APP
+  icon     String?  // Icon name or URL
+  action   String?  // Deep link or route path
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model NoticeCategoryMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String
+  color    String   // Hex color for category badge, e.g. "#ef4444"
+  icon     String   // Lucide icon name, e.g. "megaphone"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  14. CERTIFICATE MASTERS                                     │
+// └──────────────────────────────────────────────────────────────┘
+
+model CertificateTemplateMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  type        String   // TC | CC | MIGRATION | BONAFIDE | CUSTOM
+  content     String   // HTML template body with {{variable}} placeholders
+  headerHtml  String?  // Custom header HTML (school letterhead)
+  footerHtml  String?  // Custom footer HTML (signatures, seals)
+  variables   String[] // Available merge variables: ["studentName", "fatherName", "class", ...]
+  paperSize   String   @default("A4") // A4 | LETTER | LEGAL
+  orientation String   @default("PORTRAIT") // PORTRAIT | LANDSCAPE
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model IDCardTemplateMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  type        String   // STUDENT | STAFF | VISITOR
+  frontDesign String   // JSON or HTML template for front side
+  backDesign  String   // JSON or HTML template for back side
+  size        String   @default("STANDARD") // STANDARD (CR80) | CUSTOM
+  orientation String   @default("PORTRAIT") // PORTRAIT | LANDSCAPE
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  15. USER & SECURITY MASTERS                                 │
+// └──────────────────────────────────────────────────────────────┘
+
+model RoleMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // e.g. "Principal", "Class Teacher", "Accountant"
+  code        String   // e.g. "PRINCIPAL", "CLASS_TEACHER", "ACCOUNTANT"
+  level       Int      @default(0) // Hierarchy level (0 = highest)
+  description String?
+  isSystem    Boolean  @default(false) // System roles cannot be deleted
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, code])
+}
+
+model PermissionMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  moduleId String   // Reference to ModuleMaster code (e.g. "STUDENTS")
+  action   String   // VIEW | CREATE | EDIT | DELETE | EXPORT | PRINT | APPROVE
+  name     String   // Human readable: "View Students", "Edit Fees"
+  code     String   // Machine code: "students.view", "fees.edit"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, code])
+}
+
+model UserTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // SUPER_ADMIN | ADMIN | TEACHER | STUDENT | PARENT | STAFF | ACCOUNTANT | LIBRARIAN
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ModuleMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Students", "Fees", "Attendance"
+  code     String   // "STUDENTS", "FEES", "ATTENDANCE"
+  icon     String   // Lucide icon name: "users", "indian-rupee", "clipboard-check"
+  route    String   // Frontend route: "/students", "/fees/dashboard"
+  order    Int      @default(0) // Display order in sidebar
+  parentId String?  @db.ObjectId // For sub-modules (null = top-level)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, code])
+}
+
+model MenuMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // Display name: "All Students", "Fee Collection"
+  moduleId String   // Reference to ModuleMaster code
+  route    String   // Frontend route
+  icon     String   // Lucide icon name
+  order    Int      @default(0)
+  parentId String?  @db.ObjectId // For nested menu items
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model APIPermissionMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  endpoint    String   // e.g. "/api/students", "/api/fees/collect"
+  method      String   // GET | POST | PUT | DELETE
+  roleIds     String[] // ObjectId strings of roles allowed
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  16. DOCUMENT MASTERS                                        │
+// └──────────────────────────────────────────────────────────────┘
+
+model DocumentTypeMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String   // "Aadhaar Card", "Birth Certificate", "Marksheet"
+  code           String   // "AADHAAR", "BIRTH_CERT", "MARKSHEET"
+  maxSize        Int      @default(5) // Max file size in MB
+  allowedFormats String[] // ["pdf", "jpg", "png"]
+  isRequired     Boolean  @default(false) // Required during admission?
+  category       String   // IDENTITY | ACADEMIC | ADDRESS | MEDICAL | OTHER
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model DocumentCategoryMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String   // "Student Documents", "Staff Documents", "School Documents"
+  description String?
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ApprovalWorkflowMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Leave Approval", "Fee Discount Approval", "Purchase Approval"
+  module   String   // Module this workflow applies to: "LEAVE", "FEE_DISCOUNT", "PURCHASE"
+  steps    Json     // [{ level: 1, roleCode: "CLASS_TEACHER", action: "APPROVE" }, { level: 2, roleCode: "PRINCIPAL", action: "APPROVE" }]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  17. EVENT MASTERS                                           │
+// └──────────────────────────────────────────────────────────────┘
+
+model EventCategoryMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Annual Day", "Sports", "Cultural", "Workshop"
+  color    String   // Hex color for calendar dot: "#3b82f6"
+  icon     String   // Lucide icon name: "trophy", "music", "book-open"
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model VenueMaster {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  name       String   // "Main Auditorium", "Sports Ground", "Conference Hall"
+  capacity   Int      // Max persons
+  location   String   // "Block A, Ground Floor"
+  facilities String[] // ["Projector", "AC", "Sound System", "Whiteboard"]
+
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model EventTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // ACADEMIC | CULTURAL | SPORTS | SEMINAR | WORKSHOP | COMPETITION
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  18. VISITOR MASTERS                                         │
+// └──────────────────────────────────────────────────────────────┘
+
+model VisitorTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // PARENT | VENDOR | OFFICIAL | ALUMNI | OTHER
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model PurposeMaster {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  name         String   // "Meet Teacher", "Fee Payment", "Document Collection", "Enquiry"
+  departmentId String?  @db.ObjectId // Optional: restrict to specific department
+
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model GateMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Main Gate", "Back Gate", "Staff Gate"
+  location String   // Physical location description
+  type     String   // ENTRY | EXIT | BOTH
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  19. AI MASTERS                                              │
+// └──────────────────────────────────────────────────────────────┘
+
+model AIPromptMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Attendance Analysis", "Fee Defaulter Prediction", "Report Summary"
+  prompt   String   // The actual AI prompt template with {{variable}} placeholders
+  module   String   // Module context: "ATTENDANCE", "FEES", "EXAM", "GENERAL"
+  type     String   // ANALYSIS | PREDICTION | GENERATION
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model PredictionRuleMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  name      String   // "Fee Defaulter Alert", "Dropout Risk", "Low Attendance Alert"
+  module    String   // "FEES", "STUDENTS", "ATTENDANCE"
+  condition Json     // { "field": "attendance_percentage", "operator": "lt", "value": 75 }
+  action    String   // "NOTIFY_ADMIN" | "SEND_SMS" | "FLAG_STUDENT" | "CREATE_TASK"
+  threshold Float    // Confidence threshold (0.0 to 1.0)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model AnalyticsRuleMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  name          String   // "Monthly Fee Trend", "Class Performance Index"
+  module        String   // "FEES", "EXAM", "ATTENDANCE"
+  metric        String   // "total_collected", "average_marks", "attendance_rate"
+  formula       String   // Calculation formula: "SUM(amount) WHERE status='PAID'"
+  visualization String   // "LINE_CHART" | "BAR_CHART" | "PIE_CHART" | "NUMBER" | "TABLE"
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+
+// ┌──────────────────────────────────────────────────────────────┐
+// │  20. SYSTEM MASTERS                                          │
+// └──────────────────────────────────────────────────────────────┘
+
+model ThemeMaster {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  name           String   // "Default Blue", "School Green", "Dark Mode"
+  primaryColor   String   // "#4f46e5"
+  secondaryColor String   // "#10b981"
+  accentColor    String   // "#f59e0b"
+  fontFamily     String   @default("Inter") // "Inter" | "Poppins" | "Roboto"
+  isDark         Boolean  @default(false)
+  isDefault      Boolean  @default(false) // Only one theme can be default per tenant
+
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model CurrencyMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  name          String   // "Indian Rupee", "US Dollar", "Euro"
+  code          String   // "INR", "USD", "EUR"
+  symbol        String   // "₹", "$", "€"
+  decimalPlaces Int      @default(2)
+  isDefault     Boolean  @default(false) // Primary currency for this tenant
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model TimeZoneMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "Asia/Kolkata", "America/New_York"
+  offset   String   // "+05:30", "-05:00"
+  code     String   // "IST", "EST", "PST"
+  isDefault Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model BackupPolicyMaster {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId      String   @db.ObjectId
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  name          String   // "Daily Auto Backup", "Weekly Full Backup"
+  frequency     String   // DAILY | WEEKLY | MONTHLY
+  retentionDays Int      @default(30) // How many days to keep backups
+  time          String   // "02:00" (24h format - when to run)
+  isAutomatic   Boolean  @default(true)
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model AuditTypeMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // LOGIN | LOGOUT | CREATE | UPDATE | DELETE | EXPORT | PRINT | APPROVE | REJECT
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model APIProviderMaster {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String   // "MSG91", "SendGrid", "Razorpay", "Google Maps", "AWS S3"
+  type     String   // SMS | EMAIL | WHATSAPP | PAYMENT | MAPS | STORAGE
+  baseUrl  String   // "https://api.msg91.com/api/v5"
+  apiKey   String?  // Encrypted API key (store encrypted, decrypt at runtime)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SettingsMaster {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  module      String   // "GENERAL" | "FEES" | "ATTENDANCE" | "EXAM" | "SMS" | "EMAIL"
+  key         String   // "fee_receipt_prefix", "attendance_lock_time", "sms_sender_id"
+  value       String   // The actual value (stored as string, cast based on type)
+  type        String   // STRING | NUMBER | BOOLEAN | JSON
+  description String?  // Help text: "Prefix for fee receipt numbers"
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@unique([tenantId, module, key])
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// TENANT MODEL ADDITIONS
+// Add these relation arrays to the existing Tenant model:
+// ══════════════════════════════════════════════════════════════════
+//
+// // HR Masters
+// payrollHeadMasters       PayrollHeadMaster[]
+// salaryComponentMasters   SalaryComponentMaster[]
+// pfMasters                PFMaster[]
+// esiMasters               ESIMaster[]
+// taxSlabMasters           TaxSlabMaster[]
+// incrementTypeMasters     IncrementTypeMaster[]
+//
+// // Communication Masters
+// smsTemplateMasters       SMSTemplateMaster[]
+// emailTemplateMasters     EmailTemplateMaster[]
+// whatsAppTemplateMasters  WhatsAppTemplateMaster[]
+// notificationTemplateMasters NotificationTemplateMaster[]
+// noticeCategoryMasters    NoticeCategoryMaster[]
+//
+// // Certificate Masters
+// certificateTemplateMasters CertificateTemplateMaster[]
+// idCardTemplateMasters    IDCardTemplateMaster[]
+//
+// // User & Security Masters
+// roleMasters              RoleMaster[]
+// permissionMasters        PermissionMaster[]
+// userTypeMasters          UserTypeMaster[]
+// moduleMasters            ModuleMaster[]
+// menuMasters              MenuMaster[]
+// apiPermissionMasters     APIPermissionMaster[]
+//
+// // Document Masters
+// documentTypeMasters      DocumentTypeMaster[]
+// documentCategoryMasters  DocumentCategoryMaster[]
+// approvalWorkflowMasters  ApprovalWorkflowMaster[]
+//
+// // Event Masters
+// eventCategoryMasters     EventCategoryMaster[]
+// venueMasters             VenueMaster[]
+// eventTypeMasters         EventTypeMaster[]
+//
+// // Visitor Masters
+// visitorTypeMasters       VisitorTypeMaster[]
+// purposeMasters           PurposeMaster[]
+// gateMasters              GateMaster[]
+//
+// // AI Masters
+// aiPromptMasters          AIPromptMaster[]
+// predictionRuleMasters    PredictionRuleMaster[]
+// analyticsRuleMasters     AnalyticsRuleMaster[]
+//
+// // System Masters
+// themeMasters             ThemeMaster[]
+// currencyMasters          CurrencyMaster[]
+// timeZoneMasters          TimeZoneMaster[]
+// backupPolicyMasters      BackupPolicyMaster[]
+// auditTypeMasters         AuditTypeMaster[]
+// apiProviderMasters       APIProviderMaster[]
+// settingsMasters          SettingsMaster[]
+// ══════════════════════════════════════════════════════════════════
+
+
+// ============================================
+// SOURCE: new-modules\prisma-additions.prisma
+// ============================================
+
+// ══════════════════════════════════════════════════════════════
+// NEW MODULES - PRISMA SCHEMA ADDITIONS
+// Add these models to backend/prisma/schema.prisma
+// Also add relations to the Tenant model
+// ══════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────
+// GATE PASS MODULE
+// ──────────────────────────────────────────────────────────────
+
+model GatePass {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  visitorName    String
+  visitorPhone   String
+  purpose        String
+  visitingPerson String
+  department     String?
+  entryTime      DateTime?
+  exitTime       DateTime?
+  vehicleNumber  String?
+  idProofType    String?
+  idProofNumber  String?
+  photo          String?
+  status         String   @default("PENDING") // PENDING, APPROVED, IN, OUT, COMPLETED, REJECTED
+  approvedBy     String?
+  notes          String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+model GatePassSetting {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId                String   @unique @db.ObjectId
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id])
+
+  requireApproval         Boolean  @default(true)
+  autoApproveAfterMinutes Int?
+  notifyOnEntry           Boolean  @default(true)
+  notifyOnExit            Boolean  @default(false)
+  allowedPurposes         String[] @default(["Meeting", "Delivery", "Interview", "Parent Visit", "Vendor", "Other"])
+  workingHoursStart       String?  @default("08:00")
+  workingHoursEnd         String?  @default("18:00")
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────────────────────
+// EVENT MANAGEMENT MODULE
+// ──────────────────────────────────────────────────────────────
+
+model Event {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  title        String
+  description  String?
+  type         String   @default("OTHER") // ACADEMIC, CULTURAL, SPORTS, HOLIDAY, EXAM, MEETING, OTHER
+  startDate    DateTime
+  endDate      DateTime
+  startTime    String?
+  endTime      String?
+  venue        String?
+  organizer    String?
+  participants String[] @default([])
+  isPublic     Boolean  @default(true)
+  status       String   @default("UPCOMING") // UPCOMING, ONGOING, COMPLETED, CANCELLED
+  attachments  String[] @default([])
+  budget       Float?
+  actualCost   Float?
+  notes        String?
+  color        String?  @default("#4f46e5")
+
+  categoryId   String?  @db.ObjectId
+  category     EventCategory? @relation(fields: [categoryId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, startDate])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+}
+
+model EventCategory {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId String   @db.ObjectId
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+
+  name     String
+  color    String   @default("#4f46e5")
+  icon     String?
+  events   Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// HELP DESK MODULE
+// ──────────────────────────────────────────────────────────────
+
+model Ticket {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId     String   @db.ObjectId
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  ticketNumber String
+  title        String
+  description  String
+  category     String
+  priority     String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status       String   @default("OPEN")   // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  raisedBy     String
+  raisedByRole String?
+  assignedTo   String?
+  resolution   String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  attachments  String[] @default([])
+
+  comments     TicketComment[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@index([tenantId, ticketNumber])
+}
+
+model TicketComment {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  ticketId String   @db.ObjectId
+  ticket   Ticket   @relation(fields: [ticketId], references: [id])
+
+  message  String
+  author   String
+  authorRole String?
+  isInternal Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model TicketCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId    String   @db.ObjectId
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD THESE RELATIONS TO THE EXISTING Tenant MODEL:
+// ══════════════════════════════════════════════════════════════
+//
+// Inside model Tenant { ... } add:
+//
+//   // Gate Pass Module
+//   gatePasses        GatePass[]
+//   gatePassSetting   GatePassSetting?
+//
+//   // Event Management Module
+//   events            Event[]
+//   eventCategories   EventCategory[]
+//
+//   // Help Desk Module
+//   tickets           Ticket[]
+//   ticketCategories  TicketCategory[]
+//
+// ══════════════════════════════════════════════════════════════

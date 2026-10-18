@@ -1,0 +1,73 @@
+
+
+import { Request, Response } from "express";
+import {
+  createPerformance,
+  getPerformanceByTeacher,
+  getAllPerformances,
+} from "./performance.service";
+import logger from "../../config/logger";
+
+// ✅ CREATE / UPDATE PERFORMANCE
+export const create = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    // Use middleware-injected academicYearId as primary, fallback to body
+    const academicYearId = (req as any).academicYearId || req.body.academicYearId;
+    const data = await createPerformance(
+      { ...req.body, academicYearId, evaluatedBy: req.user?.id },
+      tenantId
+    );
+    return res.status(201).json({ success: true, data });
+  } catch (e: any) {
+    logger.error("CREATE PERFORMANCE ERROR:", e);
+    return res.status(400).json({ success: false, message: e.message });
+  }
+};
+
+// ✅ GET BY TEACHER
+export const getByTeacher = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const { teacherId } = req.params;
+    // Use middleware-injected academicYearId as primary, fallback to query
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!academicYearId) {
+      return res.status(400).json({ success: false, message: "Academic year required" });
+    }
+
+    const data = await getPerformanceByTeacher(teacherId, academicYearId as string, tenantId);
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("GET PERFORMANCE ERROR:", e);
+    return res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+// ✅ GET ALL
+export const getAll = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    // Inject middleware academicYearId into query for the service to use
+    const academicYearId = (req as any).academicYearId || req.query.academicYearId;
+    const data = await getAllPerformances({ ...req.query, academicYearId }, tenantId);
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("GET ALL PERFORMANCES ERROR:", e);
+    return res.status(500).json({ success: false, message: e.message });
+  }
+};
+

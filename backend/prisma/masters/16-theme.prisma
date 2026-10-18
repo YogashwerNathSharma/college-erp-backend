@@ -1,0 +1,37 @@
+// ══════════════════════════════════════════════════════════════
+// THEME BUILDER - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════════
+
+model ThemeConfig {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId        String   @db.ObjectId
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  name            String
+  primaryColor    String   @default("#4f46e5")
+  secondaryColor  String   @default("#7c3aed")
+  accentColor     String   @default("#06b6d4")
+  sidebarBg       String   @default("#1e2a4a")
+  sidebarText     String   @default("#e2e8f0")
+  topbarBg        String   @default("#ffffff")
+  topbarText      String   @default("#1e293b")
+  bodyBg          String   @default("#f8fafc")
+  cardBg          String   @default("#ffffff")
+  fontFamily      String   @default("Inter, system-ui, sans-serif")
+  fontSize        String   @default("14px")
+  borderRadius    String   @default("12px")
+  logoUrl         String?
+  faviconUrl      String?
+  loginBg         String?
+  isDark          Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD TO TENANT MODEL:
+// ══════════════════════════════════════════════════════════════
+// themeConfigs    ThemeConfig[]

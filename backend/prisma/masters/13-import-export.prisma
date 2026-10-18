@@ -1,0 +1,75 @@
+// ══════════════════════════════════════════════════════════
+// IMPORT/EXPORT ENGINE - Prisma Models
+// Add these to backend/prisma/schema.prisma
+// ══════════════════════════════════════════════════════════
+
+model ImportJob {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String    // STUDENT | TEACHER | FEE_STRUCTURE | BOOK | ASSET | MARKS
+  fileName       String
+  fileUrl        String
+  totalRows      Int       @default(0)
+  processedRows  Int       @default(0)
+  successRows    Int       @default(0)
+  failedRows     Int       @default(0)
+  status         String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED | CANCELLED
+  errors         Json?     // [{ row: 5, field: "email", message: "Invalid format" }]
+  mapping        Json?     // { "Column A": "firstName", "Column B": "lastName" }
+
+  createdBy      String
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model ExportJob {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String    // STUDENT | TEACHER | FEE | ATTENDANCE | LIBRARY | ASSET | MARKS
+  format         String    // EXCEL | CSV | PDF
+  filters        Json?     // { classId: "...", status: "active" }
+  columns        String[]  // ["name", "email", "class", "section"]
+  fileUrl        String?
+  status         String    @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  totalRecords   Int       @default(0)
+
+  createdBy      String
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model ImportTemplate {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String    @db.ObjectId
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  module         String
+  name           String
+  columns        Json      // [{ field: "name", label: "Student Name", required: true, type: "string" }]
+  sampleFileUrl  String?
+  mapping        Json?     // default mapping
+  isActive       Boolean   @default(true)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, module])
+}
+
+// Add to Tenant model:
+// importJobs       ImportJob[]
+// exportJobs       ExportJob[]
+// importTemplates  ImportTemplate[]

@@ -1,0 +1,17 @@
+{
+  "name": "@college-erp/shared",
+  "version": "1.0.0",
+  "description": "Shared types, validators, and utilities for College ERP",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

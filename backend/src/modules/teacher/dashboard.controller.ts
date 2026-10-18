@@ -1,0 +1,111 @@
+import { Response } from "express";
+import logger from "../../config/logger";
+import prisma from "../../utils/prisma";
+import { cached, invalidateCache } from "../../utils/cache";
+import {
+  getDashboardStats,
+  getDepartmentChart,
+  getMonthlyOverview,
+  getRecentTeachers,
+} from "./dashboard.service";
+import { getTeacherDashboardPerformance } from "./teacher-dashboard.performance.service";
+
+const TEACHER_CACHE_TTL = 1800000;
+
+export const getDashboard = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dashboard:${tenantId}:${academicYearId || "all"}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () =>
+      getTeacherDashboardPerformance(tenantId, academicYearId)
+    );
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("Teacher dashboard error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.status(500).json({ success: false, message: e?.message || "Failed to load teacher dashboard" });
+  }
+};
+
+export const getStats = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:stats:${tenantId}:${academicYearId || "all"}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const stats = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDashboardStats(tenantId, academicYearId));
+    return res.json({ success: true, data: stats });
+  } catch (e: any) {
+    logger.error("Dashboard stats error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.status(500).json({ success: false, message: e?.message });
+  }
+};
+
+export const getDeptChart = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:dept:${tenantId}:${academicYearId || "all"}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getDepartmentChart(tenantId, academicYearId));
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("Department chart error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.status(500).json({ success: false, message: e?.message });
+  }
+};
+
+export const getOverview = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const forceRefresh = req.query?.refresh === "true";
+    const cacheKey = `teacher:dash:overview:${tenantId}:${academicYearId || "all"}`;
+    if (forceRefresh) await invalidateCache(cacheKey).catch(() => {});
+    const data = await cached(cacheKey, TEACHER_CACHE_TTL, () => getMonthlyOverview(tenantId, academicYearId));
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("Monthly overview error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.status(500).json({ success: false, message: e?.message });
+  }
+};
+
+export const getRecent = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const data = await getRecentTeachers(tenantId, academicYearId);
+    return res.json({ success: true, data });
+  } catch (e: any) {
+    logger.error("Recent teachers error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.status(500).json({ success: false, message: e?.message });
+  }
+};
+
+export const getLeaves = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    const academicYearId = (req as any).academicYearId as string | undefined;
+    if (!tenantId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const leaves = await prisma.leave?.findMany?.({
+      where: { tenantId, isDeleted: false, ...(academicYearId ? { academicYearId } : {}) },
+      orderBy: { createdAt: "desc" }, take: 10,
+      include: { teacher: { select: { id: true, name: true } } },
+    }).catch(() => []);
+    return res.json({ success: true, data: leaves || [] });
+  } catch (e: any) {
+    logger.error("Teacher leaves error", { error: e?.message, tenantId: req.user?.tenantId });
+    return res.json({ success: true, data: [] });
+  }
+};

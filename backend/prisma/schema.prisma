@@ -5855,8 +5855,6 @@ model HostelType {
   code      String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  rackId    String?  @db.ObjectId
-  rack      Rack?    @relation(fields: [rackId], references: [id])
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])

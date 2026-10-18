@@ -5027,7 +5027,7 @@ model Rack {
   name     String
   location String
   capacity Int
-  // shelves LibraryShelf[]
+  shelves  LibraryShelf[]
 
   isActive Boolean       @default(true)
   createdAt DateTime     @default(now())
@@ -5856,7 +5856,7 @@ model HostelType {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   rackId    String?  @db.ObjectId
-  // rack      Rack?    @relation(fields: [rackId], references: [id])
+  rack      Rack?    @relation(fields: [rackId], references: [id])
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])

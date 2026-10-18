@@ -7,6 +7,7 @@ import { Router, Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
+import { getFullDashboardDataOptimized } from "./student-dashboard-optimized.service";
 import {
   getFullDashboardData,
   getBirthdayToday,
@@ -79,11 +80,9 @@ router.get("/full", async (req: any, res: Response) => {
     }
 
     const timeoutPromise = new Promise((resolve) => {
-      setTimeout(() => resolve("TIMEOUT"), 30000);
+      setTimeout(() => resolve("TIMEOUT"), 20000);
     });
-    const dataPromise = yearId
-      ? getFullDashboardDataAcademicYear(req.tenantId, yearId)
-      : getFullDashboardData(req.tenantId);
+    const dataPromise = getFullDashboardDataOptimized(req.tenantId, yearId);
     const result = await Promise.race([dataPromise, timeoutPromise]);
 
     if (result === "TIMEOUT") {

@@ -1,6 +1,7 @@
 import { invalidateCache } from "../../utils/cache";
 
 import prisma from "../../utils/prisma";
+import { getStudentsSimple } from "./student-list-fix.service";
 
 import {
   createStudent,
@@ -67,24 +68,18 @@ export const createStudentHandler = async (req: any, res: any) => {
 
 export const getAllStudentsHandler = async (req: any, res: any) => {
   try {
-    const { classId, sectionId, academicYearId: queryAcademicYearId, status, admissionStatus, search, gender, page, limit, dateFrom, dateTo } = req.query;
-    // Use middleware-injected academicYearId as primary, fall back to query param
+    const { page, limit, academicYearId: queryAcademicYearId, classId, sectionId } = req.query;
     const academicYearId = req.academicYearId || queryAcademicYearId;
-    const result = await getAllStudents(req.tenantId, {
-      classId,
-      sectionId,
-      academicYearId,
-      status,
-      admissionStatus,
-      dateFrom,
-      dateTo,
-      search,
-      gender,
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 50,
-    });
-    res.json({ success: true, data: result });
+    
+    console.log("🔍 getAllStudentsHandler:", { tenantId: req.tenantId, academicYearId, classId, sectionId, limit });
+    
+    // Use simple service with academic year filtering
+    const result = await getStudentsSimple(req.tenantId, parseInt(limit) || 50, parseInt(page) || 1, academicYearId, classId, sectionId);
+    
+    console.log("✅ Students found:", result.total);
+    res.json({ success: true, data: { students: result.students, total: result.total, page: result.page, totalPages: result.totalPages } });
   } catch (err: any) {
+    console.error("❌ getAllStudentsHandler error:", err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };

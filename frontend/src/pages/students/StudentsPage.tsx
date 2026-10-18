@@ -234,7 +234,11 @@ const STATUS_VARIANT_MAP: Record<string, "success" | "neutral" | "info" | "dange
 
 function authHeaders() {
 
-  return { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } };
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("No authentication token found. Please login again.");
+  }
+  return { headers: { Authorization: `Bearer ${token}` } };
 
 }
 
@@ -512,16 +516,33 @@ export default function StudentsPage() {
 
       setLoading(true);
 
-      const res = await axios.get(getFullUrl("/api/students?limit=2000"), authHeaders());
+      
+      // Fetch active academic year first
+      let url = "/api/students?limit=2000";
+      try {
+        const yearRes = await axios.get(getFullUrl("/api/academic"), authHeaders());
+        const active = (yearRes.data?.data || []).find((y: any) => y.isActive);
+        if (active) {
+          url = `/api/students?limit=2000&academicYearId=${active.id}`;
+        }
+      } catch {}
+      
+      const res = await axios.get(getFullUrl(url), authHeaders());
 
       const payload = res.data?.data;
 
-      const data = payload?.students || payload || res.data?.students || [];
+      // API returns: { success, data: { data: [...students], total, page } }
+      // or old format: { success, data: { students: [...] } }
+      // or flat: { success, data: [...students] }
+      const data = payload?.data || payload?.students || (Array.isArray(payload) ? payload : []);
+      console.log("📋 Students fetched:", data.length, "from payload keys:", payload ? Object.keys(payload) : "null");
 
       setStudents(Array.isArray(data) ? data : []);
+      console.log("✅ setStudents called with", Array.isArray(data) ? data.length : 0, "students");
 
     } catch (err: any) {
 
+      console.error("❌ fetchStudents CAUGHT ERROR:", err.message, err.response?.status, err.response?.data);
       toast.error(err.response?.data?.message || "Failed to load students");
 
       setStudents([]);

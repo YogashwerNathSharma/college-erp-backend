@@ -347,27 +347,27 @@ printWindow.document.close();
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">🖨️ Print Student List</h1>
-          <p className="text-gray-500 text-sm mt-1">Select filters and columns, then print or export</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">🖨️ Print Student List</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Select filters and columns, then print or export</p>
         </div>
-        <button onClick={() => navigate("/students")} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">← Back</button>
+        <button onClick={() => navigate("/students")} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">← Back</button>
       </div>
 
       {/* Filters + Column Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Filters */}
-        <div className="bg-white p-5 rounded-xl shadow">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">📋 Filters</h2>
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">📋 Filters</h2>
           <div className="space-y-3">
-            <select value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+            <select value={academicYearId} onChange={(e) => setAcademicYearId(e.target.value)} className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
               <option value="">All Academic Years</option>
               {academicYears.map((y) => (<option key={y.id} value={y.id}>{y.name}</option>))}
             </select>
-            <select value={classId} onChange={(e) => { setClassId(e.target.value); setSectionId(""); }} className="w-full px-3 py-2 border rounded-lg">
+            <select value={classId} onChange={(e) => { setClassId(e.target.value); setSectionId(""); }} className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
               <option value="">All Classes</option>
               {classes.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
             </select>
-            <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} className="w-full px-3 py-2 border rounded-lg">
+            <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} className="w-full px-3 py-2 border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
               <option value="">All Sections</option>
               {sections.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
             </select>
@@ -378,22 +378,22 @@ printWindow.document.close();
         </div>
 
         {/* Column Selection */}
-        <div className="bg-white p-5 rounded-xl shadow lg:col-span-2">
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-700">📊 Select Columns to Print</h2>
+            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">📊 Select Columns to Print</h2>
             <div className="flex gap-2">
               <button onClick={selectAllColumns} className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded" disabled={availableColumns.length === 0}>Select All</button>
-              <button onClick={deselectAllColumns} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded" disabled={availableColumns.length === 0}>Clear All</button>
+              <button onClick={deselectAllColumns} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded" disabled={availableColumns.length === 0}>Clear All</button>
             </div>
           </div>
           {availableColumns.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
               <p>📋 Click "Load Students" to see available columns</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto">
               {availableColumns.map((col) => (
-                <label key={col.key} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border text-sm ${selectedColumns.includes(col.key) ? "bg-primary-50 border-primary-300" : "bg-gray-50 border-gray-200"}`}>
+                <label key={col.key} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border text-sm ${selectedColumns.includes(col.key) ? "bg-teal-900/30 border-teal-500 text-teal-100" : "bg-gray-700 border-gray-600 text-gray-300"}`}>
                   <input type="checkbox" checked={selectedColumns.includes(col.key)} onChange={() => toggleColumn(col.key)} className="w-4 h-4" />
                   {col.label}
                 </label>
@@ -401,7 +401,7 @@ printWindow.document.close();
             </div>
           )}
           {selectedColumns.length > 0 && (
-            <p className="text-xs text-gray-500 mt-2">{selectedColumns.length} columns selected</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{selectedColumns.length} columns selected</p>
           )}
         </div>
       </div>
@@ -412,10 +412,10 @@ printWindow.document.close();
           <div className="flex gap-3 mb-4">
             <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">🖨️ Print PDF</button>
             <button onClick={handleExcelExport} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">📊 Export Excel (CSV)</button>
-            <span className="self-center text-sm text-gray-500">{students.length} students | {selectedColumns.length} columns</span>
+            <span className="self-center text-sm text-gray-500 dark:text-gray-400">{students.length} students | {selectedColumns.length} columns</span>
           </div>
 
-          <div className="bg-white rounded-xl shadow overflow-auto max-h-[600px]">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-auto max-h-[600px]">
             {/* On-screen Header (NOT included in print — ref is on table only) */}
             <div className="flex items-start justify-between px-4 py-3 border-b-2 border-gray-800">
               {/* LEFT — Logo */}
@@ -424,44 +424,44 @@ printWindow.document.close();
               </div>
               {/* CENTER — Name + Address */}
               <div className="text-center flex-1 px-4">
-                <h1 className="text-lg font-bold uppercase">{tenant?.name || "School Name"}</h1>
-                {tenant?.address && <p className="text-[11px] text-gray-600">{tenant.address}</p>}
+                <h1 className="text-lg font-bold uppercase dark:text-white">{tenant?.name || "School Name"}</h1>
+                {tenant?.address && <p className="text-[11px] text-gray-600 dark:text-gray-400">{tenant.address}</p>}
                 {(tenant?.phone || tenant?.email) && (
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
                     {tenant?.phone ? `Ph: ${tenant.phone}` : ""}{tenant?.phone && tenant?.email ? " | " : ""}{tenant?.email ? `Email: ${tenant.email}` : ""}
                   </p>
                 )}
               </div>
               {/* RIGHT — Print info */}
-              <div className="text-right text-[10px] text-gray-600 leading-relaxed flex-shrink-0">
+              <div className="text-right text-[10px] text-gray-600 dark:text-gray-400 leading-relaxed flex-shrink-0">
                 <p><strong>Print By:</strong> Admin</p>
                 <p><strong>Date:</strong> {new Date().toLocaleDateString("en-IN")}</p>
                 <p><strong>Time:</strong> {new Date().toLocaleTimeString("en-IN")}</p>
               </div>
             </div>
             {/* Title row */}
-            <div className="text-center py-2 border-b bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-700">
+            <div className="text-center py-2 border-b bg-gray-50 dark:bg-gray-700">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Student List — {getClassName()} {sectionId ? `- ${getSectionName()}` : ""} {getYearName() ? `| ${getYearName()}` : ""}
               </h2>
             </div>
 
             <div ref={printRef}>
-            <table className="w-full text-xs">
-              <thead className="bg-gray-100 sticky top-0">
+            <table className="w-full text-xs dark:text-gray-300">
+              <thead className="bg-gray-100 dark:bg-gray-700 sticky top-0">
                 <tr>
-                  <th className="p-2 border text-left">#</th>
+                  <th className="p-2 border dark:border-gray-600 text-left dark:text-gray-200">#</th>
                   {selectedColumns.map((key) => (
-                    <th key={key} className="p-2 border text-left">{availableColumns.find((c) => c.key === key)?.label || key}</th>
+                    <th key={key} className="p-2 border dark:border-gray-600 text-left dark:text-gray-200">{availableColumns.find((c) => c.key === key)?.label || key}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {students.map((student, idx) => (
-                  <tr key={student.id} className="border-b hover:bg-gray-50">
-                    <td className="p-2 border">{idx + 1}</td>
+                  <tr key={student.id} className="border-b dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="p-2 border dark:border-gray-600 dark:text-gray-300">{idx + 1}</td>
                     {selectedColumns.map((key) => (
-                      <td key={key} className="p-2 border">{getCellValue(student, key)}</td>
+                      <td key={key} className="p-2 border dark:border-gray-600 dark:text-gray-300">{getCellValue(student, key)}</td>
                     ))}
                   </tr>
                 ))}
@@ -473,7 +473,7 @@ printWindow.document.close();
       )}
 
       {showPreview && students.length === 0 && (
-        <div className="bg-white rounded-xl shadow p-12 text-center text-gray-500">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-12 text-center text-gray-500 dark:text-gray-400">
           <p className="text-4xl mb-3">🗂️</p>
           <p className="text-lg font-medium">No students found</p>
           <p className="text-sm mt-1">Try different filters</p>

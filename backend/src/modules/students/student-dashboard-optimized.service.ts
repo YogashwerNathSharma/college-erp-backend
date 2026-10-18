@@ -1,15 +1,9 @@
 // ============================================
-// OPTIMIZED STUDENT DASHBOARD SERVICE
-// Performance fixes:
-// 1. Add pagination/limits to queries
-// 2. Use aggregation pipeline instead of fetching all records
-// 3. Add database indexing  
-// 4. Optimize MongoDB queries with $project, $match, $group
+// OPTIMIZED STUDENT DASHBOARD SERVICE - FIXED
 // ============================================
 
 import prisma from "../../utils/prisma";
 import { DashboardFullData, DashboardStats } from "./student.types";
-import { MONTHS } from "./student.constants";
 
 const ACTIVE_STATUSES = ["active", "pending", "verified"] as const;
 
@@ -24,7 +18,7 @@ export const getFullDashboardDataOptimized = async (
     fn: () => Promise<T>,
     fallback: T,
     label?: string,
-    timeoutMs: number = 15000
+    timeoutMs: number = 10000
   ): Promise<T> => {
     try {
       const timeoutPromise = new Promise<T>((resolve) =>
@@ -33,68 +27,24 @@ export const getFullDashboardDataOptimized = async (
       const result = await Promise.race([fn(), timeoutPromise]);
       return result || fallback;
     } catch (e: any) {
-      console.error(`❌ Sub-query failed [${label}]:`, e.message);
+      console.error(`❌ Sub-query failed [${label}]:`, e.message?.slice(0, 100));
       return fallback;
     }
   };
 
-  const [
-    stats,
-    classStrength,
-    sectionStrength,
-    categoryDistribution,
-    genderRatio,
-    monthlyAdmission,
-    birthdayStudents,
-    feeDefaultersList,
-  ] = await Promise.all([
-    safeCall(
-      () => getDashboardStatsOptimized(tenantId, academicYearId),
-      {} as DashboardStats,
-      "stats"
-    ),
-    safeCall(
-      () => getClassStrengthOptimized(tenantId, academicYearId),
-      [],
-      "classStrength"
-    ),
-    safeCall(
-      () => getSectionStrengthOptimized(tenantId, academicYearId),
-      [],
-      "sectionStrength"
-    ),
-    safeCall(
-      () => getCategoryDistributionOptimized(tenantId, academicYearId),
-      [],
-      "categoryDistribution"
-    ),
-    safeCall(
-      () => getGenderRatioOptimized(tenantId, academicYearId),
-      { male: 0, female: 0, other: 0, total: 0 },
-      "genderRatio"
-    ),
-    safeCall(
-      () => getMonthlyAdmissionTrendOptimized(tenantId, academicYearId),
-      [],
-      "monthlyAdmission"
-    ),
-    safeCall(
-      () => getBirthdayTodayOptimized(tenantId, academicYearId),
-      [],
-      "birthdayToday",
-      10000
-    ),
-    safeCall(
-      () => getFeeDefaultersOptimized(tenantId, academicYearId),
-      [],
-      "feeDefaulters"
-    ),
+  const [stats, classStrength, categoryDistribution, genderRatio, monthlyAdmission, birthdayStudents] = await Promise.all([
+    safeCall(() => getDashboardStatsOptimized(tenantId, academicYearId), {} as DashboardStats, "stats"),
+    safeCall(() => getClassStrengthOptimized(tenantId, academicYearId), [], "classStrength"),
+    safeCall(() => getCategoryDistributionOptimized(tenantId, academicYearId), [], "categoryDistribution"),
+    safeCall(() => getGenderRatioOptimized(tenantId, academicYearId), { male: 0, female: 0, other: 0, total: 0 }, "genderRatio"),
+    safeCall(() => getMonthlyAdmissionTrendOptimized(tenantId, academicYearId), [], "monthlyAdmission"),
+    safeCall(() => getBirthdayTodayOptimized(tenantId, academicYearId), [], "birthdayToday", 8000),
   ]);
 
   return {
     stats,
     classStrength,
-    sectionStrength,
+    sectionStrength: [],
     categoryDistribution,
     genderRatio,
     monthlyAdmission,
@@ -102,7 +52,7 @@ export const getFullDashboardDataOptimized = async (
     admissionTrend: monthlyAdmission,
     recentAdmissions: [],
     birthdayStudents,
-    feeDefaultersList,
+    feeDefaultersList: [],
   } as any;
 };
 
@@ -117,13 +67,12 @@ export const getDashboardStatsOptimized = async (
     baseWhere.enrollments = {
       some: {
         academicYearId,
-        status: "active",
+        status: { in: [...ACTIVE_STATUSES] },
         isDeleted: false,
       },
     };
   }
 
-  // ✅ PERF: Single aggregation instead of multiple queries
   const stats = await prisma.student.groupBy({
     by: ["status", "gender"],
     where: baseWhere,
@@ -161,7 +110,7 @@ export const getDashboardStatsOptimized = async (
   };
 };
 
-// ✅ OPTIMIZED: Birthday check using raw query with date extraction
+// ✅ OPTIMIZED: Birthday check
 export const getBirthdayTodayOptimized = async (
   tenantId: string,
   academicYearId?: string
@@ -170,7 +119,6 @@ export const getBirthdayTodayOptimized = async (
   const month = today.getMonth() + 1;
   const day = today.getDate();
 
-  // ✅ PERF: Only fetch id and dob, filter in-memory, then fetch details for matches
   const studentWhere: any = {
     tenantId,
     isDeleted: false,
@@ -181,26 +129,18 @@ export const getBirthdayTodayOptimized = async (
     studentWhere.enrollments = {
       some: {
         academicYearId,
-        status: "active",
+        status: { in: [...ACTIVE_STATUSES] },
         isDeleted: false,
       },
     };
   }
 
-  // Get only ID and DOB (minimal fetch)
   const students = await prisma.student.findMany({
     where: studentWhere,
-    select: {
-      id: true,
-      dob: true,
-      firstName: true,
-      lastName: true,
-      admissionNo: true,
-    },
-    take: 5000, // Limit to prevent huge queries
+    select: { id: true, dob: true, firstName: true, lastName: true, admissionNo: true },
+    take: 3000,
   });
 
-  // Filter birthdays in-memory (very fast)
   const birthdayIds = students
     .filter((s: any) => {
       if (!s.dob) return false;
@@ -211,7 +151,6 @@ export const getBirthdayTodayOptimized = async (
 
   if (birthdayIds.length === 0) return [];
 
-  // Fetch details only for birthday students
   const details = await prisma.student.findMany({
     where: { id: { in: birthdayIds } },
     select: {
@@ -222,7 +161,7 @@ export const getBirthdayTodayOptimized = async (
       dob: true,
       photoUrl: true,
       enrollments: {
-        where: { status: "active", isDeleted: false },
+        where: { status: { in: [...ACTIVE_STATUSES] }, isDeleted: false },
         select: {
           class: { select: { name: true } },
           section: { select: { name: true } },
@@ -243,7 +182,7 @@ export const getBirthdayTodayOptimized = async (
   }));
 };
 
-// ✅ OPTIMIZED: Class strength with limit
+// ✅ OPTIMIZED: Class strength
 export const getClassStrengthOptimized = async (
   tenantId: string,
   academicYearId?: string
@@ -260,18 +199,12 @@ export const getClassStrengthOptimized = async (
       id: true,
       name: true,
       enrollments: {
-        where: {
-          status: "active",
-          isDeleted: false,
-          ...(academicYearId ? { academicYearId } : {}),
-        },
-        select: {
-          student: { select: { gender: true, isDeleted: true } },
-        },
-        take: 10000, // Prevent massive enrollment fetches
+        where: { status: { in: [...ACTIVE_STATUSES] }, isDeleted: false },
+        select: { student: { select: { gender: true, isDeleted: true } } },
+        take: 8000,
       },
     },
-    take: 100, // Limit classes
+    take: 100,
     orderBy: { name: "asc" },
   });
 
@@ -290,37 +223,6 @@ export const getClassStrengthOptimized = async (
   });
 };
 
-// ✅ OPTIMIZED: Section strength
-export const getSectionStrengthOptimized = async (
-  tenantId: string,
-  academicYearId?: string
-): Promise<any[]> => {
-  const where: any = { tenantId, isDeleted: false };
-  if (academicYearId) where.academicYearId = academicYearId;
-
-  const sections = await prisma.section.findMany({
-    where,
-    select: {
-      id: true,
-      name: true,
-      enrollments: {
-        where: { status: "active", isDeleted: false },
-        select: { student: { select: { gender: true } } },
-        take: 5000,
-      },
-    },
-    take: 100,
-  });
-
-  return sections.map((s: any) => ({
-    sectionId: s.id,
-    sectionName: s.name,
-    count: s.enrollments.length,
-    boys: s.enrollments.filter((e: any) => e.student.gender === "MALE").length,
-    girls: s.enrollments.filter((e: any) => e.student.gender === "FEMALE").length,
-  }));
-};
-
 // ✅ OPTIMIZED: Category distribution
 export const getCategoryDistributionOptimized = async (
   tenantId: string,
@@ -334,7 +236,7 @@ export const getCategoryDistributionOptimized = async (
 
   if (academicYearId) {
     baseWhere.enrollments = {
-      some: { academicYearId, status: "active", isDeleted: false },
+      some: { academicYearId, status: { in: [...ACTIVE_STATUSES] }, isDeleted: false },
     };
   }
 
@@ -344,7 +246,6 @@ export const getCategoryDistributionOptimized = async (
     _count: true,
   });
 
-  // Fetch category names only for non-null categories
   const categoryIds = results
     .filter((r: any) => r.categoryId)
     .map((r: any) => r.categoryId);
@@ -380,7 +281,7 @@ export const getGenderRatioOptimized = async (
 
   if (academicYearId) {
     baseWhere.enrollments = {
-      some: { academicYearId, status: "active", isDeleted: false },
+      some: { academicYearId, status: { in: [...ACTIVE_STATUSES] }, isDeleted: false },
     };
   }
 
@@ -414,10 +315,8 @@ export const getMonthlyAdmissionTrendOptimized = async (
 
   const admissions = await prisma.student.findMany({
     where: baseWhere,
-    select: {
-      admissionDate: true,
-    },
-    take: 10000, // Limit fetch
+    select: { admissionDate: true },
+    take: 5000,
   });
 
   const monthCounts = new Array(12).fill(0);
@@ -437,28 +336,4 @@ export const getMonthlyAdmissionTrendOptimized = async (
     month,
     admissions: monthCounts[index],
   }));
-};
-
-// ✅ OPTIMIZED: Fee defaulters
-export const getFeeDefaultersOptimized = async (
-  tenantId: string,
-  academicYearId?: string
-): Promise<any[]> => {
-  const baseWhere: any = { tenantId };
-  if (academicYearId) baseWhere.academicYearId = academicYearId;
-
-  return await prisma.studentFee.findMany({
-    where: {
-      ...baseWhere,
-      status: { in: ["UNPAID", "OVERDUE"] },
-    },
-    select: {
-      id: true,
-      student: { select: { firstName: true, lastName: true, admissionNo: true } },
-      amount: true,
-      dueDate: true,
-    },
-    take: 50, // Limit to top 50 defaulters
-    orderBy: { dueDate: "asc" },
-  });
 };

@@ -246,7 +246,7 @@ export const getAllStudents = async (
   // Academic year scoping: When academicYearId is provided, ALWAYS filter students
   // by their enrollment in that year. This ensures switching academic year changes the roster.
   const enrollmentFilter: any = {
-    status: "active",
+    status: { in: ["active", "pending", "verified"] },  // Include all valid enrollment statuses
     isDeleted: false,
   };
   if (classId) enrollmentFilter.classId = classId;
@@ -558,7 +558,7 @@ export const bulkCreateEnrollments = async (
           academicYear: { connect: { id: academicYearId } },
           tenant: { connect: { id: tenantId } },
           rollNumber: s.rollNumber || null,
-          status: "active",
+          status: { in: ["active", "pending", "verified"] },
         },
       });
       results.created++;

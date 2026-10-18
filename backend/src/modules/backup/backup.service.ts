@@ -253,7 +253,7 @@ export async function deleteBackupService(tenantId: string, backupId: string) {
 // ⚙️ GET BACKUP SETTINGS SERVICE
 // ============================================================
 export async function getBackupSettingsService(tenantId: string) {
-  let settings = await prisma.backupSettings.findUnique({
+  let settings = await prisma.backupSettings.findFirst({
     where: { tenantId },
   });
 
@@ -328,7 +328,7 @@ function cancelTenantJobs(tenantId: string) {
 async function rescheduleBackupJobs(tenantId: string) {
   cancelTenantJobs(tenantId);
 
-  const settings = await prisma.backupSettings.findUnique({
+  const settings = await prisma.backupSettings.findFirst({
     where: { tenantId },
   });
 

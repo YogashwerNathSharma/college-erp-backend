@@ -1,0 +1,164 @@
+/* ================================================================
+   DARK MODE CONSISTENCY FIXES
+   Supplementary to index.css — covers gaps not handled by Tailwind
+   ================================================================ */
+
+/* ── Scrollbars ──────────────────────────────────────────────── */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+html.dark ::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+/* Firefox */
+html.dark * {
+  scrollbar-color: #334155 #0f172a;
+  scrollbar-width: thin;
+}
+
+/* ── Inputs that Tailwind dark: can miss ─────────────────────── */
+html.dark input[type="password"],
+html.dark input[type="tel"],
+html.dark input[type="url"],
+html.dark input[type="time"],
+html.dark input[type="datetime-local"],
+html.dark input[type="month"],
+html.dark input[type="week"],
+html.dark input[type="color"] {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+html.dark input:disabled,
+html.dark select:disabled,
+html.dark textarea:disabled {
+  background-color: #0f172a !important;
+  color: #475569 !important;
+  cursor: not-allowed;
+}
+
+/* ── Focus rings ─────────────────────────────────────────────── */
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #6366f1 !important;
+  border-color: #6366f1 !important;
+}
+
+/* ── Modals & dialogs ────────────────────────────────────────── */
+html.dark [role="dialog"],
+html.dark .modal-content {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+html.dark .modal-overlay,
+html.dark .dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── Dropdown menus ──────────────────────────────────────────── */
+html.dark [role="menu"],
+html.dark [role="listbox"],
+html.dark .dropdown-menu {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+html.dark [role="menuitem"]:hover,
+html.dark [role="option"]:hover {
+  background-color: #334155 !important;
+}
+
+/* ── Tooltips ────────────────────────────────────────────────── */
+html.dark [role="tooltip"] {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #334155 !important;
+}
+
+/* ── Table sticky headers ────────────────────────────────────── */
+html.dark thead th {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+html.dark tbody tr:nth-child(even) {
+  background-color: rgba(15, 23, 42, 0.4);
+}
+html.dark tbody tr:hover {
+  background-color: #1e293b !important;
+}
+
+/* ── Badges / tags ───────────────────────────────────────────── */
+html.dark .badge-success,
+html.dark .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #6ee7b7 !important;
+}
+html.dark .badge-danger,
+html.dark .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+html.dark .badge-warning,
+html.dark .bg-yellow-100 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+}
+
+/* ── HR / divider lines ──────────────────────────────────────── */
+html.dark hr {
+  border-color: #334155;
+}
+
+/* ================================================================
+   PRINT STYLES — always light, hide chrome
+   ================================================================ */
+@media print {
+  /* Force light theme on paper */
+  html.dark body,
+  html.dark main,
+  html.dark .bg-white,
+  html.dark .bg-slate-800 {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  html.dark .text-slate-200,
+  html.dark .text-slate-300,
+  html.dark .text-slate-400,
+  html.dark .text-white {
+    color: #1e293b !important;
+  }
+  html.dark .border-slate-700,
+  html.dark .border-slate-600 {
+    border-color: #d1d5db !important;
+  }
+
+  /* Hide non-print UI */
+  .no-print,
+  nav,
+  aside,
+  .sidebar,
+  .bottom-nav,
+  .top-navbar,
+  .mobile-bottom-nav,
+  button:not(.print-keep) {
+    display: none !important;
+  }
+
+  /* Page breaks */
+  .page-break-before { page-break-before: always; }
+  .page-break-after  { page-break-after: always; }
+  .avoid-break       { page-break-inside: avoid; }
+}

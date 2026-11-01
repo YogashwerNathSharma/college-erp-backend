@@ -1,0 +1,130 @@
+# ═══════════════════════════════════════════════════════════════
+# College ERP — Docker Compose
+# Services: MongoDB + Backend (Express) + Frontend (Nginx)
+#
+# Usage:
+#   cp .env.example .env        # then fill in real values
+#   docker-compose up -d        # start all services
+#   docker-compose logs -f      # follow logs
+#   docker-compose down         # stop all services
+# ═══════════════════════════════════════════════════════════════
+
+version: "3.8"
+
+services:
+  # ──── MongoDB ────
+  mongodb:
+    image: mongo:7
+    container_name: erp-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-erpSecure2026}
+      MONGO_INITDB_DATABASE: college_erp
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - erp-network
+
+  # ──── Backend (Express + Prisma) ────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: erp-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - DATABASE_URL=mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-erpSecure2026}@mongodb:27017/college_erp?authSource=admin
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=5000
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-College ERP}
+      - REDIS_URL=${REDIS_URL:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - KEEP_ALIVE=${KEEP_ALIVE:-false}
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - erp-network
+
+  # ──── Frontend (Vite + Nginx) ────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""  # Empty = uses nginx proxy (/api → backend)
+    container_name: erp-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - erp-network
+
+  # ──── Redis (Optional — for caching) ────
+  # Uncomment below if you want Redis caching
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: erp-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #   networks:
+  #     - erp-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  backend_uploads:
+    driver: local
+  # redis_data:
+  #   driver: local
+
+networks:
+  erp-network:
+    driver: bridge

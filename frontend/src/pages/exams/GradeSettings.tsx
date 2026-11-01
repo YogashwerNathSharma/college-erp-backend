@@ -36,35 +36,72 @@ const GradeSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Per-exam grade scales. "" = tenant-wide Default scale (applies to any
+  // exam that doesn't have its own scale).
+  const [exams, setExams] = useState<
+    { id: string; name: string; className: string; type: string }[]
+  >([]);
+  const [selectedExam, setSelectedExam] = useState<string>("");
+  // True when the currently shown rows are inherited from the default scale
+  // (i.e. this exam has no scale of its own yet).
+  const [isInherited, setIsInherited] = useState(false);
+
   useEffect(() => {
     fetchGrades();
+  }, [selectedExam]);
+
+  // Load the exam list once for the selector.
+  useEffect(() => {
+    axios
+      .get(getFullUrl("/api/exam"), { headers })
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setExams(
+          Array.isArray(list)
+            ? list.map((e: any) => ({
+                id: e.id || e._id,
+                name: e.name || "Exam",
+                className: e.className || e.class?.name || "No Class",
+                type: e.type || "",
+              }))
+            : []
+        );
+      })
+      .catch(() => setExams([]));
   }, []);
 
   const fetchGrades = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(getFullUrl("/api/grade"), {
-        headers,
-      });
+      const url = selectedExam
+        ? getFullUrl(`/api/grade?examId=${selectedExam}`)
+        : getFullUrl("/api/grade");
+      const res = await axios.get(url, { headers });
       const existingGrades = res.data?.data || res.data || [];
       if (existingGrades.length > 0) {
+        // NOTE: API returns minPercent/maxPercent (NOT minPercentage).
         setGrades(
           existingGrades.map((g: any) => ({
             _id: g._id,
             grade: g.grade,
-            minPercentage: g.minPercentage,
-            maxPercentage: g.maxPercentage,
-            gradePoint: g.gradePoint,
+            minPercentage: g.minPercent ?? g.minPercentage ?? 0,
+            maxPercentage: g.maxPercent ?? g.maxPercentage ?? 0,
+            gradePoint: g.gradePoint ?? 0,
             remarks: g.remarks || "",
           }))
         );
+        // Rows are "inherited" when this exam has no scale of its own and
+        // the tenant default scale is being shown as a starting point.
+        setIsInherited(Boolean(existingGrades[0]?.isInherited));
       } else {
         // Pre-populate with default Indian grading system
         setGrades(DEFAULT_GRADES);
+        setIsInherited(false);
       }
     } catch (error) {
       // If API fails, pre-populate with defaults
       setGrades(DEFAULT_GRADES);
+      setIsInherited(false);
     } finally {
       setLoading(false);
     }
@@ -127,6 +164,8 @@ const GradeSettings: React.FC = () => {
     setSaving(true);
     try {
       const payload = {
+        // examId "" → saves the tenant-wide Default scale.
+        examId: selectedExam || null,
         grades: grades.map((g) => ({
           grade: g.grade,
           minPercent: Number(g.minPercentage),
@@ -139,7 +178,11 @@ const GradeSettings: React.FC = () => {
       await axios.post(getFullUrl("/api/grade/bulk"), payload, {
         headers,
       });
-      toast.success("Grade settings saved successfully");
+      toast.success(
+        selectedExam
+          ? "Grade settings saved for this exam"
+          : "Default grade settings saved"
+      );
       fetchGrades();
     } catch (error: any) {
       const msg =
@@ -172,6 +215,12 @@ const GradeSettings: React.FC = () => {
     );
   }
 
+  // Full label for the currently selected exam (for hints/banners).
+  const selectedExamObj = exams.find((e) => e.id === selectedExam);
+  const selectedExamLabel = selectedExamObj
+    ? `${selectedExamObj.name}${selectedExamObj.type ? ` (${selectedExamObj.type})` : ""} — Class ${selectedExamObj.className}`
+    : "";
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto">
@@ -199,6 +248,53 @@ const GradeSettings: React.FC = () => {
           >
             Reset to Defaults
           </button>
+        </div>
+
+        {/* Exam Scope Selector */}
+        <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Grade scale for:
+            </label>
+            <select
+              value={selectedExam}
+              onChange={(e) => setSelectedExam(e.target.value)}
+              className="w-full sm:w-96 rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
+            >
+              <option value="">Default — All Exams</option>
+              {Object.entries(
+                // Group exams by class so it's clear which class each belongs to.
+                exams.reduce((acc: Record<string, typeof exams>, ex) => {
+                  (acc[ex.className] ||= []).push(ex);
+                  return acc;
+                }, {})
+              )
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([className, classExams]) => (
+                  <optgroup key={className} label={`Class ${className}`}>
+                    {classExams.map((ex) => (
+                      <option key={ex.id} value={ex.id}>
+                        {ex.name}
+                        {ex.type ? ` (${ex.type})` : ""} — Class {ex.className}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+            </select>
+            <p className="text-xs text-gray-500">
+              {selectedExam
+                ? `This scale applies only to: ${selectedExamLabel}`
+                : "Default scale applies to any exam without its own scale."}
+            </p>
+          </div>
+          {selectedExam && isInherited && (
+            <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <strong>{selectedExamLabel}</strong> has no grade scale of its own
+              yet — showing the <strong>Default</strong> scale. Edit the rows and click
+              <strong> Save All Grades </strong> to create a scale just for
+              this exam.
+            </div>
+          )}
         </div>
 
         {/* Grade Table */}

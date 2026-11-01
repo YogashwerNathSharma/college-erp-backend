@@ -163,6 +163,62 @@ const ExamSchedulePrint: React.FC = () => {
     return d.toLocaleDateString("en-IN", { weekday: "short" });
   };
 
+  // ─── Build combined school-style datesheet ───
+  // Rows = exam dates, Columns = classes, Cell = that class's subject on that
+  // date. This produces a single timetable (like a traditional school exam
+  // datesheet) instead of one separate table per class.
+  const normDate = (dateStr: string) =>
+    dateStr ? new Date(dateStr).toISOString().split("T")[0] : "";
+
+  // Distinct classes present in the current view (preserve class master order)
+  const classesInView = React.useMemo(() => {
+    const seen = new Map<string, string>();
+    filteredExams.forEach((e) => {
+      if (e.schedules && e.schedules.length > 0) {
+        seen.set(e.classId, e.className || "N/A");
+      }
+    });
+    // Order by the class master list when available
+    const ordered = classes
+      .filter((c) => seen.has(c.id))
+      .map((c) => ({ id: c.id, name: c.name }));
+    // Append any classes not found in the master list
+    seen.forEach((name, id) => {
+      if (!ordered.find((c) => c.id === id)) ordered.push({ id, name });
+    });
+    return ordered;
+  }, [filteredExams, classes]);
+
+  // Distinct, sorted exam dates across all classes in view
+  const datesInView = React.useMemo(() => {
+    const set = new Set<string>();
+    filteredExams.forEach((e) =>
+      e.schedules.forEach((s) => s.examDate && set.add(normDate(s.examDate)))
+    );
+    return Array.from(set).sort();
+  }, [filteredExams]);
+
+  // Lookup: "classId|date" -> schedule item (for subject/time/shift)
+  const cellMap = React.useMemo(() => {
+    const map = new Map<string, ScheduleItem>();
+    filteredExams.forEach((e) =>
+      e.schedules.forEach((s) => {
+        if (s.examDate) map.set(`${e.classId}|${normDate(s.examDate)}`, s);
+      })
+    );
+    return map;
+  }, [filteredExams]);
+
+  // Common time label for a date (first class that has a time on that date)
+  const timeForDate = (date: string) => {
+    for (const cls of classesInView) {
+      const s = cellMap.get(`${cls.id}|${date}`);
+      if (s && (s.startTime || s.endTime))
+        return `${s.startTime || ""} — ${s.endTime || ""}`;
+    }
+    return "";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -221,7 +277,16 @@ const ExamSchedulePrint: React.FC = () => {
         </div>
 
         {/* Printable Content */}
-        <div ref={printRef}>
+        <div
+          ref={printRef}
+          style={{
+            background: "#ffffff",
+            color: "#111827",
+            padding: 24,
+            borderRadius: 12,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}
+        >
           {/* Header with logo */}
           <div className="header" style={{ textAlign: "center", marginBottom: 24, borderBottom: "2px solid #333", paddingBottom: 15 }}>
             {schoolInfo.logoUrl && (
@@ -248,78 +313,62 @@ const ExamSchedulePrint: React.FC = () => {
               <p>No exams found with schedule data.</p>
             </div>
           ) : (
-            filteredExams.map((exam) => (
-              <div key={exam.id} className="class-section" style={{ marginBottom: 30, pageBreakInside: "avoid" }}>
-                <div
-                  className="class-title"
-                  style={{
-                    fontSize: 15,
-                    fontWeight: "bold",
-                    marginBottom: 10,
-                    background: "#f5f5f5",
-                    padding: "8px 12px",
-                    borderLeft: "4px solid #4f46e5",
-                  }}
-                >
-                  Class: {exam.className || "N/A"} — {exam.name} ({exam.type || "Exam"})
-                </div>
-
-                {exam.schedules.length === 0 ? (
-                  <p style={{ fontSize: 13, color: "#999", paddingLeft: 12 }}>
-                    No schedule added for this exam.
-                  </p>
-                ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          #
-                        </th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          Subject
-                        </th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          Date
-                        </th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          Day
-                        </th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          Time
-                        </th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13 }}>
-                          Shift
-                        </th>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13, whiteSpace: "nowrap" }}>
+                      Date
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13, whiteSpace: "nowrap" }}>
+                      Day
+                    </th>
+                    <th style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13, whiteSpace: "nowrap" }}>
+                      Time
+                    </th>
+                    {classesInView.map((cls) => (
+                      <th key={cls.id} style={{ border: "1px solid #ddd", padding: "8px 12px", background: "#4f46e5", color: "white", fontSize: 13, whiteSpace: "nowrap" }}>
+                        {cls.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {datesInView.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3 + classesInView.length}
+                        style={{ border: "1px solid #ddd", padding: "16px", fontSize: 13, textAlign: "center", color: "#999" }}
+                      >
+                        No schedule dates added yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    datesInView.map((date, idx) => (
+                      <tr key={date} style={{ background: idx % 2 === 0 ? "white" : "#f9f9f9" }}>
+                        <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>
+                          {formatDate(date)}
+                        </td>
+                        <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13, whiteSpace: "nowrap" }}>
+                          {formatDay(date)}
+                        </td>
+                        <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13, whiteSpace: "nowrap" }}>
+                          {timeForDate(date) || "—"}
+                        </td>
+                        {classesInView.map((cls) => {
+                          const s = cellMap.get(`${cls.id}|${date}`);
+                          return (
+                            <td key={cls.id} style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13, textAlign: "center", fontWeight: s ? 500 : 400 }}>
+                              {s?.subjectName || "—"}
+                            </td>
+                          );
+                        })}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {exam.schedules.map((sched, idx) => (
-                        <tr key={sched.id} style={{ background: idx % 2 === 0 ? "white" : "#f9f9f9" }}>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13 }}>
-                            {idx + 1}
-                          </td>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13, fontWeight: 500 }}>
-                            {sched.subjectName || "—"}
-                          </td>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13 }}>
-                            {formatDate(sched.examDate)}
-                          </td>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13 }}>
-                            {formatDay(sched.examDate)}
-                          </td>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13 }}>
-                            {sched.startTime} — {sched.endTime}
-                          </td>
-                          <td style={{ border: "1px solid #ddd", padding: "8px 12px", fontSize: 13 }}>
-                            Shift {sched.shift || "1"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            ))
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

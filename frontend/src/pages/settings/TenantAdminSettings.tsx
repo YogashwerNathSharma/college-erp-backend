@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -101,6 +100,11 @@ export default function TenantAdminSettings() {
     email: string;
     pwd: string;
   } | null>(null);
+
+  // Reset password result
+  const [resetResult, setResetResult] = useState<{ email: string; name: string; nPwd: string } | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Edit user form
   const [editForm, setEditForm] = useState({
@@ -339,16 +343,13 @@ export default function TenantAdminSettings() {
         { headers }
       );
 
-      if (res.data.generatedPassword) {
-        setCreatedCredentials({
-          email: createForm.email.trim().toLowerCase(),
-          pwd: res.data.generatedPassword,
-        });
-      } else {
-        toast.success("User created successfully! ✅");
-        setShowCreateModal(false);
-        resetCreateForm();
-      }
+      // Always show credentials to admin after creation
+      const finalPwd = res.data.generatedPassword || createForm.pwd;
+      setCreatedCredentials({
+        email: createForm.email.trim().toLowerCase(),
+        pwd: finalPwd,
+      });
+      toast.success("User created successfully! ✅");
 
       fetchUsers(1);
     } catch (err: any) {
@@ -417,6 +418,30 @@ export default function TenantAdminSettings() {
       pwd: "",
     });
     setCreatedCredentials(null);
+  };
+
+  const handleResetPassword = async (user: any) => {
+    setSelectedUser(user);
+    setResetting(true);
+    setShowResetModal(true);
+    try {
+      const res = await axios.post(
+        getFullUrl(`/api/settings/users/${user.id}/reset-password`),
+        {},
+        { headers }
+      );
+      setResetResult({
+        email: res.data?.data?.email || user.email,
+        name: res.data?.data?.name || user.name,
+        nPwd: res.data?.data?.newPassword || "Error",
+      });
+      toast.success("Password reset successful! 🔑");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to reset password");
+      setShowResetModal(false);
+    } finally {
+      setResetting(false);
+    }
   };
 
   const openEditModal = (user: any) => {
@@ -860,6 +885,13 @@ export default function TenantAdminSettings() {
                 <option value="STUDENT">Student</option>
                 <option value="TEACHER">Teacher</option>
                 <option value="PRINCIPAL">Principal</option>
+                <option value="ACCOUNTANT">Accountant</option>
+                <option value="LIBRARIAN">Librarian</option>
+                <option value="TRANSPORT_MANAGER">Transport Manager</option>
+                <option value="HOSTEL_WARDEN">Hostel Warden</option>
+                <option value="HR_MANAGER">HR Manager</option>
+                <option value="RECEPTIONIST">Receptionist</option>
+                <option value="PARENT">Parent</option>
                 <option value="STAFF">Staff</option>
               </select>
 
@@ -962,6 +994,13 @@ export default function TenantAdminSettings() {
                                 title="Edit"
                               >
                                 <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleResetPassword(user)}
+                                className="p-2 hover:bg-amber-50 rounded-lg text-amber-600"
+                                title="Reset Password"
+                              >
+                                <RefreshCw size={16} />
                               </button>
                               <button
                                 onClick={() => {
@@ -1120,7 +1159,14 @@ export default function TenantAdminSettings() {
                         <option value="STUDENT">Student</option>
                         <option value="TEACHER">Teacher</option>
                         <option value="PRINCIPAL">Principal</option>
-                        <option value="STAFF">Other Staff</option>
+                        <option value="ACCOUNTANT">Accountant</option>
+                        <option value="LIBRARIAN">Librarian</option>
+                        <option value="TRANSPORT_MANAGER">Transport Manager</option>
+                        <option value="HOSTEL_WARDEN">Hostel Warden</option>
+                        <option value="HR_MANAGER">HR Manager</option>
+                        <option value="RECEPTIONIST">Receptionist</option>
+                        <option value="PARENT">Parent</option>
+                        <option value="STAFF">Staff</option>
                       </select>
                     </div>
 
@@ -1330,7 +1376,14 @@ export default function TenantAdminSettings() {
                     <option value="STUDENT">Student</option>
                     <option value="TEACHER">Teacher</option>
                     <option value="PRINCIPAL">Principal</option>
-                    <option value="STAFF">Other Staff</option>
+                    <option value="ACCOUNTANT">Accountant</option>
+                    <option value="LIBRARIAN">Librarian</option>
+                    <option value="TRANSPORT_MANAGER">Transport Manager</option>
+                    <option value="HOSTEL_WARDEN">Hostel Warden</option>
+                    <option value="HR_MANAGER">HR Manager</option>
+                    <option value="RECEPTIONIST">Receptionist</option>
+                    <option value="PARENT">Parent</option>
+                    <option value="STAFF">Staff</option>
                   </select>
                 </div>
 
@@ -1419,6 +1472,58 @@ export default function TenantAdminSettings() {
         </div>
       )}
 
+      {/* ─── Reset Password Modal ─── */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            {resetting ? (
+              <div className="text-center py-8">
+                <Loader2 size={32} className="animate-spin text-amber-500 mx-auto mb-3" />
+                <p className="text-slate-600">Generating new password...</p>
+              </div>
+            ) : resetResult ? (
+              <div>
+                <div className="text-center mb-4">
+                  <CheckCircle size={48} className="text-green-500 mx-auto mb-2" />
+                  <h3 className="text-lg font-bold text-slate-800">Password Reset Successful!</h3>
+                  <p className="text-sm text-slate-500">Share these new credentials with the user</p>
+                </div>
+
+                <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 space-y-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Name</p>
+                    <p className="text-sm font-bold text-slate-800">{resetResult.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Email (Login ID)</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-mono font-bold text-slate-800">{resetResult.email}</p>
+                      <button onClick={() => copyToClipboard(resetResult.email)} className="text-primary-500 hover:text-primary-700"><Copy size={14} /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">New Password</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-mono font-bold text-green-700 bg-green-100 px-2 py-1 rounded">{resetResult.nPwd}</p>
+                      <button onClick={() => copyToClipboard(resetResult.nPwd)} className="text-primary-500 hover:text-primary-700"><Copy size={14} /></button>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-red-500 mt-3 text-center">⚠️ Save this password now — it won't be shown again!</p>
+
+                <button
+                  onClick={() => { setShowResetModal(false); setResetResult(null); }}
+                  className="w-full mt-4 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-xl font-medium"
+                >
+                  Done
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       {/* Permission Manager Slide-over */}
       {showPermissionPanel && permissionUser && (
         <PermissionManager
@@ -1432,4 +1537,3 @@ export default function TenantAdminSettings() {
     </div>
   );
 }
-

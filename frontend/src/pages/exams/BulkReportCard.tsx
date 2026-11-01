@@ -34,6 +34,9 @@ const BulkReportCard: React.FC = () => {
   const [searchParams] = useSearchParams();
   const studentIds = searchParams.get("students")?.split(",") || [];
   const customTemplateId = searchParams.get("customTemplate");
+  // Template toggle — hide grade columns when template contains "no-grade"
+  const template = searchParams.get("template") || "annual-grade";
+  const showGrade = !template.includes("no-grade");
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -340,7 +343,7 @@ const BulkReportCard: React.FC = () => {
             <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "left" }}>Subject</th>
             <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", width: 80 }}>Max Marks</th>
             <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", width: 100 }}>Marks Obtained</th>
-            <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", width: 70 }}>Grade</th>
+            {showGrade && <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", width: 70 }}>Grade</th>}
             <th style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", width: 70 }}>Status</th>
           </tr>
         </thead>
@@ -350,7 +353,7 @@ const BulkReportCard: React.FC = () => {
               <td style={{ border: "1px solid #666", padding: "5px 8px", textTransform: "uppercase" }}>{s.subjectName}</td>
               <td style={{ border: "1px solid #666", padding: "5px 8px", textAlign: "center" }}>{s.maxMarks}</td>
               <td style={{ border: "1px solid #666", padding: "5px 8px", textAlign: "center", fontWeight: "bold" }}>{s.obtainedMarks !== null ? s.obtainedMarks : "AB"}</td>
-              <td style={{ border: "1px solid #666", padding: "5px 8px", textAlign: "center" }}>{s.grade}</td>
+              {showGrade && <td style={{ border: "1px solid #666", padding: "5px 8px", textAlign: "center" }}>{s.grade}</td>}
               <td style={{ border: "1px solid #666", padding: "5px 8px", textAlign: "center", color: s.status?.toLowerCase() === "pass" ? "#16a34a" : "#dc2626" }}>{s.status}</td>
             </tr>
           ))}
@@ -359,16 +362,16 @@ const BulkReportCard: React.FC = () => {
             <td style={{ border: "1px solid #666", padding: "6px 8px" }}>TOTAL</td>
             <td style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center" }}>{data.summary.totalMaxMarks}</td>
             <td style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center" }}>{data.summary.totalMarks}</td>
-            <td style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center" }}>{data.summary.grade}</td>
+            {showGrade && <td style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center" }}>{data.summary.grade}</td>}
             <td style={{ border: "1px solid #666", padding: "6px 8px", textAlign: "center", color: data.summary.result?.toLowerCase() === "pass" ? "#16a34a" : "#dc2626" }}>{data.summary.result}</td>
           </tr>
         </tbody>
       </table>
 
       {/* Summary */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, fontSize: 12, marginBottom: 20, padding: "10px 0", borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>
+      <div style={{ display: "grid", gridTemplateColumns: showGrade ? "1fr 1fr 1fr 1fr" : "1fr 1fr 1fr", gap: 8, fontSize: 12, marginBottom: 20, padding: "10px 0", borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>
         <div><strong>Percentage:</strong> {data.summary.percentage?.toFixed(1)}%</div>
-        <div><strong>Grade:</strong> {data.summary.grade}</div>
+        {showGrade && <div><strong>Grade:</strong> {data.summary.grade}</div>}
         <div><strong>Division:</strong> {data.summary.division}</div>
         <div><strong>Rank:</strong> {data.summary.rank || "-"}</div>
       </div>

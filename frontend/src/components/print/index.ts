@@ -14,6 +14,7 @@ export { default as IDCardPrint } from './IDCardPrint';
 export { default as AttendanceSheetPrint } from './AttendanceSheetPrint';
 export { default as SeatingPrint } from './SeatingPrint';
 export { default as BonafidePrint } from './BonafidePrint';
+export { default as PrintExportBar } from './PrintExportBar';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type { PrintLayoutProps } from './PrintLayout';

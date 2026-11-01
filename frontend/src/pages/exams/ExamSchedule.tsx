@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getFullUrl } from "../../utils/url";
 import {
   ArrowLeft,
@@ -50,11 +50,12 @@ interface ScheduleForm {
 
 const ExamSchedule: React.FC = () => {
   const navigate = useNavigate();
+  const { id: examIdFromUrl } = useParams<{ id: string }>();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
   const [exams, setExams] = useState<Exam[]>([]);
-  const [selectedExam, setSelectedExam] = useState("");
+  const [selectedExam, setSelectedExam] = useState(examIdFromUrl || "");
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
@@ -75,6 +76,13 @@ const ExamSchedule: React.FC = () => {
     fetchExams();
     fetchRooms();
   }, []);
+
+  // Keep the selected exam in sync with the URL param so that navigating here
+  // from the exam list (e.g. /exam-schedule/:id) auto-selects that exam and
+  // loads its schedule, instead of showing a blank entry.
+  useEffect(() => {
+    if (examIdFromUrl) setSelectedExam(examIdFromUrl);
+  }, [examIdFromUrl]);
 
   useEffect(() => {
     if (selectedExam) {

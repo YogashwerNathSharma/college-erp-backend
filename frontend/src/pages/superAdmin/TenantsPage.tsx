@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   Plus,
@@ -26,6 +27,7 @@ import {
   MapPin,
   ExternalLink,
   Clock,
+  Package,
 } from "lucide-react";
 import {
   DataTable,
@@ -436,6 +438,7 @@ function TenantDetailPanel({
   onViewActivity: (id: string) => void;
 }) {
   if (!tenant) return null;
+  const detailNavigate = useNavigate();
 
   const usageStudents = tenant._count?.students || 0;
   const usageTeachers = tenant._count?.teachers || 0;
@@ -497,6 +500,12 @@ function TenantDetailPanel({
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
             >
               <UserCog className="w-3.5 h-3.5" /> Impersonate
+            </button>
+            <button
+              onClick={() => detailNavigate(`/super-admin/tenant-modules/${tenant.id}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+            >
+              <Package className="w-3.5 h-3.5" /> Manage Modules
             </button>
             <button
               onClick={() => onClone(tenant)}
@@ -829,6 +838,7 @@ export default function TenantsPage() {
   // Data state
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // UI state
   const [activeTab, setActiveTab] = useState<TabKey>("all");
@@ -1135,6 +1145,13 @@ export default function TenantsPage() {
             title="View Details"
           >
             <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/super-admin/tenant-modules/${row.id}`); }}
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            title="Manage Modules"
+          >
+            <Package className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setEditingTenant(row); setShowCreateModal(true); }}

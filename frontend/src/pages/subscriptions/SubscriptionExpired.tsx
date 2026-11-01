@@ -63,6 +63,8 @@ export default function SubscriptionExpired() {
   const [paying, setPaying] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [usedFreeTrial, setUsedFreeTrial] = useState(false);
+  const [expiredDate, setExpiredDate] = useState<string | null>(null);
+  const [graceEndDate, setGraceEndDate] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const tenant = JSON.parse(localStorage.getItem("tenant") || "{}");
@@ -82,6 +84,7 @@ export default function SubscriptionExpired() {
     }
     fetchPlans();
     checkFreeTrialUsed();
+    fetchExpiredInfo();
     loadRazorpayScript();
   }, []);
 
@@ -115,6 +118,27 @@ export default function SubscriptionExpired() {
       if (status !== 404) {
         setUsedFreeTrial(true);
       }
+    }
+  };
+
+  // Fetch subscription end date to display grace period info
+  const fetchExpiredInfo = async () => {
+    try {
+      if (!tenant?.id) return;
+      const res = await axios.get(
+        getFullUrl(`/api/subscriptions/tenant/${tenant.id}`),
+        { headers: getHeaders() }
+      );
+      const sub = res.data?.data;
+      if (sub?.endDate) {
+        const end = new Date(sub.endDate);
+        setExpiredDate(end.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
+        const grace = new Date(end);
+        grace.setDate(grace.getDate() + 7);
+        setGraceEndDate(grace.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
+      }
+    } catch {
+      // Ignore — dates just won't display
     }
   };
 
@@ -296,6 +320,36 @@ export default function SubscriptionExpired() {
             Your school's subscription has expired. Please renew to continue using the ERP system.
             All your data is safe and will be accessible after renewal.
           </p>
+
+          {/* Grace Period Details */}
+          {(expiredDate || graceEndDate) && (
+            <div className="mt-4 grid grid-cols-2 gap-3 text-left">
+              {expiredDate && (
+                <div className="bg-white rounded-lg p-3 border border-red-100">
+                  <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Expired On</p>
+                  <p className="text-sm font-bold text-red-600">{expiredDate}</p>
+                </div>
+              )}
+              {graceEndDate && (
+                <div className="bg-white rounded-lg p-3 border border-red-100">
+                  <p className="text-[10px] uppercase font-semibold text-gray-400 mb-0.5">Grace Period Ends</p>
+                  <p className="text-sm font-bold text-orange-600">{graceEndDate}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Restrictions During Grace */}
+          <div className="mt-4 bg-white rounded-lg p-3 border border-red-100 text-left">
+            <p className="text-[10px] uppercase font-semibold text-gray-400 mb-1.5">During Grace Period</p>
+            <ul className="space-y-1 text-xs text-gray-600">
+              <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-green-500 shrink-0" /> View existing data (read-only)</li>
+              <li className="flex items-center gap-1.5"><Ban size={12} className="text-red-400 shrink-0" /> Cannot create new records</li>
+              <li className="flex items-center gap-1.5"><Ban size={12} className="text-red-400 shrink-0" /> Cannot edit or delete</li>
+              <li className="flex items-center gap-1.5"><Ban size={12} className="text-red-400 shrink-0" /> Cannot collect fees</li>
+              <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-green-500 shrink-0" /> Print reports & receipts</li>
+            </ul>
+          </div>
         </div>
 
         {/* Plans Grid */}

@@ -175,6 +175,14 @@ const FeeStructurePage: React.FC = () => {
     fetchClasses(filterAcademicYear);
   }, [filterAcademicYear]);
 
+  // Re-fetch classes when the academic year selected INSIDE the create/edit
+  // modal changes, so the class dropdown always matches the chosen year.
+  useEffect(() => {
+    if (showModal && formData.academicYearId) {
+      fetchClasses(formData.academicYearId);
+    }
+  }, [formData.academicYearId, showModal]);
+
   // Fetch fee structures when filters change
   useEffect(() => {
     fetchFeeStructures();
@@ -378,10 +386,9 @@ const FeeStructurePage: React.FC = () => {
   const generateName = (classId: string, academicYearId: string) => {
     const selectedClass = classes.find((c) => c.id === classId);
     const selectedYear = academicYears.find((y) => y.id === academicYearId);
-    if (selectedClass && selectedYear) {
-      return `${selectedClass.name} Fee ${selectedYear.name}`;
-    }
-    return "";
+    const className = selectedClass?.name || "Class";
+    const yearName = selectedYear?.name || "";
+    return `${className} Fee ${yearName}`.trim();
   };
 
   // Submit form

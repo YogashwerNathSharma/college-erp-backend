@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import "./responsive.css";
+import "./dark-mode-fixes.css";
 
 //////////////////////////////////////////////////////
 // LOAD THEME EARLY (before React renders — no flash)
@@ -49,3 +50,12 @@ ReactDOM.createRoot(
     <App />
   </React.StrictMode>
 );
+
+// ── Register Service Worker for PWA / Offline ───────────────
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* silent — SW is optional */
+    });
+  });
+}

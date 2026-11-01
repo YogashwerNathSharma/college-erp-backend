@@ -1,0 +1,19 @@
+{
+  "name": "RMS Academy ERP",
+  "short_name": "RMS ERP",
+  "description": "Multi-Tenant College/School ERP System",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -67,6 +67,10 @@ export default function LoginPage() {
       if (res.data?.tenant) {
         localStorage.setItem("tenant", JSON.stringify({ ...res.data.tenant, logo: res.data.tenant.logoUrl || "" }));
       }
+      // Store portal config for PortalContext
+      if (res.data?.portal) {
+        localStorage.setItem("portalConfig", JSON.stringify(res.data.portal));
+      }
       localStorage.removeItem("subscriptionExpired");
       if (res.data?.forcePasswordChange) {
         navigate("/change-password");
@@ -74,15 +78,15 @@ export default function LoginPage() {
         // Role-based redirect
         const userData = res.data?.data || {};
         const role = userData.role;
-        if (role === "STUDENT") {
-          navigate("/student-portal");
-        } else if (role === "TEACHER") {
-          navigate("/teacher-portal");
-        } else if (role === "PRINCIPAL") {
-          navigate("/principal-portal");
+        // Use portal config homeRoute if available, else fallback
+        const portal = res.data?.portal;
+        if (portal?.homeRoute) {
+          navigate(portal.homeRoute);
         } else {
-          // SUPER_ADMIN, ADMIN, STAFF → admin dashboard
-          navigate("/dashboard");
+          // Fallback role-based redirect
+          if (role === "SUPER_ADMIN") navigate("/super-admin/dashboard");
+          else if (role === "STUDENT") navigate("/student-portal");
+          else navigate("/dashboard");
         }
       }
     } catch (err: any) {

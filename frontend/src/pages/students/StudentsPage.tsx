@@ -665,19 +665,33 @@ export default function StudentsPage() {
 
       const q = search.toLowerCase();
 
+      // Prefix match: the query must match from the BEGINNING of a value.
+      // For names (which have multiple words) we match if ANY word starts
+      // with the query — so "a" / "aradhya" matches "Aradhya Gangwar", but
+      // "b" does NOT match "Aarab" (b is in the middle, not a word start).
+      const prefix = (val?: string) =>
+        !!val && val.toLowerCase().startsWith(q);
+
+      const nameStartsWith = (name?: string) =>
+        !!name &&
+        name
+          .toLowerCase()
+          .split(/\s+/)
+          .some((word) => word.startsWith(q));
+
       result = result.filter(
 
         (s) =>
 
-          (s.fullName || `${s.firstName} ${s.lastName}`).toLowerCase().includes(q) ||
+          nameStartsWith(s.fullName || `${s.firstName} ${s.lastName}`) ||
 
-          s.admissionNo?.toLowerCase().includes(q) ||
+          prefix(s.admissionNo) ||
 
-          s.fatherName?.toLowerCase().includes(q) ||
+          nameStartsWith(s.fatherName) ||
 
-          s.phone?.toLowerCase().includes(q) ||
+          prefix(s.phone) ||
 
-          s.fatherPhone?.toLowerCase().includes(q)
+          prefix(s.fatherPhone)
 
       );
 
@@ -1327,7 +1341,7 @@ export default function StudentsPage() {
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4">
 
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-3">
 
           {/* Search */}
 

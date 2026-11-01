@@ -22,6 +22,12 @@ interface AcademicYear {
   name: string;
 }
 
+interface SubjectItem {
+  id: string;
+  name: string;
+  classId: string;
+}
+
 interface ScheduleEntry {
   subjectName: string;
   examDate: string;
@@ -71,6 +77,8 @@ const CreateEditExam: React.FC = () => {
   const [sections, setSections] = useState<Section[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [examTerms, setExamTerms] = useState<{ id: string; name: string }[]>([]);
+  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const [holidays, setHolidays] = useState<string[]>([]);
 
   // Loading states
   const [loading, setLoading] = useState(false);
@@ -79,6 +87,7 @@ const CreateEditExam: React.FC = () => {
 
   useEffect(() => {
     fetchDropdowns();
+    fetchHolidays();
     if (isEditMode) {
       fetchExam();
     }
@@ -91,6 +100,56 @@ const CreateEditExam: React.FC = () => {
       setSections([]);
     }
   }, [formData.classId]);
+
+  // Fetch subjects (Subject Master) for the selected academic year so the
+  // schedule builder can auto-populate class-wise subjects instead of
+  // free-text entry.
+  useEffect(() => {
+    if (formData.academicYearId) {
+      fetchSubjects(formData.academicYearId);
+    } else {
+      setSubjects([]);
+    }
+  }, [formData.academicYearId]);
+
+  const fetchSubjects = async (academicYearId: string) => {
+    try {
+      const res = await axios.get(
+        getFullUrl(`/api/subjects?academicYearId=${academicYearId}`),
+        { headers }
+      );
+      const list = res.data?.data || res.data || [];
+      setSubjects(
+        list.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          classId: s.classId || s.class?.id || "",
+        }))
+      );
+    } catch (error) {
+      setSubjects([]);
+    }
+  };
+
+  // Fetch holidays (Holiday Master) once — used to skip holiday dates while
+  // auto-generating the schedule. Stored as YYYY-MM-DD strings.
+  const fetchHolidays = async () => {
+    try {
+      const res = await axios.get(
+        getFullUrl(`/api/masters/holiday-master?limit=500`),
+        { headers }
+      );
+      const list =
+        res.data?.data?.data || res.data?.data || res.data || [];
+      const dates = (Array.isArray(list) ? list : [])
+        .map((h: any) => h.date)
+        .filter(Boolean)
+        .map((d: string) => new Date(d).toISOString().split("T")[0]);
+      setHolidays(dates);
+    } catch (error) {
+      setHolidays([]);
+    }
+  };
 
   const fetchDropdowns = async () => {
     setLoading(true);
@@ -171,6 +230,87 @@ const CreateEditExam: React.FC = () => {
       ...prev,
       { subjectName: "", examDate: "", startTime: "", endTime: "", shift: "1" },
     ]);
+  };
+
+  // Distinct subject names available across the currently-selected classes,
+  // sourced from Subject Master (deduplicated, alphabetical).
+  const availableSubjectNames = React.useMemo(() => {
+    const relevant = selectedClassIds.length
+      ? subjects.filter((s) => selectedClassIds.includes(s.classId))
+      : subjects;
+    return Array.from(
+      new Set(relevant.map((s) => s.name).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [subjects, selectedClassIds]);
+
+  // Returns true if the given Date is a working day (not Sunday, not a holiday).
+  const isWorkingDay = (d: Date) => {
+    if (d.getDay() === 0) return false; // Sunday
+    const iso = d.toISOString().split("T")[0];
+    return !holidays.includes(iso);
+  };
+
+  // Auto-generate the exam schedule: one subject per working day starting from
+  // the exam Start Date, skipping Sundays and holidays. Subjects come from
+  // Subject Master for the selected class(es). All rows remain fully editable
+  // afterwards (modify option). Existing dates for matching subjects are kept.
+  const loadSubjectsFromMaster = () => {
+    if (availableSubjectNames.length === 0) {
+      toast.error(
+        "No subjects found in Subject Master for the selected class(es) / academic year"
+      );
+      return;
+    }
+    if (!formData.startDate) {
+      toast.error("Please select the exam Start Date first");
+      return;
+    }
+
+    // Build working-day dates starting from Start Date (skip Sunday + holiday).
+    // Stop at End Date if provided; if there aren't enough working days, the
+    // remaining subjects are added without a date (user can set manually).
+    const start = new Date(formData.startDate + "T00:00:00");
+    const end = formData.endDate
+      ? new Date(formData.endDate + "T00:00:00")
+      : null;
+
+    const workingDates: string[] = [];
+    const cursor = new Date(start);
+    let guard = 0;
+    while (
+      workingDates.length < availableSubjectNames.length &&
+      guard < 730 // safety: max ~2 years of days
+    ) {
+      if (end && cursor > end) break;
+      if (isWorkingDay(cursor)) {
+        workingDates.push(cursor.toISOString().split("T")[0]);
+      }
+      cursor.setDate(cursor.getDate() + 1);
+      guard++;
+    }
+
+    setScheduleEntries((prev) => {
+      const existingByName = new Map(prev.map((e) => [e.subjectName, e]));
+      return availableSubjectNames.map((name, idx) => {
+        const existing = existingByName.get(name);
+        return {
+          subjectName: name,
+          examDate: workingDates[idx] || existing?.examDate || "",
+          startTime: existing?.startTime || "",
+          endTime: existing?.endTime || "",
+          shift: existing?.shift || "1",
+        };
+      });
+    });
+
+    const skipped =
+      end && workingDates.length < availableSubjectNames.length;
+    toast.success(
+      `Auto-generated schedule for ${availableSubjectNames.length} subjects` +
+        (skipped
+          ? " (some subjects need a date — not enough working days in range)"
+          : " — Sundays & holidays skipped")
+    );
   };
 
   const removeScheduleEntry = (index: number) => {
@@ -561,14 +701,24 @@ const CreateEditExam: React.FC = () => {
                     Add subject-wise date/time (same schedule applies to all selected classes)
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={addScheduleEntry}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Subject
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadSubjectsFromMaster}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Auto-Generate Schedule
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addScheduleEntry}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Subject
+                  </button>
+                </div>
               </div>
 
               {scheduleEntries.length === 0 ? (
@@ -591,13 +741,32 @@ const CreateEditExam: React.FC = () => {
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           Subject
                         </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Hindi, English, Maths"
+                        <select
                           value={entry.subjectName}
-                          onChange={(e) => updateScheduleEntry(index, "subjectName", e.target.value)}
+                          onChange={(e) =>
+                            updateScheduleEntry(index, "subjectName", e.target.value)
+                          }
                           className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
-                        />
+                        >
+                          <option value="">
+                            {availableSubjectNames.length
+                              ? "Select Subject"
+                              : "No subjects in master"}
+                          </option>
+                          {availableSubjectNames.map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                          {/* Preserve a previously-entered value that is no
+                              longer in the master list */}
+                          {entry.subjectName &&
+                            !availableSubjectNames.includes(entry.subjectName) && (
+                              <option value={entry.subjectName}>
+                                {entry.subjectName}
+                              </option>
+                            )}
+                        </select>
                       </div>
 
                       {/* Date */}

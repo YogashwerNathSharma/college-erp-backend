@@ -224,7 +224,7 @@ export default function AdminStudentDashboard() {
 
       {data && (
         <>
-          {/* ═══ ROW 1: Primary Stats (MiniStat style — matching main dashboard) ═══ */}
+          {/* ═══ ALL STATS: single continuous grid (no blank gaps on mobile) ═══ */}
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 animate-fade-in-up stagger-2">
             <MiniStat label="Total" value={stats?.totalStudents || 0} icon={<Users size={14} />} color="text-indigo-600" bg="bg-indigo-50 dark:bg-indigo-950/50" onClick={() => navigate("/students")} />
             <MiniStat label="Active" value={stats?.activeStudents || 0} icon={<UserCheck size={14} />} color="text-green-600" bg="bg-green-50 dark:bg-green-950/50" onClick={() => navigate("/students?status=active")} />
@@ -233,10 +233,6 @@ export default function AdminStudentDashboard() {
             <MiniStat label="Leaving" value={stats?.leavingStudents || 0} icon={<UserMinus size={14} />} color="text-amber-600" bg="bg-amber-50 dark:bg-amber-950/50" />
             <MiniStat label="Boys" value={stats?.boysCount || 0} icon={<Users size={14} />} color="text-sky-600" bg="bg-sky-50 dark:bg-sky-950/50" onClick={() => navigate("/students?gender=Male")} />
             <MiniStat label="Girls" value={stats?.girlsCount || 0} icon={<Users size={14} />} color="text-pink-600" bg="bg-pink-50 dark:bg-pink-950/50" onClick={() => navigate("/students?gender=Female")} />
-          </div>
-
-          {/* ═══ ROW 2: Secondary Stats ═══ */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 animate-fade-in-up stagger-3">
             <MiniStat label="Transport" value={stats?.transportStudents || 0} icon={<Bus size={14} />} color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-950/50" />
             <MiniStat label="Hostel" value={stats?.hostelStudents || 0} icon={<Building size={14} />} color="text-violet-600" bg="bg-violet-50 dark:bg-violet-950/50" />
             <MiniStat label="Scholarship" value={stats?.scholarshipStudents || 0} icon={<Award size={14} />} color="text-amber-600" bg="bg-amber-50 dark:bg-amber-950/50" />
@@ -308,7 +304,7 @@ export default function AdminStudentDashboard() {
                   <Pie
                     data={data.categoryDistribution}
                     cx="50%" cy="50%" outerRadius={90}
-                    dataKey="count" nameKey="category"
+                    dataKey="count" nameKey="categoryName"
                     label={({ name, percent }: any) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
                   >
                     {data.categoryDistribution.map((_, i) => (

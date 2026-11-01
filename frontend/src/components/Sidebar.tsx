@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
+import { useModules } from "../context/ModuleContext";
+import { usePortal } from "../context/PortalContext";
 
 
 import { useThemeContext } from "../context/ThemeContext";
@@ -82,6 +84,7 @@ type MenuItem = {
   path?: string;
   badge?: number;
   children?: ChildMenuItem[];
+  moduleSlug?: string;
 };
 
 type SectionGroup = {
@@ -123,6 +126,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Students",
         icon: <Users size={20} />,
+        moduleSlug: "students",
         children: [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/student-dashboard" },
           { name: "All Students", icon: <Users size={16} />, path: "/students" },
@@ -147,6 +151,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Teachers",
         icon: <UserCog size={20} />,
+        moduleSlug: "teachers",
         children: [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/teacher-dashboard" },
           { name: "All Teachers", icon: <UserCog size={16} />, path: "/teachers" },
@@ -164,6 +169,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Attendance",
         icon: <ClipboardCheck size={20} />,
+        moduleSlug: "attendance",
         children: [
           { name: "Dashboard", path: "/attendance-dashboard", icon: <ClipboardEdit size={16} /> },
           { name: "Mark Attendance", path: "/attendance", icon: <ClipboardCheck size={16} /> },
@@ -173,6 +179,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Exams",
         icon: <FileText size={20} />,
+        moduleSlug: "exams",
         children: [
           { name: "Dashboard", icon: <LayoutDashboard size={16} />, path: "/exam-dashboard" },
           { name: "All Exams", icon: <FileText size={16} />, path: "/exams" },
@@ -182,7 +189,7 @@ const tenantMenu: SectionGroup[] = [
           { name: "Admit Card", icon: <CreditCard size={16} />, path: "/exam-admit-card" },
         ],
       },
-      { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable" },
+      { name: "Time Table", icon: <FileClockIcon size={20} />, path: "/timeTable", moduleSlug: "timetable" },
     ],
   },
   {
@@ -191,6 +198,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Fees",
         icon: <IndianRupee size={20} />,
+        moduleSlug: "fees",
         children: [
           { name: "Dashboard", icon: <PieChart size={16} />, path: "/fees/dashboard" },
           { name: "Collection", icon: <IndianRupee size={16} />, path: "/fees/collection" },
@@ -206,17 +214,18 @@ const tenantMenu: SectionGroup[] = [
           { name: "Settings", icon: <Settings size={16} />, path: "/fees/settings" },
         ],
       },
-      { name: "Payment Gateway", icon: <CreditCard size={20} />, path: "/payment-gateway" },
+      { name: "Payment Gateway", icon: <CreditCard size={20} />, path: "/payment-gateway", moduleSlug: "fees" },
     ],
   },
   {
     section: "OPERATIONS",
     items: [
-      { name: "Transport", icon: <Bus size={20} />, path: "/transport" },
-      { name: "Library", icon: <Library size={20} />, path: "/library" },
+      { name: "Transport", icon: <Bus size={20} />, path: "/transport", moduleSlug: "transport" },
+      { name: "Library", icon: <Library size={20} />, path: "/library", moduleSlug: "library" },
       {
         name: "Hostel",
         icon: <BedDouble size={20} />,
+        moduleSlug: "hostel",
         children: [
           { name: "Room Allocation", icon: <BedDouble size={16} />, path: "/hostel/rooms" },
           { name: "Hostel Fees", icon: <IndianRupee size={16} />, path: "/hostel/fees" },
@@ -226,6 +235,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Inventory",
         icon: <Package size={20} />,
+        moduleSlug: "inventory",
         children: [
           { name: "Asset List", icon: <Package size={16} />, path: "/inventory/assets" },
           { name: "Issue Assets", icon: <Send size={16} />, path: "/inventory/issue" },
@@ -235,6 +245,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Gate Pass",
         icon: <DoorOpen size={20} />,
+        moduleSlug: "gate-pass",
         children: [
           { name: "Visitor Log", icon: <Users size={16} />, path: "/gate-pass" },
           { name: "Pending Approvals", icon: <Clock size={16} />, path: "/gate-pass/pending" },
@@ -248,6 +259,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "HR",
         icon: <UserCog size={20} />,
+        moduleSlug: "hr",
         children: [
           { name: "Staff List", icon: <Users size={16} />, path: "/hr/staff" },
           { name: "Payroll", icon: <Wallet size={16} />, path: "/hr/payroll" },
@@ -263,6 +275,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Communication",
         icon: <MessageSquare size={20} />,
+        moduleSlug: "communication",
         children: [
           { name: "Notice Board", icon: <FileText size={16} />, path: "/communication/notices" },
           { name: "Send SMS", icon: <Send size={16} />, path: "/communication/sms" },
@@ -274,6 +287,7 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Events",
         icon: <CalendarDays size={20} />,
+        moduleSlug: "events",
         children: [
           { name: "All Events", icon: <CalendarDays size={16} />, path: "/events" },
           { name: "Calendar", icon: <Calendar size={16} />, path: "/academic-calendar" },
@@ -287,38 +301,40 @@ const tenantMenu: SectionGroup[] = [
       {
         name: "Certificates",
         icon: <Award size={20} />,
+        moduleSlug: "certificates",
         children: [
           { name: "Transfer Certificate", icon: <FileText size={16} />, path: "/certificates/tc" },
           { name: "Character Cert", icon: <Award size={16} />, path: "/certificates/character" },
           { name: "Migration Cert", icon: <FileText size={16} />, path: "/certificates/migration" },
         ],
       },
-      { name: "File Manager", icon: <FileArchive size={20} />, path: "/file-manager" },
-      { name: "ID Cards", icon: <IdCard size={20} />, path: "/qr-barcode" },
+      { name: "File Manager", icon: <FileArchive size={20} />, path: "/file-manager", moduleSlug: "file-manager" },
+      { name: "ID Cards", icon: <IdCard size={20} />, path: "/qr-barcode", moduleSlug: "id-cards" },
     ],
   },
   {
     section: "TOOLS & ENGINES",
     items: [
-      { name: "Workflow", icon: <Activity size={20} />, path: "/workflow" },
-      { name: "Form Builder", icon: <ClipboardEdit size={20} />, path: "/form-builder" },
-      { name: "Report Builder", icon: <BarChart3 size={20} />, path: "/report-builder" },
-      { name: "Import / Export", icon: <FolderOpen size={20} />, path: "/import-export" },
-      { name: "Scheduler", icon: <CalendarClock size={20} />, path: "/scheduler" },
+      { name: "Workflow", icon: <Activity size={20} />, path: "/workflow", moduleSlug: "workflow" },
+      { name: "Approvals", icon: <UserCheck size={20} />, path: "/approvals", moduleSlug: "workflow" },
+      { name: "Form Builder", icon: <ClipboardEdit size={20} />, path: "/form-builder", moduleSlug: "form-builder" },
+      { name: "Report Builder", icon: <BarChart3 size={20} />, path: "/report-builder", moduleSlug: "report-builder" },
+      { name: "Import / Export", icon: <FolderOpen size={20} />, path: "/import-export", moduleSlug: "import-export" },
+      { name: "Scheduler", icon: <CalendarClock size={20} />, path: "/scheduler", moduleSlug: "scheduler" },
     ],
   },
   {
     section: "ANALYTICS",
     items: [
-      { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports" },
-      { name: "Audit Log", icon: <Activity size={20} />, path: "/audit" },
+      { name: "Reports", icon: <BarChart3 size={20} />, path: "/reports", moduleSlug: "report-builder" },
+      { name: "Audit Log", icon: <Activity size={20} />, path: "/audit", moduleSlug: "workflow" },
     ],
   },
   {
     section: "DESIGN",
     items: [
-      { name: "Template Designer", icon: <Brush size={20} />, path: "/yn-udp" },
-      { name: "Dashboard Builder", icon: <LayoutDashboard size={20} />, path: "/dashboard-builder" },
+      { name: "Template Designer", icon: <Brush size={20} />, path: "/yn-udp", moduleSlug: "template-designer" },
+      { name: "Dashboard Builder", icon: <LayoutDashboard size={20} />, path: "/dashboard-builder", moduleSlug: "dashboard-builder" },
     ],
   },
   {
@@ -338,7 +354,7 @@ const tenantMenu: SectionGroup[] = [
           { name: "Audit Log", path: "/audit", icon: <Activity size={16} /> },
         ],
       },
-      { name: "Help Desk", icon: <HelpCircle size={20} />, path: "/helpdesk" },
+      { name: "Help Desk", icon: <HelpCircle size={20} />, path: "/helpdesk", moduleSlug: "helpdesk" },
     ],
   },
 ];
@@ -403,13 +419,53 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const localTenant = JSON.parse(localStorage.getItem("tenant") || "{}");
   const [devProfile, setDevProfile] = useState<any>(null);
+  const { isModuleAllowed } = useModules();
+  const { portal } = usePortal();
 
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
+  const isAdminOrSuper = isSuperAdmin || user?.role === "ADMIN";
   const safeTenant = tenant || localTenant || {};
 
   const sidebarTitle = isSuperAdmin ? "Super Admin" : safeTenant?.name || "School Name";
   const sidebarLogo = isSuperAdmin ? "/super-admin-logo.png" : getFullUrl(safeTenant?.logoUrl);
-  const menu = isSuperAdmin ? superAdminMenu : tenantMenu;
+
+  // 🔒 Build menu based on role + portal config
+  // For non-admin roles with portal sidebar → use portal sidebar directly
+  // For admin/super-admin → use hardcoded menu + module filtering
+  const hasPortalSidebar = portal && !isAdminOrSuper && portal.sidebarSections.length > 0;
+
+  // Convert portal sidebar to SectionGroup format
+  const portalMenu: SectionGroup[] = hasPortalSidebar
+    ? portal!.sidebarSections.map((section) => ({
+        section: section.section,
+        items: section.items.map((item) => ({
+          name: item.name,
+          icon: <Package size={20} />, // Default icon — portal items use string icons
+          path: item.path,
+          children: item.children?.map((child) => ({
+            name: child.name,
+            icon: <Package size={16} />,
+            path: child.path,
+          })),
+        })),
+      }))
+    : [];
+
+  const rawMenu = hasPortalSidebar ? portalMenu : (isSuperAdmin ? superAdminMenu : tenantMenu);
+
+  // 🔒 Filter menu based on tenant's permitted modules (only for admin/super)
+  const menu = isSuperAdmin || hasPortalSidebar
+    ? rawMenu
+    : rawMenu
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => {
+            // No moduleSlug = core item (Dashboard, Settings, etc.) — always show
+            if (!item.moduleSlug) return true;
+            return isModuleAllowed(item.moduleSlug);
+          }),
+        }))
+        .filter((group) => group.items.length > 0); // Remove empty sections
 
   useEffect(() => {
     if (isSuperAdmin) return;

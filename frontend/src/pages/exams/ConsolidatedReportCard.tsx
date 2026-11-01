@@ -90,9 +90,14 @@ const apiClient = axios.create({
 // ============================================================
 const ConsolidatedReportCard: React.FC = () => {
   const { studentId } = useParams<{ studentId: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const academicYearId = searchParams.get("academicYearId") || "";
   const classId = searchParams.get("classId") || "";
+
+  // Template toggle — "consolidated-grade" (default) shows grades,
+  // "consolidated-no-grade" hides all grade columns/rows.
+  const template = searchParams.get("template") || "consolidated-grade";
+  const showGrade = !template.includes("no-grade");
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -231,6 +236,25 @@ const ConsolidatedReportCard: React.FC = () => {
           </svg>
           {isMobile ? "Print" : "Print Report"}
         </button>
+      </div>
+
+      {/* Template Selector (With / Without Grade) — hidden on print */}
+      <div className="print:hidden max-w-[850px] mx-auto px-6 pt-4">
+        <div className="mb-2 flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-700">Template:</label>
+          <select
+            value={template}
+            onChange={(e) => {
+              const next = new URLSearchParams(searchParams);
+              next.set("template", e.target.value);
+              setSearchParams(next);
+            }}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="consolidated-grade">Consolidated (With Grade)</option>
+            <option value="consolidated-no-grade">Consolidated (Without Grade)</option>
+          </select>
+        </div>
       </div>
 
       {/* Report Card Container (top padding clears the fixed action buttons) */}
@@ -462,6 +486,14 @@ const ConsolidatedReportCard: React.FC = () => {
                   >
                     Grand Total
                   </th>
+                  {showGrade && (
+                    <th
+                      rowSpan={2}
+                      style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold", verticalAlign: "middle", width: "60px" }}
+                    >
+                      Grade
+                    </th>
+                  )}
                 </tr>
                 {/* Row 2: Grand Total sub-headers */}
                 <tr style={{ backgroundColor: "#f0f0f0" }}>
@@ -495,6 +527,11 @@ const ConsolidatedReportCard: React.FC = () => {
                     <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                       {subject.totalMarks}
                     </td>
+                    {showGrade && (
+                      <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
+                        {subject.finalGrade || "—"}
+                      </td>
+                    )}
                   </tr>
                 ))}
 
@@ -521,6 +558,11 @@ const ConsolidatedReportCard: React.FC = () => {
                   <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
                     {grandTotal.totalMarks}
                   </td>
+                  {showGrade && (
+                    <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                      {grandTotal.grade || "—"}
+                    </td>
+                  )}
                 </tr>
 
                 {/* PERCENTAGE */}
@@ -545,20 +587,22 @@ const ConsolidatedReportCard: React.FC = () => {
                       </td>
                     );
                   })}
-                  <td colSpan={2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                  <td colSpan={showGrade ? 3 : 2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                     {grandTotal.percentage}%
                   </td>
                 </tr>
 
                 {/* DIVISION */}
+                {showGrade && (
                 <tr>
                   <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "bold", textTransform: "uppercase" }}>
                     Division
                   </td>
-                  <td colSpan={exams.length + 2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                  <td colSpan={exams.length + (showGrade ? 3 : 2)} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                     {grandTotal.grade || "—"}
                   </td>
                 </tr>
+                )}
               </tbody>
             </table>
           </div>

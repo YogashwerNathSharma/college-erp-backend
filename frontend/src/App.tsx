@@ -12,11 +12,18 @@ import axios from "axios";
 import { API_BASE_URL } from "./config/api";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AcademicYearProvider } from "./context/AcademicYearContext";
+import { ModuleProvider } from "./context/ModuleContext";
+import { PortalProvider } from "./context/PortalContext";
 
 // ✅ Only Layout components stay as eager imports (always visible)
 import Sidebar from "./components/Sidebar";
 import TopNavbar from "./components/TopNavbar";
 import YnAiAssistant from "./components/YnAiAssistant";
+import ModuleRouteGuard from "./guards/ModuleRouteGuard";
+import GracePeriodBanner from "./components/common/GracePeriodBanner";
+import MobileBottomNav from "./components/common/MobileBottomNav";
+
+
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PAGE LOADER (lightweight spinner shown while pages load)
@@ -72,6 +79,7 @@ const SubscriptionManagement = lazyWithRetry(() => import("./pages/superAdmin/Su
 const UserManagement = lazyWithRetry(() => import("./pages/superAdmin/UserManagement"));
 const IAMPage = lazyWithRetry(() => import("./pages/superAdmin/IAMPage"));
 const ModuleManagement = lazyWithRetry(() => import("./pages/superAdmin/ModuleManagement"));
+const TenantModuleAssignment = lazyWithRetry(() => import("./pages/superAdmin/TenantModuleAssignment"));
 const PluginManagement = lazyWithRetry(() => import("./pages/superAdmin/PluginManagement"));
 const ThemeManagement = lazyWithRetry(() => import("./pages/superAdmin/ThemeManagement"));
 const MonitoringPage = lazyWithRetry(() => import("./pages/superAdmin/MonitoringPage"));
@@ -122,15 +130,27 @@ const DuplicateManager = lazyWithRetry(() => import("./pages/students/DuplicateM
 const StudentAuditLog = lazyWithRetry(() => import("./pages/students/StudentAuditLog"));
 const SavedFilters = lazyWithRetry(() => import("./pages/students/SavedFilters"));
 
+// Parent Portal Pages (Route-based)
+const ParentLayoutComponent = lazyWithRetry(() => import("./pages/parent-portal/ParentLayout"));
+const ParentDashboardPage = lazyWithRetry(() => import("./pages/parent-portal/ParentDashboardPage"));
+const ParentAttendancePage = lazyWithRetry(() => import("./pages/parent-portal/ParentAttendancePage"));
+const ParentResultsPage = lazyWithRetry(() => import("./pages/parent-portal/ParentResultsPage"));
+const ParentFeesPage = lazyWithRetry(() => import("./pages/parent-portal/ParentFeesPage"));
+const ParentNoticesPage = lazyWithRetry(() => import("./pages/parent-portal/ParentNoticesPage"));
+const ParentProfilePage = lazyWithRetry(() => import("./pages/parent-portal/ParentProfilePage"));
+
 // Reports
 const ReportsPage = lazyWithRetry(() => import("./pages/reports/ReportsPage"));
 const CertificateGenerator = lazyWithRetry(() => import("./pages/reports/CertificateGenerator"));
 const AnalyticsPage = lazyWithRetry(() => import("./pages/reports/AnalyticsPage"));
+const ReportCardPDFPage = lazyWithRetry(() => import("./pages/reports/ReportCardPDFPage"));
+const FeeReceiptPDFPage = lazyWithRetry(() => import("./pages/reports/FeeReceiptPDFPage"));
 
 // Subscriptions
 const SubscriptionsPage = lazyWithRetry(() => import("./pages/subscriptions/SubscriptionsPage"));
 const SubscriptionSettings = lazyWithRetry(() => import("./pages/subscriptions/SubscriptionSettings"));
 const SubscriptionExpired = lazyWithRetry(() => import("./pages/subscriptions/SubscriptionExpired"));
+const PlanComparison = lazyWithRetry(() => import("./pages/subscriptions/PlanComparison"));
 
 // Settings
 const TenantAdminSettings = lazyWithRetry(() => import("./pages/settings/TenantAdminSettings"));
@@ -167,6 +187,19 @@ const TeacherReports = lazyWithRetry(() => import("./pages/teachers/TeacherRepor
 const TeacherSettings = lazyWithRetry(() => import("./pages/teachers/TeacherSettings"));
 const TeacherIdCard = lazyWithRetry(() => import("./pages/teachers/TeacherIdCard"));
 const TeacherPortal = lazyWithRetry(() => import("./pages/teachers/TeacherPortal"));
+
+// Teacher Portal Pages (Route-based — separate layout with sidebar)
+const TeacherLayoutComponent = lazyWithRetry(() => import("./components/layout/TeacherLayout"));
+const TeacherDashboardPage = lazyWithRetry(() => import("./pages/teacher-portal/TeacherDashboardPage"));
+const MyStudentsPage = lazyWithRetry(() => import("./pages/teacher-portal/MyStudentsPage"));
+const MarkAttendancePage = lazyWithRetry(() => import("./pages/teacher-portal/MarkAttendancePage"));
+const MarksEntryPage = lazyWithRetry(() => import("./pages/teacher-portal/MarksEntryPage"));
+const TeacherHomeworkPage = lazyWithRetry(() => import("./pages/teacher-portal/HomeworkPage"));
+const MyTimetablePage = lazyWithRetry(() => import("./pages/teacher-portal/MyTimetablePage"));
+const MyLeavePage = lazyWithRetry(() => import("./pages/teacher-portal/MyLeavePage"));
+const MySalaryPage = lazyWithRetry(() => import("./pages/teacher-portal/MySalaryPage"));
+const TeacherNoticesPage = lazyWithRetry(() => import("./pages/teacher-portal/NoticesPage"));
+const MyProfilePage = lazyWithRetry(() => import("./pages/teacher-portal/MyProfilePage"));
 
 // Principal
 const PrincipalPortal = lazyWithRetry(() => import("./pages/principal/PrincipalPortal"));
@@ -286,6 +319,11 @@ const EventDashboard = lazyWithRetry(() => import("./pages/events/EventDashboard
 const HelpDeskDashboard = lazyWithRetry(() => import("./pages/helpdesk/HelpDeskDashboard"));
 // Workflow Engine
 const WorkflowEngine = lazyWithRetry(() => import("./pages/workflow/WorkflowEngine"));
+// Approvals Page (Task 9)
+const ApprovalsPage = lazyWithRetry(() => import("./pages/workflow/ApprovalsPage"));
+// Accountant Portal (Task 8)
+const AccountantLayout = lazyWithRetry(() => import("./components/layout/AccountantLayout"));
+const AccountantDashboard = lazyWithRetry(() => import("./pages/accountant/AccountantDashboard"));
 // Form Builder
 const FormBuilder = lazyWithRetry(() => import("./pages/form-builder/FormBuilder"));
 // Report Builder
@@ -545,10 +583,16 @@ function ProtectedRoute() {
     return <Navigate to="/student-portal" replace />;
   }
   if (userRole === "TEACHER" && isAdminRoute) {
-    return <Navigate to="/teacher-portal" replace />;
+    return <Navigate to="/teacher/dashboard" replace />;
   }
   if (userRole === "PRINCIPAL" && isAdminRoute) {
     return <Navigate to="/principal-portal" replace />;
+  }
+  if (userRole === "ACCOUNTANT" && isAdminRoute) {
+    return <Navigate to="/accountant/dashboard" replace />;
+  }
+  if (userRole === "PARENT" && isAdminRoute) {
+    return <Navigate to="/parent/dashboard" replace />;
   }
 
   return (
@@ -620,17 +664,23 @@ function Layout() {
         </button>
 
         <TopNavbar tenant={tenant} />
+        <GracePeriodBanner />
 
         <main className="flex-1 p-2 md:p-3 overflow-auto" role="main">
           <AppErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <div className="page-container">
-                <Outlet context={{ setTenant }} />
+                <ModuleRouteGuard>
+                  <Outlet context={{ setTenant }} />
+                </ModuleRouteGuard>
               </div>
             </Suspense>
           </AppErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile bottom navigation — only renders on < 768px for Admin */}
+      <MobileBottomNav />
     </div>
   );
 }
@@ -642,8 +692,10 @@ function RoleDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   if (user?.role === "SUPER_ADMIN") return <Navigate to="/super-admin" />;
   if (user?.role === "STUDENT") return <Navigate to="/student-portal" />;
-  if (user?.role === "TEACHER") return <Navigate to="/teacher-portal" />;
+  if (user?.role === "TEACHER") return <Navigate to="/teacher/dashboard" />;
   if (user?.role === "PRINCIPAL") return <Navigate to="/principal-portal" />;
+  if (user?.role === "ACCOUNTANT") return <Navigate to="/accountant/dashboard" />;
+  if (user?.role === "PARENT") return <Navigate to="/parent/dashboard" />;
   return <TenantDashboard />;
 }
 
@@ -664,7 +716,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <AcademicYearProvider>
+      <ModuleProvider>
+        <PortalProvider>
+          <AcademicYearProvider>
         <Suspense fallback={<PageLoader />}>
           <Routes>
           {/* ===== PUBLIC ROUTES ===== */}
@@ -682,10 +736,48 @@ export default function App() {
             <Route path="/print/report-card/:examId/:studentId" element={<ReportCard />} />
             <Route path="/print/consolidated/:studentId" element={<ConsolidatedReportCard />} />
 
+            {/* ━━━ PDF PAGES (with PrintExportBar) ━━━ */}
+            <Route path="/print/report-card-pdf/:studentId/:examId" element={<ReportCardPDFPage />} />
+            <Route path="/print/fee-receipt-pdf/:paymentId" element={<FeeReceiptPDFPage />} />
+
             {/* ━━━ PORTALS ━━━ */}
             <Route path="/student-portal" element={<StudentDashboard />} />
             <Route path="/teacher-portal" element={<TeacherPortal />} />
             <Route path="/principal-portal" element={<PrincipalPortal />} />
+
+            {/* ━━━ ACCOUNTANT PORTAL ━━━ */}
+            <Route path="/accountant" element={<AccountantLayout />}>
+              <Route path="dashboard" element={<AccountantDashboard />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+
+            {/* ━━━ PARENT PORTAL ━━━ */}
+            <Route path="/parent" element={<ParentLayoutComponent />}>
+              <Route path="dashboard" element={<ParentDashboardPage />} />
+              <Route path="attendance" element={<ParentAttendancePage />} />
+              <Route path="results" element={<ParentResultsPage />} />
+              <Route path="fees" element={<ParentFeesPage />} />
+              <Route path="notices" element={<ParentNoticesPage />} />
+              <Route path="profile" element={<ParentProfilePage />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
+
+            {/* ━━━ APPROVALS PAGE ━━━ */}
+
+            {/* Teacher Portal — Route-based with own layout */}
+            <Route path="/teacher" element={<TeacherLayoutComponent />}>
+              <Route path="dashboard" element={<TeacherDashboardPage />} />
+              <Route path="my-students" element={<MyStudentsPage />} />
+              <Route path="attendance" element={<MarkAttendancePage />} />
+              <Route path="marks" element={<MarksEntryPage />} />
+              <Route path="homework" element={<TeacherHomeworkPage />} />
+              <Route path="timetable" element={<MyTimetablePage />} />
+              <Route path="leave" element={<MyLeavePage />} />
+              <Route path="salary" element={<MySalaryPage />} />
+              <Route path="notices" element={<TeacherNoticesPage />} />
+              <Route path="profile" element={<MyProfilePage />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
 
             {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
             {/* NORMAL ROUTES — With Sidebar + Navbar */}
@@ -704,6 +796,7 @@ export default function App() {
               <Route path="/super-admin/users" element={<UserManagement />} />
               <Route path="/super-admin/iam" element={<IAMPage />} />
               <Route path="/super-admin/modules" element={<ModuleManagement />} />
+              <Route path="/super-admin/tenant-modules/:tenantId" element={<TenantModuleAssignment />} />
               <Route path="/super-admin/plugins" element={<PluginManagement />} />
               <Route path="/super-admin/theme" element={<ThemeManagement />} />
               <Route path="/super-admin/monitoring" element={<MonitoringPage />} />
@@ -717,6 +810,7 @@ export default function App() {
 
               {/* SUBSCRIPTIONS */}
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
+              <Route path="/subscriptions/plans" element={<PlanComparison />} />
 
               {/* REPORTS */}
               <Route path="/student-profile" element={<StudentProfilePage />} />
@@ -912,6 +1006,7 @@ export default function App() {
 
               {/* FOUNDATION ENGINES */}
               <Route path="/workflow" element={<WorkflowEngine />} />
+              <Route path="/approvals" element={<ApprovalsPage />} />
               <Route path="/form-builder" element={<FormBuilder />} />
               <Route path="/report-builder" element={<ReportBuilder />} />
               <Route path="/audit" element={<AuditDashboard />} />
@@ -940,7 +1035,9 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Suspense>
-        </AcademicYearProvider>
+          </AcademicYearProvider>
+        </PortalProvider>
+       </ModuleProvider>
       </BrowserRouter>
     </ThemeProvider>
   );

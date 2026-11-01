@@ -132,7 +132,7 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
     // Only log successful operations
     if (res.statusCode >= 200 && res.statusCode < 300 && body?.success !== false) {
       const user = (req as any).user;
-      const tenantId = req.params.tenantId as string;
+      const tenantId = user?.tenantId || req.params.tenantId;
 
       if (user && tenantId) {
         const { browser, device, os } = parseUserAgent(req.headers["user-agent"]);
@@ -147,35 +147,32 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
         // Build audit entry
         const auditData: any = {
           tenantId,
-          userId: user.id,
+          userId: user.userId || user.id,
           userName: user.name || user.email || "Unknown",
           userRole: user.role || "UNKNOWN",
           action,
           module,
           entityId: entityId || undefined,
           entityType: entityType || undefined,
+          entity: entityType || module,
           ipAddress: getClientIP(req),
           userAgent: req.headers["user-agent"],
-          browser,
-          device,
-          os,
-          duration,
           isRollbackable: ["CREATE", "UPDATE", "DELETE"].includes(action),
+          metadata: { browser, device, os, duration, path },
         };
 
         // For updates, try to capture previous/new data
         if (action === "UPDATE" && body?.data) {
-          auditData.newData = sanitizeData(body.data);
+          auditData.newValue = sanitizeData(body.data);
           // previousData would need to be set by the controller before update
           if ((req as any)._auditPreviousData) {
-            auditData.previousData = (req as any)._auditPreviousData;
-            auditData.changes = calculateChanges(auditData.previousData, auditData.newData);
+            auditData.oldValue = (req as any)._auditPreviousData;
           }
         } else if (action === "CREATE" && body?.data) {
-          auditData.newData = sanitizeData(body.data);
+          auditData.newValue = sanitizeData(body.data);
         } else if (action === "DELETE") {
           if ((req as any)._auditPreviousData) {
-            auditData.previousData = (req as any)._auditPreviousData;
+            auditData.oldValue = (req as any)._auditPreviousData;
           }
         }
 

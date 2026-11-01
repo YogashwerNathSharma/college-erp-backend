@@ -6,6 +6,8 @@ import {
   grantTemporaryAdminController,
   revokeTemporaryAdminController,
   getMyPermissionsController,
+  getAllUsersWithPermissionsController,
+  resetUserPermissionsController,
 } from "./permissions.controller";
 
 const router = express.Router();
@@ -16,6 +18,11 @@ const router = express.Router();
 router.get("/my", authMiddleware, getMyPermissionsController);
 
 //////////////////////////////////////////////////////
+// GET ALL USERS WITH PERMISSIONS (Tenant Admin)
+//////////////////////////////////////////////////////
+router.get("/all-users", authMiddleware, getAllUsersWithPermissionsController);
+
+//////////////////////////////////////////////////////
 // GET USER PERMISSIONS
 //////////////////////////////////////////////////////
 router.get("/:userId", authMiddleware, getUserPermissionsController);
@@ -24,6 +31,11 @@ router.get("/:userId", authMiddleware, getUserPermissionsController);
 // UPDATE USER PERMISSIONS (ADMIN ONLY)
 //////////////////////////////////////////////////////
 router.put("/:userId", authMiddleware, updateUserPermissionsController);
+
+//////////////////////////////////////////////////////
+// RESET USER PERMISSIONS TO DEFAULTS (ADMIN ONLY)
+//////////////////////////////////////////////////////
+router.delete("/:userId/reset", authMiddleware, resetUserPermissionsController);
 
 //////////////////////////////////////////////////////
 // GRANT TEMPORARY ADMIN

@@ -3,6 +3,7 @@ import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import { requirePermission } from "../../middleware/permission.middleware";
 import {
   createStaffHandler,
   getAllStaffHandler,

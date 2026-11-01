@@ -14,6 +14,7 @@ import {
   createUserService,
   updateUserService,
   deleteUserService,
+  resetUserPasswordService,
   getRolesService,
   getSuperAdminProfileService,
   updateSuperAdminProfileService,
@@ -233,7 +234,7 @@ export const createUser = async (req: any, res: Response) => {
     }
 
     // Allowed roles check
-    const allowedRoles = ["STUDENT", "TEACHER", "PRINCIPAL", "STAFF"];
+    const allowedRoles = ["STUDENT", "TEACHER", "PRINCIPAL", "ACCOUNTANT", "LIBRARIAN", "TRANSPORT_MANAGER", "HOSTEL_WARDEN", "HR_MANAGER", "RECEPTIONIST", "PARENT", "STAFF"];
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({
         success: false,
@@ -288,6 +289,35 @@ export const updateUser = async (req: any, res: Response) => {
 // ============================================================
 // 🗑️ DELETE USER (Soft delete — deactivate)
 // ============================================================
+
+// ============================================================
+// 🔑 RESET USER PASSWORD (Admin resets, gets new password to share)
+// ============================================================
+export const resetUserPassword = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.tenantId || req.user?.tenantId;
+    const userId = req.params.id;
+
+    if (!tenantId || !userId) {
+      return res.status(400).json({ success: false, message: "Missing tenantId or userId" });
+    }
+
+    const result = await resetUserPasswordService(tenantId, userId);
+
+    res.json({
+      success: true,
+      data: {
+        userId: result.userId,
+        email: result.email,
+        name: result.name,
+        newPassword: result.newPassword,
+      },
+      message: "Password reset successfully. Share the new password with the user.",
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
 export const deleteUser = async (req: any, res: Response) => {
   try {

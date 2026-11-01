@@ -50,6 +50,7 @@ import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
+import { requirePermission } from "../../middleware/permission.middleware";
 
 const router = express.Router();
 
@@ -60,19 +61,19 @@ router.use(authMiddleware, resolveTenant, resolveAcademicYear);
 // STATIC ROUTES FIRST (before :id routes)
 // ═══════════════════════════════════════════════════════
 
-router.get("/", authMiddleware, getExams);
+router.get("/", authMiddleware, requirePermission("marks.view"), getExams);
 router.post("/", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExam);
 
-router.get("/dashboard", authMiddleware, getExamDashboard);
+router.get("/dashboard", authMiddleware, requirePermission("marks.view"), getExamDashboard);
 
 // Bulk Create Exam (All Classes + Schedule at once)
 router.post("/bulk-create", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), bulkCreateExam);
-router.get("/reports", authMiddleware, getExamReports);
+router.get("/reports", authMiddleware, requirePermission("marks.view"), getExamReports);
 
 router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), addExamSubjects);
-router.post("/marks", authMiddleware, allowRoles("ADMIN", "TEACHER", "SUPER_ADMIN"), enterMarks);
+router.post("/marks", authMiddleware, requirePermission("marks.entry"), enterMarks);
 
-router.get("/consolidated-report/:studentId", authMiddleware, getConsolidatedReport);
+router.get("/consolidated-report/:studentId", authMiddleware, requirePermission("marks.view"), getConsolidatedReport);
 
 // Exam Schedule
 router.post("/schedule", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExamSchedule);

@@ -351,6 +351,7 @@ model Tenant {
 
   isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
+  deletedAt    DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -651,6 +652,7 @@ model User {
   isFirstLogin   Boolean   @default(true)
   isActive       Boolean   @default(true)
   isDeleted      Boolean   @default(false)
+  deletedAt    DateTime?
   twoFactorEnabled Boolean @default(false)
   passwordHash   String?
   resetOtp       String?
@@ -665,7 +667,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("users")
 }
 
@@ -1149,6 +1151,7 @@ model AcademicYear {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   @@index([tenantId, isCurrent])
+  @@index([tenantId, isDeleted])
   @@map("academic_years")
 }
 
@@ -1174,6 +1177,7 @@ model Class {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   @@index([tenantId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("classes")
 }
 
@@ -1193,8 +1197,11 @@ model Section {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([classId])
+    isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+
   @@map("sections")
 }
 
@@ -1220,7 +1227,7 @@ model Subject {
   deletedAt      DateTime?
   createdAt      DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([classId])
   @@map("subjects")
 }
@@ -1333,6 +1340,7 @@ model Student {
   @@index([tenantId, status, gender])
   @@index([tenantId, dob])
   @@index([tenantId, firstName, lastName])
+  @@index([tenantId, isDeleted])
   @@map("students")
 }
 
@@ -1349,12 +1357,14 @@ model StudentDocument {
   tenant     Tenant  @relation(fields: [tenantId], references: [id])
   uploadedAt DateTime @default(now())
   isDeleted  Boolean  @default(false)
+  deletedAt    DateTime?
   verificationStatus String?
   expiryDate DateTime?
   documentCategory   String?
 
   @@index([studentId])
   @@index([tenantId, type])
+  @@index([tenantId, isDeleted])
   @@map("student_documents")
 }
 
@@ -1385,6 +1395,7 @@ model Enrollment {
   @@index([tenantId, academicYearId])
   @@index([tenantId, sectionId, status])
   @@index([tenantId, status, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("enrollments")
 }
 
@@ -1647,7 +1658,7 @@ model Teacher {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([academicYearId])
   @@index([employeeId])
   @@index([tenantId, academicYearId])
@@ -1700,6 +1711,7 @@ model Staff {
   tdsPercentage   Float?
   otherDeductions Float?
   isDeleted       Boolean   @default(false)
+  deletedAt    DateTime?
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -1708,6 +1720,7 @@ model Staff {
   leaves           Leave[]          @relation("StaffLeaves")
   staffAttendances StaffAttendance[]
   @@index([tenantId, employeeId])
+  @@index([tenantId, isDeleted])
   @@map("staff")
 }
 
@@ -1743,6 +1756,7 @@ model Leave {
   @@index([teacherId, status])
   @@index([staffId, status])
   @@index([tenantId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("leaves")
 }
 
@@ -1771,6 +1785,7 @@ model TeacherSalary {
 
   @@index([teacherId, month, year])
   @@index([tenantId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("teacher_salaries")
 }
 
@@ -1793,7 +1808,7 @@ model TeacherPerformance {
 
   @@index([teacherId, academicYearId])
   @@map("teacher_performances")
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
 }
 
 model TeacherDocument {
@@ -1812,7 +1827,7 @@ model TeacherDocument {
   updatedAt DateTime     @updatedAt
 
   @@index([teacherId])
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("teacher_documents")
 }
 
@@ -1853,7 +1868,7 @@ model Communication {
   deletedAt  DateTime?
   createdAt  DateTime   @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("communications")
 }
 
@@ -1883,6 +1898,7 @@ model Attendance {
   @@index([tenantId, academicYearId])
   @@index([tenantId, classId, sectionId, date])
   @@index([tenantId, studentId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("attendances")
 }
 
@@ -1956,6 +1972,7 @@ model FeeHead {
   updatedAt DateTime  @updatedAt
 
   @@unique([tenantId, name])
+  @@index([tenantId, isDeleted])
   @@map("fee_heads")
 }
 
@@ -1982,6 +1999,7 @@ model FeeStructure {
 
   @@unique([tenantId, classId, academicYearId])
   @@index([tenantId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("fee_structures")
 }
 
@@ -2015,6 +2033,7 @@ model FeeDiscount {
   updatedAt DateTime  @updatedAt
 
   @@unique([tenantId, name])
+  @@index([tenantId, isDeleted])
   @@map("fee_discounts")
 }
 
@@ -2031,7 +2050,7 @@ model FineRule {
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("fine_rules")
 }
 
@@ -2066,6 +2085,7 @@ model StudentFee {
   @@index([tenantId, status])
   @@index([enrollmentId])
   @@index([tenantId, dueDate])
+  @@index([tenantId, isDeleted])
   @@map("student_fees")
 }
 
@@ -2119,6 +2139,7 @@ model Payment {
   createdAt    DateTime      @default(now())
   @@index([studentFeeId])
   @@index([tenantId, paymentDate])
+  @@index([tenantId, isDeleted])
   @@map("payments")
 }
 
@@ -2146,7 +2167,7 @@ model Timetable {
   updatedAt DateTime  @updatedAt
 
   @@index([classId, sectionId, day, period])
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("timetables")
 }
 
@@ -2178,6 +2199,7 @@ model Exam {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   @@index([tenantId, academicYearId])
+  @@index([tenantId, isDeleted])
   @@map("exams")
 }
 
@@ -2193,7 +2215,7 @@ model ExamSubject {
   deletedAt    DateTime?
   marksEntries MarksEntry[]
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("exam_subjects")
 }
 
@@ -2213,7 +2235,7 @@ model MarksEntry {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([examId, studentId])
   @@map("marks_entries")
 }
@@ -2222,15 +2244,18 @@ model GradeSetting {
   id         String  @id @default(auto()) @map("_id") @db.ObjectId
   tenantId   String  @db.ObjectId
   tenant     Tenant  @relation(fields: [tenantId], references: [id])
+  examId     String? @db.ObjectId
   grade      String
   minPercent Float
   maxPercent Float
   gradePoint Float?
   remarks    String?
   isDeleted  Boolean @default(false)
+  deletedAt    DateTime?
   createdAt  DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
+  @@index([tenantId, examId, isDeleted])
   @@map("grade_settings")
 }
 
@@ -2253,10 +2278,11 @@ model ResultSummary {
   passedSubjects Int
   failedSubjects Int
   isDeleted      Boolean  @default(false)
+  deletedAt    DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([examId])
   @@index([studentId])
   @@map("result_summaries")
@@ -2281,7 +2307,7 @@ model ExamSchedule {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("exam_schedules")
 }
 
@@ -2297,9 +2323,10 @@ model SeatingArrangement {
   tenant         Tenant       @relation(fields: [tenantId], references: [id])
   room           ExamRoom     @relation(fields: [roomId], references: [id])
   isDeleted      Boolean      @default(false)
+  deletedAt    DateTime?
   createdAt      DateTime     @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("seating_arrangements")
 }
 
@@ -2315,9 +2342,10 @@ model AdmitCard {
   student     Student   @relation(fields: [studentId], references: [id])
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   isDeleted   Boolean   @default(false)
+  deletedAt    DateTime?
   createdAt   DateTime  @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("admit_cards")
 }
 
@@ -2336,7 +2364,7 @@ model QuestionPaper {
   isDeleted  Boolean   @default(false)
   deletedAt  DateTime?
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("question_papers")
 }
 
@@ -2350,9 +2378,10 @@ model InvigilatorAssignment {
   teacher        Teacher      @relation(fields: [teacherId], references: [id])
   tenant         Tenant       @relation(fields: [tenantId], references: [id])
   isDeleted      Boolean      @default(false)
+  deletedAt    DateTime?
   createdAt      DateTime     @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("invigilator_assignments")
 }
 
@@ -2367,9 +2396,10 @@ model ExamRoom {
   examSchedules       ExamSchedule[]
   seatingArrangements SeatingArrangement[]
   isDeleted Boolean  @default(false)
+  deletedAt    DateTime?
   createdAt DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("exam_rooms")
 }
 
@@ -2413,9 +2443,10 @@ model BookCategory {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   books       Book[]
   isDeleted   Boolean  @default(false)
+  deletedAt    DateTime?
   createdAt   DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("book_categories")
 }
 
@@ -2441,10 +2472,11 @@ model Book {
   category        BookCategory @relation(fields: [categoryId], references: [id])
   issues          BookIssue[]
   isDeleted       Boolean      @default(false)
+  deletedAt    DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([categoryId])
   @@index([title])
   @@map("books")
@@ -2466,10 +2498,12 @@ model LibraryMember {
   tenant             Tenant    @relation(fields: [tenantId], references: [id])
   issues             BookIssue[]
   isDeleted          Boolean   @default(false)
+  deletedAt    DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   @@unique([membershipId, tenantId])
+  @@index([tenantId, isDeleted])
   @@map("library_members")
 }
 
@@ -2492,10 +2526,11 @@ model BookIssue {
   book       Book      @relation(fields: [bookId], references: [id])
   member     LibraryMember @relation(fields: [memberId], references: [id])
   isDeleted  Boolean   @default(false)
+  deletedAt    DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([bookId])
   @@index([memberId])
   @@index([status])
@@ -2555,10 +2590,11 @@ model Vehicle {
   transportAlerts TransportAlert[]
   studentPickupDrops StudentPickupDrop[]
   isDeleted       Boolean       @default(false)
+  deletedAt    DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([vehicleNo])
   @@map("vehicles")
 }
@@ -2579,10 +2615,11 @@ model Route {
   assignments   TransportAssignment[]
   tripLogs      TripLog[]
   isDeleted     Boolean     @default(false)
+  deletedAt    DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([code])
   @@map("routes")
 }
@@ -2601,9 +2638,10 @@ model RouteStop {
   tenant     Tenant  @relation(fields: [tenantId], references: [id])
   assignments TransportAssignment[]
   isDeleted  Boolean @default(false)
+  deletedAt    DateTime?
   createdAt  DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([routeId])
   @@map("route_stops")
 }
@@ -2629,10 +2667,11 @@ model TransportAssignment {
   attendances    TransportAttendance[]
   studentPickupDrops StudentPickupDrop[]
   isDeleted      Boolean         @default(false)
+  deletedAt    DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([studentId])
   @@index([vehicleId])
   @@index([routeId])
@@ -2651,9 +2690,10 @@ model TransportAttendance {
   tenantId     String              @db.ObjectId
   tenant       Tenant              @relation(fields: [tenantId], references: [id])
   isDeleted    Boolean             @default(false)
+  deletedAt    DateTime?
   createdAt    DateTime            @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([assignmentId, date])
   @@map("transport_attendances")
 }
@@ -2847,10 +2887,11 @@ model Hostel {
   messMenus  MessMenu[]
   isActive   Boolean    @default(true)
   isDeleted  Boolean    @default(false)
+  deletedAt    DateTime?
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("hostels")
 }
 
@@ -2868,10 +2909,11 @@ model HostelRoom {
   allocations      HostelAllocation[]
   isActive         Boolean  @default(true)
   isDeleted        Boolean  @default(false)
+  deletedAt    DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([hostelId])
   @@unique([hostelId, roomNumber])
   @@map("hostel_rooms")
@@ -2945,10 +2987,12 @@ model Notice {
   targetAudience String?
   isActive      Boolean        @default(true)
   isDeleted     Boolean        @default(false)
+  deletedAt    DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   @@index([tenantId, type])
   @@index([tenantId, audience])
+  @@index([tenantId, isDeleted])
   @@map("notices")
 }
 
@@ -3237,11 +3281,12 @@ model NoticeTemplate {
   body     String
   type     String?
   isDeleted Boolean @default(false)
+  deletedAt    DateTime?
   isActive Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("notice_templates")
 }
 
@@ -3324,10 +3369,11 @@ model Asset {
   issues        AssetIssue[]
   isActive      Boolean        @default(true)
   isDeleted     Boolean        @default(false)
+  deletedAt    DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@index([category])
   @@index([serialNumber])
   @@map("assets")
@@ -3811,6 +3857,7 @@ model FormTemplate {
   settings    Json?
   isPublished Boolean  @default(false)
   isDeleted   Boolean  @default(false)
+  deletedAt    DateTime?
   createdBy   String?  @db.ObjectId
   variables   String[]
   category    String?
@@ -3819,7 +3866,7 @@ model FormTemplate {
   updatedAt   DateTime @updatedAt
   submissions FormSubmission[]
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("form_templates")
 }
 
@@ -3949,6 +3996,7 @@ model FileStorage {
   @@index([tenantId, category])
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, folderId])
+  @@index([tenantId, isDeleted])
   @@map("file_storages")
 }
 
@@ -4359,10 +4407,12 @@ model StockItem {
   location     String?
   supplier     String?
   isDeleted    Boolean  @default(false)
+  deletedAt    DateTime?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   @@index([tenantId, sku])
+  @@index([tenantId, isDeleted])
   @@map("stock_items")
 }
 
@@ -4572,6 +4622,7 @@ model ErpModule {
   isEnabled    Boolean  @default(true)
   isInstalled  Boolean  @default(true)
   isDeleted    Boolean  @default(false)
+  deletedAt    DateTime?
   price        Float    @default(0)
   features     String[] @default([])
   healthStatus String   @default("healthy")
@@ -5839,11 +5890,16 @@ model LibraryShelf {
   name      String
   code      String?
   level     Int?
+  rackId    String?  @db.ObjectId
+  rack      Rack?    @relation(fields: [rackId], references: [id])
   isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId])
+  @@index([tenantId, isDeleted])
+  @@index([rackId])
   @@map("library_shelves")
 }
 
@@ -5901,4 +5957,57 @@ model UserType {
 
   @@index([tenantId])
   @@map("user_types")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARENT-STUDENT LINK TABLE
+// Connects parent users to their children (students)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model ParentStudent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  parentId  String   @db.ObjectId
+  studentId String   @db.ObjectId
+  relation  String   // "FATHER", "MOTHER", "GUARDIAN"
+  isPrimary Boolean  @default(false)
+  tenantId  String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+
+  @@unique([parentId, studentId])
+  @@index([tenantId, parentId])
+  @@index([tenantId, isDeleted])
+  @@map("parent_students")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPROVAL QUEUE — Task 9: Approval Workflows
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model ApprovalQueue {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  type         String    // "MARKS", "LEAVE", "FEE_EDIT", "ADMISSION"
+  status       String    @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  requesterId  String    @db.ObjectId
+  approverId   String?   @db.ObjectId
+  tenantId     String    @db.ObjectId
+  entityId     String    @db.ObjectId  // ID of the marks/leave/fee/admission record
+  entityType   String    // "ExamMarks", "TeacherLeave", "FeeCollection", "Student"
+  data         Json?     // Snapshot of the data being approved
+  remarks      String?
+  requestedAt  DateTime  @default(now())
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+
+  @@index([tenantId, status])
+  @@index([tenantId, type, status])
+  @@index([tenantId, requesterId])
+  @@index([tenantId, approverId])
+  @@index([tenantId, isDeleted])
+  @@map("approval_queue")
 }

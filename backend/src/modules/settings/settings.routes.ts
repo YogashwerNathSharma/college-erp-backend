@@ -1,5 +1,4 @@
 
-// Settings Routes (Enhanced v2)
 // SUPER_ADMIN + ADMIN dono ke liye combined routes
 // User Management endpoints included (sirf ADMIN access)
 
@@ -18,6 +17,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  resetUserPassword,
   getRoles,
 } from "./settings.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -119,6 +119,9 @@ router.post("/users", allowRoles("ADMIN"), createUser);
 
 // Update user
 router.put("/users/:id", allowRoles("ADMIN"), updateUser);
+
+// Reset user password (Admin generates new password for user)
+router.post("/users/:id/reset-password", allowRoles("ADMIN"), resetUserPassword);
 
 // Delete (deactivate) user
 router.delete("/users/:id", allowRoles("ADMIN"), deleteUser);

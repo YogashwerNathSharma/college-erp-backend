@@ -38,7 +38,7 @@ export const createGrade = async (req: any, res: Response) => {
 export const bulkSetGrades = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const { grades } = req.body;
+    const { grades, examId } = req.body;
 
     if (!grades || !Array.isArray(grades) || grades.length === 0) {
       return res.status(400).json({
@@ -47,7 +47,7 @@ export const bulkSetGrades = async (req: any, res: Response) => {
       });
     }
 
-    const result = await bulkSetGradesService(grades, tenantId);
+    const result = await bulkSetGradesService(grades, tenantId, examId);
 
     return res.json({
       success: true,
@@ -68,7 +68,8 @@ export const bulkSetGrades = async (req: any, res: Response) => {
 export const getGrades = async (req: any, res: Response) => {
   try {
     const tenantId = req.user?.tenantId;
-    const result = await getGradesService(tenantId);
+    const examId = (req.query?.examId as string) || null;
+    const result = await getGradesService(tenantId, examId);
 
     return res.json({
       success: true,

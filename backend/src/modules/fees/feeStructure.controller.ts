@@ -106,6 +106,14 @@ const create = async (req: any, res: any) => {
   } catch (error: any) {
     console.error("Error creating fee structure:", error);
 
+    // Explicit "already exists" from the service (active structure present)
+    if (error.message === "ALREADY_EXISTS") {
+      return res.status(409).json({
+        success: false,
+        message: "A fee structure already exists for this class and academic year. Please edit the existing one instead.",
+      });
+    }
+
     // Handle unique constraint violation
     if (error.code === "P2002") {
       return res.status(409).json({
@@ -169,6 +177,13 @@ const softDelete = async (req: any, res: any) => {
 
     if (error.message === "Fee structure not found") {
       return res.status(404).json({ success: false, message: error.message });
+    }
+
+    if (error.message === "HAS_ASSIGNED_FEES") {
+      return res.status(409).json({
+        success: false,
+        message: "Cannot delete — students already have fees assigned from this structure. Unassign those fees first.",
+      });
     }
 
     return res.status(500).json({ success: false, message: error.message || "Internal server error" });

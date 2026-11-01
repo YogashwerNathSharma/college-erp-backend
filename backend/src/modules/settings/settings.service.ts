@@ -413,6 +413,30 @@ export const getRolesService = () => {
 // 🔧 HELPER: Random password generator (10 chars)
 // ============================================================
 
+
+// ============================================================
+// 🔑 RESET USER PASSWORD (Admin resets for user)
+// ============================================================
+export const resetUserPasswordService = async (tenantId: string, userId: string) => {
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+  if (!user) throw new Error("User not found");
+
+  const newPassword = generateRandomPassword();
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword, isFirstLogin: true },
+  });
+
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    newPassword: newPassword,
+  };
+};
+
 function generateRandomPassword(): string {
   const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const lowercase = "abcdefghijklmnopqrstuvwxyz";

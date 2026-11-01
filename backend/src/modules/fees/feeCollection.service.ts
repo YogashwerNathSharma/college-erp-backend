@@ -1379,6 +1379,22 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
     grandTotal += p.amount;
   }
 
+  // ─── Aggregate annual totals per enrollment (across ALL installments) ───
+  const dcEnrollmentIds = [...new Set(payments.map((p) => p.studentFee.enrollmentId).filter(Boolean))];
+  const dcAllFees = await prisma.studentFee.findMany({
+    where: { enrollmentId: { in: dcEnrollmentIds }, tenantId, isDeleted: false },
+    select: { enrollmentId: true, totalAmount: true, netAmount: true, paidAmount: true, balanceAmount: true },
+  });
+  const dcAnnualByEnrollment: Record<string, { annualFee: number; totalPaid: number; totalBalance: number }> = {};
+  for (const f of dcAllFees) {
+    if (!dcAnnualByEnrollment[f.enrollmentId]) {
+      dcAnnualByEnrollment[f.enrollmentId] = { annualFee: 0, totalPaid: 0, totalBalance: 0 };
+    }
+    dcAnnualByEnrollment[f.enrollmentId].annualFee += (f.netAmount || f.totalAmount || 0);
+    dcAnnualByEnrollment[f.enrollmentId].totalPaid += (f.paidAmount || 0);
+    dcAnnualByEnrollment[f.enrollmentId].totalBalance += (f.balanceAmount || 0);
+  }
+
   return {
     date,
     payments: payments.map((p) => {
@@ -1414,6 +1430,12 @@ export const getDailyCollection = async (tenantId: string, date: string) => {
         feeStructure: p.studentFee.feeStructure.name,
         installmentNo: p.studentFee.installmentNo,
         feeItems,
+        // Annual totals (across ALL installments) for receipt printing
+        totalFee: dcAnnualByEnrollment[p.studentFee.enrollmentId]?.annualFee ?? (p.studentFee.netAmount || p.studentFee.totalAmount || 0),
+        netAmount: p.studentFee.netAmount || p.studentFee.totalAmount || 0,
+        balance: dcAnnualByEnrollment[p.studentFee.enrollmentId]?.totalBalance ?? (p.studentFee.balanceAmount || 0),
+        totalPaidTillDate: dcAnnualByEnrollment[p.studentFee.enrollmentId]?.totalPaid ?? (p.studentFee.paidAmount || 0),
+        dueDate: p.studentFee.dueDate || null,
         // NEW: Month coverage for receipt printing
         monthsCovered: enrollmentCoverageCache.get(p.studentFee.enrollmentId) || {
           from: null,

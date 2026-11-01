@@ -6,6 +6,7 @@ import gatePassRoutes from "./modules/gate-pass/gatepass.routes";
 import eventRoutes from "./modules/events/event.routes";
 import helpdeskRoutes from "./modules/helpdesk/helpdesk.routes";
 import workflowRoutes from "./modules/workflow/workflow.routes";
+import approvalRoutes from "./modules/workflow/approval.routes";
 import formBuilderRoutes from "./modules/form-builder/form-builder.routes";
 import reportBuilderRoutes from "./modules/report-builder/report-builder.routes";
 import auditRoutes from "./modules/audit/audit.routes";
@@ -32,11 +33,15 @@ import { sanitizeInput } from "./middleware/sanitize.middleware";
 import { swaggerSpec } from "./config/swagger";
 import { requestLogger } from "./middleware/requestLogger.middleware";
 import healthRoutes from "./routes/health.routes";
-import { rateLimiter, authLimiter } from "./middleware/rateLimit";
+import { rateLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit";
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { allowRoles } from "./middleware/role.middleware";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
+import { moduleGate } from "./middleware/moduleGate.middleware";
+import tenantModuleRoutes from "./modules/modules/tenant-modules.routes";
+import { auditMiddleware } from "./middleware/auditMiddleware";
+import { enforceTenantIsolation } from "./middleware/tenant.middleware";
 
 //////////////////////////////////////////////////////
 // ROUTES
@@ -127,6 +132,7 @@ import inventoryRoutes from "./modules/inventory/inventory.routes";
 import certificateRoutes from "./modules/certificate/certificate.routes";
 import notificationRoutes from "./modules/notifications/notification.routes";
 import reportRoutes from "./modules/reports/report.routes";
+import parentRoutes from "./modules/parent/parent.routes";
 
 const app = express();
 
@@ -164,6 +170,11 @@ app.use(sanitizeInput);
 // RATE LIMITER
 //////////////////////////////////////////////////////
 app.use(rateLimiter);
+
+//////////////////////////////////////////////////////
+// FILE UPLOAD RATE LIMITER
+//////////////////////////////////////////////////////
+app.use(uploadLimiter);
 
 //////////////////////////////////////////////////////
 // REQUEST LOGGER
@@ -204,11 +215,22 @@ app.use("/api/super-admin/user-management", authMiddleware, allowRoles("SUPER_AD
 app.use("/api/super-admin/iam", authMiddleware, allowRoles("SUPER_ADMIN"), iamRoutes);
 app.use("/api/subscriptions", authMiddleware, subscriptionRoutes);
 app.use("/api/subscription-payments", authMiddleware, subscriptionPaymentRoutes);
+app.use("/api/modules", tenantModuleRoutes);
 
 //////////////////////////////////////////////////////
 // SUBSCRIPTION CHECK
 //////////////////////////////////////////////////////
 app.use(subscriptionCheckMiddleware);
+
+//////////////////////////////////////////////////////
+// AUDIT LOGGING (after auth + subscription — captures all write ops)
+//////////////////////////////////////////////////////
+app.use(auditMiddleware);
+
+//////////////////////////////////////////////////////
+// TENANT ISOLATION (prevents cross-tenant data access)
+//////////////////////////////////////////////////////
+app.use(enforceTenantIsolation);
 
 //////////////////////////////////////////////////////
 // AUTO-CACHE
@@ -227,7 +249,10 @@ app.use("/api/settings", authMiddleware, allowRoles("SUPER_ADMIN", "ADMIN", "TEN
 app.use("/api/academic", academicRoutes);
 app.use("/api/class", classRoutes);
 app.use("/api/section", sectionRoutes);
+// Register under both singular and plural — different frontend pages use
+// "/api/subject" (teachers, masters) and "/api/subjects" (SubjectsPage, timetable, exams).
 app.use("/api/subject", subjectRoutes);
+app.use("/api/subjects", subjectRoutes);
 
 //////////////////////////////////////////////////////
 // STUDENTS
@@ -235,69 +260,74 @@ app.use("/api/subject", subjectRoutes);
 // router because student.routes.ts ends with /:id, which otherwise captures
 // /full and returns the student-by-id response instead of dashboard data.
 //////////////////////////////////////////////////////
-app.use("/api/students", studentDashboardRoutes);
-app.use("/api/students", studentSearchRoutes);
-app.use("/api/students", studentCommunicationRoutes);
-app.use("/api/students", studentOperationsRoutes);
-app.use("/api/students", studentReportsRoutes);
-app.use("/api/students", studentRoutes);
+app.use("/api/students", moduleGate("students"), studentDashboardRoutes);
+app.use("/api/students", moduleGate("students"), studentSearchRoutes);
+app.use("/api/students", moduleGate("students"), studentCommunicationRoutes);
+app.use("/api/students", moduleGate("students"), studentOperationsRoutes);
+app.use("/api/students", moduleGate("students"), studentReportsRoutes);
+app.use("/api/students", moduleGate("students"), studentRoutes);
 
 //////////////////////////////////////////////////////
 // TEACHERS
 //////////////////////////////////////////////////////
-app.use("/api/teacher", teacherRoutes);
-app.use("/api/teacher", teacherDashboardRoutes);
-app.use("/api/teacher", teacherLeaveRoutes);
-app.use("/api/teacher", teacherSalaryRoutes);
-app.use("/api/teacher", teacherPerformanceRoutes);
-app.use("/api/teacher", teacherDocumentRoutes);
-app.use("/api/teacher", communicationRoutes);
-app.use("/api/teacher", teacherReportRoutes);
-app.use("/api/teacher", teacherSettingsRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherDashboardRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherLeaveRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherSalaryRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherPerformanceRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherDocumentRoutes);
+app.use("/api/teacher", moduleGate("teachers"), communicationRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherReportRoutes);
+app.use("/api/teacher", moduleGate("teachers"), teacherSettingsRoutes);
 
 //////////////////////////////////////////////////////
 // ATTENDANCE
 //////////////////////////////////////////////////////
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/attendance", attendanceReportRoutes);
+app.use("/api/attendance", moduleGate("attendance"), attendanceRoutes);
+app.use("/api/attendance", moduleGate("attendance"), attendanceReportRoutes);
 
 //////////////////////////////////////////////////////
 // TIMETABLE
 //////////////////////////////////////////////////////
-app.use("/api/timetable", timetableRoutes);
+app.use("/api/timetable", moduleGate("timetable"), timetableRoutes);
 
 //////////////////////////////////////////////////////
 // ADMISSION
 //////////////////////////////////////////////////////
-app.use("/api/admission", admissionRoutes);
-app.use("/api/enrollment", enrollmentRoutes);
+app.use("/api/admission", moduleGate("students"), admissionRoutes);
+app.use("/api/enrollment", moduleGate("students"), enrollmentRoutes);
 
 //////////////////////////////////////////////////////
 // FEES
 //////////////////////////////////////////////////////
-app.use("/api/fees", feesRoutes);
+app.use("/api/fees", moduleGate("fees"), feesRoutes);
 
 //////////////////////////////////////////////////////
 // EXAMS
 //////////////////////////////////////////////////////
-app.use("/api/exam", examRoutes);
-app.use("/api/grade", gradeRoutes);
-app.use("/api/room", roomRoutes);
+app.use("/api/exam", moduleGate("exams"), examRoutes);
+app.use("/api/grade", moduleGate("exams"), gradeRoutes);
+app.use("/api/room", moduleGate("exams"), roomRoutes);
 
 //////////////////////////////////////////////////////
 // LIBRARY
 //////////////////////////////////////////////////////
-app.use("/api/library", libraryRoutes);
+app.use("/api/library", moduleGate("library"), libraryRoutes);
 
 //////////////////////////////////////////////////////
 // TRANSPORT
 //////////////////////////////////////////////////////
-app.use("/api/transport", transportRoutes);
+app.use("/api/transport", moduleGate("transport"), transportRoutes);
 
 //////////////////////////////////////////////////////
 // STUDENT PORTAL
 //////////////////////////////////////////////////////
 app.use("/api/student-portal", studentPortalRoutes);
+
+//////////////////////////////////////////////////////
+// PARENT PORTAL
+//////////////////////////////////////////////////////
+app.use("/api/parent", authMiddleware, parentRoutes);
 
 //////////////////////////////////////////////////////
 // SIGNATURE
@@ -327,27 +357,28 @@ app.use("/api/masters", masterRoutes);
 //////////////////////////////////////////////////////
 // ENTERPRISE MODULES
 //////////////////////////////////////////////////////
-app.use("/api/hostel", hostelRoutes);
-app.use("/api/communication", communicationNewRoutes);
-app.use("/api/hr", hrRoutes);
-app.use("/api/inventory", inventoryRoutes);
-app.use("/api/certificate", certificateRoutes);
+app.use("/api/hostel", moduleGate("hostel"), hostelRoutes);
+app.use("/api/communication", moduleGate("communication"), communicationNewRoutes);
+app.use("/api/hr", moduleGate("hr"), hrRoutes);
+app.use("/api/inventory", moduleGate("inventory"), inventoryRoutes);
+app.use("/api/certificate", moduleGate("certificates"), certificateRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/report", reportRoutes);
-app.use("/api/gate-pass", gatePassRoutes);
-app.use("/api/events", eventRoutes);
-app.use("/api/helpdesk", helpdeskRoutes);
-app.use("/api/workflow", workflowRoutes);
-app.use("/api/form-builder", formBuilderRoutes);
-app.use("/api/report-builder", reportBuilderRoutes);
+app.use("/api/gate-pass", moduleGate("gate-pass"), gatePassRoutes);
+app.use("/api/events", moduleGate("events"), eventRoutes);
+
+app.use("/api/workflow", moduleGate("workflow"), workflowRoutes);
+app.use("/api/approvals", approvalRoutes);
+app.use("/api/form-builder", moduleGate("form-builder"), formBuilderRoutes);
+app.use("/api/report-builder", moduleGate("report-builder"), reportBuilderRoutes);
 app.use("/api/audit", auditRoutes);
-app.use("/api/scheduler", schedulerRoutes);
-app.use("/api/dashboard-builder", dashboardBuilderRoutes);
+app.use("/api/scheduler", moduleGate("scheduler"), schedulerRoutes);
+app.use("/api/dashboard-builder", moduleGate("dashboard-builder"), dashboardBuilderRoutes);
 app.use("/api/theme", themeRoutes);
-app.use("/api/qr", qrRoutes);
-app.use("/api/payment-gateway", paymentGatewayRoutes);
-app.use("/api/file-manager", fileManagerRoutes);
-app.use("/api/import-export", importExportRoutes);
+app.use("/api/qr", moduleGate("id-cards"), qrRoutes);
+app.use("/api/payment-gateway", moduleGate("fees"), paymentGatewayRoutes);
+app.use("/api/file-manager", moduleGate("file-manager"), fileManagerRoutes);
+app.use("/api/import-export", moduleGate("import-export"), importExportRoutes);
 app.use("/api/queue", queueRoutes);
 
 //////////////////////////////////////////////////////

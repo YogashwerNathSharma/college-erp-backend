@@ -241,6 +241,24 @@ export const getAllPaymentsController = async (req: any, res: any) => {
       },
     });
 
+    // ─── Aggregate annual totals per enrollment (across ALL installments) ───
+    // Collect unique enrollment IDs from the payments
+    const enrollmentIds = [...new Set(payments.map((p: any) => p.studentFee?.enrollmentId).filter(Boolean))];
+    const allFeesForEnrollments = await prisma.studentFee.findMany({
+      where: { enrollmentId: { in: enrollmentIds }, tenantId, isDeleted: false },
+      select: { enrollmentId: true, totalAmount: true, netAmount: true, paidAmount: true, balanceAmount: true },
+    });
+    // Build per-enrollment aggregate map
+    const annualByEnrollment: Record<string, { annualFee: number; totalPaid: number; totalBalance: number }> = {};
+    for (const f of allFeesForEnrollments) {
+      if (!annualByEnrollment[f.enrollmentId]) {
+        annualByEnrollment[f.enrollmentId] = { annualFee: 0, totalPaid: 0, totalBalance: 0 };
+      }
+      annualByEnrollment[f.enrollmentId].annualFee += (f.netAmount || f.totalAmount || 0);
+      annualByEnrollment[f.enrollmentId].totalPaid += (f.paidAmount || 0);
+      annualByEnrollment[f.enrollmentId].totalBalance += (f.balanceAmount || 0);
+    }
+
     const data = payments.map((p: any) => ({
       id: p.id,
       studentName: (() => { const fn = p.studentFee?.enrollment?.student?.firstName ?? ""; const ln = p.studentFee?.enrollment?.student?.lastName ?? ""; return fn.toLowerCase() === ln.toLowerCase() ? fn : `${fn} ${ln}`.trim(); })().trim() || "Unknown",
@@ -249,10 +267,10 @@ export const getAllPaymentsController = async (req: any, res: any) => {
       rollNumber: p.studentFee?.enrollment?.student?.rollNumber || p.studentFee?.enrollment?.rollNumber || "—",
       installmentNo: p.studentFee?.installmentNo || 1,
       dueDate: p.studentFee?.dueDate || null,
-      balance: p.studentFee?.balanceAmount || 0,
+      balance: annualByEnrollment[p.studentFee?.enrollmentId]?.totalBalance ?? (p.studentFee?.balanceAmount || 0),
       netAmount: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
-      totalFee: p.studentFee?.netAmount || p.studentFee?.totalAmount || 0,
-      totalPaidTillDate: p.studentFee?.paidAmount || 0,
+      totalFee: annualByEnrollment[p.studentFee?.enrollmentId]?.annualFee ?? (p.studentFee?.netAmount || p.studentFee?.totalAmount || 0),
+      totalPaidTillDate: annualByEnrollment[p.studentFee?.enrollmentId]?.totalPaid ?? (p.studentFee?.paidAmount || 0),
       feeHead: p.studentFee?.feeStructure?.name || "Fee",
       // Use StudentFeeItems if available
       feeItems: p.studentFee?.items?.length > 0

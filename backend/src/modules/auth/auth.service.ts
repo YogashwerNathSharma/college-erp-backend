@@ -3,6 +3,7 @@ import prisma from "../../utils/prisma";
 import bcrypt from "bcrypt";
 import { generateToken, generateRefreshToken } from "../../utils/jwt";
 import { z } from "zod";
+import { getPortalConfig } from "./portal.service";
 
 /////////////////////////
 // PASSWORD STRENGTH VALIDATION
@@ -24,7 +25,7 @@ export const registerService = async (data: any) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) throw new Error("Email already registered");
 
-  const allowedRoles = ["ADMIN", "TEACHER", "STUDENT"];
+  const allowedRoles = ["ADMIN", "TEACHER", "STUDENT", "PRINCIPAL", "ACCOUNTANT", "LIBRARIAN", "TRANSPORT_MANAGER", "HOSTEL_WARDEN", "HR_MANAGER", "RECEPTIONIST", "PARENT", "STAFF"];
   if (!allowedRoles.includes(role)) role = "ADMIN";
 
   const finalPassword = (password || "").trim();
@@ -103,6 +104,9 @@ export const loginService = async (email: string, password: string) => {
     });
   }
 
+  // Get portal config for the user's role
+  const portal = getPortalConfig(user.role);
+
   return {
     user: safeUser,
     token,
@@ -110,5 +114,6 @@ export const loginService = async (email: string, password: string) => {
     forcePasswordChange: user.isFirstLogin || false,
     subscriptionExpired: false,
     tenant,
+    portal,
   };
 };

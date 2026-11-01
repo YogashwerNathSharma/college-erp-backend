@@ -6,6 +6,7 @@ import { requireTenantAgreementAcceptance } from "./tenantAgreementRegistration.
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { allowInitialSuperAdminSetup } from "./super-admin-bootstrap.middleware";
 import { refreshTokenHandler } from "./auth.refresh";
+import { getPortalConfig, getAllPortalTypes } from "./portal.service";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -40,5 +41,19 @@ router.post("/register", authMiddleware, register);
 router.post("/change-password", authMiddleware, changePassword);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+
+// Portal config — returns sidebar menu + features for current user's role
+router.get("/portal-config", authMiddleware, (req, res) => {
+  const role = req.user?.role;
+  if (!role) return res.status(401).json({ success: false, message: "Unauthorized" });
+  const portal = getPortalConfig(role);
+  return res.json({ success: true, data: portal });
+});
+
+// All portal types — Super Admin only
+router.get("/portal-types", authMiddleware, (req, res) => {
+  if (req.user?.role !== "SUPER_ADMIN") return res.status(403).json({ success: false, message: "Forbidden" });
+  return res.json({ success: true, data: getAllPortalTypes() });
+});
 
 export default router;

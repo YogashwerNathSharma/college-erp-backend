@@ -12,6 +12,11 @@ export const enforceTenantIsolation = (
   res: Response,
   next: NextFunction
 ) => {
+  // If no user attached yet (auth middleware hasn't run), skip
+  if (!req.user) {
+    return next();
+  }
+
   // Skip for SUPER_ADMIN (they manage all tenants)
   if (req.user?.role === "SUPER_ADMIN") {
     return next();

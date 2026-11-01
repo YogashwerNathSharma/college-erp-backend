@@ -3,6 +3,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
+import { requirePermission } from "../../middleware/permission.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 
 import { addTransportFeeToStudent, addHostelFeeToStudent, removeTransportFeeFromStudent, removeHostelFeeFromStudent, addModuleFeeToStudent } from "./feeIntegration.service";
@@ -67,108 +68,108 @@ router.use("/collection", feeCollectionRoutes);
 // ═══════════════════════════════════════════════════════════════════════════
 // DASHBOARD & DUE SUMMARY
 // ═══════════════════════════════════════════════════════════════════════════
-router.get("/dashboard", getFeeDashboardController);
-router.get("/due-summary", getDueSummaryController);
+router.get("/dashboard", requirePermission("fees.view"), getFeeDashboardController);
+router.get("/due-summary", requirePermission("fees.view"), getDueSummaryController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REPORTS — All 21 Professional Reports
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Legacy overview (class-wise)
-router.get("/reports", getFeeReportsController);
+router.get("/reports", requirePermission("fees.view"), getFeeReportsController);
 
 // 1. Daily Collection
-router.get("/reports/daily-collection", dailyCollectionController);
+router.get("/reports/daily-collection", requirePermission("fees.view"), dailyCollectionController);
 
 // 2. Monthly Collection
-router.get("/reports/monthly-collection", monthlyCollectionController);
+router.get("/reports/monthly-collection", requirePermission("fees.view"), monthlyCollectionController);
 
 // 3. Head-wise Collection
-router.get("/reports/head-wise", headWiseCollectionController);
+router.get("/reports/head-wise", requirePermission("fees.view"), headWiseCollectionController);
 
 // 4. Category-wise Collection
-router.get("/reports/category-wise", categoryWiseCollectionController);
+router.get("/reports/category-wise", requirePermission("fees.view"), categoryWiseCollectionController);
 
 // 5. Pending Fee
-router.get("/reports/pending", pendingFeeController);
+router.get("/reports/pending", requirePermission("fees.view"), pendingFeeController);
 
 // 6. Defaulter Report
-router.get("/reports/defaulter", defaulterReportController);
+router.get("/reports/defaulter", requirePermission("fees.view"), defaulterReportController);
 
 // 7. Fine Report
-router.get("/reports/fine", fineReportController);
+router.get("/reports/fine", requirePermission("fees.view"), fineReportController);
 
 // 8. Concession Report
-router.get("/reports/concession", concessionReportController);
+router.get("/reports/concession", requirePermission("fees.view"), concessionReportController);
 
 // 9. Scholarship Report
-router.get("/reports/scholarship", scholarshipReportController);
+router.get("/reports/scholarship", requirePermission("fees.view"), scholarshipReportController);
 
 // 10. Transport Fee Report
-router.get("/reports/transport", transportFeeReportController);
+router.get("/reports/transport", requirePermission("fees.view"), transportFeeReportController);
 
 // 11. Hostel Fee Report
-router.get("/reports/hostel", hostelFeeReportController);
+router.get("/reports/hostel", requirePermission("fees.view"), hostelFeeReportController);
 
 // 12. Exam Fee Report
-router.get("/reports/exam", examFeeReportController);
+router.get("/reports/exam", requirePermission("fees.view"), examFeeReportController);
 
 // 13. Collection Register
-router.get("/reports/collection-register", collectionRegisterController);
+router.get("/reports/collection-register", requirePermission("fees.view"), collectionRegisterController);
 
 // 14. Receipt Register
-router.get("/reports/receipt-register", receiptRegisterController);
+router.get("/reports/receipt-register", requirePermission("fees.view"), receiptRegisterController);
 
 // 15. Student Ledger (per student)
-router.get("/reports/student-ledger/:enrollmentId", studentLedgerReportController);
+router.get("/reports/student-ledger/:enrollmentId", requirePermission("fees.view"), studentLedgerReportController);
 
 // 16. Class Ledger
-router.get("/reports/class-ledger", classLedgerController);
+router.get("/reports/class-ledger", requirePermission("fees.view"), classLedgerController);
 
 // 17. Cash Book
-router.get("/reports/cash-book", cashBookController);
+router.get("/reports/cash-book", requirePermission("fees.view"), cashBookController);
 
 // 18. Bank Book
-router.get("/reports/bank-book", bankBookController);
+router.get("/reports/bank-book", requirePermission("fees.view"), bankBookController);
 
 // 19. Advance Balance
-router.get("/reports/advance-balance", advanceBalanceController);
+router.get("/reports/advance-balance", requirePermission("fees.view"), advanceBalanceController);
 
 // 20. Refund Report
-router.get("/reports/refund", refundReportController);
+router.get("/reports/refund", requirePermission("fees.view"), refundReportController);
 
 // 21. Adjustment Report
 // 22. Class-wise Student Fee Summary (printable with tenant logo)
-router.get("/reports/class-wise-summary", classWiseStudentFeeSummaryController);
+router.get("/reports/class-wise-summary", requirePermission("fees.view"), classWiseStudentFeeSummaryController);
 // 23. Individual Student Fee Report (printable with all installments + payments)
-router.get("/reports/student-fee-report/:enrollmentId", individualStudentFeeReportController);
-router.get("/reports/adjustment", adjustmentReportController);
+router.get("/reports/student-fee-report/:enrollmentId", requirePermission("fees.view"), individualStudentFeeReportController);
+router.get("/reports/adjustment", requirePermission("fees.view"), adjustmentReportController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STUDENT LEDGER (standalone page)
 // ═══════════════════════════════════════════════════════════════════════════
-router.get("/ledger/search", searchStudentForLedgerController);
-router.get("/ledger/:enrollmentId", getStudentLedgerController);
+router.get("/ledger/search", requirePermission("fees.view"), searchStudentForLedgerController);
+router.get("/ledger/:enrollmentId", requirePermission("fees.view"), getStudentLedgerController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FEE ASSIGN
 // ═══════════════════════════════════════════════════════════════════════════
-router.get("/assign/students", getAssignStudentsController);
-router.post("/assign/students", assignFeesToStudentsController);
-router.delete("/assign/students", unassignFeesController);
+router.get("/assign/students", requirePermission("fees.view"), getAssignStudentsController);
+router.post("/assign/students", requirePermission("fees.collect"), assignFeesToStudentsController);
+router.delete("/assign/students", requirePermission("fees.collect"), unassignFeesController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FEE SETTINGS
 // ═══════════════════════════════════════════════════════════════════════════
-router.get("/settings", getFeeSettingsController);
-router.put("/settings", updateFeeSettingsController);
+router.get("/settings", requirePermission("fees.view"), getFeeSettingsController);
+router.put("/settings", requirePermission("fees.collect"), updateFeeSettingsController);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FEE INTEGRATION — External modules add/remove fees
 // ═══════════════════════════════════════════════════════════════════════════
 
 // POST /api/fees/integration/transport/add
-router.post("/integration/transport/add", async (req: any, res: any) => {
+router.post("/integration/transport/add", requirePermission("fees.collect"), async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { studentId, monthlyFee, routeName } = req.body;
@@ -179,7 +180,7 @@ router.post("/integration/transport/add", async (req: any, res: any) => {
 });
 
 // POST /api/fees/integration/transport/remove
-router.post("/integration/transport/remove", async (req: any, res: any) => {
+router.post("/integration/transport/remove", requirePermission("fees.collect"), async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { studentId } = req.body;
@@ -190,7 +191,7 @@ router.post("/integration/transport/remove", async (req: any, res: any) => {
 });
 
 // POST /api/fees/integration/hostel/add
-router.post("/integration/hostel/add", async (req: any, res: any) => {
+router.post("/integration/hostel/add", requirePermission("fees.collect"), async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { studentId, monthlyFee, hostelName } = req.body;
@@ -201,7 +202,7 @@ router.post("/integration/hostel/add", async (req: any, res: any) => {
 });
 
 // POST /api/fees/integration/hostel/remove
-router.post("/integration/hostel/remove", async (req: any, res: any) => {
+router.post("/integration/hostel/remove", requirePermission("fees.collect"), async (req: any, res: any) => {
   try {
     const tenantId = req.user?.tenantId;
     const { studentId } = req.body;
@@ -210,5 +211,12 @@ router.post("/integration/hostel/remove", async (req: any, res: any) => {
     res.json({ ...result, success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
+
+// ═══════════════════════════════════════════════════════
+// FEE RECEIPT PDF
+// ═══════════════════════════════════════════════════════
+import { getFeeReceiptPDF } from "./fee-receipt-pdf.controller";
+
+router.get("/receipt/:paymentId/pdf", getFeeReceiptPDF);
 
 export default router;

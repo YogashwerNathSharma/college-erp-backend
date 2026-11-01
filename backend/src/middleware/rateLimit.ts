@@ -17,3 +17,14 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// File upload limiter — prevent abuse of upload endpoints
+export const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: "Too many file uploads, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Only count requests with Content-Type multipart/form-data
+  skip: (req) => !req.headers["content-type"]?.includes("multipart/form-data"),
+});

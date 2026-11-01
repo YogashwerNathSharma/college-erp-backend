@@ -82,19 +82,8 @@ export const subscriptionCheckMiddleware = async (
       return next();
     }
 
-// Check active subscription
-    // ═══ DEV MODE: Skip subscription check ═══
-    // ═══ TEMPORARY FIX: Skip subscription check for all environments ═══
-    // Subscription is verified ACTIVE in DB (endDate: 2030-12-31)
-    // Re-enable after dashboard timeout issue is resolved
-    return next();
-
-    // ═══ Skip subscription check for SUPER_ADMIN only ═══
-    if (user.role === "SUPER_ADMIN") {
-      return next();
-    }
-
-    // ═══ Skip subscription check for print/report routes ═══
+    // ═══ Check active subscription ═══
+    // Skip for print/report routes (needed for offline access)
     const reqPath = req.originalUrl || req.path || "";
     if (reqPath.includes("/report-card") || reqPath.includes("/consolidated") || reqPath.includes("/print")) {
       return next();
@@ -109,7 +98,19 @@ export const subscriptionCheckMiddleware = async (
     });
 
     if (!activeSubscription || new Date(activeSubscription.endDate) < new Date()) {
-      // Auto-expire if date passed
+      // Check 7-day grace period
+      if (activeSubscription) {
+        const endDate = new Date(activeSubscription.endDate);
+        const gracePeriodEnd = new Date(endDate);
+        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7);
+
+        // Within grace period — allow read-only (GET requests)
+        if (new Date() < gracePeriodEnd && req.method === "GET") {
+          return next();
+        }
+      }
+
+      // Auto-expire if date passed beyond grace period
       if (activeSubscription) {
         await prisma.tenantSubscription.update({
           where: { id: activeSubscription.id },
@@ -130,6 +131,7 @@ export const subscriptionCheckMiddleware = async (
     next();
   } catch (error) {
     console.error("Subscription Check Error:", error);
+    // On error, allow request to proceed (fail-open for reliability)
     return next();
   }
 };

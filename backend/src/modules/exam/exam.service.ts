@@ -37,6 +37,30 @@ function calculateGrade(
 }
 
 // ─────────────────────────────────────────────────────
+// HELPER: Resolve the effective grade scale for an exam
+//   • If the exam has its own grade rows (examId set) → use them.
+//   • Otherwise fall back to the tenant-wide default scale
+//     (examId = null).
+// This powers "per-exam grade settings" on report cards.
+// ─────────────────────────────────────────────────────
+async function resolveGradeScale(
+  tenantId: string,
+  examId?: string | null
+): Promise<{ grade: string; minPercent: number; maxPercent: number }[]> {
+  if (examId) {
+    const examRows = await prisma.gradeSetting.findMany({
+      where: { tenantId, examId, isDeleted: false },
+      orderBy: { minPercent: "desc" },
+    });
+    if (examRows.length > 0) return examRows as any;
+  }
+  return prisma.gradeSetting.findMany({
+    where: { tenantId, examId: null, isDeleted: false },
+    orderBy: { minPercent: "desc" },
+  }) as any;
+}
+
+// ─────────────────────────────────────────────────────
 // 1. CREATE EXAM
 // ─────────────────────────────────────────────────────
 export const createExamService = async (
@@ -281,14 +305,63 @@ export const getMarksService = async (
 
   if (!exam) throw new Error("Exam not found");
 
-  const examSubjects = await prisma.examSubject.findMany({
+  let examSubjects = await prisma.examSubject.findMany({
     where: { examId, tenantId, isDeleted: false },
   });
 
-  const subjectIds = examSubjects.map((es) => es.subjectId);
+  // Always show ALL subjects of the exam's class (+ academic year) in the
+  // marks register. Any subject explicitly configured on the exam keeps its
+  // custom max/passing marks; the rest default to 100/33. This way every
+  // class subject appears automatically, class & section wise.
   const subjects = await prisma.subject.findMany({
-    where: { id: { in: subjectIds } },
+    where: {
+      classId: exam.classId,
+      academicYearId: exam.academicYearId,
+      tenantId,
+      isDeleted: false,
+    },
+    orderBy: { name: "asc" },
   });
+
+  // Map configured examSubject rows by subjectId for quick lookup of custom marks
+  const configuredBySubject = new Map(
+    examSubjects.map((es: any) => [es.subjectId, es])
+  );
+
+  // Resolve names for ALL configured subjectIds so we can fall back to a NAME
+  // match when the configured subject id doesn't line up with the class+year
+  // subject id (e.g. the same subject exists under a different academic year
+  // with a different id). Without this, saved max/passing marks silently fall
+  // back to the 100/33 defaults below.
+  const configuredSubjectIds = examSubjects.map((es: any) => es.subjectId);
+  const configuredSubjectRows =
+    configuredSubjectIds.length > 0
+      ? await prisma.subject.findMany({
+          where: { id: { in: configuredSubjectIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+  const configNameById = new Map(
+    configuredSubjectRows.map((s: any) => [s.id, s.name])
+  );
+  const configuredByName = new Map(
+    examSubjects
+      .map((es: any) => [configNameById.get(es.subjectId), es])
+      .filter(([name]: any) => name)
+  );
+
+  // Build the full examSubjects list = every class subject, merged with any
+  // configured custom marks (matched by id first, then by name). (Not
+  // persisted — marks save by subjectId.)
+  examSubjects = subjects.map((s: any) => {
+    const cfg: any =
+      configuredBySubject.get(s.id) || configuredByName.get(s.name);
+    return {
+      subjectId: s.id,
+      maxMarks: cfg?.maxMarks ?? 100,
+      passingMarks: cfg?.passingMarks ?? 33,
+    };
+  }) as any;
 
   // Get enrolled students
   const enrollments = await prisma.enrollment.findMany({
@@ -307,6 +380,20 @@ export const getMarksService = async (
     where: { id: { in: studentIds }, isDeleted: false },
     orderBy: { firstName: "asc" },
   });
+
+  // Map studentId -> sectionId (from enrollment) so the register can be
+  // filtered section-wise on the client.
+  const sectionByStudent = new Map(
+    enrollments.map((e: any) => [e.studentId, e.sectionId || null])
+  );
+  const sectionIds = [...new Set(enrollments.map((e: any) => e.sectionId).filter(Boolean))];
+  const sectionRows = sectionIds.length > 0
+    ? await prisma.section.findMany({ where: { id: { in: sectionIds } }, select: { id: true, name: true } })
+    : [];
+  const sectionNameById = new Map(sectionRows.map((s: any) => [s.id, s.name]));
+  const sectionsList = sectionRows
+    .map((s: any) => ({ id: s.id, name: s.name }))
+    .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
   // Get existing marks
   const existingMarks = await prisma.marksEntry.findMany({
@@ -341,6 +428,8 @@ export const getMarksService = async (
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
       admissionNo: student.admissionNo || "",
+      sectionId: sectionByStudent.get(student.id) || null,
+      sectionName: sectionNameById.get(sectionByStudent.get(student.id)) || "",
       marks,
     };
   });
@@ -349,6 +438,7 @@ export const getMarksService = async (
     exam,
     subjects: subjectList,
     students: studentMarks,
+    sections: sectionsList,
   };
 };
 
@@ -384,10 +474,8 @@ export const generateResultService = async (
   });
 
   // Get grade settings
-  const gradeSettings = await prisma.gradeSetting.findMany({
-    where: { tenantId, isDeleted: false },
-    orderBy: { minPercent: "desc" },
-  });
+  // Per-exam scale if configured for this exam, else the tenant default.
+  const gradeSettings = await resolveGradeScale(tenantId, examId);
 
   const results: any[] = [];
 
@@ -547,10 +635,8 @@ export const getReportCardService = async (
     where: { examId, studentId, tenantId, isDeleted: false },
   });
 
-  const gradeSettings = await prisma.gradeSetting.findMany({
-    where: { tenantId, isDeleted: false },
-    orderBy: { minPercent: "desc" },
-  });
+  // Per-exam scale if configured for this exam, else the tenant default.
+  const gradeSettings = await resolveGradeScale(tenantId, examId);
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -720,10 +806,24 @@ export const getConsolidatedReportService = async (
   }
 
   // 6. Get grade settings
-  const gradeSettings = await prisma.gradeSetting.findMany({
-    where: { tenantId, isDeleted: false },
+  //    Default (tenant-wide) scale used for cross-exam totals/overall grade.
+  const defaultGradeScale = await prisma.gradeSetting.findMany({
+    where: { tenantId, examId: null, isDeleted: false },
     orderBy: { minPercent: "desc" },
   });
+  //    All per-exam scales for this tenant, grouped by examId. Each exam
+  //    uses its own scale when present, else falls back to the default.
+  const examScaleRows = await prisma.gradeSetting.findMany({
+    where: { tenantId, examId: { not: null }, isDeleted: false },
+    orderBy: { minPercent: "desc" },
+  });
+  const examScaleMap: Record<string, typeof defaultGradeScale> = {};
+  examScaleRows.forEach((row: any) => {
+    if (!examScaleMap[row.examId]) examScaleMap[row.examId] = [] as any;
+    examScaleMap[row.examId].push(row);
+  });
+  const scaleForExam = (eId: string) =>
+    examScaleMap[eId]?.length ? examScaleMap[eId] : defaultGradeScale;
 
   // 7. Get exam subjects for each exam + all marks for this student
   const examIds = exams.map((e) => e.id);
@@ -781,7 +881,8 @@ export const getConsolidatedReportService = async (
       let grade: string | null = null;
       if (marksObtained !== null && maxMarks > 0 && !isAbsent) {
         const percent = (marksObtained / maxMarks) * 100;
-        grade = calculateGrade(percent, gradeSettings);
+        // Use this exam's own scale when configured, else the default.
+        grade = calculateGrade(percent, scaleForExam(exam.id));
       }
 
       return {
@@ -804,7 +905,8 @@ export const getConsolidatedReportService = async (
     });
 
     const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
-    const finalGrade = calculateGrade(percentage, gradeSettings);
+    // Subject total spans multiple exams → use the default tenant scale.
+    const finalGrade = calculateGrade(percentage, defaultGradeScale);
 
     return {
       subjectName,
@@ -822,7 +924,8 @@ export const getConsolidatedReportService = async (
   const overallPercentage = grandTotalMaxMarks > 0
     ? Math.round((grandTotalMarks / grandTotalMaxMarks) * 100 * 100) / 100
     : 0;
-  const overallGrade = calculateGrade(overallPercentage, gradeSettings);
+  // Overall grade spans all exams → use the default tenant scale.
+  const overallGrade = calculateGrade(overallPercentage, defaultGradeScale);
 
   // 12. Calculate rank (compare with all students in the class)
   const enrollments = await prisma.enrollment.findMany({

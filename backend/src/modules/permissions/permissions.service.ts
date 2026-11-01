@@ -1,4 +1,5 @@
 import prisma from "../../utils/prisma";
+import { clearPermissionCache } from "../../middleware/permission.middleware";
 
 //////////////////////////////////////////////////////
 // PERMISSION FIELDS (for validation)
@@ -23,6 +24,8 @@ const PERMISSION_FIELDS = [
 
 //////////////////////////////////////////////////////
 // DEFAULT PERMISSIONS BY ROLE
+// 🔒 These are defaults — Tenant Admin can override per user
+// Super Admin does NOT control these — only module access
 //////////////////////////////////////////////////////
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
   TEACHER: {
@@ -44,7 +47,7 @@ const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
   },
   PRINCIPAL: {
     canViewStudents: true,
-    canEditStudents: true,
+    canEditStudents: false,
     canViewAttendance: true,
     canMarkAttendance: false,
     canViewResults: true,
@@ -58,6 +61,125 @@ const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     canViewLeave: true,
     canApproveLeave: true,
     canViewSalary: true,
+  },
+  ACCOUNTANT: {
+    canViewStudents: true,
+    canEditStudents: false,
+    canViewAttendance: false,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: true,
+    canCollectFees: true,
+    canViewReports: true,
+    canManageLibrary: false,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: false,
+    canApproveLeave: false,
+    canViewSalary: false,
+  },
+  LIBRARIAN: {
+    canViewStudents: true,
+    canEditStudents: false,
+    canViewAttendance: false,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: false,
+    canCollectFees: false,
+    canViewReports: true,
+    canManageLibrary: true,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: true,
+    canApproveLeave: false,
+    canViewSalary: false,
+  },
+  HR_MANAGER: {
+    canViewStudents: false,
+    canEditStudents: false,
+    canViewAttendance: true,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: false,
+    canCollectFees: false,
+    canViewReports: true,
+    canManageLibrary: false,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: true,
+    canApproveLeave: true,
+    canViewSalary: true,
+  },
+  RECEPTIONIST: {
+    canViewStudents: true,
+    canEditStudents: false,
+    canViewAttendance: false,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: true,
+    canCollectFees: false,
+    canViewReports: false,
+    canManageLibrary: false,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: false,
+    canApproveLeave: false,
+    canViewSalary: false,
+  },
+  PARENT: {
+    canViewStudents: false,
+    canEditStudents: false,
+    canViewAttendance: true,
+    canMarkAttendance: false,
+    canViewResults: true,
+    canEnterMarks: false,
+    canViewFees: true,
+    canCollectFees: false,
+    canViewReports: false,
+    canManageLibrary: false,
+    canViewTimetable: true,
+    canManageTimetable: false,
+    canViewLeave: false,
+    canApproveLeave: false,
+    canViewSalary: false,
+  },
+  TRANSPORT_MANAGER: {
+    canViewStudents: true,
+    canEditStudents: false,
+    canViewAttendance: false,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: false,
+    canCollectFees: false,
+    canViewReports: true,
+    canManageLibrary: false,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: true,
+    canApproveLeave: false,
+    canViewSalary: false,
+  },
+  HOSTEL_WARDEN: {
+    canViewStudents: true,
+    canEditStudents: false,
+    canViewAttendance: true,
+    canMarkAttendance: false,
+    canViewResults: false,
+    canEnterMarks: false,
+    canViewFees: false,
+    canCollectFees: false,
+    canViewReports: true,
+    canManageLibrary: false,
+    canViewTimetable: false,
+    canManageTimetable: false,
+    canViewLeave: true,
+    canApproveLeave: false,
+    canViewSalary: false,
   },
   STUDENT: {
     canViewStudents: false,
@@ -181,7 +303,71 @@ export const updateUserPermissions = async (
     },
   });
 
+  // Clear permission cache so middleware picks up new permissions immediately
+  clearPermissionCache(userId, tenantId);
+
   return permissions;
+};
+
+//////////////////////////////////////////////////////
+// GET ALL USERS WITH PERMISSIONS (for Tenant Admin)
+// Shows all users in the tenant with their permission status
+//////////////////////////////////////////////////////
+export const getAllUsersWithPermissions = async (tenantId: string, filters?: { role?: string }) => {
+  const where: any = { tenantId, isDeleted: false };
+  if (filters?.role) where.role = filters.role;
+
+  // Don't show ADMIN or SUPER_ADMIN in the list (they have full access)
+  where.role = where.role || { notIn: ["ADMIN", "SUPER_ADMIN"] };
+
+  const users = await prisma.user.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      phone: true,
+    },
+    orderBy: [{ role: "asc" }, { name: "asc" }],
+    take: 500,
+  });
+
+  // Fetch all permissions in one query
+  const permissions = await prisma.rolePermission.findMany({
+    where: { tenantId, userId: { in: users.map((u) => u.id) } },
+  });
+
+  const permMap = new Map(permissions.map((p) => [p.userId, p]));
+
+  return users.map((user) => {
+    const perm = permMap.get(user.id);
+    return {
+      ...user,
+      hasCustomPermissions: !!perm,
+      permissions: perm || DEFAULT_PERMISSIONS[user.role] || DEFAULT_PERMISSIONS["STAFF"],
+      isTemporaryAdmin: perm?.isTemporaryAdmin || false,
+      tempAdminExpiry: perm?.tempAdminExpiry || null,
+    };
+  });
+};
+
+//////////////////////////////////////////////////////
+// RESET USER PERMISSIONS TO ROLE DEFAULTS
+// Tenant Admin can reset a user back to their role's default
+//////////////////////////////////////////////////////
+export const resetUserPermissions = async (userId: string, tenantId: string) => {
+  const user = await prisma.user.findFirst({ where: { id: userId, tenantId } });
+  if (!user) throw new Error("User not found");
+  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") throw new Error("Cannot reset admin permissions");
+
+  // Delete custom permissions — next access will create defaults
+  await prisma.rolePermission.deleteMany({ where: { tenantId, userId } });
+
+  clearPermissionCache(userId, tenantId);
+
+  return { message: "Permissions reset to role defaults", role: user.role };
 };
 
 //////////////////////////////////////////////////////

@@ -1,11 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 
+// ═══ MongoDB operator keys that should NEVER appear in user input ═══
+const MONGO_OPERATORS = /^\$(?:gt|gte|lt|lte|ne|in|nin|or|and|not|nor|exists|type|regex|where|expr|jsonSchema|all|elemMatch|size|mod|text|search|meta|slice|comment|rand|natural|set|unset|inc|push|pull|addToSet|pop|rename|bit|min|max|mul|currentDate|each|position|sort)/i;
+
 /**
  * Robust input sanitization middleware
  * - Strips HTML tags (nested/encoded)
  * - Removes javascript: / data: URIs
  * - Removes event handler attributes
  * - Trims null bytes
+ * - Blocks MongoDB injection operators ($gt, $ne, etc.)
  */
 function sanitizeValue(value: any): any {
   if (typeof value === "string") {
@@ -44,6 +48,14 @@ function sanitizeValue(value: any): any {
     return value.map(sanitizeValue);
   }
   if (value && typeof value === "object") {
+    // Block MongoDB operator injection in object keys
+    for (const key of Object.keys(value)) {
+      if (MONGO_OPERATORS.test(key)) {
+        // Strip the dangerous key entirely
+        delete value[key];
+        continue;
+      }
+    }
     const sanitized: any = {};
     for (const key of Object.keys(value)) {
       sanitized[key] = sanitizeValue(value[key]);

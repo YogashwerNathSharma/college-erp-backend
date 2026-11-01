@@ -22,6 +22,7 @@ import { checkLimit } from "../../middleware/subscriptionLimit.middleware";
 
 
 import { allowRoles } from "../../middleware/role.middleware";
+import { requirePermission } from "../../middleware/permission.middleware";
 
 import { validateStudentAge } from "./age-validation.service";
 
@@ -157,7 +158,7 @@ router.post("/:id/photo", (req: any, res: any) => {
 
 // Delete student photo
 
-router.delete("/:id/photo", allowRoles("ADMIN"), async (req: any, res: any) => {
+router.delete("/:id/photo", requirePermission("students.edit"), async (req: any, res: any) => {
 
   try {
 
@@ -247,7 +248,7 @@ router.get("/:id/documents", async (req: any, res: any) => {
 
 // Delete student document
 
-router.delete("/documents/:documentId", allowRoles("ADMIN"), async (req: any, res: any) => {
+router.delete("/documents/:documentId", requirePermission("students.edit"), async (req: any, res: any) => {
 
   try {
 
@@ -755,11 +756,11 @@ router.get("/age-config/validate", async (req: any, res: any) => {
 
 });
 
-router.post("/age-config/seed", allowRoles("ADMIN"), seedAgeConfigHandler);
+router.post("/age-config/seed", requirePermission("students.create"), seedAgeConfigHandler);
 
-router.put("/age-config/:configId", allowRoles("ADMIN"), updateAgeConfigHandler);
+router.put("/age-config/:configId", requirePermission("students.edit"), updateAgeConfigHandler);
 
-router.patch("/age-config/:configId/toggle", allowRoles("ADMIN"), toggleAgeConfigHandler);
+router.patch("/age-config/:configId/toggle", requirePermission("students.edit"), toggleAgeConfigHandler);
 
 
 
@@ -767,21 +768,21 @@ router.patch("/age-config/:configId/toggle", allowRoles("ADMIN"), toggleAgeConfi
 
 router.get("/promotion/eligible", getEligibleStudentsHandler);
 
-router.post("/promote", allowRoles("ADMIN"), promoteStudentHandler);
+router.post("/promote", requirePermission("students.create"), promoteStudentHandler);
 
-router.post("/promote/bulk", allowRoles("ADMIN"), bulkPromoteHandler);
+router.post("/promote/bulk", requirePermission("students.create"), bulkPromoteHandler);
 
-router.post("/promote/undo/:promotionId", allowRoles("ADMIN"), undoPromotionHandler);
+router.post("/promote/undo/:promotionId", requirePermission("students.create"), undoPromotionHandler);
 
-router.post("/promote/section-change", allowRoles("ADMIN"), changeSectionHandler);
+router.post("/promote/section-change", requirePermission("students.create"), changeSectionHandler);
 
 
 
 // --- Enrollment (for existing students without enrollment) ---
 
-router.post("/enrollment", allowRoles("ADMIN"), createEnrollmentHandler);
+router.post("/enrollment", requirePermission("students.create"), createEnrollmentHandler);
 
-router.post("/enrollment/bulk", allowRoles("ADMIN"), bulkCreateEnrollmentsHandler);
+router.post("/enrollment/bulk", requirePermission("students.create"), bulkCreateEnrollmentsHandler);
 
 
 
@@ -815,7 +816,7 @@ router.put("/:id", allowRoles("ADMIN", "SUPER_ADMIN"), validate(updateStudentSch
 
 router.delete("/:id", allowRoles("ADMIN", "SUPER_ADMIN"), softDeleteStudentHandler);
 
-router.patch("/:id/restore", allowRoles("ADMIN"), restoreStudentHandler);
+router.patch("/:id/restore", requirePermission("students.edit"), restoreStudentHandler);
 
 
 

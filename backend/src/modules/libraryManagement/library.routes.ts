@@ -11,6 +11,7 @@ import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
 import { allowRoles } from "../../middleware/role.middleware";
 import * as libraryController from "./library.controller";
+import { requirePermission } from "../../middleware/permission.middleware";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.use(resolveTenant, resolveAcademicYear);
 // GET /api/library/dashboard — Stats dikhao (Admin, Teacher, Principal)
 router.get(
   "/dashboard",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getDashboard
 );
 
@@ -30,42 +31,42 @@ router.get(
 // GET /api/library/books — Saari books (Admin)
 router.get(
   "/books",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getAllBooks
 );
 
 // GET /api/library/books/search?q= — Search books (All roles)
 router.get(
   "/books/search",
-  allowRoles("ADMIN", "TEACHER", "STUDENT", "PRINCIPAL", "STAFF"),
+  requirePermission("library.view"),
   libraryController.searchBooks
 );
 
 // GET /api/library/books/:id — Single book details
 router.get(
   "/books/:id",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getBookById
 );
 
 // POST /api/library/books — Nayi book add karo (Admin)
 router.post(
   "/books",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.createBook
 );
 
 // PUT /api/library/books/:id — Book update karo (Admin)
 router.put(
   "/books/:id",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.updateBook
 );
 
 // DELETE /api/library/books/:id — Book delete karo (Admin)
 router.delete(
   "/books/:id",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.deleteBook
 );
 
@@ -73,21 +74,21 @@ router.delete(
 // GET /api/library/categories — Saari categories
 router.get(
   "/categories",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getAllCategories
 );
 
 // POST /api/library/categories — Nayi category (Admin)
 router.post(
   "/categories",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.createCategory
 );
 
 // DELETE /api/library/categories/:id — Category delete (Admin)
 router.delete(
   "/categories/:id",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.deleteCategory
 );
 
@@ -95,35 +96,35 @@ router.delete(
 // GET /api/library/members — Saare members (Admin)
 router.get(
   "/members",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getAllMembers
 );
 
 // GET /api/library/members/search?q= — Members search (Admin, Teacher)
 router.get(
   "/members/search",
-  allowRoles("ADMIN", "TEACHER"),
+  requirePermission("library.manage"),
   libraryController.searchMembers
 );
 
 // POST /api/library/members — Naya member register (Admin)
 router.post(
   "/members",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.createMember
 );
 
 // PUT /api/library/members/:id — Member update (Admin)
 router.put(
   "/members/:id",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.updateMember
 );
 
 // DELETE /api/library/members/:id — Member delete (Admin)
 router.delete(
   "/members/:id",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.deleteMember
 );
 
@@ -131,35 +132,35 @@ router.delete(
 // POST /api/library/issue — Book issue karo (Admin, Teacher)
 router.post(
   "/issue",
-  allowRoles("ADMIN", "TEACHER"),
+  requirePermission("library.manage"),
   libraryController.issueBook
 );
 
 // POST /api/library/return — Book return karo (Admin, Teacher)
 router.post(
   "/return",
-  allowRoles("ADMIN", "TEACHER"),
+  requirePermission("library.manage"),
   libraryController.returnBook
 );
 
 // POST /api/library/renew/:issueId — Book renew karo (Admin, Teacher)
 router.post(
   "/renew/:issueId",
-  allowRoles("ADMIN", "TEACHER"),
+  requirePermission("library.manage"),
   libraryController.renewBook
 );
 
 // GET /api/library/active-issues/:memberId — Member ke active issues
 router.get(
   "/active-issues/:memberId",
-  allowRoles("ADMIN", "TEACHER"),
+  requirePermission("library.manage"),
   libraryController.getActiveIssuesByMember
 );
 
 // POST /api/library/lost/:issueId — Book lost mark karo (Admin)
 router.post(
   "/lost/:issueId",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.markBookLost
 );
 
@@ -167,14 +168,14 @@ router.post(
 // GET /api/library/history/:memberId — Member ki puri history
 router.get(
   "/history/:memberId",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getMemberHistory
 );
 
 // GET /api/library/overdue — Overdue books ki list
 router.get(
   "/overdue",
-  allowRoles("ADMIN", "TEACHER", "PRINCIPAL"),
+  requirePermission("library.view"),
   libraryController.getOverdueBooks
 );
 
@@ -182,14 +183,14 @@ router.get(
 // GET /api/library/reports/most-issued — Most issued books
 router.get(
   "/reports/most-issued",
-  allowRoles("ADMIN", "PRINCIPAL"),
+  requirePermission("library.manage"),
   libraryController.getMostIssuedBooks
 );
 
 // GET /api/library/reports/category-stats — Category-wise stats
 router.get(
   "/reports/category-stats",
-  allowRoles("ADMIN", "PRINCIPAL"),
+  requirePermission("library.manage"),
   libraryController.getCategoryStats
 );
 
@@ -197,14 +198,14 @@ router.get(
 // GET /api/library/settings — Library settings fetch
 router.get(
   "/settings",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.getSettings
 );
 
 // PUT /api/library/settings — Library settings update
 router.put(
   "/settings",
-  allowRoles("ADMIN"),
+  requirePermission("library.manage"),
   libraryController.updateSettings
 );
 

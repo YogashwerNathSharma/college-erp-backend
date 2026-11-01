@@ -5,6 +5,8 @@ import {
   grantTemporaryAdmin,
   revokeTemporaryAdmin,
   getMyPermissions,
+  getAllUsersWithPermissions,
+  resetUserPermissions,
 } from "./permissions.service";
 
 //////////////////////////////////////////////////////
@@ -248,6 +250,77 @@ export const getMyPermissionsController = async (req: Request, res: Response) =>
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get permissions",
+    });
+  }
+};
+
+//////////////////////////////////////////////////////
+// GET ALL USERS WITH PERMISSIONS (Tenant Admin)
+// GET /api/permissions/all-users
+// Tenant Admin sees all their users with permission status
+//////////////////////////////////////////////////////
+export const getAllUsersWithPermissionsController = async (req: Request, res: Response) => {
+  try {
+    const { tenantId, role } = req.user as any;
+
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: "Tenant not found" });
+    }
+
+    // Only ADMIN can see all users' permissions
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return res.status(403).json({ success: false, message: "Forbidden: Only admins can view all permissions" });
+    }
+
+    const filterRole = req.query.role as string | undefined;
+    const users = await getAllUsersWithPermissions(tenantId, { role: filterRole });
+
+    return res.json({
+      success: true,
+      data: users,
+      total: users.length,
+    });
+  } catch (error: any) {
+    console.error("Get All Users Permissions Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to get users permissions" });
+  }
+};
+
+//////////////////////////////////////////////////////
+// RESET USER PERMISSIONS TO DEFAULTS (Tenant Admin)
+// DELETE /api/permissions/:userId/reset
+// Resets a user's custom permissions back to their role's default
+//////////////////////////////////////////////////////
+export const resetUserPermissionsController = async (req: Request, res: Response) => {
+  try {
+    const { tenantId, role } = req.user as any;
+    const userId = req.params.userId as string;
+
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: "Tenant not found" });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
+    // Only ADMIN can reset permissions
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return res.status(403).json({ success: false, message: "Forbidden: Only admins can reset permissions" });
+    }
+
+    const result = await resetUserPermissions(userId, tenantId);
+
+    return res.json({
+      success: true,
+      data: result,
+      message: "Permissions reset to role defaults",
+    });
+  } catch (error: any) {
+    console.error("Reset Permissions Error:", error);
+    return res.status(error.message === "User not found" ? 404 : 500).json({
+      success: false,
+      message: error.message || "Failed to reset permissions",
     });
   }
 };

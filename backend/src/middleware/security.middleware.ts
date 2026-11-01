@@ -5,12 +5,15 @@ import cors from "cors";
 export const securityHeaders = helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: {
+    useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
-      connectSrc: ["'self'", process.env.CORS_ORIGIN || "http://localhost:3000"],
+      scriptSrc: ["'self'", "'strict-dynamic'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],  // unsafe-inline needed for UI frameworks (Tailwind, inline styles)
+      imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com"],
+      connectSrc: ["'self'", ...(process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean)
+        : ["http://localhost:5174", "http://localhost:5173", "http://localhost:3000"])],
       fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       frameSrc: ["'none'"],

@@ -6,6 +6,16 @@ import bcrypt from "bcrypt";
 import { loginService, registerService } from "./auth.service";
 import { sendEmail } from "../communication/helpers/email.helper";
 import { autoAssignFreePlanService, checkFreePlanAlreadyUsed } from "../subscription/subscription.service";
+import { z } from "zod";
+import { auditLogin } from "../../middleware/auditMiddleware";
+
+// Shared password policy — same as auth.service.ts
+const passwordPolicy = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_REQUEST_COOLDOWN_MS = 60 * 1000;
@@ -76,6 +86,13 @@ export const login = async (req: Request, res: Response) => {
     try {
       const result = await loginService(normalizedEmail, String(password));
       clearLoginFailures(loginKey);
+
+      // Audit successful login
+      const userData = result.user || {};
+      if (userData.tenantId) {
+        auditLogin(userData.tenantId, userData.id, userData.name || userData.email || normalizedEmail, userData.role || "UNKNOWN", req, true);
+      }
+
       return res.json({
         success: true,
         token: result.token,
@@ -87,6 +104,8 @@ export const login = async (req: Request, res: Response) => {
       });
     } catch {
       recordLoginFailure(loginKey, now);
+      // Audit failed login (fire and forget — no tenantId available)
+      auditLogin("unknown", "unknown", normalizedEmail, "UNKNOWN", req, false, "Invalid credentials");
       return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
   } catch {
@@ -188,7 +207,9 @@ export const changePassword = async (req: Request, res: Response) => {
     const userId = req.user?.userId;
     if (!newPassword) return res.status(400).json({ success: false, message: "New password required" });
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
-    if (newPassword.trim().length < 8) return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    try { passwordPolicy.parse(newPassword.trim()); } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.errors?.[0]?.message || "Password does not meet security requirements" });
+    }
     const hashed = await bcrypt.hash(newPassword.trim(), 12);
     await prisma.user.update({ where: { id: userId }, data: { password: hashed, isFirstLogin: false } });
     return res.json({ success: true, message: "Password updated successfully" });
@@ -203,7 +224,9 @@ export const registerSuperAdmin = async (req: Request, res: Response) => {
     let { name, email, password } = req.body;
     if (!name || !email || !password) return res.status(400).json({ success: false, message: "All fields required" });
     email = email.toLowerCase().trim();
-    if (password.trim().length < 8) return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    try { passwordPolicy.parse(password.trim()); } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.errors?.[0]?.message || "Password does not meet security requirements" });
+    }
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return res.status(400).json({ success: false, message: "Email already registered" });
     const hashedPassword = await bcrypt.hash(password.trim(), 12);
@@ -252,7 +275,9 @@ export const resetPassword = async (req: Request, res: Response) => {
     let { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) return res.status(400).json({ success: false, message: "Email, OTP, and new password are required" });
     email = email.toLowerCase().trim();
-    if (newPassword.trim().length < 8) return res.status(400).json({ success: false, message: "Password must be at least 8 characters long" });
+    try { passwordPolicy.parse(newPassword.trim()); } catch (e: any) {
+      return res.status(400).json({ success: false, message: e.errors?.[0]?.message || "Password does not meet security requirements" });
+    }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ success: false, message: "Invalid or expired OTP" });

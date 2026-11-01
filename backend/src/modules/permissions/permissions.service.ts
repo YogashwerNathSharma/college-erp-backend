@@ -339,7 +339,10 @@ export const getAllUsersWithPermissions = async (tenantId: string, filters?: { r
     where: { tenantId, userId: { in: users.map((u) => u.id) } },
   });
 
-  const permMap = new Map(permissions.map((p) => [p.userId, p] as const));
+  type PermRow = (typeof permissions)[number];
+  const permMap = new Map<string, PermRow>(
+    permissions.map((p) => [p.userId, p] as [string, PermRow])
+  );
 
   return users.map((user) => {
     const perm = permMap.get(user.id);

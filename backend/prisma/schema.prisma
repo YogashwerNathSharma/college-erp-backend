@@ -2230,6 +2230,9 @@ model MarksEntry {
   examSubject   ExamSubject? @relation(fields: [examSubjectId], references: [id])
   marksObtained Float
   isAbsent      Boolean      @default(false)
+  // Attendance status for this exam/subject: PRESENT | ABSENT | LEAVE | MEDICAL
+  // isAbsent stays in sync (true when status != PRESENT) for backward compatibility.
+  status        String       @default("PRESENT")
   isDeleted     Boolean      @default(false)
   deletedAt     DateTime?
   createdAt     DateTime     @default(now())
@@ -4722,7 +4725,7 @@ model SubjectGroup {
   classId  String?      @db.ObjectId
   streamId String?      @db.ObjectId
   stream   Stream?      @relation(fields: [streamId], references: [id])
-  subjects String[]
+  subjects String[] @default([])
   isActive Boolean      @default(true)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -5819,6 +5822,17 @@ model School {
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   name      String
   code      String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  email           String?
+  website         String?
+  logo            String?
+  affiliation     String?
+  establishedYear Int?
+  principalName   String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5839,6 +5853,13 @@ model Branch {
 
   @@index([tenantId])
   @@map("branches")
+  address   String?
+  city      String?
+  state     String?
+  pincode   String?
+  phone     String?
+  email     String?
+  isMain    Boolean  @default(false)
 }
 
 model Campus {
@@ -5853,6 +5874,12 @@ model Campus {
 
   @@index([tenantId])
   @@map("campuses")
+
+  branchId String?
+  address String?
+  capacity Int?
+  location String?
+  facilities String[] @default([])
 }
 
 model BloodGroupLookup {
@@ -6010,4 +6037,30 @@ model ApprovalQueue {
   @@index([tenantId, approverId])
   @@index([tenantId, isDeleted])
   @@map("approval_queue")
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TENANT SAAS AGREEMENT & ACCEPTANCE
+// Owner: Yogashwer Nath Sharma | YN Software
+// Stores versioned acceptance for each tenant without transferring source-code IP.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model TenantAgreement {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId          String   @db.ObjectId
+  agreementVersion  String
+  agreementTitle    String
+  acceptedAt        DateTime @default(now())
+  acceptedByName    String
+  acceptedByEmail   String
+  acceptedByUserId  String   @db.ObjectId
+  acceptedIp        String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, agreementVersion])
+  @@map("tenant_agreements")
 }

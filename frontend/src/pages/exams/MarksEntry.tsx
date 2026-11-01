@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save, Loader2, ClipboardList, Printer, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { getFullUrl } from "../../utils/url";
+import { useAcademicYear } from "../../context/AcademicYearContext";
 
 interface SubjectInfo {
   _id: string;
@@ -15,10 +16,15 @@ interface SubjectInfo {
   passingMarks: number;
 }
 
+// Attendance status for a student in a subject.
+// PRESENT = appeared, others = did not appear (shown on the register as AB/L/M).
+type MarkStatus = "PRESENT" | "ABSENT" | "LEAVE" | "MEDICAL";
+
 interface StudentMark {
   subjectId: string;
   marks: number | null;
   isAbsent: boolean;
+  status: MarkStatus;
 }
 
 interface Student {
@@ -34,7 +40,10 @@ interface Exam {
   _id: string;
   name: string;
   type: string;
-  class?: { _id: string; name: string };
+  class?: { _id: string; name: string } | null;
+  className?: string;
+  academicYear?: { _id: string; name: string } | null;
+  session?: string;
 }
 
 interface SectionOption {
@@ -57,8 +66,15 @@ const MarksEntry: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
+  // Current session / academic year (shown on the printed register)
+  const { selectedAcademicYear } = useAcademicYear();
 
   const [exam, setExam] = useState<Exam | null>(null);
+  // Class name resolved on the client (so the register shows the class even if
+  // the backend hasn't been rebuilt to populate exam.className yet).
+  const [resolvedClassName, setResolvedClassName] = useState<string>("");
+  // Academic-year / session label resolved on the client (same reasoning).
+  const [resolvedSession, setResolvedSession] = useState<string>("");
   const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +116,53 @@ const MarksEntry: React.FC = () => {
       setExam(data.exam || null);
       setSubjects(data.subjects || []);
       setSections(data.sections || []);
+
+      // Resolve the class name for the register header. Prefer what the backend
+      // already sent; otherwise look it up from the class list using classId.
+      const ex: any = data.exam || {};
+      const directName = ex.className || ex.class?.name || "";
+      if (directName) {
+        setResolvedClassName(directName);
+      } else {
+        const classId = ex.classId || ex.class?._id || ex.class?.id || "";
+        if (classId) {
+          try {
+            const cRes = await axios.get(getFullUrl("/api/class"), { headers });
+            const list = cRes.data?.data || cRes.data || [];
+            const match = (Array.isArray(list) ? list : []).find(
+              (c: any) => (c.id || c._id) === classId
+            );
+            setResolvedClassName(match?.name || "");
+          } catch {
+            setResolvedClassName("");
+          }
+        } else {
+          setResolvedClassName("");
+        }
+      }
+
+      // Resolve the session (academic year) label for the header. Prefer what
+      // the backend sent, else match the exam's academicYearId against the year
+      // list, else fall back to the current/active year.
+      const directSession = ex.session || ex.academicYear?.name || "";
+      if (directSession) {
+        setResolvedSession(directSession);
+      } else {
+        try {
+          const yRes = await axios.get(getFullUrl("/api/academic"), { headers });
+          const years = yRes.data?.data || yRes.data || [];
+          const arr = Array.isArray(years) ? years : [];
+          const yearId = ex.academicYearId || ex.academicYear?._id || ex.academicYear?.id || "";
+          const match =
+            (yearId && arr.find((y: any) => (y.id || y._id) === yearId)) ||
+            arr.find((y: any) => y.isCurrent) ||
+            arr.find((y: any) => y.isActive) ||
+            arr[0];
+          setResolvedSession(match?.name || "");
+        } catch {
+          setResolvedSession("");
+        }
+      }
       // Default single-subject selection = first subject
       if (data.subjects?.length) setSelectedSubjectId(data.subjects[0].subjectId);
 
@@ -141,10 +204,14 @@ const MarksEntry: React.FC = () => {
   const marks = (data.subjects || []).map((sub: any) => {
     // ✅ marks is an object like { "subjectId123": { marksObtained, isAbsent } }
     const existingMark = student.marks?.[sub.subjectId];
+    const st: MarkStatus =
+      (existingMark?.status as MarkStatus) ||
+      (existingMark?.isAbsent ? "ABSENT" : "PRESENT");
     return {
       subjectId: sub.subjectId,
       marks: existingMark?.marksObtained ?? null,
-      isAbsent: existingMark?.isAbsent ?? false,
+      isAbsent: st !== "PRESENT",
+      status: st,
     };
   });
   return {
@@ -177,22 +244,30 @@ const MarksEntry: React.FC = () => {
           ...newMarks[subjectIndex],
           marks: value,
           isAbsent: false,
+          status: "PRESENT",
         };
         return { ...student, marks: newMarks };
       })
     );
   };
 
-  const toggleAbsent = (studentIndex: number, subjectIndex: number) => {
+  // Set attendance status for a cell. Non-PRESENT statuses clear the marks
+  // (the student did not appear) and keep isAbsent in sync for the backend.
+  const setStatus = (
+    studentIndex: number,
+    subjectIndex: number,
+    status: MarkStatus
+  ) => {
     setStudents((prev) =>
       prev.map((student, sIdx) => {
         if (sIdx !== studentIndex) return student;
         const newMarks = [...student.marks];
-        const isAbsent = !newMarks[subjectIndex].isAbsent;
+        const didNotAppear = status !== "PRESENT";
         newMarks[subjectIndex] = {
           ...newMarks[subjectIndex],
-          isAbsent,
-          marks: isAbsent ? null : newMarks[subjectIndex].marks,
+          status,
+          isAbsent: didNotAppear,
+          marks: didNotAppear ? null : newMarks[subjectIndex].marks,
         };
         return { ...student, marks: newMarks };
       })
@@ -232,9 +307,11 @@ const MarksEntry: React.FC = () => {
   const subjectGrade = (
     marks: number | null,
     isAbsent: boolean,
-    maxMarks: number
+    maxMarks: number,
+    status?: MarkStatus
   ): string => {
-    if (isAbsent) return "AB";
+    const st = (status || (isAbsent ? "ABSENT" : "PRESENT")) as MarkStatus;
+    if (st !== "PRESENT") return STATUS_SHORT[st] || "AB";
     if (marks === null || marks === undefined || maxMarks <= 0) return "";
     return gradeForMarks(marks);
   };
@@ -273,11 +350,13 @@ const MarksEntry: React.FC = () => {
     students.forEach((student) => {
       student.marks.forEach((m) => {
         if (m.subjectId) {
+          const didNotAppear = m.status !== "PRESENT";
           marks.push({
             studentId: student._id,
             subjectId: m.subjectId,
-            marksObtained: m.isAbsent ? 0 : (m.marks ?? 0),
-            isAbsent: m.isAbsent,
+            marksObtained: didNotAppear ? 0 : (m.marks ?? 0),
+            isAbsent: didNotAppear,
+            status: m.status,
           });
         }
       });
@@ -355,8 +434,16 @@ const MarksEntry: React.FC = () => {
     : students;
 
   // Display helpers for a single subject cell (used by print + screen)
+  // Short code shown on the printed register for a non-PRESENT status.
+  const STATUS_SHORT: Record<MarkStatus, string> = {
+    PRESENT: "",
+    ABSENT: "AB",
+    LEAVE: "L",
+    MEDICAL: "M",
+  };
   const marksText = (m?: StudentMark): string => {
-    if (m?.isAbsent) return "AB";
+    const st = (m?.status || (m?.isAbsent ? "ABSENT" : "PRESENT")) as MarkStatus;
+    if (st !== "PRESENT") return STATUS_SHORT[st] || "AB";
     if (m?.marks !== null && m?.marks !== undefined) return String(m.marks);
     return "-";
   };
@@ -372,10 +459,57 @@ const MarksEntry: React.FC = () => {
       ? sections.find((s) => s.id === selectedSection)?.name || ""
       : "All Sections";
 
-    const className = exam?.class?.name || "";
+    const className = exam?.className || exam?.class?.name || resolvedClassName || "";
     const examName = exam?.name || "";
-    const examType = exam?.type?.replace("_", " ") || "";
-    const printedOn = new Date().toLocaleString();
+
+    // ── Multi-tenant branding (works for ANY school that logs in) ──
+    // Pulled live from the logged-in tenant + user, so the register
+    // automatically reflects the current school's name, logo and the
+    // person who printed it. Nothing is hard-coded.
+    let tenant: any = {};
+    let currentUser: any = {};
+    try { tenant = JSON.parse(localStorage.getItem("tenant") || "{}"); } catch {}
+    try { currentUser = JSON.parse(localStorage.getItem("user") || "{}"); } catch {}
+
+    const schoolName = (tenant.schoolName || tenant.name || "School Name");
+    const schoolAddress = tenant.address || "";
+
+    // Resolve logo to an absolute URL (handles "/uploads/x.png", "x.png", full URL)
+    const API_BASE =
+      (import.meta as any).env?.VITE_API_URL ||
+      (window.location.hostname !== "localhost"
+        ? "https://college-erp-backend-91zi.onrender.com"
+        : "");
+    const rawLogo = tenant.logoUrl || tenant.logo || "";
+    const logoUrl = rawLogo
+      ? rawLogo.startsWith("http")
+        ? rawLogo
+        : rawLogo.startsWith("/")
+        ? `${API_BASE}${rawLogo}`
+        : `${API_BASE}/uploads/${rawLogo}`
+      : "";
+
+    // Who printed it + their role (Admin / Teacher / Principal / …)
+    const printedByName =
+      currentUser.name || currentUser.firstName || currentUser.username || "User";
+    const roleRaw = (currentUser.role || currentUser.designation || "").toString();
+    const printedByRole = roleRaw
+      ? roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1).toLowerCase().replace(/_/g, " ")
+      : "";
+
+    // Session / academic year label (e.g. "2025-2026").
+    // Prefer the exam's own academic year from the backend; fall back to the
+    // globally selected academic year.
+    const sessionLabel =
+      exam?.session || selectedAcademicYear?.name || resolvedSession || "";
+
+    const now = new Date();
+    const printedDate = now.toLocaleDateString("en-IN", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+    });
+    const printedTime = now.toLocaleTimeString("en-IN", {
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    });
 
     // How many sub-columns each subject occupies (Marks and/or Grade)
     const perSubjectCols = (showMarks ? 1 : 0) + (showGrade ? 1 : 0);
@@ -429,7 +563,7 @@ const MarksEntry: React.FC = () => {
         const cells = visibleSubjects
           .map((sub) => {
             const m = student.marks.find((mm) => mm.subjectId === sub.subjectId);
-            const g = subjectGrade(m?.marks ?? null, m?.isAbsent ?? false, sub.maxMarks);
+            const g = subjectGrade(m?.marks ?? null, m?.isAbsent ?? false, sub.maxMarks, m?.status);
             const fail =
               !m?.isAbsent &&
               m?.marks !== null &&
@@ -451,9 +585,20 @@ const MarksEntry: React.FC = () => {
       })
       .join("");
 
-    const scaleNote = gradeScale.length
-      ? `Grades as per your Grade Settings for this exam.`
-      : `No grade scale configured for this exam.`;
+    // Logo tag (falls back to a colored initial badge when no logo is set)
+    const logoHtml = logoUrl
+      ? `<img src="${logoUrl}" alt="Logo" class="logo" crossorigin="anonymous" />`
+      : `<div class="logo logo-fallback">${schoolName.charAt(0).toUpperCase()}</div>`;
+
+    // Title shown under the school name, e.g. "SA-1 TERM EXAMINATION (2026-2027)".
+    // Uppercased for a clean exam-register look; session shown in parentheses
+    // using the exam's own academic year (current academic year).
+    // Title: exam name + EXAMINATION + (session). "TERM" (examType) is
+    // intentionally omitted per requirement, e.g. "SA1 EXAMINATION (2026-27)".
+    const titleLine = (
+      `${examName} EXAMINATION` +
+      (sessionLabel ? ` (${sessionLabel})` : "")
+    ).toUpperCase();
 
     const html = `<!DOCTYPE html>
 <html>
@@ -478,15 +623,39 @@ const MarksEntry: React.FC = () => {
   .gr { color: #1d4ed8; font-weight: 700; }
   td.tot { font-weight: 700; }
   .foot { margin-top: 24px; display: flex; justify-content: space-between; font-size: 12px; color: #444; }
+  /* Multi-tenant print header */
+  .ph { display: flex; align-items: center; justify-content: space-between;
+        border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 14px; }
+  .ph .logo { width: 58px; height: 58px; object-fit: contain; border-radius: 4px; }
+  .ph .logo-fallback { display: flex; align-items: center; justify-content: center;
+        background: #1d4ed8; color: #fff; font-weight: 700; font-size: 24px; }
+  .ph .center { flex: 1; text-align: center; padding: 0 14px; }
+  .ph .center h1 { font-size: 20px; margin: 0; font-weight: 700;
+        letter-spacing: .5px; text-transform: uppercase; }
+  .ph .center .addr { font-size: 11px; color: #444; margin: 3px 0 0; }
+  .ph .center .exam { font-size: 14px; font-weight: 600; margin: 6px 0 0; }
+  .ph .center .meta { font-size: 12px; color: #333; margin: 4px 0 0; }
+  .ph .right { text-align: right; font-size: 10px; color: #555; width: 150px; flex-shrink: 0; }
+  .ph .right p { margin: 0 0 3px; }
+  .legend { margin-top: 14px; font-size: 10px; color: #555; }
+  .legend b { color: #111; }
   @media print { body { margin: 10mm; } }
 </style>
 </head>
 <body>
-  <div class="head">
-    <h1>RMS Academy</h1>
-    <h2>${examName}${examType ? " • " + examType : ""}</h2>
-    <div class="meta">Class: ${className || "—"} &nbsp;|&nbsp; Section: ${sectionName} &nbsp;|&nbsp; Students: ${visibleStudents.length}</div>
-    <div class="meta">${scaleNote}</div>
+  <div class="ph">
+    <div style="flex-shrink:0;width:150px;">${logoHtml}</div>
+    <div class="center">
+      <h1>${schoolName}</h1>
+      ${schoolAddress ? `<div class="addr">${schoolAddress}</div>` : ""}
+      <div class="exam">${titleLine}</div>
+      <div class="meta">Class: ${className || "—"} &nbsp;|&nbsp; Section: ${sectionName} &nbsp;|&nbsp; Students: ${visibleStudents.length}</div>
+    </div>
+    <div class="right">
+      <p><strong>Printed by:</strong> ${printedByName}${printedByRole ? ` (${printedByRole})` : ""}</p>
+      <p><strong>Date:</strong> ${printedDate}</p>
+      <p><strong>Time:</strong> ${printedTime}</p>
+    </div>
   </div>
   <table>
     <thead>${theadHtml}</thead>
@@ -494,8 +663,12 @@ const MarksEntry: React.FC = () => {
       ${bodyRows}
     </tbody>
   </table>
+  <div class="legend">
+    <b>Legend:</b> AB = Absent &nbsp;•&nbsp; L = Leave &nbsp;•&nbsp; M = Medical
+    &nbsp;(students who did not appear for the exam)
+  </div>
   <div class="foot">
-    <span>Printed: ${printedOn}</span>
+    <span>Printed: ${printedDate} ${printedTime}</span>
     <span>Signature: ____________________</span>
   </div>
   <script>window.onload = function(){ window.print(); };</script>
@@ -727,14 +900,18 @@ const MarksEntry: React.FC = () => {
 
         {/* Marks Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Capped-height viewport: fill a student and move left/right across
+              subjects (student name stays frozen on the left) and up/down across
+              students (header stays frozen on top) — all inside this box, so the
+              whole page no longer scrolls while entering marks. */}
+          <div className="overflow-auto max-h-[70vh]">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-30">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 min-w-[50px]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-40 min-w-[50px]">
                     #
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[50px] bg-gray-50 z-10 min-w-[180px]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-[50px] bg-gray-50 z-40 min-w-[180px]">
                     Student
                   </th>
                   {visibleSubjects.map((sub, colIdx) => (
@@ -811,10 +988,10 @@ const MarksEntry: React.FC = () => {
                     const summary = studentSummary(student);
                     return (
                     <tr key={student._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm text-gray-500 sticky left-0 bg-white z-10">
+                      <td className="px-4 py-2 text-sm text-gray-500 sticky left-0 bg-white z-20">
                         {rowIdx + 1}
                       </td>
-                      <td className="px-4 py-2 sticky left-[50px] bg-white z-10">
+                      <td className="px-4 py-2 sticky left-[50px] bg-white z-20">
                         <div className="text-sm font-medium text-gray-900">
                           {student.name}
                         </div>
@@ -829,8 +1006,11 @@ const MarksEntry: React.FC = () => {
                         const g = subjectGrade(
                           mark?.marks ?? null,
                           mark?.isAbsent ?? false,
-                          sub.maxMarks
+                          sub.maxMarks,
+                          mark?.status
                         );
+                        const curStatus: MarkStatus =
+                          mark?.status || (mark?.isAbsent ? "ABSENT" : "PRESENT");
                         return (
                           <td
                             key={sub._id || sub.subjectId}
@@ -855,7 +1035,7 @@ const MarksEntry: React.FC = () => {
                                       }
                                       updateMarks(sIdx, subIdx, val);
                                     }}
-                                    disabled={mark?.isAbsent}
+                                    disabled={curStatus !== "PRESENT"}
                                     min={0}
                                     max={sub.maxMarks}
                                     className={`w-20 text-center rounded-md border shadow-sm text-sm py-1 focus:border-primary-500 focus:ring-primary-500 ${getMarkColor(
@@ -865,17 +1045,24 @@ const MarksEntry: React.FC = () => {
                                     )}`}
                                     placeholder="--"
                                   />
-                                  <label className="inline-flex items-center gap-1 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={mark?.isAbsent ?? false}
-                                      onChange={() => toggleAbsent(sIdx, subIdx)}
-                                      className="h-3 w-3 text-gray-600 rounded border-gray-300 focus:ring-gray-500"
-                                    />
-                                    <span className="text-[10px] text-gray-500">
-                                      Absent
-                                    </span>
-                                  </label>
+                                  {/* Attendance status: Present / Absent / Leave / Medical */}
+                                  <select
+                                    value={curStatus}
+                                    onChange={(e) =>
+                                      setStatus(sIdx, subIdx, e.target.value as MarkStatus)
+                                    }
+                                    title="Attendance status for this subject"
+                                    className={`w-20 text-[10px] rounded-md border shadow-sm py-0.5 px-1 focus:border-primary-500 focus:ring-primary-500 ${
+                                      curStatus !== "PRESENT"
+                                        ? "bg-gray-100 text-gray-700 border-gray-300"
+                                        : "text-gray-500 border-gray-200"
+                                    }`}
+                                  >
+                                    <option value="PRESENT">Present</option>
+                                    <option value="ABSENT">Absent</option>
+                                    <option value="LEAVE">Leave</option>
+                                    <option value="MEDICAL">Medical</option>
+                                  </select>
                                 </div>
                               )}
                               {/* Grade column */}

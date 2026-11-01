@@ -21,7 +21,23 @@ import {
 const SEATS_PER_BENCH = 3; // Left, Middle, Right
 
 // ─────────────────────────────────────────────────────
-// HELPER: Calculate grade from percentage
+// HELPER: Build a student's display name without duplication
+// If lastName is empty, or equals the firstName (common when the admission
+// form copies the first name into last name), show only the first name — so
+// we never render "Akash Akash" or "Anil Anil".
+// ─────────────────────────────────────────────────────
+function formatStudentName(firstName?: string | null, lastName?: string | null): string {
+  const first = (firstName || "").trim();
+  const last = (lastName || "").trim();
+  if (!last) return first;
+  if (last.toLowerCase() === first.toLowerCase()) return first;
+  return `${first} ${last}`.trim();
+}
+
+// ─────────────────────────────────────────────────────
+// RESULT CALCULATION ENGINE
+// Automatic mode uses Grade Settings. Manual mode accepts safe arithmetic
+// assignments such as: percentage=(totalObtained/totalMaxMarks)*100; cgpa=averageGradePoint
 // ─────────────────────────────────────────────────────
 function calculateGrade(
   percentage: number,
@@ -29,36 +45,68 @@ function calculateGrade(
 ): string | null {
   if (!gradeSettings || gradeSettings.length === 0) return null;
   for (const gs of gradeSettings) {
+    if (percentage >= gs.minPercent && percentage <= gs.maxPercent) return gs.grade;
+  }
+  return null;
+}
+
+function calculateGradePoint(
+  percentage: number,
+  gradeSettings: { grade: string; minPercent: number; maxPercent: number; gradePoint?: number | null }[]
+): number | null {
+  if (!gradeSettings || gradeSettings.length === 0) return null;
+  for (const gs of gradeSettings) {
     if (percentage >= gs.minPercent && percentage <= gs.maxPercent) {
-      return gs.grade;
+      return gs.gradePoint == null ? null : Number(gs.gradePoint);
     }
   }
   return null;
 }
 
-// ─────────────────────────────────────────────────────
-// HELPER: Resolve the effective grade scale for an exam
-//   • If the exam has its own grade rows (examId set) → use them.
-//   • Otherwise fall back to the tenant-wide default scale
-//     (examId = null).
-// This powers "per-exam grade settings" on report cards.
-// ─────────────────────────────────────────────────────
-async function resolveGradeScale(
-  tenantId: string,
-  examId?: string | null
-): Promise<{ grade: string; minPercent: number; maxPercent: number }[]> {
-  if (examId) {
-    const examRows = await prisma.gradeSetting.findMany({
-      where: { tenantId, examId, isDeleted: false },
-      orderBy: { minPercent: "desc" },
-    });
-    if (examRows.length > 0) return examRows as any;
+function evaluateFormulaExpression(expression: string, variables: Record<string, number>): number {
+  const trimmed = expression.trim();
+  if (!trimmed || !/^[0-9A-Za-z_+\-*/().,%\s]+$/.test(trimmed)) {
+    throw new Error('Invalid formula. Use numbers, variables and + - * / ( ) only.');
   }
-  return prisma.gradeSetting.findMany({
-    where: { tenantId, examId: null, isDeleted: false },
-    orderBy: { minPercent: "desc" },
-  }) as any;
+  const names = Object.keys(variables);
+  const values = names.map((name) => variables[name]);
+  const evaluator = Function(...names, '"use strict"; return (' + trimmed + ');');
+  const result = Number(evaluator(...values));
+  if (!Number.isFinite(result)) throw new Error('Formula returned a non-finite value.');
+  return result;
 }
+
+function applyManualFormula(formula: string | null | undefined, context: Record<string, number>) {
+  const output: { percentage?: number; cgpa?: number } = {};
+  if (!formula || !formula.trim()) return output;
+
+  const variables = {
+    ...context,
+    round: (value: number) => Math.round(value),
+    min: Math.min,
+    max: Math.max,
+    abs: Math.abs,
+  } as any;
+
+  for (const statement of formula.split(';').map((s) => s.trim()).filter(Boolean)) {
+    const equals = statement.indexOf('=');
+    if (equals < 0) {
+      output.percentage = evaluateFormulaExpression(statement, variables);
+      variables.percentage = output.percentage;
+      continue;
+    }
+    const key = statement.slice(0, equals).trim();
+    const expression = statement.slice(equals + 1).trim();
+    if (!['percentage', 'cgpa'].includes(key)) {
+      throw new Error('Manual formula can set only percentage and cgpa.');
+    }
+    const value = evaluateFormulaExpression(expression, variables);
+    output[key] = value;
+    variables[key] = value;
+  }
+  return output;
+}
+
 
 // ─────────────────────────────────────────────────────
 // 1. CREATE EXAM
@@ -247,8 +295,22 @@ export const enterMarksService = async (
   let created = 0;
   let updated = 0;
 
+  // Normalize attendance status. Accepts an explicit status
+  // ("PRESENT" | "ABSENT" | "LEAVE" | "MEDICAL") and falls back to the legacy
+  // isAbsent flag so older clients keep working. isAbsent is kept in sync:
+  // it is true whenever the student did not appear (status != PRESENT).
+  const VALID_STATUSES = ["PRESENT", "ABSENT", "LEAVE", "MEDICAL"];
+  const resolveStatus = (m: any): string => {
+    const raw = (m.status || "").toString().toUpperCase();
+    if (VALID_STATUSES.includes(raw)) return raw;
+    return m.isAbsent ? "ABSENT" : "PRESENT";
+  };
+
   for (const m of marks) {
     if (!m.subjectId || !m.studentId) continue;
+
+    const status = resolveStatus(m);
+    const didNotAppear = status !== "PRESENT";
 
     const existing = await prisma.marksEntry.findFirst({
       where: {
@@ -264,8 +326,9 @@ export const enterMarksService = async (
       await prisma.marksEntry.update({
         where: { id: existing.id },
         data: {
-          marksObtained: m.isAbsent ? 0 : (m.marksObtained ?? 0),
-          isAbsent: m.isAbsent || false,
+          marksObtained: didNotAppear ? 0 : (m.marksObtained ?? 0),
+          isAbsent: didNotAppear,
+          status,
         },
       });
       updated++;
@@ -275,8 +338,9 @@ export const enterMarksService = async (
           examId,
           studentId: m.studentId,
           subjectId: m.subjectId,
-          marksObtained: m.isAbsent ? 0 : (m.marksObtained ?? 0),
-          isAbsent: m.isAbsent || false,
+          marksObtained: didNotAppear ? 0 : (m.marksObtained ?? 0),
+          isAbsent: didNotAppear,
+          status,
           tenantId,
         },
       });
@@ -304,6 +368,17 @@ export const getMarksService = async (
   });
 
   if (!exam) throw new Error("Exam not found");
+
+  // Resolve class name + academic-year (session) for the marks register header.
+  // The raw exam only stores classId / academicYearId, so we look up the names.
+  const [examClass, examYear] = await Promise.all([
+    exam.classId
+      ? prisma.class.findFirst({ where: { id: exam.classId }, select: { id: true, name: true } })
+      : null,
+    exam.academicYearId
+      ? prisma.academicYear.findFirst({ where: { id: exam.academicYearId }, select: { id: true, name: true } })
+      : null,
+  ]);
 
   let examSubjects = await prisma.examSubject.findMany({
     where: { examId, tenantId, isDeleted: false },
@@ -421,12 +496,13 @@ export const getMarksService = async (
       marks[sub.subjectId] = {
         marksObtained: entry?.marksObtained ?? null,
         isAbsent: entry?.isAbsent ?? false,
+        status: (entry as any)?.status ?? (entry?.isAbsent ? "ABSENT" : "PRESENT"),
       };
     });
 
     return {
       studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
+      studentName: formatStudentName(student.firstName, student.lastName),
       admissionNo: student.admissionNo || "",
       sectionId: sectionByStudent.get(student.id) || null,
       sectionName: sectionNameById.get(sectionByStudent.get(student.id)) || "",
@@ -435,7 +511,15 @@ export const getMarksService = async (
   });
 
   return {
-    exam,
+    // Enrich exam with populated class + session so the register header can
+    // show "Class: X" and "Session: YYYY-YYYY" for the current tenant.
+    exam: {
+      ...exam,
+      class: examClass ? { _id: examClass.id, name: examClass.name } : null,
+      className: examClass?.name || "",
+      academicYear: examYear ? { _id: examYear.id, name: examYear.name } : null,
+      session: examYear?.name || "",
+    },
     subjects: subjectList,
     students: studentMarks,
     sections: sectionsList,
@@ -457,50 +541,86 @@ export const generateResultService = async (
   const examSubjects = await prisma.examSubject.findMany({
     where: { examId, tenantId, isDeleted: false },
   });
-
   const totalMaxMarks = examSubjects.reduce((sum, es) => sum + es.maxMarks, 0);
 
   const allMarks = await prisma.marksEntry.findMany({
     where: { examId, tenantId, isDeleted: false },
   });
 
-  // Group marks by student
   const studentMarksMap: Record<string, typeof allMarks> = {};
   allMarks.forEach((m) => {
-    if (!studentMarksMap[m.studentId]) {
-      studentMarksMap[m.studentId] = [];
-    }
+    if (!studentMarksMap[m.studentId]) studentMarksMap[m.studentId] = [];
     studentMarksMap[m.studentId].push(m);
   });
 
-  // Get grade settings
-  // Per-exam scale if configured for this exam, else the tenant default.
-  const gradeSettings = await resolveGradeScale(tenantId, examId);
+  const gradeSettings = await prisma.gradeSetting.findMany({
+    where: { tenantId, isDeleted: false },
+    orderBy: { minPercent: "desc" },
+  });
+
+  const resultTypeConfig = await prisma.resultType.findFirst({
+    where: { tenantId, name: exam.resultType, isDeleted: false },
+  });
+  const resultType = String(exam.resultType || "BOTH").toUpperCase();
+  const calculationMode = String(resultTypeConfig?.calculationMode || "AUTOMATIC").toUpperCase();
+  const manualFormula = resultTypeConfig?.formula || null;
 
   const results: any[] = [];
 
   for (const [studentId, marks] of Object.entries(studentMarksMap)) {
     const totalObtained = marks.reduce((sum, m) => sum + m.marksObtained, 0);
-    const percentage = totalMaxMarks > 0 ? (totalObtained / totalMaxMarks) * 100 : 0;
+    let percentage = totalMaxMarks > 0 ? (totalObtained / totalMaxMarks) * 100 : 0;
 
     let passedSubjects = 0;
     let failedSubjects = 0;
+    const subjectGradePoints: number[] = [];
 
     marks.forEach((m) => {
       const examSubject = examSubjects.find((es) => es.subjectId === m.subjectId);
-      if (examSubject) {
-        if (m.marksObtained >= examSubject.passingMarks && !m.isAbsent) {
-          passedSubjects++;
-        } else if (!m.isAbsent) {
-          failedSubjects++;
-        }
+      if (!examSubject) return;
+      if (m.marksObtained >= examSubject.passingMarks && !m.isAbsent) passedSubjects++;
+      else if (!m.isAbsent) failedSubjects++;
+
+      if (!m.isAbsent && examSubject.maxMarks > 0) {
+        const subjectPercentage = (m.marksObtained / examSubject.maxMarks) * 100;
+        const point = calculateGradePoint(subjectPercentage, gradeSettings);
+        if (point != null) subjectGradePoints.push(point);
       }
     });
 
-    const status = failedSubjects === 0 ? "PASS" : "FAIL";
+    const averageGradePoint = subjectGradePoints.length
+      ? subjectGradePoints.reduce((sum, point) => sum + point, 0) / subjectGradePoints.length
+      : null;
+
+    if (calculationMode === "MANUAL" && manualFormula) {
+      const manual = applyManualFormula(manualFormula, {
+        totalObtained,
+        totalMaxMarks,
+        percentage,
+        averageGradePoint: averageGradePoint ?? 0,
+        subjectCount: examSubjects.length,
+        passedSubjects,
+        failedSubjects,
+      });
+      if (manual.percentage != null) percentage = manual.percentage;
+    }
 
     const grade = calculateGrade(percentage, gradeSettings);
+    let cgpa = averageGradePoint;
+    if (calculationMode === "MANUAL" && manualFormula) {
+      const manual = applyManualFormula(manualFormula, {
+        totalObtained,
+        totalMaxMarks,
+        percentage,
+        averageGradePoint: averageGradePoint ?? 0,
+        subjectCount: examSubjects.length,
+        passedSubjects,
+        failedSubjects,
+      });
+      if (manual.cgpa != null) cgpa = manual.cgpa;
+    }
 
+    const status = failedSubjects === 0 ? "PASS" : "FAIL";
     let division = null;
     if (status === "PASS") {
       if (percentage >= 60) division = "First";
@@ -508,12 +628,17 @@ export const generateResultService = async (
       else division = "Third";
     }
 
+    const includeMarks = ["MARKS", "BOTH", "MARKS_GRADE_CGPA"].includes(resultType);
+    const includeGrade = ["GRADE", "BOTH", "MARKS_GRADE_CGPA"].includes(resultType);
+    const includeCgpa = ["CGPA", "MARKS_GRADE_CGPA"].includes(resultType);
+
     results.push({
       studentId,
-      totalMarks: Math.round(totalObtained * 100) / 100,
+      totalMarks: includeMarks ? Math.round(totalObtained * 100) / 100 : 0,
       totalMaxMarks,
       percentage: Math.round(percentage * 100) / 100,
-      grade,
+      grade: includeGrade ? grade : null,
+      cgpa: includeCgpa && cgpa != null ? Math.round(cgpa * 100) / 100 : null,
       division,
       status,
       totalSubjects: examSubjects.length,
@@ -522,19 +647,14 @@ export const generateResultService = async (
     });
   }
 
-  // Sort by percentage for ranking
   results.sort((a, b) => b.percentage - a.percentage);
-  results.forEach((r, idx) => {
-    r.rank = idx + 1;
-  });
+  results.forEach((r, idx) => { r.rank = idx + 1; });
 
-  // Delete old results
   await prisma.resultSummary.updateMany({
     where: { examId, tenantId },
     data: { isDeleted: true },
   });
 
-  // Save new results
   for (const r of results) {
     await prisma.resultSummary.create({
       data: {
@@ -545,6 +665,7 @@ export const generateResultService = async (
         totalMaxMarks: r.totalMaxMarks,
         percentage: r.percentage,
         grade: r.grade,
+        cgpa: r.cgpa,
         rank: r.rank,
         division: r.division,
         status: r.status,
@@ -555,7 +676,6 @@ export const generateResultService = async (
     });
   }
 
-  // Mark exam as published
   await prisma.exam.update({
     where: { id: examId },
     data: { isPublished: true },
@@ -591,7 +711,7 @@ export const getResultsService = async (
     return {
       ...r,
       studentName: student
-        ? `${student.firstName} ${student.lastName}`
+        ? formatStudentName(student.firstName, student.lastName)
         : "Unknown",
       admissionNo: student?.admissionNo || "",
     };
@@ -706,7 +826,7 @@ export const getReportCardService = async (
     },
     student: {
       id: student.id,
-      name: `${student.firstName} ${student.lastName}`,
+      name: formatStudentName(student.firstName, student.lastName),
       admissionNo: student.admissionNo,
       fatherName: student.fatherName,
       className: classInfo?.name || "",
@@ -725,6 +845,7 @@ export const getReportCardService = async (
           totalMaxMarks: resultSummary.totalMaxMarks,
           percentage: resultSummary.percentage,
           grade: resultSummary.grade,
+          cgpa: resultSummary.cgpa ?? null,
           rank: resultSummary.rank,
           division: resultSummary.division,
           status: resultSummary.status,
@@ -970,7 +1091,7 @@ export const getConsolidatedReportService = async (
       phone: tenant.phone,
     },
     student: {
-      name: `${student.firstName} ${student.lastName}`,
+      name: formatStudentName(student.firstName, student.lastName),
       admissionNo: student.admissionNo,
       className: classInfo?.name || "",
       fatherName: student.fatherName,
@@ -1281,7 +1402,7 @@ export const getSeatingByScheduleService = async (
     return {
       seatNumber: seat.seatNo,
       studentId: seat.studentId,
-      studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "",
+      studentName: student ? formatStudentName((student as any).firstName, (student as any).lastName) : "",
       fatherName: (student as any)?.fatherName || "",
       roomId: seat.roomId,
       roomName: roomNameMap[seat.roomId] || "",
@@ -1436,7 +1557,7 @@ export const getAdmitCardService = async (
       section: sec ? { name: sec.name } : null,
     },
     student: {
-      name: `${student.firstName} ${student.lastName}`,
+      name: formatStudentName(student.firstName, student.lastName),
       rollNo: admitCard.rollNo,
       admissionNo: student.admissionNo || "",
       fatherName: student.fatherName || "",
@@ -1494,7 +1615,7 @@ export const getAdmitCardsService = async (
       ...ac,
       student: {
         id: (student as any)?.id || "",
-        name: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+        name: student ? formatStudentName((student as any).firstName, (student as any).lastName) : "Unknown",
         rollNo: ac.rollNo,
         photoUrl: (student as any)?.photoUrl || "",
         fatherName: (student as any)?.fatherName || "",
@@ -1687,7 +1808,7 @@ export const getExamReportsService = async (
       const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
       return results.map((r) => {
         const s = students.find((st: any) => st.id === r.studentId);
-        return { ...r, studentName: s ? `${(s as any).firstName} ${(s as any).lastName}` : "", admissionNo: (s as any)?.admissionNo || "" };
+        return { ...r, studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "", admissionNo: (s as any)?.admissionNo || "" };
       });
     }
 
@@ -1702,7 +1823,7 @@ export const getExamReportsService = async (
       return results.map((r, i) => {
         const s = students.find((st: any) => st.id === r.studentId);
         const { rank: _oldRank, ...rest } = r;
-        return { ...rest, rank: i + 1, studentName: s ? `${(s as any).firstName} ${(s as any).lastName}` : "", admissionNo: (s as any)?.admissionNo || "" };
+        return { ...rest, rank: i + 1, studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "", admissionNo: (s as any)?.admissionNo || "" };
       });
     }
 
@@ -1760,7 +1881,7 @@ export const getExamReportsService = async (
         const absentCount = studentMarks.filter((m) => m.isAbsent).length;
         const presentCount = examSubjects.length - absentCount;
         return {
-          studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+          studentName: student ? formatStudentName((student as any).firstName, (student as any).lastName) : "Unknown",
           admissionNo: (student as any)?.admissionNo || "",
           totalSubjects: examSubjects.length,
           present: presentCount,
@@ -1784,7 +1905,7 @@ export const getExamReportsService = async (
         const student = students.find((s: any) => s.id === m.studentId);
         const sub = subjects.find((s: any) => s.id === m.subjectId);
         return {
-          studentName: student ? `${(student as any).firstName} ${(student as any).lastName}` : "Unknown",
+          studentName: student ? formatStudentName((student as any).firstName, (student as any).lastName) : "Unknown",
           admissionNo: (student as any)?.admissionNo || "",
           subjectName: (sub as any)?.name || "Unknown",
           marksObtained: m.marksObtained,
@@ -2173,7 +2294,7 @@ export const generateCustomSeatingService = async (
   // Extra safety: check for duplicate student names (debug)
   const nameCount: Record<string, number> = {};
   students.forEach((s: any) => {
-    const name = s.firstName + " " + s.lastName;
+    const name = formatStudentName(s.firstName, s.lastName);
     nameCount[name] = (nameCount[name] || 0) + 1;
   });
   const dupes = Object.entries(nameCount).filter(([_, c]) => c > 1);

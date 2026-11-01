@@ -38,6 +38,8 @@ export interface MarksInput {
   subjectId: string;
   marksObtained: number;
   isAbsent?: boolean;
+  // Attendance status: "PRESENT" | "ABSENT" | "LEAVE" | "MEDICAL"
+  status?: string;
 }
 
 export interface EnterMarksInput {

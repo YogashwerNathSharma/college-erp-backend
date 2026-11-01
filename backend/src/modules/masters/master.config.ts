@@ -16,6 +16,7 @@ export interface MasterField {
   lookupUrl?: string;       // API endpoint for lookup type (e.g., '/api/academic')
   lookupLabelField?: string; // Field to use as label (default: 'name')
   lookupValueField?: string; // Field to use as value (default: 'id')
+  multiple?: boolean;
 }
 
 export interface MasterModelConfig {
@@ -105,7 +106,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
           { name: 'branchId', label: 'Branch', type: 'text' },
           { name: 'address', label: 'Address', type: 'textarea' },
           { name: 'capacity', label: 'Capacity', type: 'number' },
-          { name: 'facilities', label: 'Facilities (comma-separated)', type: 'text' },
+          { name: 'facilities', label: 'Facilities (comma-separated)', type: 'array' },
         ],
       },
       {
@@ -233,9 +234,9 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         searchFields: ['name'],
         fields: [
           { name: 'name', label: 'Group Name', type: 'text', required: true },
-          { name: 'classId', label: 'Class (ID)', type: 'text' },
-          { name: 'streamId', label: 'Stream (ID)', type: 'text' },
-          { name: 'subjects', label: 'Subject IDs (comma-separated)', type: 'text' },
+          { name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/stream-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'subjects', label: 'Subjects', type: 'array', lookupUrl: '/api/subjects', lookupLabelField: 'name', lookupValueField: 'id' },
         ],
       },
       {
@@ -249,7 +250,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         fields: [
           { name: 'subjectId', label: 'Subject (ID)', type: 'text', required: true },
           { name: 'classId', label: 'Class (ID)', type: 'text', required: true },
-          { name: 'streamId', label: 'Stream (ID)', type: 'text' },
+          { name: 'streamId', label: 'Stream', type: 'lookup', lookupUrl: '/api/masters/stream-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },
           { name: 'maxStudents', label: 'Max Students', type: 'number' },
         ],
       },
@@ -352,7 +353,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
             { label: 'Thursday', value: '4' }, { label: 'Friday', value: '5' }, { label: 'Saturday', value: '6' },
           ]},
           { name: 'periodId', label: 'Period (ID)', type: 'text', required: true },
-          { name: 'classId', label: 'Class (ID)', type: 'text' },
+          { name: 'classId', label: 'Class', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id' },
           { name: 'sectionId', label: 'Section (ID)', type: 'text' },
           { name: 'subjectId', label: 'Subject (ID)', type: 'text' },
           { name: 'teacherId', label: 'Teacher (ID)', type: 'text' },
@@ -525,7 +526,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         fields: [
           { name: 'name', label: 'Department Name', type: 'text', required: true },
           { name: 'code', label: 'Code', type: 'text' },
-          { name: 'hodId', label: 'HOD (User ID)', type: 'text' },
+          { name: 'hodId', label: 'HOD / Teacher', type: 'lookup', lookupUrl: '/api/teacher', lookupLabelField: 'name', lookupValueField: 'id' },
           { name: 'description', label: 'Description', type: 'textarea' },
         ],
       },
@@ -661,7 +662,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         fields: [
           { name: 'name', label: 'Group Name', type: 'text', required: true },
           { name: 'description', label: 'Description', type: 'textarea' },
-          { name: 'classes', label: 'Applicable Classes (comma-separated IDs)', type: 'text' },
+          { name: 'classes', label: 'Applicable Classes', type: 'lookup', lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id', multiple: true },
         ],
       },
       {
@@ -805,8 +806,17 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         searchFields: ['name'],
         fields: [
           { name: 'name', label: 'Result Type', type: 'select', required: true, options: [
-            { label: 'Marks', value: 'MARKS' }, { label: 'Grade', value: 'GRADE' }, { label: 'CGPA', value: 'CGPA' },
+            { label: 'Marks', value: 'MARKS' },
+            { label: 'Grade', value: 'GRADE' },
+            { label: 'CGPA', value: 'CGPA' },
+            { label: 'Marks + Grade', value: 'BOTH' },
+            { label: 'Marks + Grade + CGPA', value: 'MARKS_GRADE_CGPA' },
           ]},
+          { name: 'calculationMode', label: 'Calculation Mode', type: 'select', options: [
+            { label: 'Automatic', value: 'AUTOMATIC' },
+            { label: 'Manual Formula', value: 'MANUAL' },
+          ]},
+          { name: 'formula', label: 'Formula (optional for Manual mode)', type: 'textarea', placeholder: 'Example: percentage=(totalObtained/totalMaxMarks)*100; cgpa=averageGradePoint' },
           { name: 'formula', label: 'Formula', type: 'text' },
         ],
       },
@@ -829,7 +839,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
       {
         key: 'assessment-master',
         label: 'Assessment Master',
-        model: 'Assessment',
+        model: 'AssessmentMaster',
         icon: 'CheckSquare',
         description: 'Assessment types',
         requiredFields: ['name', 'type', 'maxScore'],
@@ -982,12 +992,12 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         model: 'Rack',
         icon: 'Server',
         description: 'Library racks',
-        requiredFields: ['name'],
+        requiredFields: ['name', 'location', 'capacity'],
         searchFields: ['name', 'location'],
         fields: [
           { name: 'name', label: 'Rack Name/Number', type: 'text', required: true },
-          { name: 'location', label: 'Location', type: 'text' },
-          { name: 'capacity', label: 'Capacity (books)', type: 'number' },
+          { name: 'location', label: 'Location', type: 'text', required: true },
+          { name: 'capacity', label: 'Capacity (books)', type: 'number', required: true },
         ],
       },
       {
@@ -996,12 +1006,12 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         model: 'LibraryShelf',
         icon: 'Rows3',
         description: 'Shelves within racks',
-        requiredFields: ['name', 'rackId'],
+        requiredFields: ['name', 'rackId', 'level'],
         searchFields: ['name'],
         fields: [
           { name: 'name', label: 'Shelf Name', type: 'text', required: true },
-          { name: 'rackId', label: 'Rack (ID)', type: 'text', required: true },
-          { name: 'level', label: 'Level Number', type: 'number' },
+          { name: 'rackId', label: 'Rack No.', type: 'lookup', required: true, lookupUrl: '/api/masters/rack-master/dropdown', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'level', label: 'Level Number', type: 'number', required: true },
         ],
       },
       {
@@ -1041,7 +1051,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         searchFields: ['name'],
         fields: [
           { name: 'name', label: 'Block Name', type: 'text', required: true },
-          { name: 'hostelId', label: 'Hostel (ID)', type: 'text', required: true },
+          { name: 'hostelId', label: 'Hostel Name', type: 'lookup', required: true, lookupUrl: '/api/hostel/hostels', lookupLabelField: 'name', lookupValueField: 'id' },
           { name: 'floors', label: 'Number of Floors', type: 'number' },
         ],
       },
@@ -1273,12 +1283,12 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         model: 'Store',
         icon: 'Store',
         description: 'Material stores',
-        requiredFields: ['name'],
+        requiredFields: ['name', 'location', 'capacity'],
         searchFields: ['name', 'location'],
         fields: [
           { name: 'name', label: 'Store Name', type: 'text', required: true },
           { name: 'warehouseId', label: 'Warehouse (ID)', type: 'text' },
-          { name: 'location', label: 'Location', type: 'text' },
+          { name: 'location', label: 'Location', type: 'text', required: true },
           { name: 'managerId', label: 'Manager (User ID)', type: 'text' },
         ],
       },
@@ -1778,12 +1788,12 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         model: 'Venue',
         icon: 'MapPin',
         description: 'Event venues',
-        requiredFields: ['name'],
+        requiredFields: ['name', 'location', 'capacity'],
         searchFields: ['name', 'location'],
         fields: [
           { name: 'name', label: 'Venue Name', type: 'text', required: true },
           { name: 'capacity', label: 'Capacity', type: 'number' },
-          { name: 'location', label: 'Location', type: 'text' },
+          { name: 'location', label: 'Location', type: 'text', required: true },
           { name: 'facilities', label: 'Facilities (comma-separated)', type: 'text' },
         ],
       },
@@ -1854,7 +1864,7 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
         searchFields: ['name', 'location'],
         fields: [
           { name: 'name', label: 'Gate Name', type: 'text', required: true },
-          { name: 'location', label: 'Location', type: 'text' },
+          { name: 'location', label: 'Location', type: 'text', required: true },
           { name: 'type', label: 'Type', type: 'select', required: true, options: [
             { label: 'Entry', value: 'ENTRY' }, { label: 'Exit', value: 'EXIT' }, { label: 'Both', value: 'BOTH' },
           ]},

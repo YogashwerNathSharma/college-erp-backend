@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   FileText,
 } from "lucide-react";
+import { getFullUrl } from "../../utils/url";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -353,7 +354,7 @@ export function RecentStudentsWidget({ students, onViewAll, onStudentClick }: Re
                     <div className="flex items-center gap-3">
                       {student.photoUrl ? (
                         <img
-                          src={student.photoUrl}
+                          src={getFullUrl(student.photoUrl)}
                           alt={student.name}
                           className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-600"
                         />
@@ -446,7 +447,7 @@ export function BirthdayWidget({ students, onSendWishes }: BirthdayWidgetProps) 
             >
               {student.photoUrl ? (
                 <img
-                  src={student.photoUrl}
+                  src={getFullUrl(student.photoUrl)}
                   alt={student.name}
                   className="w-10 h-10 rounded-full object-cover border-2 border-amber-200 dark:border-amber-700"
                 />

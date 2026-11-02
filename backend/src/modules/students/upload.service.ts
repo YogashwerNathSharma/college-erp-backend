@@ -35,7 +35,17 @@ export const uploadStudentPhoto = async (
   // Upload to Cloudinary OR save locally if Cloudinary not configured
   let photoUrl: string;
 
-  const useCloudinary = process.env.NODE_ENV === "production" && process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
+  // Use Cloudinary whenever it is CONFIGURED — do NOT also require
+  // NODE_ENV === "production". The tenant logo upload (tenant.controller.ts)
+  // always uses Cloudinary and works on Render; student photos previously had
+  // this extra NODE_ENV gate, so if NODE_ENV wasn't exactly "production" they
+  // fell back to local disk and got wiped on every Render deploy/restart.
+  // Matching the logo's behaviour keeps photos persistent everywhere.
+  const useCloudinary = !!(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
 
   if (useCloudinary) {
     // Cloudinary configured — upload there

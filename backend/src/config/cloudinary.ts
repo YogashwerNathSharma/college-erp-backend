@@ -16,7 +16,11 @@ cloudinary.config({
  */
 export async function uploadToCloudinary(
   buffer: Buffer,
-  folder: string
+  folder: string,
+  // When true (default), the image is resized + compressed on upload so only a
+  // small optimized copy is stored — keeps Cloudinary storage usage low. Pass
+  // false for non-image files (e.g. PDFs/documents) that must stay original.
+  optimizeImage: boolean = true
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     // Timeout to prevent hanging forever
@@ -28,6 +32,18 @@ export async function uploadToCloudinary(
       {
         folder: `college-erp/${folder}`,
         resource_type: "auto",
+        // Image optimization — only applied to images (resource_type auto
+        // detects). Caps dimensions and auto-compresses so each photo is only
+        // a few tens of KB instead of multiple MB.
+        ...(optimizeImage
+          ? {
+              transformation: [
+                { width: 500, height: 500, crop: "limit" }, // never upscale; cap at 500x500
+                { quality: "auto:good" },                    // balanced/average quality compression
+                { fetch_format: "auto" },                    // serve webp/avif where supported
+              ],
+            }
+          : {}),
       },
       (error, result) => {
         clearTimeout(timer); // Cancel timeout on completion

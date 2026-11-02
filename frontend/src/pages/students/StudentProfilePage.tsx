@@ -430,7 +430,7 @@ const StudentProfilePage: React.FC = () => {
                   <div className="w-32 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center overflow-hidden shadow-md">
                     {studentProfile.profilePhoto ? (
                       <img
-                        src={studentProfile.profilePhoto}
+                        src={getFullUrl(studentProfile.profilePhoto)}
                         alt={studentProfile.firstName}
                         className="w-full h-full object-cover"
                       />
@@ -799,7 +799,7 @@ const StudentProfilePage: React.FC = () => {
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
               {studentProfile.profilePhoto && (
                 <img
-                  src={studentProfile.profilePhoto}
+                  src={getFullUrl(studentProfile.profilePhoto)}
                   alt={studentProfile.firstName}
                   className="print-student-photo"
                 />

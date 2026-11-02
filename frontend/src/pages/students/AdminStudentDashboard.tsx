@@ -407,7 +407,7 @@ export default function AdminStudentDashboard() {
                       {doubled.map((s, i) => (
                         <div key={`${s.id}-${i}`} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-pink-50 dark:hover:bg-pink-950/30 cursor-pointer transition-colors" onClick={() => navigate(`/students/${s.id}`)}>
                           <div className="w-7 h-7 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center text-pink-600 text-[10px] font-bold flex-shrink-0">
-                            {s.photoUrl ? <img src={s.photoUrl} className="w-7 h-7 rounded-full object-cover" /> : s.name.charAt(0)}
+                            {s.photoUrl ? <img src={getFullUrl(s.photoUrl)} className="w-7 h-7 rounded-full object-cover" /> : s.name.charAt(0)}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[11px] font-medium text-slate-800 dark:text-white truncate">{s.name}</p>

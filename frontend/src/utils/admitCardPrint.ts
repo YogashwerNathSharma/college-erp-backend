@@ -12,6 +12,23 @@
 
 import { getFullUrl } from "./url";
 
+// Safely format a date that may be ISO, a Date, or an already-formatted string.
+const safeDate = (val?: string): string => {
+  if (!val) return "";
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d.toLocaleDateString("en-IN");
+  return String(val);
+};
+
+// Initials from a name, used for the photo fallback.
+const nameInitials = (name?: string): string =>
+  (name || "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => (w[0] || "").toUpperCase())
+    .join("");
+
 // Full detail shape returned by `/api/exam/:examId/admit-card/:studentId`
 // and (as an array) by `/api/exam/admit-cards/bulk`.
 export interface AdmitCardDetail {
@@ -122,12 +139,13 @@ export const ADMIT_CARD_PRINT_STYLES = buildStyles(DEFAULT_LAYOUT);
 export const renderAdmitCardHTML = (data: AdmitCardDetail): string => {
   const logoUrl = getFullUrl(data.tenant?.logoUrl);
   const photoUrl = getFullUrl(data.student?.photoUrl);
+  const photoFallback = nameInitials(data.student?.name) || "Photo";
   const scheduleRows = (data.schedule || [])
     .map(
       (s) => `
       <tr>
         <td>${s.subject?.name || ""}</td>
-        <td>${s.examDate ? new Date(s.examDate).toLocaleDateString("en-IN") : ""}</td>
+        <td>${safeDate(s.examDate)}</td>
         <td>${s.startTime || ""} – ${s.endTime || ""}</td>
       </tr>`
     )
@@ -160,11 +178,11 @@ export const renderAdmitCardHTML = (data: AdmitCardDetail): string => {
           </tr>
           <tr>
             <td class="lbl">Class</td><td>: ${data.student?.class?.name || data.exam?.class?.name || ""}${data.student?.section?.name ? " - " + data.student.section.name : ""}</td>
-            <td class="lbl" style="padding-left:8px">DOB</td><td>: ${data.student?.dob ? new Date(data.student.dob).toLocaleDateString("en-IN") : ""}</td>
+            <td class="lbl" style="padding-left:8px">DOB</td><td>: ${safeDate(data.student?.dob)}</td>
           </tr>
           ${data.allottedRoom ? `<tr><td class="lbl">Room</td><td colspan="3">: ${data.allottedRoom}${data.seatNo ? " (Seat: " + data.seatNo + ")" : ""}</td></tr>` : ""}
         </table>
-        <div class="photo">${photoUrl ? `<img src="${photoUrl}" alt="photo" />` : "Photo"}</div>
+        <div class="photo">${photoUrl ? `<img src="${photoUrl}" alt="photo" onerror="this.style.display='none';this.parentNode.innerText=this.getAttribute('data-fb');" data-fb="${photoFallback}" />` : photoFallback}</div>
       </div>
       ${
         scheduleRows

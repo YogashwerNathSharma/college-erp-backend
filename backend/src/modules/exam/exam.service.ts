@@ -1571,7 +1571,7 @@ export const getAdmitCardService = async (
       admissionNo: student.admissionNo || "",
       fatherName: student.fatherName || "",
       motherName: student.motherName || "",
-      dob: student.dob ? new Date(student.dob).toLocaleDateString("en-IN") : "",
+      dob: student.dob ? new Date(student.dob).toISOString() : "",
       photoUrl: student.photoUrl || "",
       class: { name: cls?.name || "" },
       section: sec ? { name: sec.name } : null,

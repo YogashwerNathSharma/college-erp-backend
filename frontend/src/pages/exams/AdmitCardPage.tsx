@@ -239,9 +239,25 @@ const AdmitCardPage: React.FC = () => {
   // ─────────────────────────────────────────────────
   // Modal preview (JSX)
   // ─────────────────────────────────────────────────
+  // Safely format a date that may arrive as an ISO string, a Date, or an
+  // already-formatted "dd/mm/yyyy" string. Never shows "Invalid Date".
+  const safeDate = (val?: string): string => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-IN');
+    // Already a human string (e.g. "02/11/2026") — show as-is.
+    return String(val);
+  };
+
   const renderAdmitCardJSX = (data: AdmitCardDetail) => {
     const logoUrl = getFullUrl(data.tenant?.logoUrl);
     const photoUrl = getFullUrl(data.student?.photoUrl);
+    const initials = (data.student?.name || '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join('');
     return (
       <div className="border-2 border-gray-300 rounded-xl p-5 bg-white text-sm">
         {/* School Header — Logo Left, Name Center, Right spacer for symmetry */}
@@ -280,7 +296,7 @@ const AdmitCardPage: React.FC = () => {
                 <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">Class:</td>
                 <td className="font-medium py-0.5 pr-4">{`${data.student?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}`}</td>
                 <td className="text-gray-500 pr-2 py-0.5 whitespace-nowrap">DOB:</td>
-                <td className="font-medium py-0.5">{data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : ''}</td>
+                <td className="font-medium py-0.5">{safeDate(data.student?.dob)}</td>
               </tr>
               {data.allottedRoom && (
                 <tr>
@@ -290,8 +306,28 @@ const AdmitCardPage: React.FC = () => {
               )}
             </tbody>
           </table>
-          <div className="w-20 h-24 border rounded flex items-center justify-center bg-gray-50 text-xs text-gray-400 flex-shrink-0">
-            {photoUrl ? <img src={photoUrl} className="w-full h-full object-cover" alt="photo" /> : 'Photo'}
+          <div className="w-20 h-24 border rounded flex items-center justify-center bg-gray-50 text-lg font-semibold text-gray-400 flex-shrink-0 overflow-hidden">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                className="w-full h-full object-cover"
+                alt="photo"
+                onError={(e) => {
+                  // Hide the broken image and reveal the initials fallback behind it.
+                  const img = e.currentTarget;
+                  img.style.display = 'none';
+                  const parent = img.parentElement;
+                  if (parent && !parent.querySelector('.photo-fallback')) {
+                    const span = document.createElement('span');
+                    span.className = 'photo-fallback';
+                    span.textContent = initials || 'Photo';
+                    parent.appendChild(span);
+                  }
+                }}
+              />
+            ) : (
+              <span className="photo-fallback">{initials || 'Photo'}</span>
+            )}
           </div>
         </div>
         {data.schedule?.length > 0 && (
@@ -307,7 +343,7 @@ const AdmitCardPage: React.FC = () => {
               {data.schedule.map((s, i) => (
                 <tr key={i} className="border-b">
                   <td className="p-1.5">{s.subject?.name}</td>
-                  <td className="p-1.5">{s.examDate ? new Date(s.examDate).toLocaleDateString('en-IN') : ''}</td>
+                  <td className="p-1.5">{safeDate(s.examDate)}</td>
                   <td className="p-1.5">{s.startTime} – {s.endTime}</td>
                 </tr>
               ))}

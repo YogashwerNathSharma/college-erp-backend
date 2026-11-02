@@ -4,6 +4,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { getPrintSignatureHTML } from "../../components/PrintSignature";
 import { getFullUrl } from "../../utils/url";
+import { printAdmitCards, AdmitCardDetail } from "../../utils/admitCardPrint";
 import {
   ClipboardList, Calendar, CalendarDays, BookOpen, Users, UserCheck, UserX,
   BarChart3, FileText, Award, Search, Printer, Download, Eye, ArrowLeft,
@@ -33,7 +34,9 @@ interface ReportCategory {
 interface Exam {
   id: string;
   name: string;
+  classId?: string;
   className?: string;
+  session?: string;
   status?: string;
 }
 
@@ -160,6 +163,18 @@ const REPORT_API_MAP: Record<string, string> = {
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Columns that must NEVER appear in Preview / Print / CSV output — these are
+// raw database identifiers and internal flags. Users should see resolved
+// values (className, session) instead of IDs like classId / academicYearId.
+const HIDDEN_COLUMNS = [
+  "id", "_id", "studentId", "enrollmentId", "examId", "tenantId",
+  "classId", "sectionId", "academicYearId", "subjectIds",
+  "createdAt", "updatedAt", "deletedAt", "isDeleted", "isActive",
+];
+
+const getVisibleColumns = (row: any): string[] =>
+  Object.keys(row || {}).filter((k) => !HIDDEN_COLUMNS.includes(k));
+
 const ExamReports = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -171,6 +186,14 @@ const ExamReports = () => {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<any>(null);
+
+  // ─── Column customization (which columns to show + their order) ──────────
+  // availableColumns = every non-ID column present in the loaded report.
+  // reportColumns    = the user's chosen columns IN DISPLAY ORDER. A column
+  //                    not present here is hidden from Preview / Print / CSV.
+  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [reportColumns, setReportColumns] = useState<string[]>([]);
+  const [showColumnPanel, setShowColumnPanel] = useState(false);
 
   // Filters
   const [exams, setExams] = useState<Exam[]>([]);
@@ -218,6 +241,18 @@ const ExamReports = () => {
     fetchData();
   }, []);
 
+  // When an exam is selected, auto-select that exam's class so the Section
+  // dropdown lists only that class's sections. Clearing the exam leaves the
+  // class filter as-is (user can still pick "All Classes" manually).
+  useEffect(() => {
+    if (!selectedExam) return;
+    const ex = exams.find((e) => e.id === selectedExam);
+    const examClassId = ex?.classId || "";
+    if (examClassId && examClassId !== selectedClass) {
+      setSelectedClass(examClassId);
+    }
+  }, [selectedExam, exams]);
+
   // Fetch sections when class changes
   useEffect(() => {
     if (selectedClass) {
@@ -229,6 +264,53 @@ const ExamReports = () => {
       setSections([]);
     }
   }, [selectedClass]);
+
+  // Initialise column selection whenever a fresh report is generated.
+  useEffect(() => {
+    if (!reportData) { setAvailableColumns([]); setReportColumns([]); return; }
+    const d = Array.isArray(reportData)
+      ? reportData
+      : reportData.students || reportData.records || reportData.data || [];
+    if (!Array.isArray(d) || d.length === 0) { setAvailableColumns([]); setReportColumns([]); return; }
+    const cols = getVisibleColumns(d[0]);
+    setAvailableColumns(cols);
+    setReportColumns(cols); // default: show all, natural order
+    setShowColumnPanel(false);
+  }, [reportData]);
+
+  // ─── Column helpers ──────────────────────────────────────────────────────
+  // Active columns = user's chosen order, limited to what actually exists in
+  // the data. Falls back to all visible columns if nothing is selected yet.
+  const getActiveColumns = (data: any[]): string[] => {
+    const all = getVisibleColumns(data[0]);
+    const chosen = reportColumns.filter((c) => all.includes(c));
+    return chosen.length ? chosen : all;
+  };
+
+  const toggleColumn = (col: string) => {
+    setReportColumns((prev) =>
+      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
+    );
+  };
+
+  const moveColumn = (col: string, dir: -1 | 1) => {
+    setReportColumns((prev) => {
+      const i = prev.indexOf(col);
+      if (i < 0) return prev;
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const arr = [...prev];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return arr;
+    });
+  };
+
+  const selectAllColumns = () => setReportColumns(availableColumns);
+  const clearAllColumns = () => setReportColumns([]);
+
+  // Pretty label for a raw column key (e.g. "totalMaxMarks" -> "Total Max Marks")
+  const prettyCol = (c: string) =>
+    c.replace(/([A-Z])/g, " $1").replace(/_/g, " ").replace(/\s+/g, " ").trim();
 
   // ─── Search & Group ────────────────────────────────────────────
   const filteredReports = useMemo(() => {
@@ -274,12 +356,41 @@ const ExamReports = () => {
       const examListReports = ["exam-list", "exam-schedule", "date-sheet", "subject-schedule", "invigilator-duty"];
 
       let res;
+      let data: any;
 
-      if (examListReports.includes(selectedReport)) {
+      if (selectedReport === "admit-card") {
+        // Admit Card Register → fetch real admit-card data (not the generic
+        // result API, which is empty until results are generated). We flatten
+        // each admit card into a table row for the preview; Print uses the
+        // shared admit-card printer.
+        if (!selectedExam) {
+          toast.error("Please select an exam");
+          setLoading(false);
+          return;
+        }
+        const examName = exams.find((e) => e.id === selectedExam)?.name || "";
+        const bulkRes = await axios.get(getFullUrl("/api/exam/admit-cards/bulk"), {
+          params: { examName, ...(selectedClass ? { classId: selectedClass } : {}) },
+        });
+        const cards = bulkRes.data?.data || bulkRes.data || [];
+        data = (Array.isArray(cards) ? cards : []).map((c: any) => ({
+          studentId: c.student?.id || c.studentId || "",
+          studentName: c.student?.name || "",
+          admissionNo: c.student?.admissionNo || "",
+          rollNo: c.student?.rollNo || "",
+          className: c.student?.class?.name || c.exam?.class?.name || "",
+          sectionId: c.student?.section?.id || null,
+          sectionName: c.student?.section?.name || "",
+          fatherName: c.student?.fatherName || "",
+          subjects: Array.isArray(c.schedule) ? c.schedule.length : 0,
+          room: c.allottedRoom || "",
+        }));
+      } else if (examListReports.includes(selectedReport)) {
         // Fetch all exams directly
         res = await axios.get(getFullUrl("/api/exam"), {
           params: { ...(selectedClass ? { classId: selectedClass } : {}) },
         });
+        data = res.data?.data || res.data?.exams || res.data;
       } else {
         // These reports need a specific exam selected
         if (!selectedExam) {
@@ -291,10 +402,42 @@ const ExamReports = () => {
         res = await axios.get(getFullUrl("/api/exam/reports"), {
           params: { examId: selectedExam, reportType },
         });
+        data = res.data?.data || res.data?.exams || res.data;
       }
 
-      let data = res.data?.data || res.data?.exams || res.data;
       if (!data) data = [];
+
+      // Debug: surface what the API returned + section matching (helps diagnose
+      // "blank report" issues). Remove once section filtering is confirmed.
+      if (Array.isArray(data)) {
+        const selSecName = sections.find((sec) => sec.id === selectedSection)?.name || "";
+        console.log("[ExamReports] fetched records:", data.length,
+          "| selectedSection:", selectedSection, `(${selSecName})`,
+          "| sample record sectionId/sectionName:",
+          data[0]?.sectionId, "/", data[0]?.sectionName);
+      }
+
+      // Section filter — report records carry sectionId / sectionName (resolved
+      // from the student's enrollment on the backend). When a section is
+      // chosen, keep only that section's students.
+      // IMPORTANT: this is a *non-destructive* filter — if it would match
+      // nothing (e.g. the backend hasn't been rebuilt and records carry no
+      // section info, or no student is mapped to this section), we fall back
+      // to the full list so the report is never silently blank.
+      if (Array.isArray(data) && selectedSection) {
+        const selSecName =
+          sections.find((sec) => sec.id === selectedSection)?.name || "";
+        const filtered = data.filter(
+          (r: any) =>
+            r.sectionId === selectedSection ||
+            (selSecName &&
+              String(r.sectionName || "").toLowerCase() ===
+                selSecName.toLowerCase())
+        );
+        if (filtered.length > 0) {
+          data = filtered;
+        }
+      }
 
       // Client-side filtering for specific reports
       if (Array.isArray(data)) {
@@ -335,7 +478,15 @@ const ExamReports = () => {
       return <div className="p-8 text-center text-gray-400 dark:text-gray-500">No records found for the selected filters</div>;
     }
 
-    const columns = Object.keys(data[0] || {}).filter((k) => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted", "examId", "tenantId", "classId", "sectionId", "academicYearId", "deletedAt", "isActive", "subjectIds"].includes(k));
+    const columns = getActiveColumns(data);
+
+    if (reportColumns.length === 0 && availableColumns.length > 0) {
+      return (
+        <div className="p-8 text-center text-sm text-gray-400 dark:text-gray-500">
+          No columns selected. Open <strong>Columns</strong> and tick the fields you want to show.
+        </div>
+      );
+    }
 
     return (
       <div className="overflow-x-auto">
@@ -345,7 +496,7 @@ const ExamReports = () => {
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">S.No</th>
               {columns.map((col) => (
                 <th key={col} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase whitespace-nowrap">
-                  {col.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}
+                  {prettyCol(col)}
                 </th>
               ))}
             </tr>
@@ -391,12 +542,86 @@ const ExamReports = () => {
   };
 
   // ─── Print ─────────────────────────────────────────────────────
+  // ─── Admit Card Register → real admit-card print (shared with Admit Card page) ──
+  // Fetches full admit-card data for the selected exam (and class/section if
+  // chosen) via the bulk API, then prints using the SHARED printer so the
+  // layout matches the Admit Card page exactly. Falls back to per-student
+  // fetches if the bulk endpoint fails.
+  const printAdmitCardRegister = async () => {
+    const examName = exams.find((e) => e.id === selectedExam)?.name || "";
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+    const loadingToast = toast.loading("Loading admit cards…");
+    try {
+      let allCards: AdmitCardDetail[] = [];
+      try {
+        const res = await axios.get(getFullUrl("/api/exam/admit-cards/bulk"), {
+          headers,
+          params: {
+            examName,
+            ...(selectedClass ? { classId: selectedClass } : {}),
+          },
+          timeout: 30000,
+        });
+        allCards = res.data?.data || res.data || [];
+      } catch (bulkErr: any) {
+        // Fallback: fetch each student's admit card individually from the
+        // currently-loaded report rows (they carry studentId).
+        const rows = Array.isArray(reportData)
+          ? reportData
+          : reportData?.students || reportData?.records || reportData?.data || [];
+        const toFetch = (Array.isArray(rows) ? rows : []).slice(0, 50);
+        const results = await Promise.allSettled(
+          toFetch.map((r: any) =>
+            axios
+              .get(getFullUrl(`/api/exam/${selectedExam}/admit-card/${r.studentId || r.id}`), { headers })
+              .then((x) => x.data?.data || x.data)
+          )
+        );
+        allCards = results
+          .filter((r): r is PromiseFulfilledResult<AdmitCardDetail> => r.status === "fulfilled" && !!r.value)
+          .map((r) => r.value);
+      }
+
+      // Section filter (non-destructive — only applied if it matches something).
+      if (selectedSection) {
+        const selSecName = sections.find((sec) => sec.id === selectedSection)?.name || "";
+        const filtered = allCards.filter(
+          (c: any) =>
+            c.student?.section?.id === selectedSection ||
+            (selSecName &&
+              String(c.student?.section?.name || "").toLowerCase() === selSecName.toLowerCase())
+        );
+        if (filtered.length > 0) allCards = filtered;
+      }
+
+      toast.dismiss(loadingToast);
+      if (allCards.length === 0) {
+        toast.error("No admit card data found. Generate admit cards first.");
+        return;
+      }
+      printAdmitCards(allCards, `Admit Cards — ${examName}`, (msg) => toast.error(msg));
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to load admit cards");
+    }
+  };
+
   const handlePrint = async () => {
     if (!reportData) return;
     const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
     if (!Array.isArray(data) || data.length === 0) { toast.error("No data to print"); return; }
 
-    const columns = Object.keys(data[0] || {}).filter((k) => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted", "examId"].includes(k));
+    // Admit Card Register → print real admit cards using the SHARED printer so
+    // the output is identical to the Admit Card page (single / class / bulk).
+    if (selectedReport === "admit-card") {
+      await printAdmitCardRegister();
+      return;
+    }
+
+    if (reportColumns.length === 0 && availableColumns.length > 0) { toast.error("Select at least one column to print"); return; }
+
+    const columns = getActiveColumns(data);
     const signatureHTML = await getPrintSignatureHTML();
     const logoUrl = tenant.logoUrl || "";
     const schoolName = tenant.name || "School Name";
@@ -405,7 +630,19 @@ const ExamReports = () => {
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
-    const examName = exams.find((e) => e.id === selectedExam)?.name || "";
+    const selEx = exams.find((e) => e.id === selectedExam);
+    const examName = selEx?.name || "";
+    const sessionLabel = selEx?.session || "";
+    // Exam line, e.g. "FA 1 EXAMINATION (2026-27)"
+    const examLine = (examName ? `${examName} EXAMINATION` : getReportTitle())
+      + (sessionLabel ? ` (${sessionLabel})` : "");
+    // Class / Section / Students line
+    const className =
+      (selEx?.className && selEx.className !== "N/A" ? selEx.className : "")
+      || classes.find((c) => c.id === selectedClass)?.name || "";
+    const sectionName = selectedSection
+      ? (sections.find((s) => s.id === selectedSection)?.name || "")
+      : "All Sections";
 
     const html = `
       <html><head><title>${getReportTitle()}</title>
@@ -414,27 +651,27 @@ const ExamReports = () => {
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; font-size: 10px; }
         th { background: #f5f5f5; font-weight: 600; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 10px; }
-        .header-center { text-align: center; flex: 1; }
-        .header-right { text-align: right; font-size: 9px; color: #666; }
-        .title { text-align: center; font-size: 14px; font-weight: bold; margin: 8px 0 4px; }
-        .subtitle { text-align: center; font-size: 10px; color: #555; margin-bottom: 8px; }
+        /* Centered school header with logo on the left and print-meta on the right.
+           The school name + address + exam + class line are all truly page-centered. */
+        .ph { position: relative; text-align: center; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 2px solid #000; }
+        .ph .logo { position: absolute; left: 0; top: 0; width: 56px; height: 56px; object-fit: contain; }
+        .ph .meta { position: absolute; right: 0; top: 0; text-align: right; font-size: 9px; color: #666; line-height: 1.5; }
+        .ph .school { font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; }
+        .ph .addr { font-size: 10px; color: #444; margin-top: 2px; }
+        .ph .exam { font-size: 13px; font-weight: 600; margin-top: 8px; text-transform: uppercase; }
+        .ph .cls { font-size: 11px; color: #333; margin-top: 4px; }
         @media print { body { margin: 0; } }
       </style></head><body>
-      <div class="header">
-        <div>${logoUrl ? `<img src="${logoUrl}" style="width:40px;height:40px;object-fit:contain;" />` : ""}</div>
-        <div class="header-center">
-          <div style="font-size:16px;font-weight:bold;">${schoolName}</div>
-          <div style="font-size:9px;">${address}</div>
-        </div>
-        <div class="header-right">
-          Printed by: ${userName}<br/>Date: ${dateStr}<br/>Time: ${timeStr}
-        </div>
+      <div class="ph">
+        ${logoUrl ? `<img src="${logoUrl}" class="logo" />` : ""}
+        <div class="meta">Printed by: ${userName}<br/>Date: ${dateStr}<br/>Time: ${timeStr}</div>
+        <div class="school">${schoolName}</div>
+        ${address ? `<div class="addr">${address}</div>` : ""}
+        <div class="exam">${examLine}</div>
+        <div class="cls">Class: ${className || "—"} &nbsp;|&nbsp; Section: ${sectionName} &nbsp;|&nbsp; Total Students: ${data.length}</div>
       </div>
-      <div class="title">${getReportTitle()}</div>
-      <div class="subtitle">Exam: ${examName} | Total Records: ${data.length}</div>
       <table>
-        <thead><tr><th>S.No</th>${columns.map((c) => `<th>${c.replace(/([A-Z])/g, " $1").trim()}</th>`).join("")}</tr></thead>
+        <thead><tr><th>S.No</th>${columns.map((c) => `<th>${prettyCol(c)}</th>`).join("")}</tr></thead>
         <tbody>${data.map((row: any, idx: number) =>
           `<tr><td>${idx + 1}</td>${columns.map((c) => `<td>${row[c] ?? "-"}</td>`).join("")}</tr>`
         ).join("")}</tbody>
@@ -456,9 +693,10 @@ const ExamReports = () => {
     if (!reportData) return;
     const data = Array.isArray(reportData) ? reportData : reportData.students || reportData.records || reportData.data || [];
     if (!Array.isArray(data) || data.length === 0) { toast.error("No data to export"); return; }
+    if (reportColumns.length === 0 && availableColumns.length > 0) { toast.error("Select at least one column to export"); return; }
 
-    const columns = Object.keys(data[0] || {}).filter((k) => !["id", "_id", "studentId", "enrollmentId", "createdAt", "updatedAt", "isDeleted", "examId"].includes(k));
-    const headers = ["S.No", ...columns.map((c) => c.replace(/([A-Z])/g, " $1").trim())];
+    const columns = getActiveColumns(data);
+    const headers = ["S.No", ...columns.map((c) => prettyCol(c))];
     const rows = data.map((row: any, idx: number) => [idx + 1, ...columns.map((c) => row[c] ?? "")]);
 
     const csv = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
@@ -621,9 +859,16 @@ const ExamReports = () => {
                   className="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Select Exam</option>
-                  {exams.map((exam) => (
-                    <option key={exam.id} value={exam.id}>{exam.name}</option>
-                  ))}
+                  {exams.map((exam) => {
+                    const cls = exam.className && exam.className !== "N/A" ? exam.className : "";
+                    const label =
+                      exam.name +
+                      (cls ? ` — ${cls}` : "") +
+                      (exam.session ? ` (${exam.session})` : "");
+                    return (
+                      <option key={exam.id} value={exam.id}>{label}</option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -702,6 +947,12 @@ const ExamReports = () => {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={() => setShowColumnPanel((v) => !v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors ${showColumnPanel ? "bg-primary-600 text-white border-primary-600" : "bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100"}`}>
+                    <Layers className="w-3 h-3" /> Columns
+                    {reportColumns.length > 0 && availableColumns.length > 0 && (
+                      <span className="ml-0.5 opacity-80">({reportColumns.length}/{availableColumns.length})</span>
+                    )}
+                  </button>
                   <button onClick={exportCSV} className="px-3 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 text-xs font-medium border border-green-200 dark:border-green-700 flex items-center gap-1">
                     <Download className="w-3 h-3" /> CSV
                   </button>
@@ -710,6 +961,62 @@ const ExamReports = () => {
                   </button>
                 </div>
               </div>
+              {/* ─── Column customization panel ─── */}
+              {showColumnPanel && availableColumns.length > 0 && (
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/60">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Customize Columns</h4>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        Tick the columns to include, then use ▲ ▼ to set their order. Applies to Preview, Print & CSV.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={selectAllColumns} className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700">
+                        Select all
+                      </button>
+                      <button onClick={clearAllColumns} className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700">
+                        Clear all
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Selected columns — in display order, reorderable */}
+                  <div className="mb-3">
+                    <div className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Selected (in order)</div>
+                    {reportColumns.length === 0 ? (
+                      <div className="text-xs text-gray-400 italic">No columns selected — nothing will be shown. Tick columns below.</div>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        {reportColumns.filter((c) => availableColumns.includes(c)).map((col, idx, arr) => (
+                          <div key={col} className="flex items-center gap-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md px-2.5 py-1.5">
+                            <span className="text-xs text-gray-400 w-5 text-center">{idx + 1}</span>
+                            <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-200">{prettyCol(col)}</span>
+                            <button onClick={() => moveColumn(col, -1)} disabled={idx === 0} className="px-1.5 py-0.5 text-xs rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-30" title="Move up">▲</button>
+                            <button onClick={() => moveColumn(col, 1)} disabled={idx === arr.length - 1} className="px-1.5 py-0.5 text-xs rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 disabled:opacity-30" title="Move down">▼</button>
+                            <button onClick={() => toggleColumn(col)} className="px-1.5 py-0.5 text-xs rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30" title="Remove">✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hidden / available columns to add back */}
+                  {availableColumns.some((c) => !reportColumns.includes(c)) && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">Available to add</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {availableColumns.filter((c) => !reportColumns.includes(c)).map((col) => (
+                          <button key={col} onClick={() => toggleColumn(col)} className="px-2.5 py-1 text-xs rounded-md border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-600 dark:hover:text-primary-400">
+                            + {prettyCol(col)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {renderTable()}
             </div>
           )}

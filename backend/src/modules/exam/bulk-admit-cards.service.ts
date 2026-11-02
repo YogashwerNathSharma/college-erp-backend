@@ -39,7 +39,10 @@ export const getBulkAdmitCardsService = async (data: {
 
   const studentIds = [...new Set(admitCards.map(ac => ac.studentId))];
 
-  // 3. Batch fetch all students
+  // 3. Batch fetch all students. NOTE: class/section live on ENROLLMENT, not on
+  // the Student model (Student has no classId/sectionId column). We pull the
+  // student's active enrollment (with class + section) so the admit card shows
+  // the correct class & section.
   const students = await prisma.student.findMany({
     where: { id: { in: studentIds }, isDeleted: false },
     select: {
@@ -51,19 +54,30 @@ export const getBulkAdmitCardsService = async (data: {
       motherName: true,
       dob: true,
       photoUrl: true,
-      classId: true,
-      sectionId: true,
+      rollNumber: true,
+      enrollments: {
+        where: { isDeleted: false, status: "active" },
+        select: {
+          classId: true,
+          sectionId: true,
+          class: { select: { id: true, name: true } },
+          section: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
     },
   });
 
-  // 4. Batch fetch all classes & sections referenced
-  const allClassIds = [...new Set(students.map(s => s.classId).filter(Boolean))];
-  const allSectionIds = [...new Set(students.map(s => s.sectionId).filter(Boolean))];
-
-  const [classes, sections] = await Promise.all([
-    prisma.class.findMany({ where: { id: { in: allClassIds } }, select: { id: true, name: true } }),
-    prisma.section.findMany({ where: { id: { in: allSectionIds } }, select: { id: true, name: true } }),
-  ]);
+  // Build quick lookup: studentId -> { class, section } from active enrollment.
+  const enrollmentByStudent: Record<string, { className: string; sectionName: string }> = {};
+  for (const st of students as any[]) {
+    const en = st.enrollments?.[0];
+    enrollmentByStudent[st.id] = {
+      className: en?.class?.name || "",
+      sectionName: en?.section?.name || "",
+    };
+  }
 
   // 5. Batch fetch schedules for all exams
   const allSchedules = await prisma.examSchedule.findMany({
@@ -109,8 +123,9 @@ export const getBulkAdmitCardsService = async (data: {
   return admitCards.map(ac => {
     const student = students.find(s => s.id === ac.studentId);
     const exam = exams.find(e => e.id === ac.examId);
-    const cls = classes.find(c => c.id === student?.classId);
-    const sec = sections.find(s => s.id === student?.sectionId);
+    const enr = enrollmentByStudent[ac.studentId] || { className: "", sectionName: "" };
+    const cls = enr.className ? { name: enr.className } : null;
+    const sec = enr.sectionName ? { name: enr.sectionName } : null;
     const examSchedules = schedulesByExam[ac.examId] || [];
 
     // Find seating for this student (from any schedule of this exam)
@@ -134,7 +149,7 @@ export const getBulkAdmitCardsService = async (data: {
         name: student ? `${student.firstName} ${student.lastName}` : '',
         fatherName: student?.fatherName || '',
         motherName: student?.motherName || '',
-        rollNo: student?.admissionNo || '',
+        rollNo: (student as any)?.rollNumber || student?.admissionNo || '',
         admissionNo: student?.admissionNo || '',
         dob: student?.dob ? new Date(student.dob).toISOString() : '',
         photoUrl: student?.photoUrl || '',

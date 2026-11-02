@@ -174,11 +174,20 @@ export const getExamsService = async (
     where: { id: { in: classIds } },
   });
 
+  // Resolve academic-year (session) names so the exam dropdown can show
+  // "FA 1 - Class 6 (2026-27)" and users can tell duplicate-named exams apart.
+  const yearIds = [...new Set(exams.map((e) => e.academicYearId).filter(Boolean))];
+  const years = yearIds.length
+    ? await prisma.academicYear.findMany({ where: { id: { in: yearIds } } })
+    : [];
+
   return exams.map((exam) => {
     const cls = classes.find((c) => c.id === exam.classId);
+    const yr = years.find((y) => y.id === exam.academicYearId);
     return {
       ...exam,
       className: cls?.name || "N/A",
+      session: yr?.name || "",
     };
   });
 };
@@ -1462,24 +1471,24 @@ export const generateAdmitCardsService = async (
     data: { isDeleted: true },
   });
 
-  // Generate new
-  const admitCards = await Promise.all(
-    students.map((student: any, index: number) =>
-      prisma.admitCard.create({
-        data: {
-          examId: data.examId,
-          studentId: student.id,
-          tenantId,
-          rollNo: student.rollNumber || `${index + 1}`,
-          isGenerated: true,
-          generatedAt: new Date(),
-          isDeleted: false,
-        },
-      })
-    )
-  );
+  // Generate new — use a single createMany instead of N individual create()
+  // calls. The per-row Promise.all previously fired 100-250 separate insert
+  // round-trips to MongoDB, which made this endpoint take 1-3 MINUTES. A single
+  // createMany is one round-trip and completes in well under a second.
+  const now = new Date();
+  const createData = students.map((student: any, index: number) => ({
+    examId: data.examId,
+    studentId: student.id,
+    tenantId,
+    rollNo: student.rollNumber || `${index + 1}`,
+    isGenerated: true,
+    generatedAt: now,
+    isDeleted: false,
+  }));
 
-  return { message: "Admit cards generated successfully", count: admitCards.length };
+  const result = await prisma.admitCard.createMany({ data: createData });
+
+  return { message: "Admit cards generated successfully", count: result.count ?? createData.length };
 };
 
 // ─────────────────────────────────────────────────────
@@ -1792,6 +1801,56 @@ export const getExamDashboardService = async (
 // ─────────────────────────────────────────────────────
 // 30. EXAM REPORTS
 // ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// HELPER: Resolve each student's section for an exam, so result/topper
+// reports can be filtered section-wise on the client. Returns two maps:
+//   sectionByStudent: studentId -> sectionId
+//   sectionNameById : sectionId  -> section name
+// Uses the exam's class + academic year to look up active enrollments.
+// ─────────────────────────────────────────────────────
+const buildSectionMaps = async (
+  examId: string,
+  tenantId: string,
+  studentIds: string[]
+) => {
+  const empty = {
+    sectionByStudent: new Map<string, string | null>(),
+    sectionNameById: new Map<string, string>(),
+  };
+  if (!studentIds.length) return empty;
+
+  const exam = await prisma.exam.findFirst({ where: { id: examId, tenantId } });
+  if (!exam) return empty;
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      studentId: { in: studentIds },
+      classId: exam.classId,
+      academicYearId: exam.academicYearId,
+      tenantId,
+      isDeleted: false,
+    },
+    select: { studentId: true, sectionId: true },
+  });
+
+  const sectionByStudent = new Map<string, string | null>();
+  for (const e of enrollments as any[]) {
+    if (!sectionByStudent.has(e.studentId)) {
+      sectionByStudent.set(e.studentId, e.sectionId || null);
+    }
+  }
+
+  const sectionIds = [...new Set(enrollments.map((e: any) => e.sectionId).filter(Boolean))];
+  const sectionRows = sectionIds.length
+    ? await prisma.section.findMany({ where: { id: { in: sectionIds } }, select: { id: true, name: true } })
+    : [];
+  const sectionNameById = new Map<string, string>(
+    sectionRows.map((r: any) => [r.id, r.name])
+  );
+
+  return { sectionByStudent, sectionNameById };
+};
+
 export const getExamReportsService = async (
   tenantId: string,
   examId: string,
@@ -1806,9 +1865,19 @@ export const getExamReportsService = async (
       });
       const studentIds = results.map((r) => r.studentId);
       const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
+      // Resolve each student's section (from enrollment) so the report can be
+      // filtered section-wise on the client.
+      const secMaps = await buildSectionMaps(examId, tenantId, studentIds);
       return results.map((r) => {
         const s = students.find((st: any) => st.id === r.studentId);
-        return { ...r, studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "", admissionNo: (s as any)?.admissionNo || "" };
+        const secId = secMaps.sectionByStudent.get(r.studentId) || null;
+        return {
+          ...r,
+          studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "",
+          admissionNo: (s as any)?.admissionNo || "",
+          sectionId: secId,
+          sectionName: secId ? (secMaps.sectionNameById.get(secId) || "") : "",
+        };
       });
     }
 
@@ -1820,10 +1889,19 @@ export const getExamReportsService = async (
       });
       const studentIds = results.map((r) => r.studentId);
       const students = await prisma.student.findMany({ where: { id: { in: studentIds } } });
+      const secMaps = await buildSectionMaps(examId, tenantId, studentIds);
       return results.map((r, i) => {
         const s = students.find((st: any) => st.id === r.studentId);
         const { rank: _oldRank, ...rest } = r;
-        return { ...rest, rank: i + 1, studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "", admissionNo: (s as any)?.admissionNo || "" };
+        const secId = secMaps.sectionByStudent.get(r.studentId) || null;
+        return {
+          ...rest,
+          rank: i + 1,
+          studentName: s ? formatStudentName((s as any).firstName, (s as any).lastName) : "",
+          admissionNo: (s as any)?.admissionNo || "",
+          sectionId: secId,
+          sectionName: secId ? (secMaps.sectionNameById.get(secId) || "") : "",
+        };
       });
     }
 

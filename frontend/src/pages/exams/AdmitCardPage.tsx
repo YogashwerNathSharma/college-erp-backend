@@ -1,4 +1,5 @@
 import { getFullUrl } from '../../utils/url';
+import { AdmitCardDetail as SharedAdmitCardDetail, printAdmitCards, AdmitCardLayout } from '../../utils/admitCardPrint';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -25,71 +26,11 @@ interface AdmitCardItem {
   rollNo: string;
   isGenerated: boolean;
 }
-interface AdmitCardDetail {
-  admitCard: any;
-  allottedRoom?: string;
-  seatNo?: string;
-  student: {
-    name: string; fatherName: string; motherName: string;
-    rollNo: string; admissionNo: string; dob: string;
-    photoUrl?: string;
-    class?: { name: string };
-    section?: { name: string } | null;
-  };
-  exam: { name: string; type: string; class?: { name: string }; section?: { name: string } | null; };
-  tenant: { name: string; address: string; phone: string; email: string; logoUrl?: string; };
-  schedule: { examDate: string; startTime: string; endTime: string; subject: { name: string }; room: { name: string }; }[];
-}
+type AdmitCardDetail = SharedAdmitCardDetail;
+
 type PrintMode = 'single' | 'class' | 'school';
 
-const CARDS_PER_PAGE = 3;
 
-const PRINT_STYLES = `
-  @page { size: A4 portrait; margin: 6mm; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; box-sizing: border-box; }
-  body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-  .page {
-    width: 100%;
-    height: 277mm;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    page-break-after: always;
-    break-after: page;
-    padding: 2mm 0;
-  }
-  .page:last-child { page-break-after: avoid; break-after: avoid; }
-  .card {
-    flex: 0 0 calc(33.33% - 3mm);
-    border: 1.5px solid #333;
-    border-radius: 5px;
-    padding: 5px 8px 8px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-  .card + .card { border-top: 1px dashed #aaa; }
-  .school-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  .school-header img { width: 36px; height: 36px; object-fit: contain; }
-  .school-header .spacer { width: 36px; flex-shrink: 0; }
-  .school-info { flex: 1; text-align: center; }
-  .school-name { font-size: 11px; font-weight: bold; }
-  .school-sub { font-size: 8px; color: #555; }
-  .title-bar { background: #1e3a8a !important; color: white !important; text-align: center; padding: 2px 4px; border-radius: 3px; margin: 3px 0; }
-  .title-bar h2 { margin: 0; font-size: 10px; }
-  .title-bar p  { margin: 0; font-size: 8px; }
-  .info-photo { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 3px; }
-  .info-table { flex: 1; border-collapse: collapse; font-size: 8px; }
-  .info-table td { padding: 1px 2px; }
-  .info-table .lbl { color: #555; white-space: nowrap; font-weight: 600; width: 30%; }
-  .photo { width: 50px; height: 60px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; border-radius: 3px; overflow: hidden; font-size: 7px; color: #888; text-align: center; flex-shrink: 0; margin-right: 5px; }
-  .photo img { width: 100%; height: 100%; object-fit: cover; }
-  .schedule-table { width: 100%; border-collapse: collapse; font-size: 7.5px; margin-top: 2px; }
-  .schedule-table th { background: #1e3a8a !important; color: white !important; padding: 2px 3px; text-align: left; }
-  .schedule-table td { padding: 2px 3px; border-bottom: 0.5px solid #ddd; }
-  .sigs { display: flex; justify-content: space-between; margin-top: auto; padding: 8px 15px 0; font-size: 7.5px; text-align: center; }
-  .sig-line { border-top: 0.5px solid #333; width: 70px; margin: 0 auto 2px; }
-`;
 
 // ═══════════════════════════════════════════════════════════════════
 const AdmitCardPage: React.FC = () => {
@@ -111,6 +52,11 @@ const AdmitCardPage: React.FC = () => {
   const [viewLoading, setViewLoading] = useState(false);
   const [bulkPrinting, setBulkPrinting] = useState(false);
   const [singlePrinting, setSinglePrinting] = useState(false);
+
+  // ── Configurable print layout (orientation + grid of columns × rows) ──
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [columns, setColumns] = useState(1);
+  const [rows, setRows] = useState(3);
 
   useEffect(() => { fetchExams(); fetchClasses(); }, []);
   useEffect(() => { if (paramExamId) setSelectedExam(paramExamId); }, [paramExamId]);
@@ -195,52 +141,12 @@ const AdmitCardPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────
   // Render cards into a print window and trigger print
+  // Uses the SHARED admit-card printer so the Admit Card page and the
+  // "Admit Card Register" report produce byte-identical output.
   // ─────────────────────────────────────────────────
   const printCards = (allCards: AdmitCardDetail[], title: string) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('Popup blocked! Please allow popups for this site and try again.');
-      return;
-    }
-
-    let pagesHTML = '';
-    for (let i = 0; i < allCards.length; i += CARDS_PER_PAGE) {
-      const chunk = allCards.slice(i, i + CARDS_PER_PAGE);
-      pagesHTML += `<div class="page">${chunk.map(renderAdmitCardHTML).join('')}</div>`;
-    }
-
-    printWindow.document.write(`
-      <!DOCTYPE html><html><head><meta charset="UTF-8">
-      <title>${title}</title>
-      <style>${PRINT_STYLES}</style>
-      </head><body>${pagesHTML}</body></html>
-    `);
-    printWindow.document.close();
-
-    const triggerPrint = () => {
-      const images = Array.from(printWindow.document.images);
-      if (images.length === 0) {
-        printWindow.focus(); printWindow.print();
-        return;
-      }
-      let remaining = images.length;
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        printWindow.focus(); printWindow.print();
-      };
-      const onOne = () => { if (--remaining <= 0) finish(); };
-      images.forEach(img => {
-        if (img.complete) onOne();
-        else { img.addEventListener('load', onOne); img.addEventListener('error', onOne); }
-      });
-      setTimeout(finish, 4000);
-    };
-
-    // Trigger after load or after short delay (whichever comes first)
-    printWindow.onload = triggerPrint;
-    setTimeout(triggerPrint, 300);
+    const layout: AdmitCardLayout = { orientation, columns, rows };
+    printAdmitCards(allCards, title, (msg) => toast.error(msg), layout);
   };
 
   // ─────────────────────────────────────────────────
@@ -318,7 +224,7 @@ const AdmitCardPage: React.FC = () => {
         return;
       }
 
-      const pages = Math.ceil(allCards.length / CARDS_PER_PAGE);
+      const pages = Math.ceil(allCards.length / Math.max(1, columns * rows));
       toast.success(`Opening print window: ${allCards.length} cards on ${pages} page${pages > 1 ? 's' : ''}…`);
 
       printCards(allCards, `Admit Cards — ${examName}`);
@@ -328,64 +234,6 @@ const AdmitCardPage: React.FC = () => {
     } finally {
       setBulkPrinting(false);
     }
-  };
-
-  // ─────────────────────────────────────────────────
-  // Render a single admit card as compact HTML string
-  // ─────────────────────────────────────────────────
-  const renderAdmitCardHTML = (data: AdmitCardDetail): string => {
-    const logoUrl = getFullUrl(data.tenant?.logoUrl);
-    const photoUrl = getFullUrl(data.student?.photoUrl);
-    const scheduleRows = (data.schedule || []).map(s => `
-      <tr>
-        <td>${s.subject?.name || ''}</td>
-        <td>${s.examDate ? new Date(s.examDate).toLocaleDateString('en-IN') : ''}</td>
-        <td>${s.startTime || ''} – ${s.endTime || ''}</td>
-      </tr>`).join('');
-
-    return `
-      <div class="card">
-        <div class="school-header">
-          ${logoUrl ? `<img src="${logoUrl}" alt="logo" />` : ''}
-          <div class="school-info">
-            <div class="school-name">${data.tenant?.name || 'School Name'}</div>
-            ${data.tenant?.address ? `<div class="school-sub">${data.tenant.address}</div>` : ''}
-            ${data.tenant?.phone ? `<div class="school-sub">Ph: ${data.tenant.phone}</div>` : ''}
-          </div>
-          <div class="spacer"></div>
-        </div>
-        <div class="title-bar">
-          <h2>ADMIT CARD</h2>
-          <p>${data.exam?.name || ''}</p>
-        </div>
-        <div class="info-photo">
-          <table class="info-table">
-            <tr>
-              <td class="lbl">Name</td><td>: ${data.student?.name || ''}</td>
-              <td class="lbl" style="padding-left:8px">Roll No</td><td>: ${data.student?.rollNo || ''}</td>
-            </tr>
-            <tr>
-              <td class="lbl">Father</td><td>: ${data.student?.fatherName || ''}</td>
-              <td class="lbl" style="padding-left:8px">Adm No</td><td>: ${data.student?.admissionNo || ''}</td>
-            </tr>
-            <tr>
-              <td class="lbl">Class</td><td>: ${data.student?.class?.name || data.exam?.class?.name || ''}${data.student?.section?.name ? ' - ' + data.student.section.name : ''}</td>
-              <td class="lbl" style="padding-left:8px">DOB</td><td>: ${data.student?.dob ? new Date(data.student.dob).toLocaleDateString('en-IN') : ''}</td>
-            </tr>
-            ${data.allottedRoom ? `<tr><td class="lbl">Room</td><td colspan="3">: ${data.allottedRoom}${data.seatNo ? ' (Seat: ' + data.seatNo + ')' : ''}</td></tr>` : ''}
-          </table>
-          <div class="photo">${photoUrl ? `<img src="${photoUrl}" alt="photo" />` : 'Photo'}</div>
-        </div>
-        ${scheduleRows ? `
-          <table class="schedule-table">
-            <thead><tr><th>Subject</th><th>Date</th><th>Time</th></tr></thead>
-            <tbody>${scheduleRows}</tbody>
-          </table>` : ''}
-        <div class="sigs">
-          <div><div class="sig-line"></div>Class Teacher</div>
-          <div><div class="sig-line"></div>Principal</div>
-        </div>
-      </div>`;
   };
 
   // ─────────────────────────────────────────────────
@@ -532,6 +380,57 @@ const AdmitCardPage: React.FC = () => {
                   </select>
                 </div>
               )}
+
+              {/* ── Print Layout: orientation + columns × rows ── */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Orientation</label>
+                <div className="flex gap-1">
+                  {(['portrait', 'landscape'] as const).map(o => (
+                    <button key={o} onClick={() => setOrientation(o)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border capitalize ${orientation === o ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-300'}`}
+                    >{o}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Layout (per page)</label>
+                <div className="flex items-end gap-2">
+                  <div>
+                    <span className="block text-[10px] text-gray-400 mb-0.5">Columns</span>
+                    <input type="number" min={1} max={6} value={columns}
+                      onChange={e => setColumns(Math.min(6, Math.max(1, Number(e.target.value) || 1)))}
+                      className="w-16 text-sm border-gray-300 rounded-lg" />
+                  </div>
+                  <span className="pb-2 text-gray-400">×</span>
+                  <div>
+                    <span className="block text-[10px] text-gray-400 mb-0.5">Rows</span>
+                    <input type="number" min={1} max={10} value={rows}
+                      onChange={e => setRows(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                      className="w-16 text-sm border-gray-300 rounded-lg" />
+                  </div>
+                  <span className="pb-2 text-xs text-gray-500 whitespace-nowrap">= {columns * rows} / page</span>
+                </div>
+                {/* Quick presets */}
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {([
+                    { label: '1×3 (Portrait)', o: 'portrait', c: 1, r: 3 },
+                    { label: '2×2 (Portrait)', o: 'portrait', c: 2, r: 2 },
+                    { label: '2×4 = 8', o: 'portrait', c: 2, r: 4 },
+                    { label: '3×4 = 12', o: 'portrait', c: 3, r: 4 },
+                    { label: '2 col (Landscape)', o: 'landscape', c: 2, r: 2 },
+                    { label: '3 col (Landscape)', o: 'landscape', c: 3, r: 2 },
+                  ] as const).map(preset => {
+                    const active = orientation === preset.o && columns === preset.c && rows === preset.r;
+                    return (
+                      <button key={preset.label}
+                        onClick={() => { setOrientation(preset.o); setColumns(preset.c); setRows(preset.r); }}
+                        className={`px-2 py-0.5 rounded-md text-[11px] border ${active ? 'bg-indigo-50 border-indigo-400 text-indigo-700' : 'bg-white border-gray-200 text-gray-500 hover:border-indigo-300'}`}
+                      >{preset.label}</button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="flex gap-2">
                 <button onClick={handleGenerateAll} disabled={generating || !selectedExam}

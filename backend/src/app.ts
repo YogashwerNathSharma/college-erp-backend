@@ -184,9 +184,13 @@ app.use(requestLogger);
 //////////////////////////////////////////////////////
 // STATIC FILES
 //////////////////////////////////////////////////////
+// NOTE: /uploads MUST be publicly readable (no authMiddleware). These are
+// static display assets — student photos, tenant logos, etc. — loaded via
+// <img src="/uploads/..."> tags, and browsers CANNOT attach a Bearer token to
+// an <img> request. With authMiddleware here, every image request returned 401
+// and showed a broken-image icon. Files are served by opaque filename only.
 app.use(
   "/uploads",
-  authMiddleware,
   express.static(path.join(__dirname, "../uploads"))
 );
 

@@ -141,7 +141,17 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
         const duration = Date.now() - startTime;
 
         // Determine entity info from response
-        const entityId = body?.data?.id || req.params.id || req.params.studentId || req.params.teacherId;
+        // NOTE: entityId is a REQUIRED field in the AuditLog schema. Some bulk
+        // endpoints (e.g. admit-card generate) return no single id and carry no
+        // :id route param, which previously made this undefined and crashed the
+        // entire audit insert. Fall back to any available id, else "N/A".
+        const entityId =
+          body?.data?.id ||
+          req.params.id ||
+          req.params.studentId ||
+          req.params.teacherId ||
+          req.params.examId ||
+          "N/A";
         const entityType = getEntityTypeFromModule(module);
 
         // Build audit entry
@@ -152,7 +162,7 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
           userRole: user.role || "UNKNOWN",
           action,
           module,
-          entityId: entityId || undefined,
+          entityId,
           entityType: entityType || undefined,
           entity: entityType || module,
           ipAddress: getClientIP(req),

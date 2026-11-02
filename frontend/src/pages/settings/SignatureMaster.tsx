@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../../config/api";
+import { getFullUrl } from "../../utils/url";
 import {
   PenTool,
   Plus,
@@ -131,7 +132,7 @@ const SignatureMaster: React.FC = () => {
       isActive: sig.isActive,
     });
     setImageFile(null);
-    setImagePreview(sig.imageUrl ? `${API_BASE}${sig.imageUrl}` : null);
+    setImagePreview(sig.imageUrl ? getFullUrl(sig.imageUrl) : null);
     setFormError(null);
     setShowModal(true);
   };
@@ -312,7 +313,7 @@ const SignatureMaster: React.FC = () => {
                       <div className="w-20 h-12 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden">
                         {sig.imageUrl ? (
                           <img
-                            src={`${API_BASE}${sig.imageUrl}`}
+                            src={getFullUrl(sig.imageUrl)}
                             alt={sig.title}
                             className="w-full h-full object-contain p-1"
                           />

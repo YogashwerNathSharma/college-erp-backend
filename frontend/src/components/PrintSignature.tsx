@@ -1,6 +1,29 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../config/api";
 import axios from "axios";
+import { getFullUrl } from "../utils/url";
+
+/**
+ * Fetch an image URL and convert it to a base64 data URL so it can be embedded
+ * directly into a print window's HTML. This removes the network round-trip at
+ * print time — the signature is part of the document, so it never shows up
+ * blank because the browser printed before the image finished downloading.
+ * Falls back to the original URL if the fetch fails (e.g. CORS).
+ */
+async function toDataUrl(url: string): Promise<string> {
+  try {
+    const resp = await fetch(url, { mode: "cors" });
+    const blob = await resp.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url; // fallback — keep original URL
+  }
+}
 
 interface SignatureData {
   id: string;
@@ -48,11 +71,7 @@ export default function PrintSignature({ inline = false, printOnly = true }: Pri
 
   if (!signature) return null;
 
-  const imageUrl = signature.imageUrl
-    ? signature.imageUrl.startsWith("http")
-      ? signature.imageUrl
-      : `${signature.imageUrl}`
-    : null;
+  const imageUrl = getFullUrl(signature.imageUrl) || null;
 
   // Inline style version (for components that use style props)
   if (inline) {
@@ -135,11 +154,11 @@ export async function getPrintSignatureHTML(): Promise<string> {
 
     if (!principal) return "";
 
-    const imageUrl = principal.imageUrl
-      ? principal.imageUrl.startsWith("http")
-        ? principal.imageUrl
-        : `${principal.imageUrl}`
-      : null;
+    // Resolve to an absolute URL (handles Cloudinary https links and legacy
+    // /uploads relative paths), then embed as a base64 data URL so the
+    // signature is baked into the print HTML and never prints blank.
+    const resolved = getFullUrl(principal.imageUrl);
+    const imageUrl = resolved ? await toDataUrl(resolved) : null;
 
     return `
       <div style="text-align:center;margin-top:8px;">

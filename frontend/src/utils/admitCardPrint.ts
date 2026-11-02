@@ -48,6 +48,8 @@ export interface AdmitCardDetail {
   };
   exam: { name: string; type?: string; class?: { name: string }; section?: { name: string } | null };
   tenant: { name: string; address?: string; phone?: string; email?: string; logoUrl?: string };
+  // Optional authorized Principal signature image (from Signature Master).
+  principalSignatureUrl?: string;
   schedule: {
     examDate: string;
     startTime: string;
@@ -139,6 +141,7 @@ export const ADMIT_CARD_PRINT_STYLES = buildStyles(DEFAULT_LAYOUT);
 export const renderAdmitCardHTML = (data: AdmitCardDetail): string => {
   const logoUrl = getFullUrl(data.tenant?.logoUrl);
   const photoUrl = getFullUrl(data.student?.photoUrl);
+  const principalSigUrl = getFullUrl(data.principalSignatureUrl);
   const photoFallback = nameInitials(data.student?.name) || "Photo";
   const scheduleRows = (data.schedule || [])
     .map(
@@ -195,7 +198,7 @@ export const renderAdmitCardHTML = (data: AdmitCardDetail): string => {
       }
       <div class="sigs">
         <div><div class="sig-line"></div>Class Teacher</div>
-        <div><div class="sig-line"></div>Principal</div>
+        <div>${principalSigUrl ? `<img src="${principalSigUrl}" alt="Principal Signature" style="height:34px;display:block;margin:0 auto 2px;object-fit:contain;mix-blend-mode:darken;" />` : ""}<div class="sig-line"></div>Principal</div>
       </div>
     </div>`;
 };

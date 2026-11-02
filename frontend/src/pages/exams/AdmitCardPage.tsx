@@ -57,10 +57,27 @@ const AdmitCardPage: React.FC = () => {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [columns, setColumns] = useState(1);
   const [rows, setRows] = useState(3);
+  // Authorized Principal signature (from Signature Master) shown on admit cards.
+  const [principalSignatureUrl, setPrincipalSignatureUrl] = useState<string>('');
 
   useEffect(() => { fetchExams(); fetchClasses(); }, []);
   useEffect(() => { if (paramExamId) setSelectedExam(paramExamId); }, [paramExamId]);
   useEffect(() => { if (selectedExam) fetchAdmitCards(); }, [selectedExam]);
+  useEffect(() => { fetchPrincipalSignature(); }, []);
+
+  // Load the Principal (or first active) signature once, so it can be shown on
+  // both the preview and the printed admit card. Fails silently — admit cards
+  // still render with a blank signature line if none is configured.
+  const fetchPrincipalSignature = async () => {
+    try {
+      const res = await axios.get(getFullUrl('/api/signature'), { headers });
+      const sigs: any[] = res.data?.data || res.data || [];
+      const principal =
+        sigs.find((s) => s.title?.toLowerCase().includes('principal') && s.isActive) ||
+        sigs.find((s) => s.isActive) || sigs[0];
+      if (principal?.imageUrl) setPrincipalSignatureUrl(principal.imageUrl);
+    } catch { /* no signature configured — ignore */ }
+  };
 
   const fetchExams = async () => {
     try {
@@ -146,7 +163,9 @@ const AdmitCardPage: React.FC = () => {
   // ─────────────────────────────────────────────────
   const printCards = (allCards: AdmitCardDetail[], title: string) => {
     const layout: AdmitCardLayout = { orientation, columns, rows };
-    printAdmitCards(allCards, title, (msg) => toast.error(msg), layout);
+    // Attach the Principal signature to every card so it prints on each one.
+    const cardsWithSig = allCards.map((c) => ({ ...c, principalSignatureUrl: c.principalSignatureUrl || principalSignatureUrl }));
+    printAdmitCards(cardsWithSig, title, (msg) => toast.error(msg), layout);
   };
 
   // ─────────────────────────────────────────────────
@@ -352,7 +371,17 @@ const AdmitCardPage: React.FC = () => {
         )}
         <div className="flex justify-around text-xs text-center mt-4">
           <div><div className="border-t border-gray-400 w-24 mb-1"></div>Class Teacher</div>
-          <div><div className="border-t border-gray-400 w-24 mb-1"></div>Principal</div>
+          <div>
+            {principalSignatureUrl ? (
+              <img
+                src={getFullUrl(principalSignatureUrl)}
+                alt="Principal Signature"
+                className="h-8 mx-auto mb-0.5 object-contain"
+                style={{ mixBlendMode: 'darken' }}
+              />
+            ) : null}
+            <div className="border-t border-gray-400 w-24 mb-1"></div>Principal
+          </div>
         </div>
       </div>
     );

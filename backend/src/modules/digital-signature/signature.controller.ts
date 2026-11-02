@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../utils/prisma";
 import crypto from "crypto";
-import path from "path";
-import fs from "fs";
+import { saveAsset } from "../../config/cloudinary";
 
 // ══════════════════════════════════════════════════
 // DIGITAL SIGNATURE CONTROLLER
@@ -59,26 +58,18 @@ export const uploadSignature = async (req: Request, res: Response) => {
     // Save signature image if base64
     let savedSignatureUrl = signatureImage;
     if (signatureImage.startsWith("data:image")) {
-      const uploadsDir = path.join(__dirname, "../../../uploads/signatures");
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
       const base64Data = signatureImage.replace(/^data:image\/\w+;base64,/, "");
       const fileName = `sig_${tenantId}_${userId}_${Date.now()}.png`;
-      const filePath = path.join(uploadsDir, fileName);
-      fs.writeFileSync(filePath, base64Data, "base64");
-      savedSignatureUrl = `/uploads/signatures/${fileName}`;
+      const sigBuffer = Buffer.from(base64Data, "base64");
+      savedSignatureUrl = await saveAsset(sigBuffer, "signatures", fileName, false);
     }
 
     let savedStampUrl = stampImage;
     if (stampImage?.startsWith("data:image")) {
-      const uploadsDir = path.join(__dirname, "../../../uploads/signatures");
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
       const base64Data = stampImage.replace(/^data:image\/\w+;base64,/, "");
       const fileName = `stamp_${tenantId}_${userId}_${Date.now()}.png`;
-      const filePath = path.join(uploadsDir, fileName);
-      fs.writeFileSync(filePath, base64Data, "base64");
-      savedStampUrl = `/uploads/signatures/${fileName}`;
+      const stampBuffer = Buffer.from(base64Data, "base64");
+      savedStampUrl = await saveAsset(stampBuffer, "signatures", fileName, false);
     }
 
     const signature = await prisma.digitalSignature.create({

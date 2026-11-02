@@ -3,8 +3,7 @@ import prisma from "../../utils/prisma";
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { createCanvas } from "canvas";
-import path from "path";
-import fs from "fs";
+import { saveAsset } from "../../config/cloudinary";
 
 // ══════════════════════════════════════════════════
 // QR CODE & BARCODE CONTROLLER
@@ -40,23 +39,17 @@ export const generateQR = async (req: Request, res: Response) => {
     }
 
     // Generate QR image
-    const uploadsDir = path.join(__dirname, "../../../uploads/qr");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
     let qrImageUrl: string | null = null;
     let barcodeImageUrl: string | null = null;
 
     if (format === "QR" || format === "BOTH") {
       const qrFileName = `qr_${tenantId}_${entityType}_${entityId}_${Date.now()}.png`;
-      const qrPath = path.join(uploadsDir, qrFileName);
-      await QRCode.toFile(qrPath, data, {
+      const qrBuffer = await QRCode.toBuffer(data, {
         width: size,
         margin: 2,
         color: { dark: "#000000", light: "#ffffff" },
       });
-      qrImageUrl = `/uploads/qr/${qrFileName}`;
+      qrImageUrl = await saveAsset(qrBuffer, "qr", qrFileName, false);
     }
 
     if (format === "BARCODE" || format === "BOTH") {
@@ -69,10 +62,8 @@ export const generateQR = async (req: Request, res: Response) => {
         fontSize: 12,
       });
       const barcodeFileName = `barcode_${tenantId}_${entityType}_${entityId}_${Date.now()}.png`;
-      const barcodePath = path.join(uploadsDir, barcodeFileName);
       const buffer = canvas.toBuffer("image/png");
-      fs.writeFileSync(barcodePath, buffer);
-      barcodeImageUrl = `/uploads/qr/${barcodeFileName}`;
+      barcodeImageUrl = await saveAsset(buffer, "qr", barcodeFileName, false);
     }
 
     const qrCode = await prisma.qRCode.create({
@@ -218,11 +209,6 @@ export const bulkGenerateQR = async (req: Request, res: Response) => {
       });
     }
 
-    const uploadsDir = path.join(__dirname, "../../../uploads/qr");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
     const results: any[] = [];
     let successCount = 0;
     let skipCount = 0;
@@ -250,9 +236,8 @@ export const bulkGenerateQR = async (req: Request, res: Response) => {
       // Generate QR
       if (format === "QR" || format === "BOTH") {
         const qrFileName = `qr_${tenantId}_${entityType}_${entityId}_${Date.now()}.png`;
-        const qrPath = path.join(uploadsDir, qrFileName);
-        await QRCode.toFile(qrPath, data, { width: size, margin: 2 });
-        qrImageUrl = `/uploads/qr/${qrFileName}`;
+        const qrBuffer = await QRCode.toBuffer(data, { width: size, margin: 2 });
+        qrImageUrl = await saveAsset(qrBuffer, "qr", qrFileName, false);
       }
 
       // Generate Barcode
@@ -265,9 +250,7 @@ export const bulkGenerateQR = async (req: Request, res: Response) => {
           displayValue: true,
         });
         const barcodeFileName = `barcode_${tenantId}_${entityType}_${entityId}_${Date.now()}.png`;
-        const barcodePath = path.join(uploadsDir, barcodeFileName);
-        fs.writeFileSync(barcodePath, canvas.toBuffer("image/png"));
-        barcodeImageUrl = `/uploads/qr/${barcodeFileName}`;
+        barcodeImageUrl = await saveAsset(canvas.toBuffer("image/png"), "qr", barcodeFileName, false);
       }
 
       const qrCode = await prisma.qRCode.create({

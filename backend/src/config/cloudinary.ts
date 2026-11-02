@@ -1,5 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
+import fs from "fs";
+import path from "path";
 
 // Configure Cloudinary from environment variables
 cloudinary.config({
@@ -79,6 +81,62 @@ export async function deleteFromCloudinary(url: string): Promise<void> {
   } catch (err) {
     console.warn("Cloudinary delete failed:", err);
   }
+}
+
+/**
+ * True when all three Cloudinary env vars are present.
+ * Use this to decide whether persistent cloud storage is available.
+ */
+export function isCloudinaryConfigured(): boolean {
+  return !!(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+}
+
+/**
+ * saveAsset — persist a generated file buffer SAFELY.
+ *
+ * Primary: upload to Cloudinary (survives Render restarts/deploys).
+ * Fallback: if Cloudinary is NOT configured, OR the upload fails, write to
+ * the local /uploads/<folder> disk exactly like the old code did, so NOTHING
+ * breaks on localhost or during a transient Cloudinary outage.
+ *
+ * @param buffer       - file contents
+ * @param cloudFolder  - Cloudinary sub-folder (e.g. "qr", "signatures")
+ * @param fileName     - file name to use for the local fallback
+ * @param optimizeImage- pass false for non-photo assets (QR/barcode/signature
+ *                       stay crisp — no lossy compression)
+ * @returns a URL string: Cloudinary https URL, or "/uploads/<folder>/<file>"
+ */
+export async function saveAsset(
+  buffer: Buffer,
+  cloudFolder: string,
+  fileName: string,
+  optimizeImage: boolean = false
+): Promise<string> {
+  // Try Cloudinary first when configured
+  if (isCloudinaryConfigured()) {
+    try {
+      return await uploadToCloudinary(buffer, cloudFolder, optimizeImage);
+    } catch (err: any) {
+      console.error(
+        `[saveAsset] Cloudinary upload failed for ${cloudFolder}/${fileName}, falling back to local disk:`,
+        err?.message || err
+      );
+      // fall through to local fallback
+    }
+  }
+
+  // Local-disk fallback (old behaviour) — keeps localhost + outage working
+  const uploadsDir = path.join(__dirname, "../../uploads", cloudFolder);
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const filePath = path.join(uploadsDir, fileName);
+  fs.writeFileSync(filePath, buffer);
+  return `/uploads/${cloudFolder}/${fileName}`;
 }
 
 export default cloudinary;

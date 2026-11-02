@@ -3,6 +3,7 @@ import prisma from "../../utils/prisma";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import { isCloudinaryConfigured, uploadToCloudinary } from "../../config/cloudinary";
 
 // ══════════════════════════════════════════════════════════
 // FILE MANAGER CONTROLLER
@@ -44,13 +45,28 @@ export const uploadFiles = async (req: Request, res: Response) => {
       // Move file to destination
       fs.renameSync(file.path, fullPath);
 
+      // Prefer persistent cloud storage when configured (survives Render
+      // restarts). We still keep the local copy above so nothing breaks if
+      // Cloudinary is unavailable — the DB url just points to the cloud copy
+      // when the upload succeeds.
+      let fileUrl = `/uploads/${relativePath}`;
+      if (isCloudinaryConfigured()) {
+        try {
+          const buffer = fs.readFileSync(fullPath);
+          // non-image docs must stay original → optimizeImage=false
+          fileUrl = await uploadToCloudinary(buffer, `files/${tenantId}/${category.toLowerCase()}`, false);
+        } catch (cloudErr: any) {
+          console.error("[FileManager] Cloudinary upload failed, using local path:", cloudErr?.message || cloudErr);
+        }
+      }
+
       // Create DB record
       const fileRecord = await prisma.fileStorage.create({
         data: {
           fileName,
           originalName: file.originalname,
           path: relativePath,
-          url: `/uploads/${relativePath}`,
+          url: fileUrl,
           mimeType: file.mimetype,
           size: file.size,
           extension,

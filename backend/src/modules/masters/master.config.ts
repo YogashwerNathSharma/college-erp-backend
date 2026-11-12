@@ -817,7 +817,6 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
             { label: 'Manual Formula', value: 'MANUAL' },
           ]},
           { name: 'formula', label: 'Formula (optional for Manual mode)', type: 'textarea', placeholder: 'Example: percentage=(totalObtained/totalMaxMarks)*100; cgpa=averageGradePoint' },
-          { name: 'formula', label: 'Formula', type: 'text' },
         ],
       },
       {

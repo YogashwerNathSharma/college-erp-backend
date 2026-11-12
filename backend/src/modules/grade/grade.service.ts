@@ -64,26 +64,42 @@ export const bulkSetGradesService = async (
   const scopedExamId = normalizeExamId(examId);
 
   // Soft delete existing rows for THIS scope only
+  // For the default scope (scopedExamId === null) we must also catch legacy
+  // rows where the examId field is absent, so re-saving the default scale
+  // replaces the old rows instead of leaving stale duplicates behind.
   await prisma.gradeSetting.updateMany({
-    where: { tenantId, examId: scopedExamId, isDeleted: false },
+    where: scopedExamId
+      ? { tenantId, examId: scopedExamId, isDeleted: false }
+      : { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
     data: { isDeleted: true },
   });
 
-  // Create new rows for this scope
-  const data = grades.map((g) => ({
-    grade: g.grade,
-    minPercent: g.minPercent,
-    maxPercent: g.maxPercent,
-    gradePoint: g.gradePoint ?? null,
-    remarks: g.remarks ?? null,
-    tenantId,
-    // On MongoDB, passing examId: null for an @db.ObjectId field inside
-    // createMany can error — so include examId ONLY for a real exam scope
-    // and omit it entirely for the tenant-wide default scale.
-    ...(scopedExamId ? { examId: scopedExamId } : {}),
-  }));
-
-  await prisma.gradeSetting.createMany({ data });
+  // Create new rows for this scope.
+  //
+  // IMPORTANT: the examId field must ALWAYS be written explicitly — including
+  // as `null` for the tenant-wide default scale. Previously default rows
+  // omitted examId entirely to dodge a createMany quirk, but then a document
+  // had NO examId field at all. The read query (`where: { examId: null }`)
+  // did not match those field-missing documents, so the default scale could
+  // be saved but never read back — breaking inheritance for every exam.
+  //
+  // We use individual create() calls so `examId: null` is set reliably on
+  // MongoDB (null ObjectId is fine via create, unlike the old createMany path).
+  await Promise.all(
+    grades.map((g) =>
+      prisma.gradeSetting.create({
+        data: {
+          grade: g.grade,
+          minPercent: g.minPercent,
+          maxPercent: g.maxPercent,
+          gradePoint: g.gradePoint ?? null,
+          remarks: g.remarks ?? null,
+          tenantId,
+          examId: scopedExamId, // null for default scale, real id for per-exam
+        },
+      })
+    )
+  );
 
   return {
     message: "Grade settings saved",
@@ -109,7 +125,8 @@ export const getGradesService = async (
   // Default scale request
   if (!scopedExamId) {
     const defaults = await prisma.gradeSetting.findMany({
-      where: { tenantId, examId: null, isDeleted: false },
+      // Match both null examId and legacy rows where the field is absent.
+      where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
       orderBy: { minPercent: "desc" },
     });
     return defaults.map((g) => ({ ...g, isInherited: false }));
@@ -127,7 +144,7 @@ export const getGradesService = async (
 
   // No per-exam scale yet → inherit the default scale (read-only preview)
   const defaults = await prisma.gradeSetting.findMany({
-    where: { tenantId, examId: null, isDeleted: false },
+    where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
     orderBy: { minPercent: "desc" },
   });
   return defaults.map((g) => ({ ...g, isInherited: true }));
@@ -153,7 +170,7 @@ export const resolveGradeScaleService = async (
   }
 
   return prisma.gradeSetting.findMany({
-    where: { tenantId, examId: null, isDeleted: false },
+    where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
     orderBy: { minPercent: "desc" },
   });
 };

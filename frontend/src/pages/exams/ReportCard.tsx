@@ -810,7 +810,13 @@ const ReportCard: React.FC = () => {
             {/* ====== REMARKS ====== */}
             <div style={{ marginBottom: "16px", fontSize: "12px" }}>
               <p style={{ fontWeight: "bold", marginBottom: "4px" }}>Remarks:</p>
-              <div style={{ border: "1.5px solid #444", minHeight: "36px", padding: "6px 10px" }}></div>
+              <div style={{ border: "1.5px solid #444", minHeight: "36px", padding: "6px 10px" }}>
+                {data.summary?.result === "PASS"
+                  ? "Promoted to next class. Keep up the good work."
+                  : data.summary?.result === "FAIL"
+                  ? "Needs improvement. Please focus on the failed subjects."
+                  : ""}
+              </div>
             </div>
 
             {/* ====== SIGNATURES ====== */}
@@ -821,9 +827,7 @@ const ReportCard: React.FC = () => {
                 </div>
               </div>
               <div style={{ textAlign: "center" }}>
-                <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
-                  <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Principal</p>
-                </div>
+                <PrintSignature inline printOnly={false} />
               </div>
             </div>
 

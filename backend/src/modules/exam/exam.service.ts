@@ -14,6 +14,7 @@ import {
   CustomSeatingInput,
   BulkCreateExamInput,
 } from "./exam.types";
+import { resolveGradeScaleService as resolveGradeScale } from "../grade/grade.service";
 
 // ─────────────────────────────────────────────────────
 // CONSTANTS
@@ -41,11 +42,22 @@ function formatStudentName(firstName?: string | null, lastName?: string | null):
 // ─────────────────────────────────────────────────────
 function calculateGrade(
   percentage: number,
-  gradeSettings: { grade: string; minPercent: number; maxPercent: number }[]
+  gradeSettings: { grade: string; minPercent: number; maxPercent: number }[],
+  fallbackSettings?: { grade: string; minPercent: number; maxPercent: number }[]
 ): string | null {
-  if (!gradeSettings || gradeSettings.length === 0) return null;
-  for (const gs of gradeSettings) {
-    if (percentage >= gs.minPercent && percentage <= gs.maxPercent) return gs.grade;
+  // 1. Try the primary scale first (per-exam or whatever is passed in).
+  if (gradeSettings && gradeSettings.length > 0) {
+    for (const gs of gradeSettings) {
+      if (percentage >= gs.minPercent && percentage <= gs.maxPercent) return gs.grade;
+    }
+  }
+  // 2. Primary scale missing or has a gap for this percentage → fall back to
+  //    the tenant-wide default scale (configured in Grade Settings, examId=null)
+  //    so a grade is still produced without any hardcoded bands.
+  if (fallbackSettings && fallbackSettings.length > 0) {
+    for (const gs of fallbackSettings) {
+      if (percentage >= gs.minPercent && percentage <= gs.maxPercent) return gs.grade;
+    }
   }
   return null;
 }
@@ -315,47 +327,39 @@ export const enterMarksService = async (
     return m.isAbsent ? "ABSENT" : "PRESENT";
   };
 
-  for (const m of marks) {
-    if (!m.subjectId || !m.studentId) continue;
+  // Performance: the previous per-mark update/create approach (and even a
+  // Promise.all of hundreds of updates) overwhelmed MongoDB — parallel writes
+  // collided and aborted the transaction (P2028), taking minutes.
+  //
+  // Marks entry is a full "replace" of this exam's marks anyway, so the fastest
+  // safe approach is just TWO bulk queries, no per-row transactions:
+  //   1. Hard-delete all existing marks for this exam (deleteMany).
+  //   2. Insert the fresh set in one createMany.
+  const cleanMarks = marks.filter((m: any) => m.subjectId && m.studentId);
 
+  const toCreate = cleanMarks.map((m: any) => {
     const status = resolveStatus(m);
     const didNotAppear = status !== "PRESENT";
+    return {
+      examId,
+      studentId: m.studentId,
+      subjectId: m.subjectId,
+      marksObtained: didNotAppear ? 0 : (m.marksObtained ?? 0),
+      isAbsent: didNotAppear,
+      status,
+      tenantId,
+    };
+  });
 
-    const existing = await prisma.marksEntry.findFirst({
-      where: {
-        examId,
-        studentId: m.studentId,
-        subjectId: m.subjectId,
-        tenantId,
-        isDeleted: false,
-      },
-    });
+  // 1. Remove this exam's existing marks in one query.
+  await prisma.marksEntry.deleteMany({ where: { examId, tenantId } });
 
-    if (existing) {
-      await prisma.marksEntry.update({
-        where: { id: existing.id },
-        data: {
-          marksObtained: didNotAppear ? 0 : (m.marksObtained ?? 0),
-          isAbsent: didNotAppear,
-          status,
-        },
-      });
-      updated++;
-    } else {
-      await prisma.marksEntry.create({
-        data: {
-          examId,
-          studentId: m.studentId,
-          subjectId: m.subjectId,
-          marksObtained: didNotAppear ? 0 : (m.marksObtained ?? 0),
-          isAbsent: didNotAppear,
-          status,
-          tenantId,
-        },
-      });
-      created++;
-    }
+  // 2. Insert the fresh set in one query.
+  if (toCreate.length > 0) {
+    await prisma.marksEntry.createMany({ data: toCreate });
   }
+  created = toCreate.length;
+  updated = 0;
 
   return {
     message: "Marks saved successfully",
@@ -392,6 +396,26 @@ export const getMarksService = async (
   let examSubjects = await prisma.examSubject.findMany({
     where: { examId, tenantId, isDeleted: false },
   });
+
+  // Resolve a sensible default max/passing for subjects that have no explicit
+  // ExamSubject config, instead of a hardcoded 100/33. We match the exam to a
+  // Marking Scheme (Masters) by name — case/space-insensitive — so e.g. an
+  // exam named "FA 1" picks up the "Fa1" scheme (20 / 7). Falls back to the
+  // first active scheme, and only then to 100/33 if nothing is configured.
+  const markingSchemes = await prisma.markingScheme.findMany({
+    where: { tenantId, isActive: true },
+  });
+  const normalizeName = (v?: string | null) =>
+    (v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const examKey = normalizeName(exam.name);
+  const matchedScheme =
+    markingSchemes.find((ms: any) => normalizeName(ms.name) === examKey) ||
+    markingSchemes.find(
+      (ms: any) => examKey && normalizeName(ms.name).includes(examKey)
+    ) ||
+    null;
+  const defaultMax = matchedScheme ? Number(matchedScheme.maxMarks) : 100;
+  const defaultPass = matchedScheme ? Number(matchedScheme.passingMarks) : 33;
 
   // Always show ALL subjects of the exam's class (+ academic year) in the
   // marks register. Any subject explicitly configured on the exam keeps its
@@ -442,8 +466,8 @@ export const getMarksService = async (
       configuredBySubject.get(s.id) || configuredByName.get(s.name);
     return {
       subjectId: s.id,
-      maxMarks: cfg?.maxMarks ?? 100,
-      passingMarks: cfg?.passingMarks ?? 33,
+      maxMarks: cfg?.maxMarks ?? defaultMax,
+      passingMarks: cfg?.passingMarks ?? defaultPass,
     };
   }) as any;
 
@@ -765,7 +789,32 @@ export const getReportCardService = async (
   });
 
   // Per-exam scale if configured for this exam, else the tenant default.
-  const gradeSettings = await resolveGradeScale(tenantId, examId);
+  let gradeSettings = await resolveGradeScale(tenantId, examId);
+  // Last-resort fallback: if neither the exam's own scale nor the tenant
+  // default exists, use ANY configured grade scale for this tenant. Bands are
+  // percentage-based so any scale works across FA/SA exams. Nothing hardcoded.
+  if (!gradeSettings || gradeSettings.length === 0) {
+    gradeSettings = await prisma.gradeSetting.findMany({
+      where: { tenantId, isDeleted: false },
+      orderBy: { minPercent: "desc" },
+    });
+  }
+  // A separate percentage-based fallback scale: the tenant default plus any
+  // other configured scale. Used when the exam's own scale has a gap for a
+  // given percentage (e.g. a per-exam scale defined in raw marks), so a
+  // subject never shows a blank "-" when a valid percentage scale exists.
+  const fallbackScale = await prisma.gradeSetting.findMany({
+    where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
+    orderBy: { minPercent: "desc" },
+  });
+  // If no tenant-default scale exists, fall back to ANY configured scale for
+  // this tenant (per-exam scales included) so grades still resolve. Bands are
+  // percentage-based, so any scale works. Nothing hardcoded.
+  const anyScale = await prisma.gradeSetting.findMany({
+    where: { tenantId, isDeleted: false },
+    orderBy: { minPercent: "desc" },
+  });
+  const effectiveFallback = fallbackScale.length > 0 ? fallbackScale : (anyScale.length > 0 ? anyScale : gradeSettings);
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -809,7 +858,7 @@ export const getReportCardService = async (
 
     const obtained = mark?.marksObtained ?? 0;
     const percent = es.maxMarks > 0 ? (obtained / es.maxMarks) * 100 : 0;
-    const subjectGrade = calculateGrade(percent, gradeSettings);
+    const subjectGrade = calculateGrade(percent, gradeSettings, effectiveFallback);
 
     return {
       subjectName: subject?.name || "Unknown",
@@ -848,21 +897,40 @@ export const getReportCardService = async (
       photoUrl: student.photoUrl || "",             // ✅ NEW
     },
     subjectMarks,
-    summary: resultSummary
-      ? {
-          totalMarks: resultSummary.totalMarks,
-          totalMaxMarks: resultSummary.totalMaxMarks,
-          percentage: resultSummary.percentage,
-          grade: resultSummary.grade,
-          cgpa: resultSummary.cgpa ?? null,
-          rank: resultSummary.rank,
-          division: resultSummary.division,
-          status: resultSummary.status,
-          totalSubjects: resultSummary.totalSubjects,
-          passedSubjects: resultSummary.passedSubjects,
-          failedSubjects: resultSummary.failedSubjects,
-        }
-      : null,
+    // Summary is computed LIVE from the current subject marks, not read from a
+    // possibly-stale resultSummary row (which only updates when results are
+    // regenerated). This way the report card always reflects the latest saved
+    // marks even if "Generate Results" hasn't been re-run.
+    summary: (() => {
+      const liveTotalObtained = subjectMarks.reduce(
+        (sum, s) => sum + (s.isAbsent ? 0 : (s.marksObtained || 0)), 0
+      );
+      const liveTotalMax = subjectMarks.reduce((sum, s) => sum + (s.maxMarks || 0), 0);
+      const livePct = liveTotalMax > 0 ? (liveTotalObtained / liveTotalMax) * 100 : 0;
+      const livePassed = subjectMarks.filter((s) => s.status === "PASS").length;
+      const liveFailed = subjectMarks.filter((s) => s.status === "FAIL").length;
+      const liveGrade = calculateGrade(livePct, gradeSettings, effectiveFallback);
+      const liveStatus = liveFailed === 0 ? "PASS" : "FAIL";
+      let liveDivision: string | null = null;
+      if (liveStatus === "PASS") {
+        if (livePct >= 60) liveDivision = "First";
+        else if (livePct >= 45) liveDivision = "Second";
+        else liveDivision = "Third";
+      }
+      return {
+        totalMarks: Math.round(liveTotalObtained * 100) / 100,
+        totalMaxMarks: liveTotalMax,
+        percentage: Math.round(livePct * 100) / 100,
+        grade: liveGrade,
+        cgpa: resultSummary?.cgpa ?? null,
+        rank: resultSummary?.rank ?? null,
+        division: liveDivision,
+        status: liveStatus,
+        totalSubjects: subjectMarks.length,
+        passedSubjects: livePassed,
+        failedSubjects: liveFailed,
+      };
+    })(),
   };
 };
 
@@ -935,10 +1003,42 @@ export const getConsolidatedReportService = async (
     throw new Error("No exams found for this class and academic year");
   }
 
+  // Order exams in the natural academic sequence: FA1, FA2, FA3, FA4, SA1, SA2
+  // (then anything else by name). We derive a sort key from the exam name so
+  // the consolidated report always shows FAs before SAs, in numeric order —
+  // regardless of the order the exams were created in.
+  const examOrderKey = (name?: string | null): number => {
+    const n = (name || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const m = n.match(/^(FA|SA)(\d+)/);
+    if (m) {
+      const base = m[1] === "FA" ? 0 : 100; // FAs first, then SAs
+      return base + Number(m[2] || 0);
+    }
+    return 1000; // unknown names go last
+  };
+  exams.sort((a, b) => examOrderKey(a.name) - examOrderKey(b.name));
+
+  // Marking schemes (Masters) — used to resolve a sensible per-exam max mark
+  // when an exam/subject has no explicit ExamSubject config (which otherwise
+  // leaves maxMarks = 0 and makes grades impossible to compute).
+  const markingSchemes = await prisma.markingScheme.findMany({
+    where: { tenantId, isActive: true },
+  });
+  const normalizeName = (v?: string | null) =>
+    (v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const schemeMaxForExam = (examName?: string | null): number => {
+    const key = normalizeName(examName);
+    const ms =
+      markingSchemes.find((s: any) => normalizeName(s.name) === key) ||
+      markingSchemes.find((s: any) => key && normalizeName(s.name).includes(key));
+    return ms ? Number(ms.maxMarks) : 0;
+  };
+
   // 6. Get grade settings
   //    Default (tenant-wide) scale used for cross-exam totals/overall grade.
   const defaultGradeScale = await prisma.gradeSetting.findMany({
-    where: { tenantId, examId: null, isDeleted: false },
+    // Match both null examId and legacy rows where the field is absent.
+    where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
     orderBy: { minPercent: "desc" },
   });
   //    All per-exam scales for this tenant, grouped by examId. Each exam
@@ -952,8 +1052,19 @@ export const getConsolidatedReportService = async (
     if (!examScaleMap[row.examId]) examScaleMap[row.examId] = [] as any;
     examScaleMap[row.examId].push(row);
   });
-  const scaleForExam = (eId: string) =>
-    examScaleMap[eId]?.length ? examScaleMap[eId] : defaultGradeScale;
+  // Any configured scale (per-exam or default) — used as a last-resort fallback
+  // so an exam without its own scale and with no default still gets grades.
+  // Grade bands are percentage-based, so any user-configured scale is valid
+  // across FA (max 20) and SA (max 60) exams alike. Nothing is hardcoded.
+  const anyConfiguredScale =
+    defaultGradeScale.length > 0
+      ? defaultGradeScale
+      : (examScaleRows.length > 0 ? examScaleRows : []);
+  const scaleForExam = (eId: string) => {
+    if (examScaleMap[eId]?.length) return examScaleMap[eId];      // 1. own scale
+    if (defaultGradeScale.length) return defaultGradeScale;        // 2. default
+    return anyConfiguredScale;                                     // 3. any scale
+  };
 
   // 7. Get exam subjects for each exam + all marks for this student
   const examIds = exams.map((e) => e.id);
@@ -980,12 +1091,33 @@ export const getConsolidatedReportService = async (
   // 9. Build exam info with maxMarks per exam (sum of all subjects)
   const examInfo = exams.map((exam) => {
     const subjects = allExamSubjects.filter((es) => es.examId === exam.id);
-    const totalMax = subjects.reduce((sum, s) => sum + s.maxMarks, 0);
+    // Fall back to the marking scheme max × subject count when no per-subject
+    // config exists, so the header still shows a real max instead of 0.
+    const schemeMax = schemeMaxForExam(exam.name);
+    const totalMax = subjects.length
+      ? subjects.reduce((sum, s) => sum + (s.maxMarks || schemeMax), 0)
+      : 0;
+    // Per-exam obtained total (this student) and the overall grade for the exam
+    // — so the Total Marks row can show a grade per exam instead of a blank.
+    let examObtained = 0;
+    let examMaxForStudent = 0;
+    allSubjectIds.forEach((subjectId) => {
+      const es = allExamSubjects.find((x) => x.examId === exam.id && x.subjectId === subjectId);
+      const mk = allMarks.find((m) => m.examId === exam.id && m.subjectId === subjectId);
+      const mx = es?.maxMarks || schemeMax || 0;
+      examMaxForStudent += mx;
+      if (mk && !mk.isAbsent && mk.marksObtained !== null) examObtained += mk.marksObtained;
+    });
+    const examPct = examMaxForStudent > 0 ? (examObtained / examMaxForStudent) * 100 : 0;
+    const examGrade = calculateGrade(examPct, scaleForExam(exam.id), anyConfiguredScale);
     return {
       id: exam.id,
       name: exam.name,
       type: exam.type,
       totalMaxMarks: totalMax,
+      obtainedMarks: examObtained,
+      percentage: Math.round(examPct * 100) / 100,
+      grade: examGrade,
     };
   });
 
@@ -1003,7 +1135,9 @@ export const getConsolidatedReportService = async (
         (m) => m.examId === exam.id && m.subjectId === subjectId
       );
 
-      const maxMarks = examSubject?.maxMarks || 0;
+      // Use explicit ExamSubject config; fall back to the exam's marking scheme
+      // (Masters) so FA/SA exams without per-subject config still get a max.
+      const maxMarks = examSubject?.maxMarks || schemeMaxForExam(exam.name) || 0;
       const marksObtained = markEntry?.marksObtained ?? null;
       const isAbsent = markEntry?.isAbsent || false;
 
@@ -1011,8 +1145,11 @@ export const getConsolidatedReportService = async (
       let grade: string | null = null;
       if (marksObtained !== null && maxMarks > 0 && !isAbsent) {
         const percent = (marksObtained / maxMarks) * 100;
-        // Use this exam's own scale when configured, else the default.
-        grade = calculateGrade(percent, scaleForExam(exam.id));
+        // Use this exam's own scale when configured. If that scale has a gap
+        // for this percentage (e.g. a per-exam scale defined in raw marks that
+        // doesn't cover the percentage), fall back to any configured
+        // percentage-based scale so a grade is still produced.
+        grade = calculateGrade(percent, scaleForExam(exam.id), anyConfiguredScale);
       }
 
       return {
@@ -1036,7 +1173,7 @@ export const getConsolidatedReportService = async (
 
     const percentage = totalMaxMarks > 0 ? (totalMarks / totalMaxMarks) * 100 : 0;
     // Subject total spans multiple exams → use the default tenant scale.
-    const finalGrade = calculateGrade(percentage, defaultGradeScale);
+    const finalGrade = calculateGrade(percentage, anyConfiguredScale);
 
     return {
       subjectName,
@@ -1055,7 +1192,7 @@ export const getConsolidatedReportService = async (
     ? Math.round((grandTotalMarks / grandTotalMaxMarks) * 100 * 100) / 100
     : 0;
   // Overall grade spans all exams → use the default tenant scale.
-  const overallGrade = calculateGrade(overallPercentage, defaultGradeScale);
+  const overallGrade = calculateGrade(overallPercentage, anyConfiguredScale);
 
   // 12. Calculate rank (compare with all students in the class)
   const enrollments = await prisma.enrollment.findMany({

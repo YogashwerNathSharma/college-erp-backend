@@ -286,19 +286,20 @@ const MarksEntry: React.FC = () => {
   };
 
   // ─── Grade / total / percentage helpers ───
-  // The admin's grade scale for this exam is defined in RAW MARKS of a single
-  // subject (e.g. SA1 subjects are out of 60 → A+ = 55–60 marks, B+ = 45–49;
-  // FA subjects are out of 20 → a different scale). So we match the student's
-  // RAW MARKS directly against the band's min/max — NOT a 0–100 percentage.
+  // The admin's grade scale bands are defined on a 0–100 PERCENTAGE scale
+  // (same as the backend report card). So we convert the student's raw marks
+  // to a percentage of the subject's max marks, then match that percentage
+  // against each band's min/max. This keeps FA (out of 20) and SA (out of 60)
+  // on the same scale — e.g. 18/20 = 90% and 54/60 = 90% both map to A+.
   //
-  // STRICT matching: a grade is assigned ONLY when the marks fall inside a
-  // band the admin actually defined (min ≤ marks ≤ max). Outside every band
-  // → no grade ("-"); we never invent a grade the user didn't configure.
-  const gradeForMarks = (marks: number): string => {
+  // A grade is assigned ONLY when the percentage falls inside a band the admin
+  // defined (min ≤ pct ≤ max). Outside every band → no grade ("-").
+  const gradeForMarks = (marks: number, maxMarks: number): string => {
     if (!gradeScale.length) return "";
-    const v = Math.round(marks * 100) / 100; // guard tiny float drift
+    if (!maxMarks || maxMarks <= 0) return "";
+    const pct = Math.round(((marks / maxMarks) * 100) * 100) / 100; // guard float drift
     const band = gradeScale.find(
-      (g) => v >= g.minPercentage && v <= g.maxPercentage
+      (g) => pct >= g.minPercentage && pct <= g.maxPercentage
     );
     return band?.grade ?? "";
   };
@@ -313,7 +314,7 @@ const MarksEntry: React.FC = () => {
     const st = (status || (isAbsent ? "ABSENT" : "PRESENT")) as MarkStatus;
     if (st !== "PRESENT") return STATUS_SHORT[st] || "AB";
     if (marks === null || marks === undefined || maxMarks <= 0) return "";
-    return gradeForMarks(marks);
+    return gradeForMarks(marks, maxMarks);
   };
 
   // Aggregate a student's total, max total, percentage and overall grade
@@ -331,15 +332,13 @@ const MarksEntry: React.FC = () => {
       }
     });
     const percentage = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    // Overall grade uses the AVERAGE marks per subject, because the grade
-    // scale is defined on a single-subject scale (e.g. out of 60). This keeps
-    // the overall grade on the same scale the admin configured.
-    const avgPerSubject = gradedCount > 0 ? total / gradedCount : 0;
+    // Overall grade uses the student's overall PERCENTAGE across visible
+    // subjects, matched against the same percentage-based bands.
     return {
       total,
       maxTotal,
       percentage,
-      grade: gradeForMarks(avgPerSubject),
+      grade: gradeForMarks(total, maxTotal),
     };
   };
 

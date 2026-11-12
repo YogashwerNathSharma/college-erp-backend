@@ -2274,6 +2274,7 @@ model ResultSummary {
   totalMaxMarks  Float
   percentage     Float
   grade          String?
+  cgpa           Float?
   rank           Int?
   division       String?
   status         String
@@ -4971,7 +4972,9 @@ model ResultType {
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   name     String
   formula  String?
+  calculationMode String  @default("AUTOMATIC")
   isActive Boolean  @default(true)
+  isDeleted Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

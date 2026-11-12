@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL as CENTRAL_API_URL } from "../../config/api";
 import ScaleToFit from "../../components/ScaleToFit";
+import PrintSignature from "../../components/PrintSignature";
 
 // ============================================================
 // Types
@@ -35,6 +36,9 @@ interface ExamInfo {
   name: string;
   type: string;
   totalMaxMarks: number;
+  obtainedMarks?: number;
+  percentage?: number;
+  grade?: string | null;
 }
 
 interface ExamMarkEntry {
@@ -461,7 +465,7 @@ const ConsolidatedReportCard: React.FC = () => {
           <div style={{ overflowX: "auto", marginBottom: "12px" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: "2px solid #222", fontFamily: "'Times New Roman', Times, serif" }}>
               <thead>
-                {/* Row 1 */}
+                {/* Row 1: Subject | each exam (spanning its sub-cols) | Grand Total */}
                 <tr style={{ backgroundColor: "#f0f0f0" }}>
                   <th
                     rowSpan={2}
@@ -472,37 +476,35 @@ const ConsolidatedReportCard: React.FC = () => {
                   {exams.map((exam) => (
                     <th
                       key={exam.id}
+                      colSpan={showGrade ? 3 : 2}
                       style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}
                     >
                       <div style={{ fontSize: "11px", fontWeight: "bold" }}>{exam.name}</div>
-                      <div style={{ fontSize: "9px", fontWeight: "normal", fontStyle: "italic", color: "#555" }}>
-                        Marks Obtained
-                      </div>
                     </th>
                   ))}
                   <th
-                    colSpan={2}
+                    colSpan={showGrade ? 3 : 2}
                     style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}
                   >
                     Grand Total
                   </th>
-                  {showGrade && (
-                    <th
-                      rowSpan={2}
-                      style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold", verticalAlign: "middle", width: "60px" }}
-                    >
-                      Grade
-                    </th>
-                  )}
                 </tr>
-                {/* Row 2: Grand Total sub-headers */}
+                {/* Row 2: sub-headers (Max / Obt / Grade) under every exam + Grand Total */}
                 <tr style={{ backgroundColor: "#f0f0f0" }}>
-                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold", fontStyle: "italic" }}>
-                    Full Marks
-                  </th>
-                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold", fontStyle: "italic" }}>
-                    Marks Obtained
-                  </th>
+                  {exams.map((exam) => (
+                    <React.Fragment key={`sub-${exam.id}`}>
+                      <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Max</th>
+                      <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Obt.</th>
+                      {showGrade && (
+                        <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Grade</th>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Max</th>
+                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Obt.</th>
+                  {showGrade && (
+                    <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Grade</th>
+                  )}
                 </tr>
               </thead>
 
@@ -512,15 +514,31 @@ const ConsolidatedReportCard: React.FC = () => {
                     <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "600", textTransform: "uppercase" }}>
                       {subject.subjectName}
                     </td>
-                    {subject.examMarks.map((em, emIdx) => (
-                      <td key={emIdx} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                        {em.isAbsent ? (
-                          <span style={{ color: "#b91c1c", fontWeight: "600" }}>AB</span>
-                        ) : (
-                          <span>{em.marks ?? "-"}</span>
-                        )}
-                      </td>
-                    ))}
+                    {exams.map((exam) => {
+                      const em = subject.examMarks.find((x) => x.examId === exam.id);
+                      return (
+                        <React.Fragment key={exam.id}>
+                          {/* Max marks for this exam */}
+                          <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
+                            {em?.maxMarks ?? "-"}
+                          </td>
+                          {/* Obtained marks */}
+                          <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
+                            {em?.isAbsent ? (
+                              <span style={{ color: "#b91c1c", fontWeight: "600" }}>AB</span>
+                            ) : (
+                              <span>{em?.marks ?? "-"}</span>
+                            )}
+                          </td>
+                          {/* Grade */}
+                          {showGrade && (
+                            <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
+                              {em?.isAbsent ? "AB" : (em?.grade || "—")}
+                            </td>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                     <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
                       {subject.totalMaxMarks}
                     </td>
@@ -542,14 +560,20 @@ const ConsolidatedReportCard: React.FC = () => {
                   </td>
                   {exams.map((exam) => {
                     let examTotal = 0;
+                    let examMax = 0;
                     subjects.forEach((subject) => {
                       const mark = subject.examMarks.find((em) => em.examId === exam.id);
-                      if (mark && !mark.isAbsent && mark.marks !== null) examTotal += mark.marks;
+                      if (mark) {
+                        examMax += mark.maxMarks;
+                        if (!mark.isAbsent && mark.marks !== null) examTotal += mark.marks;
+                      }
                     });
                     return (
-                      <td key={`total-${exam.id}`} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                        {examTotal}
-                      </td>
+                      <React.Fragment key={`total-${exam.id}`}>
+                        <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>{examMax}</td>
+                        <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>{examTotal}</td>
+                        {showGrade && <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>{exam.grade || "—"}</td>}
+                      </React.Fragment>
                     );
                   })}
                   <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
@@ -582,7 +606,7 @@ const ConsolidatedReportCard: React.FC = () => {
                     });
                     const pct = examMax > 0 ? ((examTotal / examMax) * 100).toFixed(1) : "0";
                     return (
-                      <td key={`pct-${exam.id}`} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
+                      <td key={`pct-${exam.id}`} colSpan={showGrade ? 3 : 2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
                         {pct}%
                       </td>
                     );
@@ -598,7 +622,7 @@ const ConsolidatedReportCard: React.FC = () => {
                   <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "bold", textTransform: "uppercase" }}>
                     Division
                   </td>
-                  <td colSpan={exams.length + (showGrade ? 3 : 2)} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                  <td colSpan={exams.length * (showGrade ? 3 : 2) + (showGrade ? 3 : 2)} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                     {grandTotal.grade || "—"}
                   </td>
                 </tr>
@@ -630,9 +654,7 @@ const ConsolidatedReportCard: React.FC = () => {
             </div>
             {/* Right: Principal */}
             <div style={{ textAlign: "center" }}>
-              <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
-                <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Principal</p>
-              </div>
+              <PrintSignature inline printOnly={false} />
             </div>
           </div>
 

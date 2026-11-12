@@ -534,6 +534,8 @@ const CreateEditExam: React.FC = () => {
                   <option value="MARKS">Marks Only</option>
                   <option value="GRADE">Grade Only</option>
                   <option value="BOTH">Both (Marks + Grade)</option>
+                  <option value="CGPA">CGPA Only</option>
+                  <option value="MARKS_GRADE_CGPA">Marks + Grade + CGPA</option>
                 </select>
               </div>
             </div>

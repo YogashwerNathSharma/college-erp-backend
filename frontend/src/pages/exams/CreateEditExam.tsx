@@ -77,6 +77,10 @@ const CreateEditExam: React.FC = () => {
   const [sections, setSections] = useState<Section[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [examTerms, setExamTerms] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
+  // Exam Type Master + Result Type Master — pulled from master data instead of
+  // being hardcoded, so whatever the admin configures shows up here.
+  const [examTypes, setExamTypes] = useState<{ id: string; name: string }[]>([]);
+  const [resultTypes, setResultTypes] = useState<{ id: string; name: string }[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
 
@@ -154,17 +158,27 @@ const CreateEditExam: React.FC = () => {
   const fetchDropdowns = async () => {
     setLoading(true);
     try {
-      const [classRes, yearRes, termRes] = await Promise.all([
+      const [classRes, yearRes, termRes, typeRes, resultRes] = await Promise.all([
         axios.get(getFullUrl("/api/class"), { headers }),
         axios.get(getFullUrl("/api/academic"), { headers }),
         axios.get(getFullUrl("/api/masters/exam-term-master/dropdown"), { headers }).catch((err) => {
           console.warn("Exam terms fetch failed:", err?.response?.status, err?.message);
           return { data: { data: [] } };
         }),
+        axios.get(getFullUrl("/api/masters/exam-type-master/dropdown"), { headers }).catch((err) => {
+          console.warn("Exam types fetch failed:", err?.response?.status, err?.message);
+          return { data: { data: [] } };
+        }),
+        axios.get(getFullUrl("/api/masters/result-type-master/dropdown"), { headers }).catch((err) => {
+          console.warn("Result types fetch failed:", err?.response?.status, err?.message);
+          return { data: { data: [] } };
+        }),
       ]);
       setClasses(classRes.data?.data || classRes.data || []);
       setAcademicYears(yearRes.data?.data || yearRes.data || []);
       setExamTerms(termRes.data?.data || termRes.data || []);
+      setExamTypes(typeRes.data?.data || typeRes.data || []);
+      setResultTypes(resultRes.data?.data || resultRes.data || []);
     } catch (error) {
       toast.error("Failed to load form options");
     } finally {
@@ -530,10 +544,26 @@ const CreateEditExam: React.FC = () => {
                   required
                 >
                   <option value="">Select Type</option>
-                  <option value="TERM">Term Exam</option>
-                  <option value="UNIT_TEST">Unit Test</option>
-                  <option value="PRACTICAL">Practical</option>
+                  {examTypes.length > 0 ? (
+                    examTypes.map((t) => (
+                      <option key={t.id} value={t.name}>
+                        {t.name.replace(/_/g, " ")}
+                      </option>
+                    ))
+                  ) : (
+                    /* Fallback to built-in values if Exam Type Master is empty */
+                    <>
+                      <option value="TERM">Term Exam</option>
+                      <option value="UNIT_TEST">Unit Test</option>
+                      <option value="PRACTICAL">Practical</option>
+                    </>
+                  )}
                 </select>
+                {examTypes.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    Using defaults. Add types in Masters → Exam Type Master
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -545,11 +575,22 @@ const CreateEditExam: React.FC = () => {
                   onChange={handleChange}
                   className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm"
                 >
-                  <option value="MARKS">Marks Only</option>
-                  <option value="GRADE">Grade Only</option>
-                  <option value="BOTH">Both (Marks + Grade)</option>
-                  <option value="CGPA">CGPA Only</option>
-                  <option value="MARKS_GRADE_CGPA">Marks + Grade + CGPA</option>
+                  {resultTypes.length > 0 ? (
+                    resultTypes.map((r) => (
+                      <option key={r.id} value={r.name}>
+                        {r.name.replace(/_/g, " ")}
+                      </option>
+                    ))
+                  ) : (
+                    /* Fallback to built-in values if Result Type Master is empty */
+                    <>
+                      <option value="MARKS">Marks Only</option>
+                      <option value="GRADE">Grade Only</option>
+                      <option value="BOTH">Both (Marks + Grade)</option>
+                      <option value="CGPA">CGPA Only</option>
+                      <option value="MARKS_GRADE_CGPA">Marks + Grade + CGPA</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>

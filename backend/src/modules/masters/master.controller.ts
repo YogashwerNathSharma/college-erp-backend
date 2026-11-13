@@ -722,6 +722,16 @@ export async function getDropdown(req: Request, res: Response) {
         });
       } catch {
       try {
+        // Keep startDate/endDate even when `code` is absent (e.g. ExamTerm).
+        // Previously a single failed select discarded the dates too, which
+        // broke auto-filling exam Start/End Date from the selected term.
+        entries = await delegate.findMany({
+          where: { tenantId, isActive: true },
+          select: { id: true, name: true, startDate: true, endDate: true },
+          orderBy: { name: 'asc' },
+        });
+      } catch {
+      try {
         entries = await delegate.findMany({
           where: { tenantId, isActive: true },
           select: { id: true, name: true },
@@ -739,6 +749,7 @@ export async function getDropdown(req: Request, res: Response) {
             where: tenantId ? { tenantId } : {},
           });
         }
+      }
       }
       }
     }

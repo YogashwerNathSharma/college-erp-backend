@@ -703,15 +703,24 @@ export async function getDropdown(req: Request, res: Response) {
 
     const delegate = getPrismaDelegate(config.model);
 
-    // Not all models have 'code' field — try with code first, fall back without
+    // Not all models have 'code' field — try with code first, fall back without.
+    // For models that carry date ranges (e.g. ExamTerm), also return
+    // startDate/endDate so the client can auto-fill dependent fields.
     let entries;
     try {
       entries = await delegate.findMany({
         where: { tenantId, isActive: true },
-        select: { id: true, name: true, code: true },
+        select: { id: true, name: true, code: true, startDate: true, endDate: true },
         orderBy: { name: 'asc' },
       });
     } catch {
+      try {
+        entries = await delegate.findMany({
+          where: { tenantId, isActive: true },
+          select: { id: true, name: true, code: true },
+          orderBy: { name: 'asc' },
+        });
+      } catch {
       try {
         entries = await delegate.findMany({
           where: { tenantId, isActive: true },
@@ -730,6 +739,7 @@ export async function getDropdown(req: Request, res: Response) {
             where: tenantId ? { tenantId } : {},
           });
         }
+      }
       }
     }
 

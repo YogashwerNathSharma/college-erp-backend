@@ -76,7 +76,7 @@ const CreateEditExam: React.FC = () => {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [examTerms, setExamTerms] = useState<{ id: string; name: string }[]>([]);
+  const [examTerms, setExamTerms] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
 
@@ -206,6 +206,20 @@ const CreateEditExam: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    // When an Exam Term is picked, auto-fill Start/End Date from the Exam Term
+    // Master so the user doesn't re-enter them. User can still override.
+    if (name === "name") {
+      const term = examTerms.find((t) => t.name === value);
+      const toInput = (d?: string) =>
+        d ? new Date(d).toISOString().split("T")[0] : "";
+      setFormData((prev) => ({
+        ...prev,
+        name: value,
+        ...(term?.startDate ? { startDate: toInput(term.startDate) } : {}),
+        ...(term?.endDate ? { endDate: toInput(term.endDate) } : {}),
+      }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 

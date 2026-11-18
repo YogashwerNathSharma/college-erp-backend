@@ -106,6 +106,8 @@ const ConsolidatedReportCard: React.FC = () => {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWatermark, setShowWatermark] = useState<boolean>(true);
+  const [schoolNameColor, setSchoolNameColor] = useState<string>("#167d3f");
   const printRef = useRef<HTMLDivElement>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [isMobile] = useState(() =>
@@ -212,11 +214,13 @@ const ConsolidatedReportCard: React.FC = () => {
   const studentPhotoUrl = getFullUrl(student.photoUrl);
 
   // ============================================================
-  // Main Render
+  // Main Render — R.M.S. Academy style
   // ============================================================
+  const pct = Number(grandTotal.percentage) || 0;
+  const divisionLabel = pct >= 60 ? "I" : pct >= 45 ? "II" : pct >= 33 ? "III" : "—";
+
   return (
     <>
-
       {/* Print/Download buttons */}
       <div className="print:hidden fixed top-4 right-4 z-[100] flex items-center gap-2">
         {isMobile && (
@@ -258,10 +262,31 @@ const ConsolidatedReportCard: React.FC = () => {
             <option value="consolidated-grade">Consolidated (With Grade)</option>
             <option value="consolidated-no-grade">Consolidated (Without Grade)</option>
           </select>
+
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer ml-2">
+            <input
+              type="checkbox"
+              checked={showWatermark}
+              onChange={(e) => setShowWatermark(e.target.checked)}
+              className="w-4 h-4 accent-primary-600"
+            />
+            Watermark
+          </label>
+
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer ml-2">
+            School Name Color:
+            <input
+              type="color"
+              value={schoolNameColor}
+              onChange={(e) => setSchoolNameColor(e.target.value)}
+              className="w-8 h-8 p-0 border border-gray-300 rounded cursor-pointer"
+              title="Pick school name color"
+            />
+          </label>
         </div>
       </div>
 
-      {/* Report Card Container (top padding clears the fixed action buttons) */}
+      {/* Report Card Container */}
       <div style={{ padding: "72px 0 30px" }}>
        <ScaleToFit contentWidth={850}>
         <div
@@ -271,239 +296,176 @@ const ConsolidatedReportCard: React.FC = () => {
             fontFamily: "'Times New Roman', Times, serif",
             width: "850px",
             backgroundColor: "#fff",
-            border: "3px solid #222",
-            padding: "30px 40px",
+            border: "2px solid #111",
+            padding: "22px 26px",
             position: "relative",
             overflow: "hidden",
+            color: "#111",
           }}
         >
-        {/* Watermark */}
-        {logoUrl && (
-          <div
+        {/* Watermark — real <img> that ALWAYS prints (independent of the browser's
+            "Background graphics" option). Centered with transform and constrained
+            by max-width/height so the whole logo always shows — never cut, never repeated. */}
+        {logoUrl && showWatermark && (
+          <img
+            className="report-watermark"
+            src={logoUrl}
+            alt=""
             style={{
               position: "absolute",
-              top: 0, left: 0, right: 0, bottom: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              top: "26%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "auto",
+              height: "auto",
+              maxWidth: "70%",
+              maxHeight: "60%",
+              opacity: 0.08,
+              objectFit: "contain",
               pointerEvents: "none",
-              zIndex: 0,
+              zIndex: 5,
             }}
-          >
-            <img
-              src={logoUrl}
-              alt=""
-              loading="lazy"
-              style={{ opacity: 0.05, width: "350px", height: "350px", objectFit: "contain" }}
-            />
-          </div>
+          />
         )}
 
         {/* Content */}
         <div style={{ position: "relative", zIndex: 1 }}>
 
           {/* ====== HEADER ====== */}
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start" }}>
             {/* Logo Left */}
-            <div style={{ width: "85px", flexShrink: 0 }}>
+            <div style={{ width: "95px", flexShrink: 0, paddingTop: "4px" }}>
               {logoUrl && (
                 <img
                   src={logoUrl}
                   alt="School Logo"
                   loading="lazy"
-                  style={{ width: "75px", height: "75px", objectFit: "contain" }}
+                  style={{ width: "80px", height: "80px", objectFit: "contain" }}
                 />
               )}
             </div>
 
             {/* School Name Center */}
             <div style={{ flex: 1, textAlign: "center" }}>
-              <h1 style={{ fontSize: "26px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px", margin: 0, fontFamily: "'Times New Roman', Times, serif" }}>
+              <h1 className="school-name-title" style={{ fontSize: "40px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", margin: 0, ["--school-color" as any]: schoolNameColor, color: schoolNameColor, lineHeight: 1.05 }}>
                 {tenant.name}
               </h1>
               {tenant.address && (
-                <p style={{ fontSize: "13px", margin: "2px 0 0 0", color: "#333" }}>
+                <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#222", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   {tenant.address}
                 </p>
               )}
-              {tenant.phone && (
-                <p style={{ fontSize: "13px", margin: "1px 0 0 0", color: "#333" }}>
-                  Phone No: {tenant.phone}
-                </p>
-              )}
+              <p style={{ fontSize: "17px", margin: "6px 0 0 0", color: "#167d3f", fontWeight: "bold" }}>
+                Progress Report (Annual)
+              </p>
+              <p style={{ fontSize: "16px", margin: "2px 0 0 0", color: "#444", fontWeight: 600 }}>
+                Session : {academicYear}
+              </p>
             </div>
 
-            {/* Spacer */}
-            <div style={{ width: "85px", flexShrink: 0 }}></div>
-          </div>
-
-          {/* Divider */}
-          <hr style={{ border: "none", borderTop: "3px solid #000", margin: "6px 0 14px 0" }} />
-
-          {/* Session & Title */}
-          <div style={{ textAlign: "center", marginBottom: "16px" }}>
-            <p style={{ fontSize: "15px", fontWeight: "bold", margin: 0 }}>
-              Session : {academicYear}
-            </p>
-            <p style={{ fontSize: "13px", fontWeight: "600", margin: "3px 0 0 0" }}>
-              Progress Report Card (Annual)
-            </p>
-          </div>
-
-          {/* ====== STUDENT INFO with Photo ====== */}
-          <div style={{ display: "flex", marginBottom: "18px" }}>
-            {/* Left: Student fields */}
-            <div style={{ flex: 1, fontSize: "12px", lineHeight: "2.4" }}>
-              {/* Row 1 */}
-              <div style={{ display: "flex" }}>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "115px", fontWeight: "500" }}>Student's Name</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.name}
-                  </span>
-                </div>
-                <div style={{ width: "24px" }}></div>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "105px", fontWeight: "500" }}>Admission No.</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.admissionNo}
-                  </span>
-                </div>
-              </div>
-              {/* Row 2 */}
-              <div style={{ display: "flex" }}>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "115px", fontWeight: "500" }}>Father's Name</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.fatherName}
-                  </span>
-                </div>
-                <div style={{ width: "24px" }}></div>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "105px", fontWeight: "500" }}>Class / Section</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.className}{student.section ? ` - ${student.section}` : ""}
-                  </span>
-                </div>
-              </div>
-              {/* Row 3 */}
-              <div style={{ display: "flex" }}>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "115px", fontWeight: "500" }}>Mother's Name</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.motherName || "—"}
-                  </span>
-                </div>
-                <div style={{ width: "24px" }}></div>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "105px", fontWeight: "500" }}>Roll No</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.rollNo || "—"}
-                  </span>
-                </div>
-              </div>
-              {/* Row 4 */}
-              <div style={{ display: "flex" }}>
-                <div style={{ flex: 1, display: "flex" }}>
-                  <span style={{ width: "115px", fontWeight: "500" }}>Date of Birth</span>
-                  <span style={{ width: "10px" }}>:</span>
-                  <span style={{ flex: 1, borderBottom: "1px solid #555", fontWeight: "700", paddingLeft: "6px" }}>
-                    {student.dob || "—"}
-                  </span>
-                </div>
-                <div style={{ width: "24px" }}></div>
-                <div style={{ flex: 1 }}></div>
-              </div>
-            </div>
-
-            {/* Right: Student Photo */}
-            <div style={{ width: "90px", marginLeft: "16px", flexShrink: 0 }}>
+            {/* Student Photo Right */}
+            <div style={{ width: "95px", flexShrink: 0, textAlign: "right" }}>
               {studentPhotoUrl ? (
                 <img
                   src={studentPhotoUrl}
                   alt="Student"
                   loading="lazy"
-                  style={{
-                    width: "80px",
-                    height: "95px",
-                    objectFit: "cover",
-                    border: "1.5px solid #444",
-                  }}
+                  style={{ width: "82px", height: "98px", objectFit: "cover", border: "1px solid #444" }}
                 />
               ) : (
-                <div
-                  style={{
-                    width: "80px",
-                    height: "95px",
-                    border: "1.5px solid #444",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "9px",
-                    color: "#999",
-                    backgroundColor: "#f9f9f9",
-                  }}
-                >
+                <div style={{ width: "82px", height: "98px", border: "1px solid #444", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#999", backgroundColor: "#f9f9f9" }}>
                   Photo
                 </div>
               )}
             </div>
           </div>
 
-          {/* ====== SCHOLASTIC ACHIEVEMENT ====== */}
-          <p style={{ fontSize: "13px", fontWeight: "bold", marginBottom: "8px", textDecoration: "underline" }}>
-            Scholastic Achievement
+          {/* ====== STUDENT INFO ====== */}
+          <div style={{ display: "flex", flexWrap: "wrap", fontSize: "13px", lineHeight: "1.9", marginTop: "10px", marginBottom: "8px", border: "1.5px solid #111", padding: "8px 14px" }}>
+            {[
+              ["Name of the Student", student.name, "Class", `${student.className}${student.section ? ` ${student.section}` : ""}`],
+              ["Admission Number", student.admissionNo, "Roll No.", student.rollNo || ""],
+              ["Date of Birth", student.dob || "", "House", "NA"],
+              ["Father's Name", student.fatherName, "Mother's Name", student.motherName || ""],
+            ].map(([lLabel, lVal, rLabel, rVal], i) => (
+              <React.Fragment key={i}>
+                <div style={{ width: "50%", display: "flex", paddingRight: "12px" }}>
+                  <span style={{ width: "150px", fontWeight: "bold" }}>{lLabel}</span>
+                  <span style={{ width: "10px" }}>:</span>
+                  <span style={{ flex: 1, fontWeight: "bold", color: "#1d3b8b", paddingLeft: "6px" }}>{lVal}</span>
+                </div>
+                <div style={{ width: "50%", display: "flex", paddingLeft: "12px" }}>
+                  <span style={{ width: "120px", fontWeight: "bold" }}>{rLabel}</span>
+                  <span style={{ width: "10px" }}>:</span>
+                  <span style={{ flex: 1, fontWeight: "bold", color: "#1d3b8b", paddingLeft: "6px" }}>{rVal}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* ====== ACADEMIC ACHIEVEMENTS ====== */}
+          <p style={{ fontSize: "15px", fontWeight: "bold", margin: "8px 0 6px 0", color: "#1d3b8b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            Academic Achievements
           </p>
 
           {/* ====== MARKS TABLE ====== */}
-          <div style={{ overflowX: "auto", marginBottom: "12px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: "2px solid #222", fontFamily: "'Times New Roman', Times, serif" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1.5px solid #111", fontFamily: "'Times New Roman', Times, serif" }}>
               <thead>
-                {/* Row 1: Subject | each exam (spanning its sub-cols) | Grand Total */}
-                <tr style={{ backgroundColor: "#f0f0f0" }}>
-                  <th
-                    rowSpan={2}
-                    style={{ border: "1.5px solid #333", padding: "5px 6px", textAlign: "left", fontWeight: "bold", verticalAlign: "middle", width: "100px" }}
-                  >
-                    Subject
+                {/* Row 1: Subject | each exam name | Grand Total */}
+                <tr>
+                  <th rowSpan={3} style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "left", fontWeight: "bold", verticalAlign: "middle", width: "110px" }}>
+                    SUBJECT
                   </th>
                   {exams.map((exam) => (
-                    <th
-                      key={exam.id}
-                      colSpan={showGrade ? 3 : 2}
-                      style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}
-                    >
-                      <div style={{ fontSize: "11px", fontWeight: "bold" }}>{exam.name}</div>
+                    <th key={exam.id} colSpan={showGrade ? 2 : 1} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                      {exam.name}
                     </th>
                   ))}
-                  <th
-                    colSpan={showGrade ? 3 : 2}
-                    style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}
-                  >
+                  <th colSpan={showGrade ? 3 : 2} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                     Grand Total
                   </th>
                 </tr>
-                {/* Row 2: sub-headers (Max / Obt / Grade) under every exam + Grand Total */}
-                <tr style={{ backgroundColor: "#f0f0f0" }}>
+                {/* Row 2: "Marks Obtained" (+ Grade) under each exam + Grand Total headers */}
+                <tr>
                   {exams.map((exam) => (
-                    <React.Fragment key={`sub-${exam.id}`}>
-                      <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Max</th>
-                      <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Obt.</th>
+                    <React.Fragment key={`mo-${exam.id}`}>
+                      <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                        Marks Obtained
+                      </th>
                       {showGrade && (
-                        <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Grade</th>
+                        <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                          Grade
+                        </th>
                       )}
                     </React.Fragment>
                   ))}
-                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Max</th>
-                  <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Obt.</th>
+                  <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Maximum Marks</th>
+                  <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Marks Obtained</th>
                   {showGrade && (
-                    <th style={{ border: "1.5px solid #333", padding: "3px", textAlign: "center", fontSize: "9px", fontWeight: "bold" }}>Grade</th>
+                    <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Grade</th>
+                  )}
+                </tr>
+                {/* Row 3: max marks per exam e.g. (20) + Total/Total */}
+                <tr>
+                  {exams.map((exam) => {
+                    const first = subjects[0]?.examMarks.find((em) => em.examId === exam.id);
+                    const examMax = first?.maxMarks ?? exam.totalMaxMarks ?? 0;
+                    return (
+                      <React.Fragment key={`mx-${exam.id}`}>
+                        <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>
+                          ({examMax})
+                        </th>
+                        {showGrade && (
+                          <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}></th>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                  <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Total</th>
+                  <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Total</th>
+                  {showGrade && (
+                    <th style={{ border: "1px solid #333", padding: "3px", textAlign: "center", fontSize: "10px", fontWeight: "bold" }}>Total</th>
                   )}
                 </tr>
               </thead>
@@ -511,87 +473,72 @@ const ConsolidatedReportCard: React.FC = () => {
               <tbody>
                 {subjects.map((subject, idx) => (
                   <tr key={idx}>
-                    <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "600", textTransform: "uppercase" }}>
+                    <td style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "600", textTransform: "uppercase" }}>
                       {subject.subjectName}
                     </td>
                     {exams.map((exam) => {
                       const em = subject.examMarks.find((x) => x.examId === exam.id);
                       return (
                         <React.Fragment key={exam.id}>
-                          {/* Max marks for this exam */}
-                          <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                            {em?.maxMarks ?? "-"}
-                          </td>
-                          {/* Obtained marks */}
-                          <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
+                          <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>
                             {em?.isAbsent ? (
                               <span style={{ color: "#b91c1c", fontWeight: "600" }}>AB</span>
                             ) : (
                               <span>{em?.marks ?? "-"}</span>
                             )}
                           </td>
-                          {/* Grade */}
                           {showGrade && (
-                            <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
+                            <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
                               {em?.isAbsent ? "AB" : (em?.grade || "—")}
                             </td>
                           )}
                         </React.Fragment>
                       );
                     })}
-                    <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
+                    <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>
                       {subject.totalMaxMarks}
                     </td>
-                    <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                    <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                       {subject.totalMarks}
                     </td>
                     {showGrade && (
-                      <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
+                      <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "600" }}>
                         {subject.finalGrade || "—"}
                       </td>
                     )}
                   </tr>
                 ))}
 
-                {/* TOTAL MARKS */}
-                <tr style={{ backgroundColor: "#f0f0f0", fontWeight: "bold" }}>
-                  <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "bold", textTransform: "uppercase" }}>
-                    Total Marks
+                {/* TOTAL */}
+                <tr style={{ fontWeight: "bold" }}>
+                  <td style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "bold", textAlign: "center", textTransform: "uppercase" }}>
+                    Total
                   </td>
                   {exams.map((exam) => {
                     let examTotal = 0;
-                    let examMax = 0;
                     subjects.forEach((subject) => {
                       const mark = subject.examMarks.find((em) => em.examId === exam.id);
-                      if (mark) {
-                        examMax += mark.maxMarks;
-                        if (!mark.isAbsent && mark.marks !== null) examTotal += mark.marks;
-                      }
+                      if (mark && !mark.isAbsent && mark.marks !== null) examTotal += mark.marks;
                     });
                     return (
                       <React.Fragment key={`total-${exam.id}`}>
-                        <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>{examMax}</td>
-                        <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>{examTotal}</td>
-                        {showGrade && <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>{exam.grade || "—"}</td>}
+                        <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{examTotal}</td>
+                        {showGrade && (
+                          <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>{exam.grade || "—"}</td>
+                        )}
                       </React.Fragment>
                     );
                   })}
-                  <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                    {grandTotal.totalMaxMarks}
-                  </td>
-                  <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                    {grandTotal.totalMarks}
-                  </td>
+                  <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{grandTotal.totalMaxMarks}</td>
+                  <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{grandTotal.totalMarks}</td>
                   {showGrade && (
-                    <td style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
-                      {grandTotal.grade || "—"}
-                    </td>
+                    <td style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>{grandTotal.grade || "—"}</td>
                   )}
                 </tr>
 
                 {/* PERCENTAGE */}
                 <tr style={{ fontWeight: "bold" }}>
-                  <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "bold", textTransform: "uppercase" }}>
+                  <td style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "bold", textAlign: "center", textTransform: "uppercase" }}>
                     Percentage
                   </td>
                   {exams.map((exam) => {
@@ -604,55 +551,80 @@ const ConsolidatedReportCard: React.FC = () => {
                         if (!mark.isAbsent && mark.marks !== null) examTotal += mark.marks;
                       }
                     });
-                    const pct = examMax > 0 ? ((examTotal / examMax) * 100).toFixed(1) : "0";
+                    const p = examMax > 0 ? ((examTotal / examMax) * 100).toFixed(2) : "0";
                     return (
-                      <td key={`pct-${exam.id}`} colSpan={showGrade ? 3 : 2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center" }}>
-                        {pct}%
-                      </td>
+                      <td key={`pct-${exam.id}`} colSpan={showGrade ? 2 : 1} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{p}%</td>
                     );
                   })}
-                  <td colSpan={showGrade ? 3 : 2} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
+                  <td colSpan={showGrade ? 3 : 2} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
                     {grandTotal.percentage}%
                   </td>
                 </tr>
 
                 {/* DIVISION */}
-                {showGrade && (
-                <tr>
-                  <td style={{ border: "1.5px solid #333", padding: "4px 6px", fontWeight: "bold", textTransform: "uppercase" }}>
+                <tr style={{ fontWeight: "bold" }}>
+                  <td style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "bold", textAlign: "center", textTransform: "uppercase" }}>
                     Division
                   </td>
-                  <td colSpan={exams.length * (showGrade ? 3 : 2) + (showGrade ? 3 : 2)} style={{ border: "1.5px solid #333", padding: "4px 3px", textAlign: "center", fontWeight: "bold" }}>
-                    {grandTotal.grade || "—"}
-                  </td>
+                  {exams.map((exam) => (
+                    <td key={`div-${exam.id}`} colSpan={showGrade ? 2 : 1} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{divisionLabel}</td>
+                  ))}
+                  <td colSpan={showGrade ? 3 : 2} style={{ border: "1px solid #333", padding: "4px 3px", textAlign: "center" }}>{divisionLabel}</td>
                 </tr>
-                )}
               </tbody>
             </table>
           </div>
 
-          {/* ====== SUMMARY ====== */}
-          <div style={{ fontSize: "12px", marginBottom: "6px", display: "flex", gap: "40px" }}>
-            <span>Total Marks: <b>{grandTotal.totalMarks} / {grandTotal.totalMaxMarks}</b></span>
-            <span>Percentage: <b>{grandTotal.percentage}%</b></span>
-            <span>Rank: <b>{grandTotal.rank || "______"}</b></span>
-          </div>
+          {/* ====== REMARK + ATTENDANCE ====== */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1.5px solid #111", borderTop: "none" }}>
+            <tbody>
+              <tr>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "bold", width: "55%", textAlign: "center", backgroundColor: "#fff" }}>
+                  Class Teacher's Remark
+                </td>
+                <td colSpan={2} style={{ border: "1px solid #333", padding: "4px 6px", fontWeight: "bold", textAlign: "center", backgroundColor: "#fff" }}>
+                  Attendance
+                </td>
+              </tr>
+              <tr>
+                <td rowSpan={2} style={{ border: "1px solid #333", padding: "6px 10px", verticalAlign: "top", height: "54px" }}></td>
+                <td style={{ border: "1px solid #333", padding: "4px 8px", fontWeight: 600, width: "30%" }}>Total Working Days</td>
+                <td style={{ border: "1px solid #333", padding: "4px 8px", textAlign: "center" }}></td>
+              </tr>
+              <tr>
+                <td style={{ border: "1px solid #333", padding: "4px 8px", fontWeight: 600 }}>Total Presents</td>
+                <td style={{ border: "1px solid #333", padding: "4px 8px", textAlign: "center" }}></td>
+              </tr>
+            </tbody>
+          </table>
 
-          {/* ====== REMARKS ====== */}
-          <div style={{ marginBottom: "16px", fontSize: "12px" }}>
-            <p style={{ fontWeight: "bold", marginBottom: "4px" }}>Remarks:</p>
-            <div style={{ border: "1.5px solid #444", minHeight: "36px", padding: "6px 10px" }}></div>
-          </div>
+          {/* ====== RESULT STRIP ====== */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1.5px solid #111", borderTop: "none" }}>
+            <tbody>
+              <tr style={{ backgroundColor: "#fff", fontWeight: "bold" }}>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", textAlign: "center" }}>Overall Marks</td>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", textAlign: "center" }}>Percentage</td>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", textAlign: "center" }}>Result</td>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", textAlign: "center" }}>Overall Grade</td>
+                <td style={{ border: "1px solid #333", padding: "4px 6px", textAlign: "center" }}>Rank</td>
+              </tr>
+              <tr style={{ fontWeight: "bold", color: "#1d3b8b" }}>
+                <td style={{ border: "1px solid #333", padding: "6px", textAlign: "center" }}>{grandTotal.totalMarks} / {grandTotal.totalMaxMarks}</td>
+                <td style={{ border: "1px solid #333", padding: "6px", textAlign: "center" }}>{grandTotal.percentage}%</td>
+                <td style={{ border: "1px solid #333", padding: "6px", textAlign: "center" }}>{pct >= 33 ? "Pass" : "Fail"}</td>
+                <td style={{ border: "1px solid #333", padding: "6px", textAlign: "center" }}>{showGrade ? (grandTotal.grade || "—") : "—"}</td>
+                <td style={{ border: "1px solid #333", padding: "6px", textAlign: "center" }}>{grandTotal.rank || ""}</td>
+              </tr>
+            </tbody>
+          </table>
 
-          {/* ====== SIGNATURES ====== */}
-          <div style={{ marginTop: "50px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0 20px" }}>
-            {/* Left: Class Teacher */}
+          {/* ====== DATE + SIGNATURES ====== */}
+          <div style={{ marginTop: "40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0 10px" }}>
             <div style={{ textAlign: "center" }}>
-              <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "130px" }}>
-                <p style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", margin: 0 }}>Class Teacher</p>
+              <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "140px" }}>
+                <p style={{ fontSize: "12px", fontWeight: "bold", margin: 0 }}>Class Teacher</p>
               </div>
             </div>
-            {/* Right: Principal */}
             <div style={{ textAlign: "center" }}>
               <PrintSignature inline printOnly={false} />
             </div>
@@ -665,10 +637,16 @@ const ConsolidatedReportCard: React.FC = () => {
 
       {/* Print Styles */}
       <style>{`
+        /* School name color must win over the global "#print-area h1 { color:#000 !important }" rule */
+        #print-area h1.school-name-title { color: var(--school-color) !important; }
+        /* Cream header cells to match the original R.M.S. report card */
+        #print-area thead th { background-color: #d9d9d9 !important; color: #000 !important; }
+        /* Force all body rows white — kill any global zebra/alternate-row striping */
+        #print-area tbody tr,
+        #print-area tbody tr td { background-color: #ffffff !important; }
         @media print {
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
-          /* Neutralize the on-screen scale-to-fit transform when printing */
           .scale-to-fit-box { width: auto !important; height: auto !important; }
           .scale-to-fit-content { width: 100% !important; transform: none !important; }
           #print-area {
@@ -676,16 +654,31 @@ const ConsolidatedReportCard: React.FC = () => {
             left: 0 !important; top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 20px 30px !important;
-            border: 3px solid #222 !important;
+            padding: 20px 26px !important;
+            border: 2px solid #111 !important;
             box-shadow: none !important;
             min-width: unset !important;
           }
-          body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { margin: 0 !important; padding: 0 !important; }
           aside, nav, .sidebar, [class*="sidebar"], [class*="TopNavbar"] { display: none !important; }
           main, [class*="ml-64"], [class*="main-content"] { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
           tr { page-break-inside: avoid; }
           table { font-size: 10px; }
+          /* Watermark stays centered inside the report card (same as on screen),
+             always visible whether or not "Background graphics" is enabled. */
+          .report-watermark {
+            position: absolute !important;
+            top: 26% !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: 60% !important;
+            max-height: 50% !important;
+            opacity: 0.08 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
       `}</style>
     </>
@@ -693,4 +686,3 @@ const ConsolidatedReportCard: React.FC = () => {
 };
 
 export default ConsolidatedReportCard;
-

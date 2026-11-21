@@ -57,7 +57,8 @@ export const getAdminUsersService = async (filters: AdminUserFilters) => {
     sortOrder = "desc",
   } = filters;
 
-  const where: any = {};
+  // Recycle-bin ko alag rakhne ke liye: default list sirf non-deleted users dikhaye.
+  const where: any = { isDeleted: false };
 
   if (search) {
     where.OR = [
@@ -224,13 +225,74 @@ export const updateAdminUserService = async (id: string, data: UpdateAdminUserDT
 // DELETE ADMIN USER
 // ══════════════════════════════════════════════════════
 
-export const deleteAdminUserService = async (id: string) => {
+export const deleteAdminUserService = async (id: string, actorId?: string) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) throw new Error("Admin user not found");
+  if ((user as any).isDeleted) throw new Error("User already deleted");
   if (user.role === "SUPER_ADMIN") throw new Error("Cannot delete a Super Admin account");
 
-  await prisma.user.delete({ where: { id } });
-  return { message: "User deleted successfully" };
+  // Soft delete: user DB se mitta nahi — recycle bin me jaata hai.
+  // Isse related records (sessions, tickets, audit) safe rehte hain aur
+  // user "wapas" nahi aata kyunki list isDeleted:false filter karti hai.
+  await prisma.user.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date(), status: "INACTIVE", isActive: false },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "ADMIN_USER_SOFT_DELETED",
+      entity: "User",
+      entityType: "User",
+      entityId: user.id,
+      userId: actorId || "",
+      performedBy: actorId || "",
+      tenantId: (user as any).tenantId || "",
+      metadata: { targetEmail: user.email, targetName: user.name },
+    },
+  }).catch(() => {});
+
+  return { message: "User moved to Recycle Bin" };
+};
+
+// Recycle Bin: list of soft-deleted users
+export const getDeletedUsersService = async () => {
+  const users = await prisma.user.findMany({
+    where: { isDeleted: true },
+    select: {
+      id: true, name: true, email: true, role: true, phone: true,
+      status: true, deletedAt: true, createdAt: true,
+    },
+    orderBy: { deletedAt: "desc" },
+  });
+  return { users, total: users.length };
+};
+
+// Restore a soft-deleted user from Recycle Bin
+export const restoreUserService = async (id: string, actorId?: string) => {
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) throw new Error("User not found");
+  if (!(user as any).isDeleted) throw new Error("User is not deleted");
+
+  await prisma.user.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null, status: "ACTIVE", isActive: true },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "ADMIN_USER_RESTORED",
+      entity: "User",
+      entityType: "User",
+      entityId: user.id,
+      userId: actorId || "",
+      performedBy: actorId || "",
+      tenantId: (user as any).tenantId || "",
+      metadata: { targetEmail: user.email, targetName: user.name },
+    },
+  }).catch(() => {});
+
+  return { message: "User restored successfully", email: user.email };
 };
 
 // ══════════════════════════════════════════════════════
@@ -246,7 +308,10 @@ export const bulkDeleteAdminUsersService = async (ids: string[]) => {
     throw new Error("Cannot delete Super Admin accounts");
   }
 
-  const result = await prisma.user.deleteMany({ where: { id: { in: ids } } });
+  const result = await prisma.user.updateMany({
+    where: { id: { in: ids }, isDeleted: false },
+    data: { isDeleted: true, deletedAt: new Date(), status: "INACTIVE", isActive: false },
+  });
   return { deletedCount: result.count };
 };
 
@@ -425,11 +490,11 @@ export const getUserActivityService = async (userId: string, limit = 50) => {
 export const getUserManagementStatsService = async () => {
   const [totalUsers, activeNow, lockedAccounts, superAdmins, admins] =
     await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { status: "ACTIVE" } }),
-      prisma.user.count({ where: { status: "LOCKED" } }),
-      prisma.user.count({ where: { role: "SUPER_ADMIN" } }),
-      prisma.user.count({ where: { role: "ADMIN" } }),
+      prisma.user.count({ where: { isDeleted: false } }),
+      prisma.user.count({ where: { status: "ACTIVE", isDeleted: false } }),
+      prisma.user.count({ where: { status: "LOCKED", isDeleted: false } }),
+      prisma.user.count({ where: { role: "SUPER_ADMIN", isDeleted: false } }),
+      prisma.user.count({ where: { role: "ADMIN", isDeleted: false } }),
     ]);
 
   return {

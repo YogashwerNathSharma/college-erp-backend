@@ -234,6 +234,11 @@ export default function UserManagement() {
   const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null);
   const [resetBusy, setResetBusy] = useState(false);
 
+  // Recycle Bin
+  const [recycleOpen, setRecycleOpen] = useState(false);
+  const [deletedUsers, setDeletedUsers] = useState<AdminUser[]>([]);
+  const [recycleLoading, setRecycleLoading] = useState(false);
+
   // Selected user for detail views
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
@@ -404,18 +409,56 @@ export default function UserManagement() {
     setConfirmOpen(true);
   };
 
+  const openRecycleBin = async () => {
+    setRecycleOpen(true);
+    setRecycleLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(getFullUrl("/api/super-admin/users/recycle-bin"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDeletedUsers(res.data?.data?.users || []);
+    } catch {
+      setDeletedUsers([]);
+    } finally {
+      setRecycleLoading(false);
+    }
+  };
+
+  const handleRestoreUser = async (userId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.patch(getFullUrl(`/api/super-admin/users/${userId}/restore`), {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDeletedUsers((prev) => prev.filter((u) => u.id !== userId));
+      toast.success("User restored");
+      fetchData();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Restore failed");
+    }
+  };
+
   const handleDeleteUser = (user: AdminUser) => {
     setConfirmAction({
-      title: "Delete User",
-      message: `Are you sure you want to delete "${user.name}"? This will permanently remove their account and all associated data.`,
+      title: "Move to Recycle Bin",
+      message: `"${user.name}" ko Recycle Bin me bhejein? User list se hat jayega par data safe rahega aur baad me restore kiya ja sakta hai.`,
       onConfirm: async () => {
         try {
-          await axios.delete(getFullUrl(`/api/super-admin/users/${user.id}`));
-        } catch {}
-        setUsers((prev) => prev.filter((u) => u.id !== user.id));
-        setStats((prev) => ({ ...prev, totalUsers: prev.totalUsers - 1 }));
-        toast.success("User deleted");
-        setConfirmOpen(false);
+          const token = localStorage.getItem("token");
+          await axios.delete(getFullUrl(`/api/super-admin/users/${user.id}`), {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          // Sirf API success par hi UI update karo (jhooti success nahi).
+          setUsers((prev) => prev.filter((u) => u.id !== user.id));
+          setStats((prev) => ({ ...prev, totalUsers: Math.max(0, prev.totalUsers - 1) }));
+          toast.success("User moved to Recycle Bin");
+          setConfirmOpen(false);
+          fetchData();
+        } catch (error: any) {
+          toast.error(error?.response?.data?.message || "Delete failed. Please try again.");
+          setConfirmOpen(false);
+        }
       },
     });
     setConfirmOpen(true);
@@ -586,6 +629,14 @@ export default function UserManagement() {
         icon={<Users className="w-6 h-6" />}
         breadcrumbs={[{ label: "Super Admin", path: "/super-admin" }, { label: "User Management" }]}
         actions={
+          <div className="flex items-center gap-2">
+          <button
+            onClick={openRecycleBin}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium text-sm transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Recycle Bin
+          </button>
           <button
             onClick={() => { resetForm(); setCreateOpen(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm transition-colors shadow-sm"
@@ -593,6 +644,7 @@ export default function UserManagement() {
             <UserPlus className="w-4 h-4" />
             Add User
           </button>
+          </div>
         }
       />
 
@@ -899,6 +951,58 @@ export default function UserManagement() {
               </div>
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* ═══ RECYCLE BIN MODAL ═══ */}
+      <Modal open={recycleOpen} onClose={() => setRecycleOpen(false)} title="Recycle Bin — Deleted Users" size="xl">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Ye users delete kiye gaye hain par data safe hai. Restore karke wapas active kar sakte hain.
+          </p>
+          {recycleLoading ? (
+            <div className="py-10 text-center text-slate-400">Loading...</div>
+          ) : deletedUsers.length === 0 ? (
+            <div className="py-10 text-center text-slate-400">
+              <Trash2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              Recycle Bin khaali hai.
+            </div>
+          ) : (
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium">Name</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Email</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Role</th>
+                    <th className="text-right px-4 py-2.5 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deletedUsers.map((u) => (
+                    <tr key={u.id} className="border-t border-slate-200 dark:border-slate-700">
+                      <td className="px-4 py-2.5 text-slate-900 dark:text-white">{u.name}</td>
+                      <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{u.email}</td>
+                      <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">{u.role}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        <button
+                          onClick={() => handleRestoreUser(u.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Restore
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-700">
+            <button onClick={() => setRecycleOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+              Close
+            </button>
+          </div>
         </div>
       </Modal>
 

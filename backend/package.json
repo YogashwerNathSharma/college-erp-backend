@@ -12,7 +12,9 @@
     "start": "node dist/server.js",
     "seed": "ts-node prisma/seed.ts",
     "seed-erp": "ts-node prisma/seed-erp.ts",
-    "seed-superadmin": "ts-node prisma/seed-superadmin.ts"
+    "seed-superadmin": "ts-node prisma/seed-superadmin.ts",
+    "map:update": "node scripts/generate-project-map.js",
+    "add-feature": "node scripts/add-feature.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

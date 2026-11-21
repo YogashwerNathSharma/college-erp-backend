@@ -5,6 +5,8 @@ import {
   createAdminUserService,
   updateAdminUserService,
   deleteAdminUserService,
+  getDeletedUsersService,
+  restoreUserService,
   bulkDeleteAdminUsersService,
   bulkUpdateStatusService,
   resetPasswordService,
@@ -101,7 +103,30 @@ export const updateAdminUser = async (req: Request, res: Response) => {
 export const deleteAdminUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const result = await deleteAdminUserService(id);
+    const actorId = (req as any).user?.userId;
+    const result = await deleteAdminUserService(id, actorId);
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Recycle Bin: list soft-deleted users
+export const getDeletedUsers = async (_req: Request, res: Response) => {
+  try {
+    const data = await getDeletedUsersService();
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Restore a soft-deleted user
+export const restoreUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const actorId = (req as any).user?.userId;
+    const result = await restoreUserService(id, actorId);
     res.json({ success: true, ...result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

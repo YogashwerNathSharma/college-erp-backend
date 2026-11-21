@@ -8,6 +8,8 @@ import {
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
+  getDeletedUsers,
+  restoreUser,
   bulkDeleteAdminUsers,
   bulkUpdateStatus,
   resetPassword,
@@ -29,10 +31,14 @@ router.get("/stats", getUserManagementStats);
 
 // CRUD
 router.get("/", getAdminUsers);
+// Recycle Bin (MUST be before dynamic "/:id")
+router.get("/recycle-bin", getDeletedUsers);
+
 router.get("/:id", getAdminUserById);
 router.post("/", createAdminUser);
 router.put("/:id", updateAdminUser);
 router.delete("/:id", deleteAdminUser);
+router.patch("/:id/restore", restoreUser);
 
 // Bulk operations
 router.post("/bulk/delete", bulkDeleteAdminUsers);

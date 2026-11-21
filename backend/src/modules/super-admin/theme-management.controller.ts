@@ -5,6 +5,8 @@ import {
   createThemeService,
   updateThemeService,
   deleteThemeService,
+  getDeletedThemesService,
+  restoreThemeService,
   activateThemeService,
   applyPresetService,
   uploadLogoService,
@@ -126,6 +128,26 @@ export const updateCustomCode = async (req: Request, res: Response) => {
 export const previewTheme = async (req: Request, res: Response) => {
   try {
     const result = await previewThemeService(req.body);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ─── RECYCLE BIN: list deleted themes ──────────────────
+export const getDeletedThemes = async (req: Request, res: Response) => {
+  try {
+    const result = await getDeletedThemesService();
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── RESTORE THEME ─────────────────────────────────────
+export const restoreTheme = async (req: Request, res: Response) => {
+  try {
+    const result = await restoreThemeService(req.params.id);
     res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

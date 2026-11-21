@@ -9,6 +9,8 @@ import {
   createSignatureService,
   updateSignatureService,
   deleteSignatureService,
+  getDeletedSignaturesService,
+  restoreSignatureService,
 } from "./signature.service";
 
 // ============================================================
@@ -115,5 +117,32 @@ export const deleteSignature = async (req: any, res: Response) => {
   } catch (error: any) {
     const statusCode = error.message === "Signature not found" ? 404 : 500;
     return res.status(statusCode).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// RECYCLE BIN: list deleted signatures
+// ============================================================
+export const getDeletedSignatures = async (req: any, res: Response) => {
+  try {
+    const tenantId = req.tenantId;
+    const signatures = await getDeletedSignaturesService(tenantId);
+    return res.json({ success: true, data: signatures });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============================================================
+// RESTORE SIGNATURE
+// ============================================================
+export const restoreSignature = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+    const result = await restoreSignatureService(id, tenantId);
+    return res.json({ success: true, message: result.message });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 };

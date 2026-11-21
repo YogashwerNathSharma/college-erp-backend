@@ -142,3 +142,23 @@ export async function getAnalytics(req: Request, res: Response) {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+// GET /api/super-admin/notification-center/templates/recycle-bin
+export async function getDeletedTemplates(req: Request, res: Response) {
+  try {
+    const templates = await notifService.getDeletedTemplates();
+    res.json({ success: true, templates });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// PATCH /api/super-admin/notification-center/templates/:id/restore
+export async function restoreTemplate(req: Request, res: Response) {
+  try {
+    await notifService.restoreTemplate(req.params.id);
+    res.json({ success: true, message: "Template restored" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}

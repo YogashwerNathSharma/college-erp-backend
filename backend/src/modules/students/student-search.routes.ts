@@ -14,6 +14,8 @@ import {
   createSavedFilter,
   updateSavedFilter,
   deleteSavedFilter,
+  getDeletedSavedFilters,
+  restoreSavedFilter,
 } from "./student-search.service";
 
 const router = Router();
@@ -85,7 +87,27 @@ router.put("/saved-filters/:id", async (req: any, res: Response) => {
 router.delete("/saved-filters/:id", async (req: any, res: Response) => {
   try {
     await deleteSavedFilter(req.params.id, req.tenantId, req.user.userId);
-    res.json({ success: true, message: "Filter deleted" });
+    res.json({ success: true, message: "Filter moved to Recycle Bin" });
+  } catch (err: any) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// ── Recycle Bin: deleted saved filters ──────────────────────────────────────
+router.get("/saved-filters/recycle-bin", async (req: any, res: Response) => {
+  try {
+    const filters = await getDeletedSavedFilters(req.tenantId, req.user.userId);
+    res.json({ success: true, data: filters });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Restore a saved filter ──────────────────────────────────────────────────
+router.patch("/saved-filters/:id/restore", async (req: any, res: Response) => {
+  try {
+    await restoreSavedFilter(req.params.id, req.tenantId, req.user.userId);
+    res.json({ success: true, message: "Filter restored" });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }

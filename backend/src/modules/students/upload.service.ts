@@ -122,30 +122,62 @@ export const getStudentDocuments = async (
   tenantId: string
 ) => {
   return prisma.studentDocument.findMany({
-    where: { studentId, tenantId },
+    where: { studentId, tenantId, isDeleted: false },
   });
 };
 
 // ============================================
-// DELETE STUDENT DOCUMENT
+// DELETE STUDENT DOCUMENT (SOFT DELETE -> Recycle Bin)
 // ============================================
+// File ko Cloudinary se NAHI hatate taaki restore ho sake.
+// Record ko isDeleted:true mark karte hain; recycle bin me dikhega.
 export const deleteStudentDocument = async (
   docId: string,
   tenantId: string
 ) => {
   const doc = await prisma.studentDocument.findFirst({
-    where: { id: docId, tenantId },
+    where: { id: docId, tenantId, isDeleted: false },
   });
 
   if (!doc) throw new Error("Document not found");
 
-  // Delete from Cloudinary
-  if (doc.url && doc.url.startsWith("http")) {
-    await deleteFromCloudinary(doc.url);
-  }
+  await prisma.studentDocument.update({
+    where: { id: docId },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+  return { success: true, message: "Document moved to Recycle Bin" };
+};
 
-  await prisma.studentDocument.delete({ where: { id: docId } });
-  return { success: true };
+// ============================================
+// RECYCLE BIN: deleted documents for a student
+// ============================================
+export const getDeletedStudentDocuments = async (
+  studentId: string,
+  tenantId: string
+) => {
+  return prisma.studentDocument.findMany({
+    where: { studentId, tenantId, isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// ============================================
+// RESTORE STUDENT DOCUMENT from Recycle Bin
+// ============================================
+export const restoreStudentDocument = async (
+  docId: string,
+  tenantId: string
+) => {
+  const doc = await prisma.studentDocument.findFirst({
+    where: { id: docId, tenantId, isDeleted: true },
+  });
+  if (!doc) throw new Error("Deleted document not found");
+
+  await prisma.studentDocument.update({
+    where: { id: docId },
+    data: { isDeleted: false, deletedAt: null },
+  });
+  return { success: true, message: "Document restored" };
 };
 
 // ============================================

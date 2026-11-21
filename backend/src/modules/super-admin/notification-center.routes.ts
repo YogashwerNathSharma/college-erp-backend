@@ -22,10 +22,12 @@ router.post("/send", controller.sendNotification);
 
 // 📋 Templates
 router.get("/templates", controller.getTemplates);
+router.get("/templates/recycle-bin", controller.getDeletedTemplates);
 router.get("/templates/:id", controller.getTemplateById);
 router.post("/templates", controller.createTemplate);
 router.put("/templates/:id", controller.updateTemplate);
 router.delete("/templates/:id", controller.deleteTemplate);
+router.patch("/templates/:id/restore", controller.restoreTemplate);
 
 // 📢 Broadcast
 router.post("/broadcast", controller.sendBroadcast);

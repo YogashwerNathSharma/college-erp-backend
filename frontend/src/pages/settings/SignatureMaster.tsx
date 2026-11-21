@@ -14,6 +14,8 @@ import {
   CheckCircle,
   Upload,
   Eye,
+  RotateCcw,
+  Archive,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -64,6 +66,10 @@ const SignatureMaster: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  // Recycle Bin
+  const [recycleOpen, setRecycleOpen] = useState<boolean>(false);
+  const [deletedSignatures, setDeletedSignatures] = useState<Signature[]>([]);
+  const [recycleLoading, setRecycleLoading] = useState<boolean>(false);
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -95,6 +101,31 @@ const SignatureMaster: React.FC = () => {
   useEffect(() => {
     fetchSignatures();
   }, [fetchSignatures]);
+
+  // ─── Recycle Bin ──────────────────────────────────────────
+  const openRecycleBin = async () => {
+    setRecycleOpen(true);
+    setRecycleLoading(true);
+    try {
+      const response = await api.get("/api/signature/recycle-bin");
+      setDeletedSignatures(response.data?.data || []);
+    } catch {
+      setDeletedSignatures([]);
+    } finally {
+      setRecycleLoading(false);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await api.patch(`/api/signature/${id}/restore`);
+      setDeletedSignatures((prev) => prev.filter((s) => s.id !== id));
+      setSuccessMsg("Signature restored");
+      fetchSignatures();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to restore signature");
+    }
+  };
 
   // ─── Auto-clear messages ──────────────────────────────────────────────
 
@@ -217,7 +248,7 @@ const SignatureMaster: React.FC = () => {
     try {
       setDeleteLoading(true);
       await api.delete(`/api/signature/${id}`);
-      setSuccessMsg("Signature deleted successfully");
+      setSuccessMsg("Signature moved to Recycle Bin");
       setDeleteConfirm(null);
       fetchSignatures();
     } catch (err: any) {
@@ -242,6 +273,14 @@ const SignatureMaster: React.FC = () => {
             Manage authorized signatures for reports, certificates & ID cards
           </p>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          onClick={openRecycleBin}
+          className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-gray-200 dark:border-slate-600 px-4 py-2.5 rounded-lg font-medium transition-colors"
+        >
+          <Archive size={18} />
+          Recycle Bin
+        </button>
         <button
           onClick={openAddModal}
           className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
@@ -249,6 +288,7 @@ const SignatureMaster: React.FC = () => {
           <Plus size={18} />
           Add Signature
         </button>
+        </div>
       </div>
 
       {/* Toast Messages */}
@@ -515,6 +555,56 @@ const SignatureMaster: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Recycle Bin Modal */}
+      {recycleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl mx-4 p-6 shadow-2xl max-h-[80vh] overflow-y-auto border border-transparent dark:border-slate-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <Archive size={20} /> Recycle Bin — Deleted Signatures
+              </h3>
+              <button onClick={() => setRecycleOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Deleted signatures yahan safe hain. Restore karke wapas la sakte hain.</p>
+            {recycleLoading ? (
+              <div className="py-10 text-center text-gray-400">Loading...</div>
+            ) : deletedSignatures.length === 0 ? (
+              <div className="py-10 text-center text-gray-400">
+                <Archive size={36} className="mx-auto mb-2 opacity-40" />
+                Recycle Bin khaali hai.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {deletedSignatures.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 p-3 border border-gray-200 dark:border-slate-700 rounded-xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {s.imageUrl && <img src={s.imageUrl} alt={s.title} className="w-12 h-12 object-contain rounded border border-gray-100" />}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{s.title}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{s.personName} — {s.designation}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRestore(s.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shrink-0"
+                    >
+                      <RotateCcw size={14} /> Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end pt-4 mt-4 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => setRecycleOpen(false)} className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

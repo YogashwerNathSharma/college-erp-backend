@@ -38,6 +38,10 @@ import {
 
   deleteStudentDocument,
 
+  getDeletedStudentDocuments,
+
+  restoreStudentDocument,
+
   deleteStudentPhoto,
 
 } from "./upload.service";
@@ -262,6 +266,26 @@ router.delete("/documents/:documentId", requirePermission("students.edit"), asyn
 
   }
 
+});
+
+// Recycle Bin: deleted documents for a student
+router.get("/:id/documents/recycle-bin", async (req: any, res: any) => {
+  try {
+    const documents = await getDeletedStudentDocuments(req.params.id, req.tenantId);
+    res.json({ success: true, data: documents });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Restore a deleted document
+router.patch("/documents/:documentId/restore", requirePermission("students.edit"), async (req: any, res: any) => {
+  try {
+    const result = await restoreStudentDocument(req.params.documentId, req.tenantId);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
 });
 
 // --- Stats ---

@@ -218,3 +218,41 @@ export async function getSystemStatus(req: Request, res: Response) {
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+// ─── KB Recycle Bin ──────────────────────────────────────
+export async function getDeletedKBArticles(req: Request, res: Response) {
+  try {
+    const articles = await supportService.getDeletedKBArticles();
+    res.json({ success: true, articles });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function restoreKBArticle(req: Request, res: Response) {
+  try {
+    await supportService.restoreKBArticle(req.params.id);
+    res.json({ success: true, message: "Article restored" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+// ─── Announcement Recycle Bin ────────────────────────────
+export async function getDeletedAnnouncements(req: Request, res: Response) {
+  try {
+    const announcements = await supportService.getDeletedAnnouncements();
+    res.json({ success: true, announcements });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function restoreAnnouncement(req: Request, res: Response) {
+  try {
+    await supportService.restoreAnnouncement(req.params.id);
+    res.json({ success: true, message: "Announcement restored" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}

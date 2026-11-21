@@ -14,6 +14,8 @@ import {
   createSignature,
   updateSignature,
   deleteSignature,
+  getDeletedSignatures,
+  restoreSignature,
 } from "./signature.controller";
 
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -64,7 +66,13 @@ router.post("/", upload.single("image"), createSignature);
 // PUT /api/signature/:id — Update signature
 router.put("/:id", upload.single("image"), updateSignature);
 
-// DELETE /api/signature/:id — Delete signature
+// GET /api/signature/recycle-bin — deleted signatures
+router.get("/recycle-bin", getDeletedSignatures);
+
+// DELETE /api/signature/:id — Delete (soft) signature
 router.delete("/:id", deleteSignature);
+
+// PATCH /api/signature/:id/restore — restore from recycle bin
+router.patch("/:id/restore", restoreSignature);
 
 export default router;

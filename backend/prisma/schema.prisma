@@ -1595,10 +1595,13 @@ model StudentSavedFilter {
   isDefault   Boolean  @default(false)
   isShared    Boolean  @default(false)
   sortOrder   Int      @default(0)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId, userId])
+  @@index([tenantId, isDeleted])
   @@map("student_saved_filters")
 }
 
@@ -4227,10 +4230,13 @@ model ThemeConfig {
   loginBg        String?
   isDark         Boolean  @default(false)
   isActive       Boolean  @default(true)
+  isDeleted      Boolean  @default(false)
+  deletedAt      DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("theme_configs")
 }
 
@@ -4556,10 +4562,13 @@ model Signature {
   designation String
   imageUrl    String
   isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, isDeleted])
   @@map("signatures")
 }
 
@@ -6066,4 +6075,61 @@ model TenantAgreement {
   @@index([tenantId])
   @@index([tenantId, agreementVersion])
   @@map("tenant_agreements")
+}
+
+
+// ════════════════════════════════════════════════════════════
+// Super-admin content models (added for soft-delete + recycle bin)
+// Fields match notification-center / support-center services.
+// ════════════════════════════════════════════════════════════
+
+model NotificationTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  channel   String
+  subject   String   @default("")
+  body      String
+  variables String[] @default([])
+  isActive  Boolean  @default(true)
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDeleted])
+  @@map("notification_center_templates")
+}
+
+model KbArticle {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  content     String
+  category    String
+  tags        String[] @default([])
+  isPublished Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isDeleted])
+  @@map("kb_articles")
+}
+
+model Announcement {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  content        String
+  type           String
+  targetAudience String   @default("all")
+  publishedAt    DateTime @default(now())
+  expiresAt      DateTime?
+  isActive       Boolean  @default(true)
+  isDeleted      Boolean  @default(false)
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isDeleted])
+  @@map("announcements")
 }

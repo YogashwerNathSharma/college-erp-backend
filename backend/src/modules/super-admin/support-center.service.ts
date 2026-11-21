@@ -208,7 +208,7 @@ export async function getTicketStats() {
 // ─── Knowledge Base ──────────────────────────────────────
 
 export async function getKBArticles(filter?: { category?: string; search?: string; published?: boolean }) {
-  const where: any = {};
+  const where: any = { isDeleted: false };
   if (filter?.category) where.category = filter.category;
   if (filter?.published !== undefined) where.isPublished = filter.published;
   if (filter?.search) {
@@ -248,13 +248,30 @@ export async function updateKBArticle(id: string, data: Partial<KBArticle>) {
 }
 
 export async function deleteKBArticle(id: string) {
-  return prisma.kbArticle.delete({ where: { id } });
+  return prisma.kbArticle.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+}
+
+export async function getDeletedKBArticles() {
+  return prisma.kbArticle.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+}
+
+export async function restoreKBArticle(id: string) {
+  return prisma.kbArticle.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
 }
 
 // ─── Announcements ───────────────────────────────────────
 
 export async function getAnnouncements(activeOnly: boolean = false) {
-  const where: any = {};
+  const where: any = { isDeleted: false };
   if (activeOnly) {
     where.isActive = true;
     where.OR = [{ expiresAt: null }, { expiresAt: { gt: new Date() } }];
@@ -289,7 +306,24 @@ export async function updateAnnouncement(id: string, data: Partial<Announcement>
 }
 
 export async function deleteAnnouncement(id: string) {
-  return prisma.announcement.delete({ where: { id } });
+  return prisma.announcement.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+}
+
+export async function getDeletedAnnouncements() {
+  return prisma.announcement.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+}
+
+export async function restoreAnnouncement(id: string) {
+  return prisma.announcement.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
 }
 
 // ─── Maintenance Mode ────────────────────────────────────

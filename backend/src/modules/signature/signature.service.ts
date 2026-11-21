@@ -10,7 +10,7 @@ import prisma from "../../utils/prisma";
 
 export const getAllSignaturesService = async (tenantId: string) => {
   const signatures = await prisma.signature.findMany({
-    where: { tenantId },
+    where: { tenantId, isDeleted: false },
     orderBy: { createdAt: "desc" },
   });
   return signatures;
@@ -82,13 +82,42 @@ export const updateSignatureService = async (
 
 export const deleteSignatureService = async (id: string, tenantId: string) => {
   const existing = await prisma.signature.findFirst({
-    where: { id, tenantId },
+    where: { id, tenantId, isDeleted: false },
   });
   if (!existing) throw new Error("Signature not found");
 
-  await prisma.signature.delete({
+  // Soft delete -> Recycle Bin (restore possible)
+  await prisma.signature.update({
     where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
   });
 
-  return { message: "Signature deleted successfully" };
+  return { message: "Signature moved to Recycle Bin" };
+};
+
+// ============================================================
+// RECYCLE BIN: deleted signatures for a tenant
+// ============================================================
+export const getDeletedSignaturesService = async (tenantId: string) => {
+  return prisma.signature.findMany({
+    where: { tenantId, isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// ============================================================
+// RESTORE SIGNATURE from Recycle Bin
+// ============================================================
+export const restoreSignatureService = async (id: string, tenantId: string) => {
+  const existing = await prisma.signature.findFirst({
+    where: { id, tenantId, isDeleted: true },
+  });
+  if (!existing) throw new Error("Deleted signature not found");
+
+  await prisma.signature.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
+
+  return { message: "Signature restored" };
 };

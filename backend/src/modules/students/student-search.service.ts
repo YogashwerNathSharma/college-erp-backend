@@ -265,6 +265,7 @@ export const getSavedFilters = async (tenantId: string, userId: string) => {
   return prisma.studentSavedFilter.findMany({
     where: {
       tenantId,
+      isDeleted: false,
       OR: [{ userId }, { isShared: true }],
     },
     orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
@@ -330,13 +331,39 @@ export const updateSavedFilter = async (
 
 export const deleteSavedFilter = async (id: string, tenantId: string, userId: string) => {
   const filter = await prisma.studentSavedFilter.findFirst({
-    where: { id, tenantId, userId },
+    where: { id, tenantId, userId, isDeleted: false },
   });
 
   if (!filter) throw new Error("Filter not found or access denied");
 
-  await prisma.studentSavedFilter.delete({ where: { id } });
-  return { success: true };
+  // Soft delete -> Recycle Bin
+  await prisma.studentSavedFilter.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+  return { success: true, message: "Filter moved to Recycle Bin" };
+};
+
+// Recycle Bin: deleted saved filters for this user
+export const getDeletedSavedFilters = async (tenantId: string, userId: string) => {
+  return prisma.studentSavedFilter.findMany({
+    where: { tenantId, userId, isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// Restore a saved filter from Recycle Bin
+export const restoreSavedFilter = async (id: string, tenantId: string, userId: string) => {
+  const filter = await prisma.studentSavedFilter.findFirst({
+    where: { id, tenantId, userId, isDeleted: true },
+  });
+  if (!filter) throw new Error("Deleted filter not found");
+
+  await prisma.studentSavedFilter.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
+  return { success: true, message: "Filter restored" };
 };
 
 // ============================================

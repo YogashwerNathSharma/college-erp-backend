@@ -107,6 +107,7 @@ export const getCurrentThemeService = async (tenantId?: string) => {
 // ─── GET ALL THEMES ────────────────────────────────────
 export const getAllThemesService = async () => {
   const dbThemes = await prisma.themeConfig.findMany({
+    where: { isDeleted: false },
     orderBy: { createdAt: "desc" },
   });
 
@@ -194,9 +195,34 @@ export const deleteThemeService = async (id: string) => {
     throw new Error("Cannot delete the active theme. Switch to another theme first.");
   }
 
-  await prisma.themeConfig.delete({ where: { id } });
+  // Soft delete -> Recycle Bin
+  await prisma.themeConfig.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
 
-  return { message: "Theme deleted successfully" };
+  return { message: "Theme moved to Recycle Bin" };
+};
+
+// ─── RECYCLE BIN: deleted themes ───────────────────────
+export const getDeletedThemesService = async () => {
+  return prisma.themeConfig.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+};
+
+// ─── RESTORE THEME ─────────────────────────────────────
+export const restoreThemeService = async (id: string) => {
+  const theme = await prisma.themeConfig.findFirst({ where: { id, isDeleted: true } });
+  if (!theme) {
+    throw new Error("Deleted theme not found");
+  }
+  await prisma.themeConfig.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
+  return { message: "Theme restored" };
 };
 
 // ─── ACTIVATE THEME ────────────────────────────────────

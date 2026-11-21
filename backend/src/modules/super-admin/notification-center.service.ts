@@ -150,7 +150,7 @@ export async function getNotificationStats() {
 
 // ─── Template CRUD ───────────────────────────────────────
 export async function getTemplates(channel?: NotificationChannel) {
-  const where: any = {};
+  const where: any = { isDeleted: false };
   if (channel) where.channel = channel;
 
   return prisma.notificationTemplate.findMany({
@@ -187,7 +187,25 @@ export async function updateTemplate(id: string, data: Partial<NotificationTempl
 }
 
 export async function deleteTemplate(id: string) {
-  return prisma.notificationTemplate.delete({ where: { id } });
+  // Soft delete -> Recycle Bin
+  return prisma.notificationTemplate.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+}
+
+export async function getDeletedTemplates() {
+  return prisma.notificationTemplate.findMany({
+    where: { isDeleted: true },
+    orderBy: { deletedAt: "desc" },
+  });
+}
+
+export async function restoreTemplate(id: string) {
+  return prisma.notificationTemplate.update({
+    where: { id },
+    data: { isDeleted: false, deletedAt: null },
+  });
 }
 
 // ─── Broadcast Message ───────────────────────────────────

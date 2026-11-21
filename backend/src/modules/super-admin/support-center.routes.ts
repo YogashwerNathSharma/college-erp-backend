@@ -26,16 +26,20 @@ router.post("/tickets/:id/comments", controller.addComment);
 
 // 📚 Knowledge Base
 router.get("/kb", controller.getKBArticles);
+router.get("/kb/recycle-bin", controller.getDeletedKBArticles);
 router.get("/kb/:id", controller.getKBArticleById);
 router.post("/kb", controller.createKBArticle);
 router.put("/kb/:id", controller.updateKBArticle);
 router.delete("/kb/:id", controller.deleteKBArticle);
+router.patch("/kb/:id/restore", controller.restoreKBArticle);
 
 // 📢 Announcements
 router.get("/announcements", controller.getAnnouncements);
+router.get("/announcements/recycle-bin", controller.getDeletedAnnouncements);
 router.post("/announcements", controller.createAnnouncement);
 router.put("/announcements/:id", controller.updateAnnouncement);
 router.delete("/announcements/:id", controller.deleteAnnouncement);
+router.patch("/announcements/:id/restore", controller.restoreAnnouncement);
 
 // 🔧 Maintenance Mode
 router.get("/maintenance", controller.getMaintenanceStatus);

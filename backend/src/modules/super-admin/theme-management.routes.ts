@@ -5,6 +5,8 @@ import {
   createTheme,
   updateTheme,
   deleteTheme,
+  getDeletedThemes,
+  restoreTheme,
   activateTheme,
   applyPreset,
   uploadLogo,
@@ -32,7 +34,9 @@ router.get("/current", getCurrentTheme);
 router.get("/", getAllThemes);
 router.post("/", createTheme);
 router.put("/:id", updateTheme);
+router.get("/recycle-bin", getDeletedThemes);
 router.delete("/:id", deleteTheme);
+router.patch("/:id/restore", restoreTheme);
 
 //////////////////////////////////////////////////////
 // ⚡ THEME ACTIONS

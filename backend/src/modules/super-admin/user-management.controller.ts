@@ -149,11 +149,12 @@ export const bulkUpdateStatus = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { newPassword } = req.body;
+    const { newPassword, reason } = req.body;
     if (!newPassword || newPassword.length < 8) {
       return res.status(400).json({ success: false, message: "Password must be at least 8 characters" });
     }
-    const result = await resetPasswordService(id, newPassword);
+    const actorId = (req as any).user?.userId;
+    const result = await resetPasswordService(id, newPassword, actorId, reason);
     res.json({ success: true, ...result });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

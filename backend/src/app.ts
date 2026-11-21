@@ -215,7 +215,7 @@ app.use("/api/super-admin/notification-center", authMiddleware, allowRoles("SUPE
 app.use("/api/super-admin/report-center", authMiddleware, allowRoles("SUPER_ADMIN"), reportCenterRoutes);
 app.use("/api/super-admin/support-center", authMiddleware, allowRoles("SUPER_ADMIN"), supportCenterRoutes);
 app.use("/api/super-admin/subscription-management", authMiddleware, allowRoles("SUPER_ADMIN"), subscriptionMgmtRoutes);
-app.use("/api/super-admin/user-management", authMiddleware, allowRoles("SUPER_ADMIN"), userManagementRoutes);
+app.use("/api/super-admin/users", authMiddleware, allowRoles("SUPER_ADMIN"), userManagementRoutes);
 app.use("/api/super-admin/iam", authMiddleware, allowRoles("SUPER_ADMIN"), iamRoutes);
 app.use("/api/subscriptions", authMiddleware, subscriptionRoutes);
 app.use("/api/subscription-payments", authMiddleware, subscriptionPaymentRoutes);

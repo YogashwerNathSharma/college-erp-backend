@@ -131,7 +131,17 @@ export const subscriptionCheckMiddleware = async (
     next();
   } catch (error) {
     console.error("Subscription Check Error:", error);
-    // On error, allow request to proceed (fail-open for reliability)
-    return next();
+    // Fail-closed (smart): subscription verify nahi ho paaya.
+    // Read-only GET allow (reliability) — par koi bhi data-changing
+    // request block, taaki unverified subscription par protected write na ho.
+    // Ref: Zero-Trust blueprint SEC-009 (fail-closed).
+    if (req.method === "GET") {
+      return next();
+    }
+    return res.status(503).json({
+      success: false,
+      message:
+        "Subscription verification temporarily unavailable. Please try again shortly.",
+    });
   }
 };

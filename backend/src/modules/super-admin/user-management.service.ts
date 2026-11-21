@@ -266,17 +266,48 @@ export const bulkUpdateStatusService = async (ids: string[], status: string) => 
 // RESET PASSWORD
 // ══════════════════════════════════════════════════════
 
-export const resetPasswordService = async (id: string, newPassword: string) => {
+export const resetPasswordService = async (
+  id: string,
+  newPassword: string,
+  actorId?: string,
+  reason?: string
+) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) throw new Error("User not found");
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({
     where: { id },
-    data: { password: hashedPassword },
+    data: {
+      password: hashedPassword,
+      // Tenant ko next login par naya password set karne ke liye force karo,
+      // taaki wo baad me apna password khud badal sake.
+      isFirstLogin: true,
+    },
   });
 
-  return { message: "Password reset successfully" };
+  // Audit: kisne, kiska, kab, kyun reset kiya. Password kabhi log nahi hota.
+  await prisma.auditLog.create({
+    data: {
+      action: "SUPER_ADMIN_PASSWORD_RESET",
+      entity: "User",
+      entityType: "User",
+      entityId: user.id,
+      userId: actorId || "",
+      performedBy: actorId || "",
+      tenantId: (user as any).tenantId || "",
+      metadata: {
+        targetEmail: user.email,
+        targetName: user.name,
+        reason: reason || "Super admin password reset",
+      },
+    },
+  }).catch(() => {}); // non-critical
+
+  return {
+    message: "Password reset successfully. User must change it on next login.",
+    email: user.email,
+  };
 };
 
 // ══════════════════════════════════════════════════════

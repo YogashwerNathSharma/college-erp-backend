@@ -66,6 +66,7 @@ function lazyWithRetry(importFn: () => Promise<any>) {
 // Auth
 const LoginPage = lazyWithRetry(() => import("./pages/login/LoginPages"));
 const ForgotPassword = lazyWithRetry(() => import("./pages/login/ForgotPassword"));
+const ChangePassword = lazyWithRetry(() => import("./pages/login/ChangePassword"));
 const RegisterSchool = lazyWithRetry(() => import("./pages/login/RegisterSchool"));
 
 // Dashboards
@@ -724,6 +725,7 @@ export default function App() {
           {/* ===== PUBLIC ROUTES ===== */}
           <Route path="/" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/register-school" element={<RegisterSchool />} />
 
           {/* ===== PROTECTED ROUTES ===== */}

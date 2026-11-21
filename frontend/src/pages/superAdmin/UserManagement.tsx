@@ -226,6 +226,14 @@ export default function UserManagement() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
+  // Reset Password modal
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const [resetPw, setResetPw] = useState("");
+  const [resetReason, setResetReason] = useState("");
+  const [resetResult, setResetResult] = useState<{ email: string; password: string } | null>(null);
+  const [resetBusy, setResetBusy] = useState(false);
+
   // Selected user for detail views
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
@@ -309,12 +317,43 @@ export default function UserManagement() {
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const genPassword = () => {
+    // Easy-to-read temporary password: Word + digits + symbol
+    const words = ["Welcome", "Reset", "Login", "Access", "School", "Secure"];
+    const w = words[Math.floor(Math.random() * words.length)];
+    const n = Math.floor(100 + Math.random() * 900);
+    return `${w}@${n}`;
+  };
+
+  const openResetModal = (user: AdminUser) => {
+    setResetUser(user);
+    setResetPw(genPassword());
+    setResetReason("");
+    setResetResult(null);
+    setResetOpen(true);
+  };
+
+  const handleResetSubmit = async () => {
+    if (!resetUser) return;
+    if (!resetPw || resetPw.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setResetBusy(true);
     try {
-      await axios.post(getFullUrl(`/api/super-admin/users/${userId}/reset-password`));
-      toast.success("Password reset email sent");
-    } catch {
-      toast.success("Password reset email sent");
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        getFullUrl(`/api/super-admin/users/${resetUser.id}/reset-password`),
+        { newPassword: resetPw, reason: resetReason || undefined },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const email = res.data?.email || resetUser.email;
+      setResetResult({ email, password: resetPw });
+      toast.success("Password reset. Share it with the user.");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Password reset failed");
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -508,7 +547,7 @@ export default function UserManagement() {
           <button onClick={() => openEditModal(user)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-indigo-600 transition-colors" title="Edit">
             <Edit className="w-4 h-4" />
           </button>
-          <button onClick={() => handleResetPw(user.id)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600 transition-colors" title="Reset Password">
+          <button onClick={() => openResetModal(user)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-amber-600 transition-colors" title="Reset Password">
             <Key className="w-4 h-4" />
           </button>
           <button onClick={() => { setSelectedUser(user); setSessionsOpen(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-cyan-600 transition-colors" title="Sessions">
@@ -770,6 +809,96 @@ export default function UserManagement() {
               Save Changes
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* ═══ RESET PASSWORD MODAL ═══ */}
+      <Modal open={resetOpen} onClose={() => setResetOpen(false)} title={`Reset Password: ${resetUser?.name || ""}`} size="md">
+        <div className="space-y-5">
+          {!resetResult ? (
+            <>
+              <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Ye ek naya temporary password set karega. User agli baar login karega to use apna naya password banane ke liye kaha jayega.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">User Email (username)</label>
+                <input
+                  type="text" value={resetUser?.email || ""} readOnly
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">New Temporary Password</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text" value={resetPw} onChange={(e) => setResetPw(e.target.value)}
+                    className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                  />
+                  <button
+                    onClick={() => setResetPw(genPassword())}
+                    className="px-3 py-2.5 text-sm font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors flex items-center gap-1.5"
+                    title="Generate new password"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Generate
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Minimum 8 characters.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Reason (optional, for audit)</label>
+                <input
+                  type="text" value={resetReason} onChange={(e) => setResetReason(e.target.value)}
+                  placeholder="e.g. User forgot password"
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <button onClick={() => setResetOpen(false)} className="px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleResetSubmit} disabled={resetBusy} className="px-6 py-2.5 text-sm font-medium bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center gap-2">
+                  <Key className="w-4 h-4" /> {resetBusy ? "Resetting..." : "Reset Password"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-start gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  Password reset ho gaya. Neeche diye gaye credentials user ko share karein. User login karke apna naya password set kar lega.
+                </p>
+              </div>
+              <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Username / Email</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="text-sm font-mono text-slate-900 dark:text-white break-all">{resetResult.email}</code>
+                    <button onClick={() => { navigator.clipboard.writeText(resetResult.email); toast.success("Email copied"); }} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 shrink-0" title="Copy">
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-3">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Temporary Password</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="text-sm font-mono text-slate-900 dark:text-white break-all">{resetResult.password}</code>
+                    <button onClick={() => { navigator.clipboard.writeText(resetResult.password); toast.success("Password copied"); }} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 shrink-0" title="Copy">
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <button onClick={() => { setResetOpen(false); fetchData(); }} className="px-6 py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors">
+                  Done
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 

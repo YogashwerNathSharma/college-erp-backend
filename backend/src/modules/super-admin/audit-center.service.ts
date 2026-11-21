@@ -63,9 +63,44 @@ export async function getAuditLogs(filter: AuditLogFilter) {
 
   const where: any = {};
 
-  // Filter by log type
-  if (type && type !== "all") {
-    where.type = type;
+  // ─── Tab -> filter mapping ───────────────────────────────
+  // The Audit Center UI has tabs: audit | user | activity | admin | api | db.
+  // Existing records do NOT populate the `type` field, so we map each tab
+  // onto the fields that ARE populated (action, userRole, module). This way
+  // every tab shows meaningful rows instead of being empty.
+  switch (type) {
+    case "user":
+      // Authentication / user-account related actions
+      where.OR = [
+        { module: { contains: "user", mode: "insensitive" } },
+        { module: { contains: "auth", mode: "insensitive" } },
+        { action: { in: ["LOGIN", "LOGOUT"] } },
+      ];
+      break;
+    case "admin":
+      // Actions performed by admin / super-admin roles
+      where.userRole = { in: ["ADMIN", "SUPER_ADMIN", "TENANT_ADMIN"] };
+      break;
+    case "api":
+      // API-key / integration driven calls (best-effort via module)
+      where.module = { contains: "api", mode: "insensitive" };
+      break;
+    case "db":
+      // Database-level / backup operations
+      where.OR = [
+        { module: { contains: "database", mode: "insensitive" } },
+        { module: { contains: "backup", mode: "insensitive" } },
+        { action: "DELETE" },
+      ];
+      break;
+    case "activity":
+      // All activity (same as full feed) — no extra filter
+      break;
+    case "audit":
+    case "all":
+    default:
+      // All logs — no type filter
+      break;
   }
 
   // Date range
@@ -125,6 +160,64 @@ export async function getAuditLogs(filter: AuditLogFilter) {
 }
 
 // ─── Get Audit Log by ID ─────────────────────────────────
+// ─── Super Admin (God Mode) API/Action Logs ──────────────
+// Shows WHICH api was called, WHERE the change happened, by WHOM, from where.
+// Reads from the dedicated SuperAdminAuditLog table (P5.4).
+export async function getSuperAdminLogs(filter: {
+  page?: number;
+  limit?: number;
+  module?: string;
+  action?: string;
+  severity?: string;
+  search?: string;
+}) {
+  const { page = 1, limit = 25, module, action, severity, search } = filter;
+  const where: any = {};
+  if (module) where.module = { contains: module, mode: "insensitive" };
+  if (action) where.action = { contains: action, mode: "insensitive" };
+  if (severity) where.severity = severity;
+  if (search) {
+    where.OR = [
+      { path: { contains: search, mode: "insensitive" } },
+      { module: { contains: search, mode: "insensitive" } },
+      { actorEmail: { contains: search, mode: "insensitive" } },
+      { action: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const skip = (page - 1) * limit;
+  const [rows, total] = await Promise.all([
+    prisma.superAdminAuditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.superAdminAuditLog.count({ where }),
+  ]);
+
+  // Map to the shape the Audit Center table/detail expects.
+  const logs = rows.map((r: any) => ({
+    id: r.id,
+    action: r.action,
+    severity: r.severity,
+    type: "api",
+    createdAt: r.createdAt,
+    userName: r.actorName || "Super Admin",
+    userEmail: r.actorEmail || "—",
+    userRole: "SUPER_ADMIN",
+    ipAddress: r.ipAddress || "—",
+    method: r.method,
+    endpoint: r.path,            // WHICH api was called
+    statusCode: r.statusCode,
+    resource: r.module,          // WHERE (which module) the change happened
+    resourceId: r.targetId,      // WHICH record was changed
+    details: r.metadata,
+  }));
+
+  return { logs, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } };
+}
+
 export async function getAuditLogById(id: string) {
   return prisma.auditLog.findUnique({ where: { id } });
 }

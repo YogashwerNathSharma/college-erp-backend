@@ -8,6 +8,19 @@ import * as auditService from "./audit-center.service";
 // GET /api/super-admin/audit-center/logs
 export async function getLogs(req: Request, res: Response) {
   try {
+    // API Logs tab -> show Super Admin (God Mode) action trail:
+    // which API was called, where the change happened, by whom, from where.
+    if ((req.query.type as string) === "api") {
+      const saResult = await auditService.getSuperAdminLogs({
+        page: parseInt(req.query.page as string) || 1,
+        limit: parseInt(req.query.limit as string) || 25,
+        module: req.query.module as string,
+        action: req.query.action as string,
+        severity: req.query.severity as any,
+        search: req.query.search as string,
+      });
+      return res.json({ success: true, ...saResult });
+    }
     const result = await auditService.getAuditLogs({
       type: req.query.type as string,
       startDate: req.query.startDate as string,

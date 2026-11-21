@@ -6133,3 +6133,34 @@ model Announcement {
   @@index([isDeleted])
   @@map("announcements")
 }
+
+
+// ════════════════════════════════════════════════════════════
+// SuperAdminAuditLog — God Mode (P5.4) immutable action trail.
+// Separate from AuditLog (which is tenant-scoped & required tenantId).
+// Super Admin actions have NO tenant, so they live here. Indexed for
+// scale (thousands of tenants => frequent platform actions).
+// ════════════════════════════════════════════════════════════
+model SuperAdminAuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId     String   @db.ObjectId          // which super admin
+  actorEmail  String?
+  actorName   String?
+  action      String                          // e.g. CREATE/UPDATE/DELETE/LOGIN
+  module      String?                         // e.g. tenants, subscription, users
+  method      String?                         // HTTP method
+  path        String?                         // request path
+  targetId    String?                         // affected entity id (if any)
+  targetTenantId String?                      // if action touched a tenant
+  ipAddress   String?
+  userAgent   String?
+  statusCode  Int?
+  severity    String   @default("info")       // info | high | critical
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([module])
+  @@map("super_admin_audit_logs")
+}

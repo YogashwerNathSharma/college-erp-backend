@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useThemeContext } from "../context/ThemeContext";
+import { performLogout } from "../utils/logout";
 import {
   LogOut,
   UserCircle,
@@ -225,10 +226,8 @@ export default function TopNavbar({ tenant }: TopNavbarProps) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("tenant");
-    navigate("/");
+    // Notify backend (records logout time + closes session), then clear + redirect.
+    performLogout();
   };
 
   const handleSearch = (e: React.FormEvent) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { performLogout } from "../../utils/logout";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAcademicYear } from "../../context/AcademicYearContext";
 import {
@@ -151,13 +152,7 @@ function TeacherSidebar({
         {/* Logout Button */}
         <div className="px-3 py-4 border-t border-gray-200">
           <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              localStorage.removeItem("tenant");
-              localStorage.removeItem("portalConfig");
-              window.location.href = "/";
-            }}
+            onClick={() => performLogout()}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
           >
             <FiLogOut className="text-lg" />
@@ -228,13 +223,7 @@ export default function TeacherLayout() {
               <FiBell size={18} />
             </button>
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-                localStorage.removeItem("tenant");
-                localStorage.removeItem("portalConfig");
-                window.location.href = "/";
-              }}
+              onClick={() => performLogout()}
               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
               title="Logout"
             >

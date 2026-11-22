@@ -81,6 +81,9 @@ export const getAdminUsersService = async (filters: AdminUserFilters) => {
         role: true,
         phone: true,
         status: true,
+        twoFactorEnabled: true,
+        lastLoginAt: true,
+        lastLogoutAt: true,
         createdAt: true,
       },
       orderBy: { [sortBy]: sortOrder },
@@ -90,8 +93,29 @@ export const getAdminUsersService = async (filters: AdminUserFilters) => {
     prisma.user.count({ where }),
   ]);
 
+  // Count each user's ACTIVE, non-expired sessions in one grouped query.
+  const userIds = users.map((u: any) => u.id);
+  let sessionCounts: Record<string, number> = {};
+  if (userIds.length) {
+    try {
+      const grouped = await prisma.session.groupBy({
+        by: ["userId"],
+        where: { userId: { in: userIds }, isActive: true, expiresAt: { gt: new Date() } },
+        _count: { _all: true },
+      });
+      grouped.forEach((g: any) => { sessionCounts[g.userId] = g._count?._all || 0; });
+    } catch (e: any) {
+      console.error("session count failed:", e.message);
+    }
+  }
+
+  const usersWithSessions = users.map((u: any) => ({
+    ...u,
+    activeSessions: sessionCounts[u.id] || 0,
+  }));
+
   return {
-    users,
+    users: usersWithSessions,
     pagination: {
       total,
       page,
@@ -118,7 +142,8 @@ export const getAdminUserByIdService = async (id: string) => {
       avatar: true,
       status: true,
       twoFactorEnabled: true,
-      lastLogin: true,
+      lastLoginAt: true,
+      lastLogoutAt: true,
       createdAt: true,
       updatedAt: true,
     },

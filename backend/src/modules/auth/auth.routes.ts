@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { login, register, registerTenant, registerSuperAdmin, changePassword, forgotPassword, resetPassword } from "./auth.controller";
+import { login, logout, register, registerTenant, registerSuperAdmin, changePassword, forgotPassword, resetPassword } from "./auth.controller";
 import { acceptTenantAgreement, getTenantAgreementStatus } from "./tenantAgreement.controller";
 import { requireTenantAgreementAcceptance } from "./tenantAgreementRegistration.middleware";
 import { authMiddleware } from "../../middleware/auth.middleware";
@@ -12,6 +12,7 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/login", login);
+router.post("/logout", authMiddleware, logout);
 
 // Refresh token endpoint
 router.post("/refresh-token", refreshTokenHandler);

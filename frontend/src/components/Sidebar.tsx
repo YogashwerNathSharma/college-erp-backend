@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { NavLink, useLocation } from "react-router-dom";
 import { getFullUrl } from "../utils/url";
+import { performLogout } from "../utils/logout";
 import { useModules } from "../context/ModuleContext";
 import { usePortal } from "../context/PortalContext";
 
@@ -487,8 +488,8 @@ export default function Sidebar({ tenant, sidebarOpen = false, onClose }: Sideba
   }, [onClose]);
 
   const handleLogout = () => {
-    localStorage.clear(); // Clear all instances at once safely
-    window.location.href = "/";
+    // Notify backend (records logout time + closes session), then clear + redirect.
+    performLogout();
   };
 
   // Shared Nav Menu Rendering block to avoid duplicate code blocks

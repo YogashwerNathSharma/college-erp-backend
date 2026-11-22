@@ -311,3 +311,39 @@ export const resetPassword = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: error.message || "Password reset failed" });
   }
 };
+
+/////////////////////////
+// LOGOUT — records logout time + closes active sessions
+/////////////////////////
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(200).json({ success: true, message: "Logged out" });
+    }
+
+    // Record logout time on the user.
+    await prisma.user
+      .update({ where: { id: userId }, data: { lastLogoutAt: new Date() } })
+      .catch((e) => console.error("lastLogoutAt update failed:", e.message));
+
+    // Close this user's active sessions (optionally only the current token).
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : undefined;
+
+    await prisma.session
+      .updateMany({
+        where: token
+          ? { userId, token, isActive: true }
+          : { userId, isActive: true },
+        data: { isActive: false },
+      })
+      .catch((e) => console.error("session close failed:", e.message));
+
+    return res.json({ success: true, message: "Logged out successfully" });
+  } catch (error: any) {
+    return res.status(200).json({ success: true, message: "Logged out" });
+  }
+};

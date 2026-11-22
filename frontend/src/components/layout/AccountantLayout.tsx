@@ -16,6 +16,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import { performLogout } from "../../utils/logout";
 
 // ═══════════════════════════════════════════════════════════════
 // ACCOUNTANT LAYOUT — Sidebar + Topbar for Accountant portal
@@ -82,11 +83,7 @@ export default function AccountantLayout() {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("portalConfig");
-    localStorage.removeItem("tenant");
-    navigate("/");
+    performLogout();
   };
 
   return (

@@ -60,6 +60,11 @@ export const loginService = async (email: string, password: string) => {
   const isMatch = await bcrypt.compare(cleanPassword, user.password);
   if (!isMatch) throw new Error("Invalid credentials");
 
+  // Record last login time (fire-and-forget; must not block login).
+  prisma.user
+    .update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+    .catch((e) => console.error("lastLoginAt update failed:", e.message));
+
   if (user.role !== "SUPER_ADMIN") {
     const activeSubscription = await prisma.tenantSubscription.findFirst({
       where: { tenantId: user.tenantId!, isActive: true, status: "ACTIVE" },
@@ -93,6 +98,21 @@ export const loginService = async (email: string, password: string) => {
   // Generate short-lived access token (15 min) + refresh token (30d)
   const token = generateToken({ userId: user.id, tenantId: user.tenantId, role: user.role });
   const refreshToken = generateRefreshToken({ userId: user.id, tenantId: user.tenantId, role: user.role });
+
+  // Create an active session record so Super Admin can see who is logged in.
+  // Fire-and-forget: must never block or break login.
+  prisma.session
+    .create({
+      data: {
+        userId: user.id,
+        tenantId: user.tenantId || undefined,
+        token,
+        isActive: true,
+        lastActivity: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30d
+      },
+    })
+    .catch((e) => console.error("session create failed:", e.message));
 
   const { password: _, ...safeUser } = user;
 

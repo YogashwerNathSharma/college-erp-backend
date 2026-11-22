@@ -22,6 +22,8 @@ import {
   Settings,
   Globe,
   FileCode,
+  Archive,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -195,6 +197,9 @@ export default function ThemeManagement() {
   const [showPreview, setShowPreview] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [recycleOpen, setRecycleOpen] = useState(false);
+  const [deletedThemes, setDeletedThemes] = useState<ThemeConfig[]>([]);
+  const [recycleLoading, setRecycleLoading] = useState(false);
 
   // ─── FETCH THEME ─────────────────────────────────────
   useEffect(() => {
@@ -259,6 +264,31 @@ export default function ThemeManagement() {
     setTheme(defaultTheme);
     setHasChanges(true);
     toast.success("Reset to default theme");
+  };
+
+  // ─── RECYCLE BIN ─────────────────────────────────────
+  const openRecycleBin = async () => {
+    setRecycleOpen(true);
+    setRecycleLoading(true);
+    try {
+      const res = await axios.get(getFullUrl("/api/super-admin/themes/recycle-bin"));
+      setDeletedThemes(res.data?.data || []);
+    } catch {
+      setDeletedThemes([]);
+      toast.error("Failed to load Recycle Bin");
+    } finally {
+      setRecycleLoading(false);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await axios.patch(getFullUrl(`/api/super-admin/themes/${id}/restore`));
+      setDeletedThemes((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Theme restored");
+    } catch {
+      toast.error("Failed to restore theme");
+    }
   };
 
   // ─── SAVE ────────────────────────────────────────────
@@ -338,6 +368,13 @@ export default function ThemeManagement() {
             >
               <Eye className="w-4 h-4" />
               Preview
+            </button>
+            <button
+              onClick={openRecycleBin}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+            >
+              <Archive className="w-4 h-4" />
+              Recycle Bin
             </button>
             <button
               onClick={resetToDefault}
@@ -899,6 +936,55 @@ export default function ThemeManagement() {
           </div>
         )}
       </div>
+
+      {/* Recycle Bin Modal */}
+      {recycleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
+                <Archive className="w-5 h-5" /> Recycle Bin — Deleted Themes
+              </h3>
+              <button onClick={() => setRecycleOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-5 py-4 overflow-y-auto">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Deleted themes yahan safe hain. Restore karke wapas la sakte hain.</p>
+              {recycleLoading ? (
+                <div className="flex items-center justify-center py-8 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              ) : deletedThemes.length === 0 ? (
+                <div className="text-center py-8 text-sm text-slate-400">Recycle Bin khaali hai.</div>
+              ) : (
+                <div className="space-y-2">
+                  {deletedThemes.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                      <div className="min-w-0 flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 flex-shrink-0" style={{ backgroundColor: t.colors?.primary || "#6366f1" }} />
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-slate-900 dark:text-white truncate">{t.name}</h4>
+                          <p className="text-xs text-slate-400 capitalize">{t.mode} mode</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => t.id && handleRestore(t.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/40 rounded-lg transition-colors flex-shrink-0"
+                      >
+                        <RotateCcw className="w-4 h-4" /> Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+              <button onClick={() => setRecycleOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

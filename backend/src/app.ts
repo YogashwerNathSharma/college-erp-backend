@@ -37,6 +37,7 @@ import { rateLimiter, authLimiter, uploadLimiter } from "./middleware/rateLimit"
 import { subscriptionCheckMiddleware } from "./middleware/auth.middleware";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { allowRoles } from "./middleware/role.middleware";
+import { maintenanceGateMiddleware } from "./middleware/maintenance.middleware";
 import { verifySuperAdmin } from "./middleware/superAdmin.middleware";
 import { superAdminAudit } from "./middleware/superAdminAudit.middleware";
 import { superAdminIpAllowlist } from "./middleware/ipAllowlist.middleware";
@@ -228,6 +229,11 @@ app.use("/api/modules", tenantModuleRoutes);
 // SUBSCRIPTION CHECK
 //////////////////////////////////////////////////////
 app.use(subscriptionCheckMiddleware);
+
+//////////////////////////////////////////////////////
+// MAINTENANCE GATE (hard maintenance -> 503 for non super-admins)
+//////////////////////////////////////////////////////
+app.use(maintenanceGateMiddleware);
 
 //////////////////////////////////////////////////////
 // AUDIT LOGGING (after auth + subscription — captures all write ops)

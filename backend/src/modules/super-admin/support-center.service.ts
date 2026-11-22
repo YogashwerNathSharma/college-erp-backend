@@ -329,7 +329,7 @@ export async function restoreAnnouncement(id: string) {
 // ─── Maintenance Mode ────────────────────────────────────
 
 export async function getMaintenanceStatus() {
-  const setting = await prisma.systemSetting.findFirst({
+  const setting = await (prisma as any).platformSetting.findFirst({
     where: { key: "maintenance_mode" },
   });
 
@@ -337,20 +337,22 @@ export async function getMaintenanceStatus() {
     enabled: setting?.value === "true",
     message: (setting?.metadata as any)?.message || "System is under maintenance",
     scheduledEnd: (setting?.metadata as any)?.scheduledEnd || null,
+    blockApp: (setting?.metadata as any)?.blockApp === true,
   };
 }
 
-export async function toggleMaintenanceMode(enabled: boolean, message?: string, scheduledEnd?: string) {
-  return prisma.systemSetting.upsert({
+export async function toggleMaintenanceMode(enabled: boolean, message?: string, scheduledEnd?: string, blockApp?: boolean) {
+  return (prisma as any).platformSetting.upsert({
     where: { key: "maintenance_mode" },
     create: {
       key: "maintenance_mode",
       value: String(enabled),
-      metadata: { message: message || "System is under maintenance", scheduledEnd },
+      category: "maintenance",
+      metadata: { message: message || "System is under maintenance", scheduledEnd: scheduledEnd || null, blockApp: blockApp === true },
     },
     update: {
       value: String(enabled),
-      metadata: { message: message || "System is under maintenance", scheduledEnd },
+      metadata: { message: message || "System is under maintenance", scheduledEnd: scheduledEnd || null, blockApp: blockApp === true },
     },
   });
 }

@@ -21,6 +21,7 @@ import TopNavbar from "./components/TopNavbar";
 import YnAiAssistant from "./components/YnAiAssistant";
 import ModuleRouteGuard from "./guards/ModuleRouteGuard";
 import GracePeriodBanner from "./components/common/GracePeriodBanner";
+import MaintenanceBanner from "./components/common/MaintenanceBanner";
 import MobileBottomNav from "./components/common/MobileBottomNav";
 
 
@@ -237,6 +238,7 @@ import BulkReportCard from "./pages/exams/BulkReportCard";
 import ConsolidatedReportCard from "./pages/exams/ConsolidatedReportCard";
 
 import { getFullUrl } from "./utils/url";
+import MaintenancePage from "./pages/MaintenancePage";
 
 const ExamSchedule = lazyWithRetry(() => import("./pages/exams/ExamSchedule"));
 const ExamSchedulePrint = lazyWithRetry(() => import("./pages/exams/ExamSchedulePrint"));
@@ -399,6 +401,21 @@ axios.interceptors.response.use(
       }
       localStorage.setItem("subscriptionExpired", "true");
       window.location.href = "/subscription-expired";
+    }
+    // HARD maintenance -> backend returns 503 with { maintenance: true }.
+    // Send non super-admins to the maintenance page.
+    if (
+      error?.response?.status === 503 &&
+      error?.response?.data?.maintenance === true
+    ) {
+      const userData = localStorage.getItem("user");
+      const userRole = userData ? JSON.parse(userData)?.role : null;
+      if (
+        userRole !== "SUPER_ADMIN" &&
+        window.location.pathname !== "/maintenance"
+      ) {
+        window.location.href = "/maintenance";
+      }
     }
     return Promise.reject(error);
   }
@@ -666,6 +683,7 @@ function Layout() {
 
         <TopNavbar tenant={tenant} />
         <GracePeriodBanner />
+        <MaintenanceBanner />
 
         <main className="flex-1 p-2 md:p-3 overflow-auto" role="main">
           <AppErrorBoundary>
@@ -727,6 +745,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/register-school" element={<RegisterSchool />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
 
           {/* ===== PROTECTED ROUTES ===== */}
           <Route element={<ProtectedRoute />}>

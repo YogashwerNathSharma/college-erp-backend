@@ -25,6 +25,8 @@ import {
   ArrowUpRight,
   CircleDot,
   Loader2,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -120,7 +122,7 @@ export default function SupportCenter() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [stats, setStats] = useState<TicketStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [maintenanceStatus, setMaintenanceStatus] = useState({ enabled: false, message: "", scheduledEnd: "" });
+  const [maintenanceStatus, setMaintenanceStatus] = useState({ enabled: false, message: "", scheduledEnd: "", blockApp: false });
   const [systemStatus, setSystemStatus] = useState<any>(null);
 
   // Modals
@@ -131,6 +133,52 @@ export default function SupportCenter() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [editingArticle, setEditingArticle] = useState<KBArticle | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [recycleOpen, setRecycleOpen] = useState(false);
+  const [recycleLoading, setRecycleLoading] = useState(false);
+  const [deletedArticles, setDeletedArticles] = useState<KBArticle[]>([]);
+  const [deletedAnnouncements, setDeletedAnnouncements] = useState<Announcement[]>([]);
+
+  const openRecycleBin = async () => {
+    setRecycleOpen(true);
+    setRecycleLoading(true);
+    try {
+      if (activeTab === "knowledge") {
+        const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/kb/recycle-bin"));
+        setDeletedArticles(data?.articles || []);
+      } else {
+        const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/announcements/recycle-bin"));
+        setDeletedAnnouncements(data?.announcements || []);
+      }
+    } catch {
+      setDeletedArticles([]);
+      setDeletedAnnouncements([]);
+      toast.error("Failed to load Recycle Bin");
+    } finally {
+      setRecycleLoading(false);
+    }
+  };
+
+  const handleRestoreArticle = async (id: string) => {
+    try {
+      await axios.patch(getFullUrl(`/api/super-admin/support-center/kb/${id}/restore`));
+      setDeletedArticles((prev) => prev.filter((a) => a.id !== id));
+      toast.success("Article restored");
+      fetchArticles();
+    } catch {
+      toast.error("Failed to restore article");
+    }
+  };
+
+  const handleRestoreAnnouncement = async (id: string) => {
+    try {
+      await axios.patch(getFullUrl(`/api/super-admin/support-center/announcements/${id}/restore`));
+      setDeletedAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      toast.success("Announcement restored");
+      fetchAnnouncements();
+    } catch {
+      toast.error("Failed to restore announcement");
+    }
+  };
 
   // ─── Fetch Data ──────────────────────────────────────────
   const fetchTickets = useCallback(async () => {
@@ -177,7 +225,7 @@ export default function SupportCenter() {
       const { data } = await axios.get(getFullUrl("/api/super-admin/support-center/maintenance"));
       if (data.success) setMaintenanceStatus(data);
     } catch {
-      setMaintenanceStatus({ enabled: false, message: "System is under maintenance", scheduledEnd: "" });
+      setMaintenanceStatus({ enabled: false, message: "System is under maintenance", scheduledEnd: "", blockApp: false });
     }
   }, []);
 
@@ -303,16 +351,28 @@ export default function SupportCenter() {
               </button>
             )}
             {activeTab === "knowledge" && (
-              <button onClick={() => { setEditingArticle(null); setShowArticleModal(true); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                <Plus className="w-4 h-4" />
-                New Article
-              </button>
+              <>
+                <button onClick={openRecycleBin} className="flex items-center gap-2 px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <Archive className="w-4 h-4" />
+                  Recycle Bin
+                </button>
+                <button onClick={() => { setEditingArticle(null); setShowArticleModal(true); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                  <Plus className="w-4 h-4" />
+                  New Article
+                </button>
+              </>
             )}
             {activeTab === "announcements" && (
-              <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                <Plus className="w-4 h-4" />
-                New Announcement
-              </button>
+              <>
+                <button onClick={openRecycleBin} className="flex items-center gap-2 px-4 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <Archive className="w-4 h-4" />
+                  Recycle Bin
+                </button>
+                <button onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                  <Plus className="w-4 h-4" />
+                  New Announcement
+                </button>
+              </>
             )}
           </div>
         }
@@ -392,12 +452,16 @@ export default function SupportCenter() {
           {activeTab === "maintenance" && (
             <MaintenancePanel
               status={maintenanceStatus}
-              onToggle={async (enabled, message, scheduledEnd) => {
+              onToggle={async (enabled, message, scheduledEnd, blockApp) => {
                 try {
-                  await axios.post(getFullUrl("/api/super-admin/support-center/maintenance"), { enabled, message, scheduledEnd });
-                } catch {}
-                setMaintenanceStatus({ enabled, message, scheduledEnd });
-                toast.success(`Maintenance mode ${enabled ? "enabled" : "disabled"}`);
+                  await axios.post(getFullUrl("/api/super-admin/support-center/maintenance"), { enabled, message, scheduledEnd, blockApp });
+                  setMaintenanceStatus({ enabled, message, scheduledEnd, blockApp });
+                  toast.success(`Maintenance mode ${enabled ? "enabled" : "disabled"}`);
+                  // Re-sync with the server so the UI reflects what actually persisted.
+                  fetchMaintenance();
+                } catch (err: any) {
+                  toast.error(err?.response?.data?.message || "Failed to update maintenance mode");
+                }
               }}
             />
           )}
@@ -479,6 +543,67 @@ export default function SupportCenter() {
             fetchAnnouncements();
           }}
         />
+      )}
+
+      {/* Recycle Bin Modal (KB Articles / Announcements) */}
+      {recycleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
+                <Archive className="w-5 h-5" /> Recycle Bin — {activeTab === "knowledge" ? "Deleted Articles" : "Deleted Announcements"}
+              </h3>
+              <button onClick={() => setRecycleOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-5 py-4 overflow-y-auto">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Deleted items yahan safe hain. Restore karke wapas la sakte hain.</p>
+              {recycleLoading ? (
+                <div className="flex items-center justify-center py-8 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+              ) : activeTab === "knowledge" ? (
+                deletedArticles.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-slate-400">Recycle Bin khaali hai.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {deletedArticles.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                        <div className="min-w-0">
+                          <h4 className="font-medium text-slate-900 dark:text-white truncate">{a.title}</h4>
+                          <p className="text-xs text-slate-400">{a.category}</p>
+                        </div>
+                        <button onClick={() => handleRestoreArticle(a.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/40 rounded-lg transition-colors flex-shrink-0">
+                          <RotateCcw className="w-4 h-4" /> Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : deletedAnnouncements.length === 0 ? (
+                <div className="text-center py-8 text-sm text-slate-400">Recycle Bin khaali hai.</div>
+              ) : (
+                <div className="space-y-2">
+                  {deletedAnnouncements.map((a) => (
+                    <div key={a.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                      <div className="min-w-0">
+                        <h4 className="font-medium text-slate-900 dark:text-white truncate">{a.title}</h4>
+                        <p className="text-xs text-slate-400 capitalize">{a.type}</p>
+                      </div>
+                      <button onClick={() => handleRestoreAnnouncement(a.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 hover:bg-green-200 dark:hover:bg-green-900/40 rounded-lg transition-colors flex-shrink-0">
+                        <RotateCcw className="w-4 h-4" /> Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+              <button onClick={() => setRecycleOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -618,9 +743,10 @@ function AnnouncementsPanel({ announcements, onEdit, onDelete }: { announcements
 // MAINTENANCE PANEL
 // ═══════════════════════════════════════════════════════════
 
-function MaintenancePanel({ status, onToggle }: { status: { enabled: boolean; message: string; scheduledEnd: string }; onToggle: (enabled: boolean, message: string, scheduledEnd: string) => void }) {
+function MaintenancePanel({ status, onToggle }: { status: { enabled: boolean; message: string; scheduledEnd: string; blockApp?: boolean }; onToggle: (enabled: boolean, message: string, scheduledEnd: string, blockApp: boolean) => void }) {
   const [message, setMessage] = useState(status.message);
   const [scheduledEnd, setScheduledEnd] = useState(status.scheduledEnd);
+  const [blockApp, setBlockApp] = useState<boolean>(status.blockApp === true);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -636,7 +762,7 @@ function MaintenancePanel({ status, onToggle }: { status: { enabled: boolean; me
           {status.enabled ? "Maintenance Mode Active" : "System is Operational"}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-          {status.enabled ? "Users will see a maintenance page instead of the application" : "All services are running normally"}
+          {status.enabled ? (status.blockApp ? "App is BLOCKED \u2014 users see a maintenance page (super admins excluded)" : "Soft mode \u2014 app works, users see a maintenance banner") : "All services are running normally"}
         </p>
 
         <div className="space-y-4 text-left max-w-md mx-auto mb-6">
@@ -659,10 +785,24 @@ function MaintenancePanel({ status, onToggle }: { status: { enabled: boolean; me
               className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
             />
           </div>
+          <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={blockApp}
+              onChange={(e) => setBlockApp(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-red-600"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-slate-900 dark:text-white">Block the application (hard maintenance)</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Off = soft: app keeps working, users just see a banner. On = hard: app is blocked and users see a maintenance page. Super admins are never blocked.
+              </span>
+            </span>
+          </label>
         </div>
 
         <button
-          onClick={() => onToggle(!status.enabled, message, scheduledEnd)}
+          onClick={() => onToggle(!status.enabled, message, scheduledEnd, blockApp)}
           className={`px-6 py-3 rounded-lg font-medium transition-colors ${
             status.enabled
               ? "bg-emerald-600 text-white hover:bg-emerald-700"

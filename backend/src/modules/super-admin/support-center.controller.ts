@@ -200,8 +200,8 @@ export async function getMaintenanceStatus(req: Request, res: Response) {
 
 export async function toggleMaintenance(req: Request, res: Response) {
   try {
-    const { enabled, message, scheduledEnd } = req.body;
-    await supportService.toggleMaintenanceMode(enabled, message, scheduledEnd);
+    const { enabled, message, scheduledEnd, blockApp } = req.body;
+    await supportService.toggleMaintenanceMode(enabled, message, scheduledEnd, blockApp);
     res.json({ success: true, message: `Maintenance mode ${enabled ? "enabled" : "disabled"}` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

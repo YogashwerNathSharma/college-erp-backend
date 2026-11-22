@@ -70,11 +70,18 @@ export async function getAuditLogs(filter: AuditLogFilter) {
   // every tab shows meaningful rows instead of being empty.
   switch (type) {
     case "user":
-      // Authentication / user-account related actions
+      // User-account & authentication related logs. Match on the fields that
+      // real records actually carry: entity "User", user-ish actions
+      // (LOGIN/LOGOUT/PASSWORD/USER...), or user/auth modules.
       where.OR = [
+        { entity: { contains: "User", mode: "insensitive" } },
+        { entityType: { contains: "User", mode: "insensitive" } },
         { module: { contains: "user", mode: "insensitive" } },
         { module: { contains: "auth", mode: "insensitive" } },
-        { action: { in: ["LOGIN", "LOGOUT"] } },
+        { action: { contains: "USER", mode: "insensitive" } },
+        { action: { contains: "LOGIN", mode: "insensitive" } },
+        { action: { contains: "LOGOUT", mode: "insensitive" } },
+        { action: { contains: "PASSWORD", mode: "insensitive" } },
       ];
       break;
     case "admin":
@@ -138,7 +145,7 @@ export async function getAuditLogs(filter: AuditLogFilter) {
 
   const skip = (page - 1) * limit;
 
-  const [logs, total] = await Promise.all([
+  const [rawLogs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
       orderBy: { [sortBy]: sortOrder },
@@ -147,6 +154,35 @@ export async function getAuditLogs(filter: AuditLogFilter) {
     }),
     prisma.auditLog.count({ where }),
   ]);
+
+  // Resolve tenant names in ONE query (so we can show WHOSE tenant it was).
+  const tenantIds = Array.from(
+    new Set(rawLogs.map((l: any) => l.tenantId).filter(Boolean))
+  );
+  const tenants = tenantIds.length
+    ? await prisma.tenant.findMany({
+        where: { id: { in: tenantIds as string[] } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const tenantMap: Record<string, string> = {};
+  tenants.forEach((t: any) => { tenantMap[t.id] = t.name; });
+
+  // Enrich each log so the UI can clearly show WHAT was done, ON WHICH entity,
+  // and for WHICH tenant.
+  const logs = rawLogs.map((l: any) => {
+    const tenantName = l.tenantId ? (tenantMap[l.tenantId] || null) : null;
+    const entityLabel = l.entity || l.entityType || l.module || "record";
+    // e.g. "CREATE Student" / "UPDATE tenants"
+    const resource = [l.action, entityLabel].filter(Boolean).join(" ");
+    return {
+      ...l,
+      resource,                 // shown under Action
+      resourceId: l.entityId,   // which record
+      tenantName,               // whose tenant (null for platform/super-admin)
+      userEmail: (l.metadata && l.metadata.userEmail) || null,
+    };
+  });
 
   return {
     logs,

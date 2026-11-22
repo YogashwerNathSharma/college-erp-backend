@@ -154,11 +154,16 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
           "N/A";
         const entityType = getEntityTypeFromModule(module);
 
-        // Build audit entry
+        // Build audit entry.
+        // NOTE: the JWT only carries { userId, tenantId, role } — it has NO
+        // name/email. So user.name/user.email are undefined and logs showed
+        // "Unknown". We fill userName/userEmail by looking the user up in the
+        // DB by userId (below, before create).
+        const auditUserId = user.userId || user.id;
         const auditData: any = {
           tenantId,
-          userId: user.userId || user.id,
-          userName: user.name || user.email || "Unknown",
+          userId: auditUserId,
+          userName: user.name || user.email || undefined,
           userRole: user.role || "UNKNOWN",
           action,
           module,
@@ -186,10 +191,26 @@ export const auditMiddleware = (req: Request, res: Response, next: NextFunction)
           }
         }
 
-        // Fire and forget - don't block response
-        prisma.auditLog.create({ data: auditData }).catch((err) => {
-          console.error("Audit log creation failed:", err.message);
-        });
+        // Fire and forget - don't block response.
+        // First resolve the actor's name/email from DB (JWT has neither),
+        // then write the log. Falls back to "Unknown" only if lookup fails.
+        (async () => {
+          try {
+            if (!auditData.userName && auditUserId) {
+              const u = await prisma.user.findUnique({
+                where: { id: auditUserId },
+                select: { name: true, email: true },
+              });
+              auditData.userName = u?.name || u?.email || "Unknown";
+              // email stored inside metadata (AuditLog has no userEmail column)
+              if (u?.email) auditData.metadata = { ...(auditData.metadata || {}), userEmail: u.email };
+            }
+            if (!auditData.userName) auditData.userName = "Unknown";
+            await prisma.auditLog.create({ data: auditData });
+          } catch (err: any) {
+            console.error("Audit log creation failed:", err.message);
+          }
+        })();
       }
     }
 

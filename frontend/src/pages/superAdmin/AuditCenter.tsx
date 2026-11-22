@@ -52,6 +52,9 @@ interface AuditLog {
   statusCode?: number;
   method?: string;
   endpoint?: string;
+  tenantName?: string | null;
+  entity?: string;
+  module?: string;
   createdAt: string;
 }
 
@@ -216,10 +219,13 @@ export default function AuditCenter() {
       label: "Action",
       render: (row) => (
         <div>
-          <p className="font-medium text-slate-900 dark:text-white text-sm">{row.action}</p>
-          {row.resource && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">{row.resource}</p>
-          )}
+          <p className="font-medium text-slate-900 dark:text-white text-sm">
+            {row.action}{row.entity ? ` · ${row.entity}` : ""}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {row.resource || row.module || "—"}
+            {row.resourceId && row.resourceId !== "N/A" ? ` (#${String(row.resourceId).slice(-6)})` : ""}
+          </p>
         </div>
       ),
     },
@@ -231,6 +237,15 @@ export default function AuditCenter() {
           <p className="text-sm text-slate-900 dark:text-white">{row.userName || "System"}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">{row.userEmail || "—"}</p>
         </div>
+      ),
+    },
+    {
+      key: "tenantName",
+      label: "Tenant",
+      render: (row) => (
+        <span className="text-sm text-slate-700 dark:text-slate-300">
+          {row.tenantName || (row.userRole === "SUPER_ADMIN" ? "Platform (God Mode)" : "—")}
+        </span>
       ),
     },
     {

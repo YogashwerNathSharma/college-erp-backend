@@ -84,8 +84,15 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
   },
+});
+
+// Read the token on every request (not once at module load), so a page
+// opened right after login still sends a valid Authorization header.
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 

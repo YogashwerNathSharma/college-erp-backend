@@ -411,10 +411,53 @@ const FeeDashboardPage: React.FC = () => {
               Collected: {formatINR(data.summary.totalCollected)}
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Target: {formatINR(data.summary.totalReceivable)}
+              Receivable: {formatINR(data.summary.totalReceivable)}
             </span>
           </div>
         </div>
+
+        {/* ─── SCHOOL-WIDE FEE SUMMARY (total / paid / pending) ─── */}
+        {(() => {
+          const total = data.summary.totalReceivable || 0;
+          const paid = data.summary.totalCollected || 0;
+          const pending = Math.max(total - paid, 0);
+          const paidPct = total > 0 ? Math.min((paid / total) * 100, 100) : 0;
+          const pendingPct = total > 0 ? 100 - paidPct : 0;
+          return (
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Total (whole school)</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">{formatINR(total)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Paid</p>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatINR(paid)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Pending</p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatINR(pending)}</p>
+                </div>
+              </div>
+              <div className="w-full h-4 rounded-full overflow-hidden flex bg-gray-100 dark:bg-slate-700">
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-700"
+                  style={{ width: `${paidPct}%` }}
+                  title={`Paid ${paidPct.toFixed(1)}%`}
+                />
+                <div
+                  className="h-full bg-red-500 transition-all duration-700"
+                  style={{ width: `${pendingPct}%` }}
+                  title={`Pending ${pendingPct.toFixed(1)}%`}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <span>Paid {paidPct.toFixed(1)}%</span>
+                <span>Pending {pendingPct.toFixed(1)}%</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ─── STAT CARDS (6 cards, 2 rows on mobile, 3 cols on lg) ─── */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
@@ -424,8 +467,6 @@ const FeeDashboardPage: React.FC = () => {
             icon={<IndianRupee size={20} />}
             iconBg="bg-emerald-50 dark:bg-emerald-900/30"
             iconColor="text-emerald-600 dark:text-emerald-400"
-            trend={12}
-            trendLabel="vs last month"
             delay="stagger-1"
           />
           <StatCard
@@ -434,8 +475,6 @@ const FeeDashboardPage: React.FC = () => {
             icon={<Clock size={20} />}
             iconBg="bg-amber-50 dark:bg-amber-900/30"
             iconColor="text-amber-600 dark:text-amber-400"
-            trend={-5}
-            trendLabel="vs last month"
             delay="stagger-2"
           />
           <StatCard
@@ -474,16 +513,16 @@ const FeeDashboardPage: React.FC = () => {
 
         {/* ─── CHARTS SECTION ──────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Monthly Collection vs Target - Bar Chart */}
+          {/* Monthly Collection vs Receivable - Bar Chart */}
           <div className="lg:col-span-2 animate-fade-in-up stagger-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
-                Monthly Collection vs Target
+                Monthly Collection vs Receivable
               </h3>
               <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
-                  Target
+                  Receivable
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
@@ -511,8 +550,8 @@ const FeeDashboardPage: React.FC = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
-                  dataKey="receivable"
-                  name="Target"
+                  dataKey="target"
+                  name="Receivable"
                   fill="#818cf8"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={32}

@@ -3459,6 +3459,7 @@ model SubscriptionPlan {
   maxAdmins      Int      @default(1)
   maxStorageInGB Int      @default(5)
   features       String[]
+  moduleSlugs    String[] @default([])
   isTrial        Boolean  @default(false)
   isPopular      Boolean  @default(false)
   isActive       Boolean  @default(true)

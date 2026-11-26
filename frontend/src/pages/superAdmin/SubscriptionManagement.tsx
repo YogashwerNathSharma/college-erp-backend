@@ -753,6 +753,7 @@ function PlanModal({ title, initialData, onClose, onSave }: {
     price: initialData?.price || 0,
     billingCycle: initialData?.billingCycle || "monthly",
     features: initialData?.features || [] as string[],
+    moduleSlugs: (initialData as any)?.moduleSlugs || [] as string[],
     limits: initialData?.limits || { maxStudents: 500, maxTeachers: 50, maxStorage: 5, maxApiCalls: 10000 },
     discount: initialData?.discount || 0,
     isPopular: initialData?.isPopular || false,
@@ -765,6 +766,34 @@ function PlanModal({ title, initialData, onClose, onSave }: {
       features: prev.features.includes(feature)
         ? prev.features.filter((f) => f !== feature)
         : [...prev.features, feature],
+    }));
+  };
+
+  // Modules this plan includes (slugs from the real ERP module list)
+  const [availableModules, setAvailableModules] = useState<{ slug: string; name: string }[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(getFullUrl("/api/super-admin/modules"), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const list = res.data?.data ?? res.data ?? [];
+        if (Array.isArray(list)) {
+          setAvailableModules(list.map((m: any) => ({ slug: m.slug, name: m.name || m.slug })));
+        }
+      } catch {
+        setAvailableModules([]);
+      }
+    })();
+  }, []);
+
+  const toggleModule = (slug: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      moduleSlugs: prev.moduleSlugs.includes(slug)
+        ? prev.moduleSlugs.filter((s: string) => s !== slug)
+        : [...prev.moduleSlugs, slug],
     }));
   };
 
@@ -900,6 +929,23 @@ function PlanModal({ title, initialData, onClose, onSave }: {
 
           {/* Features */}
           <div>
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Modules included ({formData.moduleSlugs.length} selected)</h4>
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              {availableModules.map((m) => (
+                <label key={m.slug} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.moduleSlugs.includes(m.slug)}
+                    onChange={() => toggleModule(m.slug)}
+                    className="rounded border-slate-300"
+                  />
+                  {m.name}
+                </label>
+              ))}
+              {availableModules.length === 0 && (
+                <p className="col-span-2 text-xs text-slate-500">No modules loaded from the server.</p>
+              )}
+            </div>
             <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Features ({formData.features.length} selected)</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
               {ALL_FEATURES.map((feature) => (
@@ -2126,6 +2172,48 @@ function RefundsTab() {
 function AnalyticsTab() {
   const [period, setPeriod] = useState("12months");
   const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+  const [analytics, setAnalytics] = useState<{
+    monthlyTrend: { month: string; revenue: number; label: string }[];
+    planBreakdown: { name: string; revenue: number; percentage: number }[];
+    totalRevenue: number;
+    activeSubscriptions: number;
+    averageRevenuePerSubscription: number;
+    mrr: number;
+  } | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setAnalyticsError(null);
+        const token = localStorage.getItem("token");
+        const res = await axios.get(
+          getFullUrl("/api/super-admin/subscription-management/analytics"),
+          { params: { period }, headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!cancelled && res.data?.success) setAnalytics(res.data.data);
+      } catch (err: any) {
+        if (!cancelled) {
+          setAnalytics(null);
+          setAnalyticsError(err?.response?.data?.message || "Analytics data could not be loaded");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
+
+  const hasData = !!analytics && analytics.monthlyTrend.length > 0;
+  const trend = analytics?.monthlyTrend ?? [];
+  const planPie = (analytics?.planBreakdown ?? []).map((p, i) => ({
+    name: p.name,
+    value: p.percentage,
+    color: COLORS[i % COLORS.length],
+  }));
+  const planBar = (analytics?.planBreakdown ?? []).map((p) => ({ plan: p.name, revenue: p.revenue }));
+  const latestRevenue = trend.length ? trend[trend.length - 1].revenue : 0;
 
   return (
     <div className="space-y-6">
@@ -2155,34 +2243,34 @@ function AnalyticsTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl text-white">
           <p className="text-sm opacity-80">MRR</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(724000)}</p>
+          <p className="text-2xl font-bold mt-1">{hasData ? formatCurrency(latestRevenue) : "—"}</p>
           <div className="flex items-center gap-1 mt-2">
             <ArrowUpRight className="w-4 h-4" />
-            <span className="text-sm">+12.5% this month</span>
+            <span className="text-sm">Latest month</span>
           </div>
         </div>
         <div className="p-5 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl text-white">
           <p className="text-sm opacity-80">ARR</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(8688000)}</p>
+          <p className="text-2xl font-bold mt-1">{hasData ? formatCurrency(latestRevenue * 12) : "—"}</p>
           <div className="flex items-center gap-1 mt-2">
             <ArrowUpRight className="w-4 h-4" />
-            <span className="text-sm">+45% YoY</span>
+            <span className="text-sm">Revenue × 12</span>
           </div>
         </div>
         <div className="p-5 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl text-white">
           <p className="text-sm opacity-80">Churn Rate</p>
-          <p className="text-2xl font-bold mt-1">2.1%</p>
+          <p className="text-2xl font-bold mt-1">—</p>
           <div className="flex items-center gap-1 mt-2">
             <ArrowDownRight className="w-4 h-4" />
-            <span className="text-sm">-0.3% improvement</span>
+            <span className="text-sm">Not tracked yet</span>
           </div>
         </div>
         <div className="p-5 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl text-white">
           <p className="text-sm opacity-80">ARPU</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(1691)}</p>
+          <p className="text-2xl font-bold mt-1">{analytics ? formatCurrency(analytics.averageRevenuePerSubscription) : "—"}</p>
           <div className="flex items-center gap-1 mt-2">
             <ArrowUpRight className="w-4 h-4" />
-            <span className="text-sm">+5.4% this month</span>
+            <span className="text-sm">Per subscription</span>
           </div>
         </div>
       </div>
@@ -2192,7 +2280,7 @@ function AnalyticsTab() {
         {/* MRR Chart */}
         <ChartCard title="Monthly Recurring Revenue" subtitle="Revenue trend over 12 months">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={MOCK_MRR_DATA}>
+            <AreaChart data={trend}>
               <defs>
                 <linearGradient id="mrrGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
@@ -2208,7 +2296,7 @@ function AnalyticsTab() {
                 itemStyle={{ color: "#a5b4fc" }}
                 formatter={(value: any) => [formatCurrency(value), "MRR"]}
               />
-              <Area type="monotone" dataKey="mrr" stroke="#6366f1" strokeWidth={2} fill="url(#mrrGradient)" />
+              <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#mrrGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -2216,7 +2304,7 @@ function AnalyticsTab() {
         {/* ARR Trend */}
         <ChartCard title="Annual Recurring Revenue" subtitle="ARR projection based on current MRR">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={MOCK_MRR_DATA}>
+            <LineChart data={trend.map((r) => ({ ...r, arr: r.revenue * 12 }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-700" />
               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
@@ -2234,11 +2322,11 @@ function AnalyticsTab() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Plan Distribution Pie */}
-        <ChartCard title="Plan Distribution" subtitle="Subscriber breakdown by plan type">
+        <ChartCard title="Plan Distribution" subtitle="Revenue share by plan">
           <ResponsiveContainer width="100%" height="100%">
             <RechartsPie>
               <Pie
-                data={MOCK_PLAN_DISTRIBUTION}
+                data={planPie}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -2248,7 +2336,7 @@ function AnalyticsTab() {
                 label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                 labelLine={false}
               >
-                {MOCK_PLAN_DISTRIBUTION.map((entry, index) => (
+                {planPie.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -2264,7 +2352,7 @@ function AnalyticsTab() {
         {/* Revenue by Plan Bar Chart */}
         <ChartCard title="Revenue by Plan" subtitle="Total revenue collected per plan type">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MOCK_REVENUE_BY_PLAN}>
+            <BarChart data={planBar}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-700" />
               <XAxis dataKey="plan" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
@@ -2274,7 +2362,7 @@ function AnalyticsTab() {
                 formatter={(value: any) => [formatCurrency(value), "Revenue"]}
               />
               <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                {MOCK_REVENUE_BY_PLAN.map((_, index) => (
+                {planBar.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Bar>
@@ -2285,25 +2373,9 @@ function AnalyticsTab() {
 
       {/* Subscriber Growth */}
       <ChartCard title="Subscriber Growth" subtitle="Total active subscribers over time" height="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={MOCK_MRR_DATA}>
-            <defs>
-              <linearGradient id="subGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-700" />
-            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#94a3b8" }} />
-            <Tooltip
-              contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
-              labelStyle={{ color: "#f1f5f9" }}
-              formatter={(value: any) => [value, "Subscribers"]}
-            />
-            <Area type="monotone" dataKey="subscribers" stroke="#8b5cf6" strokeWidth={2} fill="url(#subGradient)" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="h-full flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+          Subscriber history is not available yet
+        </div>
       </ChartCard>
     </div>
   );

@@ -59,6 +59,8 @@ interface DashboardStats {
   averagePassPercent: number;
   totalStudents: number;
   resultsPublished: number;
+  topScorer?: { name: string; className: string; percentage: number } | null;
+  classToppers?: { className: string; name: string; percentage: number }[];
 }
 
 interface UpcomingExam {
@@ -185,6 +187,7 @@ const ExamDashboard: React.FC = () => {
   const [examResults, setExamResults] = useState<ExamResultData[]>([]);
   const [gradeDistribution, setGradeDistribution] = useState<GradeData[]>([]);
   const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformance[]>([]);
+  const [classToppers, setClassToppers] = useState<{ className: string; name: string; percentage: number }[]>([]);
 
   useEffect(() => {
     fetchDropdowns();
@@ -197,7 +200,7 @@ const ExamDashboard: React.FC = () => {
   const fetchDropdowns = async () => {
     try {
       const [classRes, yearRes] = await Promise.all([
-        axios.get(`${API}/classes`, { headers: getHeaders() }),
+        axios.get(`${API}/class`, { headers: getHeaders() }),
         axios.get(`${API}/academic`, { headers: getHeaders() }),
       ]);
       const classList = classRes.data.data || classRes.data || [];
@@ -218,12 +221,12 @@ const ExamDashboard: React.FC = () => {
       if (selectedClass) params.classId = selectedClass;
       if (selectedYear) params.academicYearId = selectedYear;
 
-      const res = await axios.get(`${API}/exams/dashboard`, {
+      const res = await axios.get(`${API}/exam/dashboard`, {
         params,
         headers: getHeaders(),
       });
 
-      const data = res.data;
+      const data = res.data.data || res.data;
       setStats({
         totalExams: data.totalExams || data.stats?.totalExams || 0,
         upcomingExams: data.upcomingExams?.length || data.stats?.upcomingExams || 0,
@@ -231,7 +234,9 @@ const ExamDashboard: React.FC = () => {
         averagePassPercent: data.averagePassPercent || data.stats?.averagePassPercent || 0,
         totalStudents: data.totalStudents || data.stats?.totalStudents || 0,
         resultsPublished: data.resultsPublished || data.stats?.resultsPublished || 0,
+        topScorer: data.stats?.topScorer ?? null,
       });
+      setClassToppers(data.stats?.classToppers ?? []);
 
       setUpcomingExams(data.upcomingExams || []);
       setRecentResults(data.recentResults || []);
@@ -244,46 +249,6 @@ const ExamDashboard: React.FC = () => {
       setLoading(false);
     }
   };
-
-  // Sample data for charts if API returns empty
-  const sampleExamResults: ExamResultData[] = examResults.length > 0 ? examResults : [
-    { name: "Unit Test 1", pass: 85, fail: 15 },
-    { name: "Mid Term", pass: 78, fail: 22 },
-    { name: "Unit Test 2", pass: 88, fail: 12 },
-    { name: "Final Exam", pass: 82, fail: 18 },
-    { name: "Practical", pass: 92, fail: 8 },
-  ];
-
-  const sampleGrades: GradeData[] = gradeDistribution.length > 0 ? gradeDistribution : [
-    { name: "A+", value: 15, color: "#6366f1" },
-    { name: "A", value: 25, color: "#8b5cf6" },
-    { name: "B+", value: 22, color: "#06b6d4" },
-    { name: "B", value: 18, color: "#10b981" },
-    { name: "C", value: 12, color: "#f59e0b" },
-    { name: "F", value: 8, color: "#ef4444" },
-  ];
-
-  const sampleSubjects: SubjectPerformance[] = subjectPerformance.length > 0 ? subjectPerformance : [
-    { subject: "Math", avgScore: 78, fullMark: 100 },
-    { subject: "Science", avgScore: 82, fullMark: 100 },
-    { subject: "English", avgScore: 85, fullMark: 100 },
-    { subject: "Hindi", avgScore: 80, fullMark: 100 },
-    { subject: "SST", avgScore: 75, fullMark: 100 },
-    { subject: "Computer", avgScore: 88, fullMark: 100 },
-  ];
-
-  const sampleUpcoming: UpcomingExam[] = upcomingExams.length > 0 ? upcomingExams : [
-    { id: "1", name: "Unit Test 3", className: "All Classes", startDate: "2026-07-10", subjects: 5, status: "SCHEDULED" },
-    { id: "2", name: "Mid Term Exam", className: "Class 6-10", startDate: "2026-08-15", subjects: 8, status: "SCHEDULED" },
-    { id: "3", name: "Practical Exam", className: "Class 9-10", startDate: "2026-08-20", subjects: 3, status: "UPCOMING" },
-  ];
-
-  const sampleResults: RecentResult[] = recentResults.length > 0 ? recentResults : [
-    { id: "1", examName: "Unit Test 2", className: "Class 10-A", passPercent: 88, topScorer: "Ananya Sharma", avgMarks: 76 },
-    { id: "2", examName: "Unit Test 2", className: "Class 9-B", passPercent: 82, topScorer: "Rahul Verma", avgMarks: 72 },
-    { id: "3", examName: "Mid Term", className: "Class 8-A", passPercent: 91, topScorer: "Priya Patel", avgMarks: 81 },
-    { id: "4", examName: "Unit Test 2", className: "Class 7-C", passPercent: 78, topScorer: "Amit Kumar", avgMarks: 68 },
-  ];
 
   if (loading) {
     return (
@@ -421,8 +386,8 @@ const ExamDashboard: React.FC = () => {
         />
         <StatCard
           title="Top Scorer"
-          value="98.5%"
-          subtitle="Best performance"
+          value={stats.topScorer ? `${stats.topScorer.percentage}%` : "—"}
+          subtitle={stats.topScorer ? `${stats.topScorer.name}${stats.topScorer.className ? " · " + stats.topScorer.className : ""}` : "No complete results yet"}
           icon={<Award size={22} className="text-purple-600" />}
           iconBg="bg-purple-50 dark:bg-purple-950"
           delay={200}
@@ -446,13 +411,13 @@ const ExamDashboard: React.FC = () => {
             </button>
           </div>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={sampleExamResults} barGap={4}>
+            <BarChart data={examResults} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} domain={[0, 100]} />
               <Tooltip
                 contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
-                formatter={(value: any, name: any) => [`${value}%`, name === "pass" ? "Pass" : "Fail"]}
+                formatter={(value: any, name: any) => [`${value}%`, String(name).toLowerCase() === "pass" ? "Pass" : "Fail"]}
               />
               <Legend
                 wrapperStyle={{ paddingTop: 12 }}
@@ -473,7 +438,7 @@ const ExamDashboard: React.FC = () => {
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
-                data={sampleGrades}
+                data={gradeDistribution}
                 cx="50%"
                 cy="50%"
                 innerRadius={55}
@@ -481,7 +446,7 @@ const ExamDashboard: React.FC = () => {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {sampleGrades.map((entry, index) => (
+                {gradeDistribution.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -492,7 +457,7 @@ const ExamDashboard: React.FC = () => {
             </PieChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-3 gap-2 mt-2">
-            {sampleGrades.map((g, i) => (
+            {gradeDistribution.map((g, i) => (
               <div key={i} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: g.color }} />
                 <span className="text-[10px] text-gray-600 dark:text-gray-300">{g.name}: {g.value}%</span>
@@ -500,6 +465,42 @@ const ExamDashboard: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+
+
+      {/* ─── CLASS TOPPERS ─── */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Class Toppers</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Best student percentage in each class</p>
+        </div>
+        {classToppers.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">No complete results yet</p>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={classToppers.map((c) => ({ name: c.className, percentage: c.percentage, student: c.name }))} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb" }}
+                  formatter={(value: any, _name: any, item: any) => [`${value}% — ${item?.payload?.student || ""}`, "Topper"]}
+                />
+                <Bar dataKey="percentage" name="Topper %" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mt-4">
+              {classToppers.map((c, i) => (
+                <div key={i} className="rounded-lg border border-gray-100 dark:border-slate-700 p-2">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{c.className}</p>
+                  <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">{c.percentage}%</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
     </div>

@@ -1,4 +1,5 @@
 import prisma from "../../utils/prisma";
+import { SubscriptionStatus } from "@prisma/client";
 
 /**
  * 🔒 Tenant Module Access Service
@@ -184,10 +185,27 @@ export const assignModulesToTenant = async (tenantId: string, moduleSlugs: strin
   // Invalidate cache so the tenant immediately sees the new module set
   invalidatePermittedModulesCache(tenantId);
 
+  // Warning only (never blocks): modules assigned that are NOT in the tenant's active plan.
+  const activeSub = await prisma.tenantSubscription.findFirst({
+    where: { tenantId, isActive: true, status: SubscriptionStatus.ACTIVE },
+    include: { plan: { select: { moduleSlugs: true, name: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const planSlugs: string[] = (activeSub?.plan as any)?.moduleSlugs || [];
+  const outsidePlan =
+    planSlugs.length > 0
+      ? desiredModules.filter((m) => !planSlugs.includes(m.slug) && !CORE_MODULE_SLUGS.includes(m.slug)).map((m) => m.slug)
+      : [];
+
   return {
     tenantId,
     assigned: desiredModules.map((m) => ({ slug: m.slug, name: m.name })),
     count: desiredModules.length,
+    planName: (activeSub?.plan as any)?.name || null,
+    warning: outsidePlan.length > 0
+      ? `These modules are not in the tenant's plan (${(activeSub?.plan as any)?.name}): ${outsidePlan.join(", ")}`
+      : null,
+    outsidePlan,
   };
 };
 

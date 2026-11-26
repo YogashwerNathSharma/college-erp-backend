@@ -31,6 +31,7 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
     fineAgg,
     payments,
     classwiseData,
+    dueInstallments,
     recentPayments,
   ] = await Promise.all([
     // 1. Total enrolled students
@@ -72,6 +73,11 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
       by: ["feeStructureId"],
       where: feeBaseWhere,
       _sum: { balanceAmount: true },
+    }),
+    // 10. Real monthly target: netAmount of installments grouped by their due date
+    prisma.studentFee.findMany({
+      where: feeBaseWhere,
+      select: { netAmount: true, dueDate: true },
     }),
     // 9. Recent 10 payments
     prisma.payment.findMany({
@@ -121,9 +127,20 @@ export const getFeeDashboard = async (tenantId: string, academicYearId?: string)
   });
 
   const monthlyReceivable = totalReceivable / 12;
+
+  // Real monthly target = sum of installment netAmount whose dueDate falls in that academic month
+  const monthlyDue: { [key: string]: number } = {};
+  monthNames.forEach((m) => { monthlyDue[m] = 0; });
+  dueInstallments.forEach((f: any) => {
+    const d = new Date(f.dueDate);
+    const monthName = monthNames[(d.getMonth() - 3 + 12) % 12];
+    monthlyDue[monthName] += f.netAmount || 0;
+  });
+
   const monthlyCollection = monthNames.map((month) => ({
     month,
     receivable: Math.round(monthlyReceivable),
+    target: Math.round(monthlyDue[month]),
     collected: Math.round(monthlyMap[month].collected),
   }));
 

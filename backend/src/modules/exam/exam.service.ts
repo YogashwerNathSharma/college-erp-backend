@@ -1929,9 +1929,169 @@ export const getExamDashboardService = async (
     return { ...exam, className: cls?.name || "N/A" };
   });
 
+  // ── Real results data (from ResultSummary / ExamResult / GradeSetting) ──
+  const resultWhere: any = { tenantId, isDeleted: false, exam: { ...examWhere } };
+  // Summaries for exams in scope
+  const summaries = await prisma.resultSummary.findMany({
+    where: { tenantId, isDeleted: false, exam: { is: examWhere } },
+    select: { examId: true, percentage: true, grade: true, status: true, passedSubjects: true, failedSubjects: true, totalSubjects: true },
+  });
+
+  const examIdsInScope = [...new Set(summaries.map((s) => s.examId))];
+  const examsInScope = examIdsInScope.length
+    ? await prisma.exam.findMany({
+        where: { id: { in: examIdsInScope }, tenantId, isDeleted: false },
+        select: { id: true, name: true, classId: true, isPublished: true },
+      })
+    : [];
+  const classNamesInScope = await prisma.class.findMany({
+    where: { id: { in: [...new Set(examsInScope.map((e) => e.classId))] } },
+    select: { id: true, name: true },
+  });
+  const classNameById = new Map(classNamesInScope.map((c) => [c.id, c.name]));
+
+  // Pass vs fail per exam
+  const examResults = examsInScope.map((exam) => {
+    const rows = summaries.filter((s) => s.examId === exam.id);
+    const pass = rows.filter((r) => r.status === "PASS").length;
+    const fail = rows.length - pass;
+    const total = rows.length || 1;
+    const className = classNameById.get(exam.classId);
+    return {
+      name: className ? `${exam.name} · ${className}` : exam.name,
+      pass: Math.round((pass / total) * 100),
+      fail: Math.round((fail / total) * 100),
+    };
+  });
+
+  // Grade distribution
+  const gradeCount = new Map<string, number>();
+  summaries.forEach((s) => {
+    const g = s.grade || "N/A";
+    gradeCount.set(g, (gradeCount.get(g) || 0) + 1);
+  });
+  const gradeDistribution = [...gradeCount.entries()].map(([name, value]) => ({
+    name,
+    value,
+    color: "#6366f1",
+  }));
+
+  // Average percentage per exam (used as subject-like bars)
+  const subjectPerformance = examsInScope.map((exam) => {
+    const rows = summaries.filter((s) => s.examId === exam.id);
+    const avg = rows.length ? rows.reduce((sum, r) => sum + r.percentage, 0) / rows.length : 0;
+    return { subject: exam.name, avgScore: Math.round(avg), fullMark: 100 };
+  });
+
+  // Average pass % across all in-scope summaries
+  const averagePassPercent = summaries.length
+    ? Math.round((summaries.filter((s) => s.status === "PASS").length / summaries.length) * 100)
+    : 0;
+
+  // Recent results (latest published exams in scope)
+  const recentResults = examsInScope
+    .filter((e) => e.isPublished)
+    .slice(0, 5)
+    .map((exam) => {
+      const rows = summaries.filter((s) => s.examId === exam.id);
+      const pass = rows.filter((r) => r.status === "PASS").length;
+      const avgMarks = rows.length ? rows.reduce((sum, r) => sum + r.percentage, 0) / rows.length : 0;
+      return {
+        id: exam.id,
+        examName: exam.name,
+        className: classNameById.get(exam.classId) || "N/A",
+        passPercent: rows.length ? Math.round((pass / rows.length) * 100) : 0,
+        topScorer: "",
+        avgMarks: Math.round(avgMarks),
+      };
+    });
+
+  const completedExams = examsInScope.filter((e) => e.isPublished).length;
+
+  // Top scorer across the WHOLE school for this academic year (all classes).
+  // Only students whose every subject has a mark count, so a partly-filled
+  // result cannot show a misleading 100%.
+  const schoolSummaries = await prisma.resultSummary.findMany({
+    where: {
+      tenantId,
+      isDeleted: false,
+      exam: { is: { tenantId, isDeleted: false, ...(academicYearId && { academicYearId }) } },
+    },
+    select: {
+      studentId: true,
+      percentage: true,
+      totalMarks: true,
+      totalSubjects: true,
+      passedSubjects: true,
+      failedSubjects: true,
+      exam: { select: { classId: true } },
+    },
+  });
+  const completeSummaries = schoolSummaries.filter(
+    (r) => r.totalSubjects > 0 && r.passedSubjects + r.failedSubjects === r.totalSubjects
+  );
+  let topScorer: { name: string; className: string; percentage: number } | null = null;
+  if (completeSummaries.length > 0) {
+    const best = completeSummaries.reduce((a, b) =>
+      b.percentage > a.percentage || (b.percentage === a.percentage && b.totalMarks > a.totalMarks) ? b : a
+    );
+    const student = await prisma.student.findUnique({
+      where: { id: best.studentId },
+      select: { firstName: true, lastName: true },
+    });
+    const cls = await prisma.class.findUnique({
+      where: { id: best.exam.classId },
+      select: { name: true },
+    });
+    topScorer = {
+      name: student ? `${student.firstName} ${student.lastName}`.trim() : "—",
+      className: cls?.name || "",
+      percentage: Math.round(best.percentage * 100) / 100,
+    };
+  }
+
+  // Topper of EACH class (best complete result per class, for the same year)
+  const classToppers: { className: string; name: string; percentage: number }[] = [];
+  {
+    const byClass = new Map<string, typeof completeSummaries>();
+    completeSummaries.forEach((r) => {
+      const cid = r.exam.classId;
+      if (!byClass.has(cid)) byClass.set(cid, []);
+      byClass.get(cid)!.push(r);
+    });
+    for (const [cid, rows] of byClass.entries()) {
+      const top = rows.reduce((a, b) =>
+        b.percentage > a.percentage || (b.percentage === a.percentage && b.totalMarks > a.totalMarks) ? b : a
+      );
+      const st = await prisma.student.findUnique({
+        where: { id: top.studentId },
+        select: { firstName: true, lastName: true },
+      });
+      const cl = await prisma.class.findUnique({ where: { id: cid }, select: { name: true } });
+      classToppers.push({
+        className: cl?.name || "—",
+        name: st ? `${st.firstName} ${st.lastName}`.trim() : "—",
+        percentage: Math.round(top.percentage * 100) / 100,
+      });
+    }
+  }
+
   return {
-    stats: { totalExams, totalStudents, totalSubjects, publishedResults },
+    stats: {
+      totalExams,
+      totalStudents,
+      totalSubjects,
+      publishedResults,
+      completedExams,
+      averagePassPercent,
+      topScorer,
+      classToppers,
+    },
     upcomingExams: enrichedUpcoming,
+    examResults,
+    gradeDistribution,
+    subjectPerformance,
+    recentResults,
   };
 };
 

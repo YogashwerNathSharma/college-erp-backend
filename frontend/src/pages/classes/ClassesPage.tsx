@@ -88,8 +88,10 @@ const ClassesPage: React.FC = () => {
   const [modalMode, setModalMode] = useState<ModalMode>("add");
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [formName, setFormName] = useState("");
+  const [formLevel, setFormLevel] = useState("");
   const [formAcademicYearId, setFormAcademicYearId] = useState("");
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [levelOptions, setLevelOptions] = useState<{ code: string; name: string }[]>([]);
 
   // Action loading
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -186,6 +188,24 @@ const ClassesPage: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => {
+    if (!formAcademicYearId) {
+      setLevelOptions([]);
+      return;
+    }
+    axios
+      .get(`${API_BASE}/api/masters/level-master/dropdown?academicYearId=${formAcademicYearId}`, getAuthHeaders())
+      .then((res) => {
+        const list = res.data?.data || [];
+        setLevelOptions(
+          Array.isArray(list)
+            ? list.map((l: any) => ({ code: l.code || l.value || l.id, name: l.name || l.label || l.code }))
+            : []
+        );
+      })
+      .catch(() => setLevelOptions([]));
+  }, [formAcademicYearId]);
+
+  useEffect(() => {
     if (showRecycleBin) {
       fetchDeletedClasses();
     }
@@ -208,6 +228,7 @@ const ClassesPage: React.FC = () => {
     setModalMode("add");
     setEditingClass(null);
     setFormName("");
+    setFormLevel("");
     const active = getActiveYear();
     setFormAcademicYearId(active?.id || academicYears[0]?.id || "");
     setModalOpen(true);
@@ -217,6 +238,7 @@ const ClassesPage: React.FC = () => {
     setModalMode("edit");
     setEditingClass(cls);
     setFormName(cls.name);
+    setFormLevel((cls as any).level || "");
     setFormAcademicYearId(cls.academicYearId);
     setModalOpen(true);
   };
@@ -225,6 +247,7 @@ const ClassesPage: React.FC = () => {
     setModalOpen(false);
     setEditingClass(null);
     setFormName("");
+    setFormLevel("");
     setFormAcademicYearId("");
   };
 
@@ -245,7 +268,7 @@ const ClassesPage: React.FC = () => {
       if (modalMode === "add") {
         const res = await axios.post(
           `${API_BASE}/api/class`,
-          { name: formName.trim(), academicYearId: formAcademicYearId },
+          { name: formName.trim(), level: formLevel || null, academicYearId: formAcademicYearId },
           getAuthHeaders()
         );
         if (res.data.success) {
@@ -258,7 +281,7 @@ const ClassesPage: React.FC = () => {
       } else {
         const res = await axios.put(
           `${API_BASE}/api/class/${editingClass!.id}`,
-          { name: formName.trim() },
+          { name: formName.trim(), level: formLevel || null },
           getAuthHeaders()
         );
         if (res.data.success) {
@@ -772,6 +795,23 @@ const ClassesPage: React.FC = () => {
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all placeholder:text-gray-400"
                   autoFocus
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Level
+                </label>
+                <select
+                  value={formLevel}
+                  onChange={(e) => setFormLevel(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-indigo-400 transition-all"
+                >
+                  <option value="">-- Select Level --</option>
+                  {levelOptions.map((lv) => (
+                    <option key={lv.code} value={lv.code}>
+                      {lv.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

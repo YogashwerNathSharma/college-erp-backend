@@ -46,6 +46,26 @@ import {
   getAttendanceRegisterService,
 } from "./seating.service";
 import { getBulkAdmitCardsService } from "./bulk-admit-cards.service";
+import {
+  getReportCardExtras,
+  saveLifeSkills,
+  saveHealth,
+} from "./report-card-extras.controller";
+import {
+  listSkillMasters,
+  createSkillMaster,
+  updateSkillMaster,
+} from "./report-card-skill-master.controller";
+import {
+  getTemplateByExam,
+  upsertTemplate,
+  setTemplateSkills,
+} from "./report-card-template.controller";
+import {
+  getBulkLifeSkills,
+  saveBulkLifeSkills,
+} from "./report-card-bulk.controller";
+import { saveStudentMarks } from "./marks-student.controller";
 import { authMiddleware } from "../../middleware/auth.middleware";
 import { resolveTenant } from "../../middleware/tenant.middleware";
 import { resolveAcademicYear } from "../../middleware/academicYear.middleware";
@@ -74,6 +94,28 @@ router.post("/subjects", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), add
 router.post("/marks", authMiddleware, requirePermission("marks.entry"), enterMarks);
 
 router.get("/consolidated-report/:studentId", authMiddleware, requirePermission("marks.view"), getConsolidatedReport);
+
+// Report card extras: Life Skills + Health (DB-backed, per student per session)
+router.get("/report-card-extras/:studentId", authMiddleware, requirePermission("marks.view"), getReportCardExtras);
+router.post("/report-card-extras/:studentId/life-skills", authMiddleware, requirePermission("marks.entry"), saveLifeSkills);
+router.post("/report-card-extras/:studentId/health", authMiddleware, requirePermission("marks.entry"), saveHealth);
+
+// Skill master (admin-managed list of report card life skills)
+router.get("/report-card-skills", authMiddleware, requirePermission("marks.view"), listSkillMasters);
+router.post("/report-card-skills", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createSkillMaster);
+router.put("/report-card-skills/:id", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), updateSkillMaster);
+
+// Report card template per exam (layout + ordered skills)
+router.get("/:examId/report-card-template", authMiddleware, requirePermission("marks.view"), getTemplateByExam);
+router.put("/:examId/report-card-template", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), upsertTemplate);
+router.put("/report-card-template/:templateId/skills", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), setTemplateSkills);
+
+// Bulk life-skill entry for a whole exam (class-wide, Marks Entry style)
+router.get("/report-card-bulk/:examId", authMiddleware, requirePermission("marks.view"), getBulkLifeSkills);
+router.post("/report-card-bulk/:examId", authMiddleware, requirePermission("marks.entry"), saveBulkLifeSkills);
+
+// Save marks for ONE student only (other students are not touched)
+router.post("/:id/marks/student", authMiddleware, requirePermission("marks.entry"), saveStudentMarks);
 
 // Exam Schedule
 router.post("/schedule", authMiddleware, allowRoles("ADMIN", "SUPER_ADMIN"), createExamSchedule);

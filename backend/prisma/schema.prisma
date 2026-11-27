@@ -9,6 +9,95 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ═══════════════════════════════════════════════════════════════
+// REPORT CARD EXTRAS: Life Skills + Health (per student, per session)
+// Skill names are stored as data (not hard-coded). Each row = one skill
+// for one student in one academic year, with Term-1st and Term-2nd values.
+// ═══════════════════════════════════════════════════════════════
+model ReportCardLifeSkill {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId       String   @db.ObjectId
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  studentId      String   @db.ObjectId
+  academicYearId String   @db.ObjectId
+  skillName      String
+  term1Value     String?
+  term2Value     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([tenantId, studentId, academicYearId, skillName])
+}
+
+model ReportCardHealth {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId              String   @db.ObjectId
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  studentId             String   @db.ObjectId
+  academicYearId        String   @db.ObjectId
+  height                String?
+  weight                String?
+  bloodGroup            String?
+  dentalHygiene         String?
+  passedPromotedToClass String?
+  schoolReopen          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([tenantId, studentId, academicYearId])
+}
+
+// Admin-managed list of life skills (DB master, no hard-coding)
+model ReportCardSkillMaster {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  academicYearId String @db.ObjectId
+  classId   String   @db.ObjectId
+  // Level default (PRIMARY | JUNIOR | MIDDLE | SENIOR). Set when the skill applies to a whole level.
+  level     String?
+  // Optional section override. When set, the skill applies only to that section.
+  sectionId String?  @db.ObjectId
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, academicYearId, classId, sectionId, name])
+}
+
+// Report card template: one per exam (exam already belongs to one class).
+// layout: "GRADE" | "NO_GRADE" | "NEW"
+model ReportCardTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  examId    String   @db.ObjectId
+  classId   String   @db.ObjectId
+  name      String
+  layout    String   @default("GRADE")
+  isActive  Boolean  @default(true)
+  skills    ReportCardTemplateSkill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, examId])
+}
+
+// Which skills appear on a template, and in what order.
+model ReportCardTemplateSkill {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId   String   @db.ObjectId
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  templateId String   @db.ObjectId
+  template   ReportCardTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  skillId    String   @db.ObjectId
+  sortOrder  Int      @default(0)
+
+  @@unique([templateId, skillId])
+}
+
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
@@ -432,6 +521,12 @@ model Tenant {
   exams                  Exam[]
   examSubjects           ExamSubject[]
   marksEntries           MarksEntry[]
+  reportCardLifeSkills   ReportCardLifeSkill[]
+  reportCardHealths      ReportCardHealth[]
+  reportCardSkillMasters ReportCardSkillMaster[]
+  reportCardTemplates    ReportCardTemplate[]
+  reportCardTemplateSkills ReportCardTemplateSkill[]
+  levels                 Level[]
   examSchedules          ExamSchedule[]
   seatingArrangements    SeatingArrangement[]
   admitCards             AdmitCard[]
@@ -868,9 +963,24 @@ model Stream {
 
   subjectGroups    SubjectGroup[]
   electiveSubjects ElectiveSubject[]
+}
 
-  @@unique([tenantId, code])
-  @@map("streams")
+// Academic level master (Primary, Junior, Middle, Senior). Admin manages it
+// under Masters → Academic Masters → Level. Classes pick one from this list.
+model Level {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tenantId  String   @db.ObjectId
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  academicYearId String @db.ObjectId
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  name      String
+  code      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, academicYearId, code])
 }
 
 model Course {
@@ -1131,6 +1241,7 @@ model AcademicYear {
 
   classes             Class[]
   sections            Section[]
+  levels              Level[]
   subjects            Subject[]
   students            Student[]
   teachers            Teacher[]
@@ -1160,6 +1271,7 @@ model AcademicYear {
 model Class {
   id             String       @id @default(auto()) @map("_id") @db.ObjectId
   name           String
+  level          String?
   tenantId       String       @db.ObjectId
   academicYearId String       @db.ObjectId
   tenant         Tenant       @relation(fields: [tenantId], references: [id])

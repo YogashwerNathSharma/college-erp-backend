@@ -230,6 +230,9 @@ const GradeSettings = lazyWithRetry(() => import("./pages/exams/GradeSettings"))
 const CreateEditExam = lazyWithRetry(() => import("./pages/exams/CreateEditExam"));
 const ExamSubjects = lazyWithRetry(() => import("./pages/exams/ExamSubjects"));
 const MarksEntry = lazyWithRetry(() => import("./pages/exams/MarksEntry"));
+const LifeSkillsEntry = lazyWithRetry(() => import("./pages/exams/LifeSkillsEntry"));
+const ReportCardSetup = lazyWithRetry(() => import("./pages/exams/ReportCardSetup"));
+const LifeSkillsBulkEntry = lazyWithRetry(() => import("./pages/exams/LifeSkillsBulkEntry"));
 const Results = lazyWithRetry(() => import("./pages/exams/Results"));
 
 // ═══ NOT lazy-loaded — these are print pages that must load immediately on mobile ═══
@@ -947,6 +950,9 @@ export default function App() {
               <Route path="/exams/edit/:id" element={<CreateEditExam />} />
               <Route path="/exams/:id/subjects" element={<ExamSubjects />} />
               <Route path="/exams/:id/marks" element={<MarksEntry />} />
+              <Route path="/exams/:id/skills" element={<LifeSkillsEntry />} />
+              <Route path="/exams/:id/report-card-setup" element={<ReportCardSetup />} />
+              <Route path="/exams/:id/life-skills-bulk" element={<LifeSkillsBulkEntry />} />
               <Route path="/exams/:id/results" element={<Results />} />
               <Route path="/exams/:examId/report-card/:studentId" element={<ReportCard />} />
               <Route path="/exams" element={<ExamList />} />

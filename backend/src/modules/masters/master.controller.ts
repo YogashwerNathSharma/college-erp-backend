@@ -119,6 +119,7 @@ export async function listEntries(req: Request, res: Response) {
     // Build where clause
     const where: any = {};
     if (tenantId) where.tenantId = tenantId;
+    if (req.query.academicYearId) where.academicYearId = req.query.academicYearId as string;
 
     // Safely attempt the full query; fall back without isActive/orderBy if model lacks them
     let hasIsActive = true;
@@ -176,6 +177,20 @@ export async function listEntries(req: Request, res: Response) {
           return res.status(500).json({ success: false, message: `Cannot query ${config.label}: ${finalErr.message}` });
         }
       }
+    }
+
+    // Attach academic year name for scoped masters (so the table can show it).
+    if (Array.isArray(entries) && entries.some((e: any) => e && e.academicYearId)) {
+      const yearIds = [...new Set(entries.map((e: any) => e.academicYearId).filter(Boolean))];
+      const years = await prisma.academicYear.findMany({
+        where: { id: { in: yearIds as string[] }, tenantId },
+        select: { id: true, name: true },
+      });
+      const nameById = new Map(years.map((y: any) => [y.id, y.name]));
+      entries = entries.map((e: any) => ({
+        ...e,
+        academicYearName: nameById.get(e.academicYearId) || "",
+      }));
     }
 
     res.json({
@@ -695,6 +710,7 @@ export async function getDropdown(req: Request, res: Response) {
   try {
     const modelKey = req.params.modelName as string;
     const tenantId = (req as any).tenantId as string;
+    const academicYearId = (req.query.academicYearId as string) || undefined;
 
     const config = getMasterConfig(modelKey);
     if (!config) {
@@ -709,14 +725,14 @@ export async function getDropdown(req: Request, res: Response) {
     let entries;
     try {
       entries = await delegate.findMany({
-        where: { tenantId, isActive: true },
+        where: { tenantId, isActive: true, ...(academicYearId && { academicYearId }) },
         select: { id: true, name: true, code: true, startDate: true, endDate: true },
         orderBy: { name: 'asc' },
       });
     } catch {
       try {
         entries = await delegate.findMany({
-          where: { tenantId, isActive: true },
+          where: { tenantId, isActive: true, ...(academicYearId && { academicYearId }) },
           select: { id: true, name: true, code: true },
           orderBy: { name: 'asc' },
         });
@@ -726,21 +742,21 @@ export async function getDropdown(req: Request, res: Response) {
         // Previously a single failed select discarded the dates too, which
         // broke auto-filling exam Start/End Date from the selected term.
         entries = await delegate.findMany({
-          where: { tenantId, isActive: true },
+          where: { tenantId, isActive: true, ...(academicYearId && { academicYearId }) },
           select: { id: true, name: true, startDate: true, endDate: true },
           orderBy: { name: 'asc' },
         });
       } catch {
       try {
         entries = await delegate.findMany({
-          where: { tenantId, isActive: true },
+          where: { tenantId, isActive: true, ...(academicYearId && { academicYearId }) },
           select: { id: true, name: true },
           orderBy: { name: 'asc' },
         });
       } catch {
         try {
           entries = await delegate.findMany({
-            where: { tenantId },
+            where: { tenantId, ...(academicYearId && { academicYearId }) },
             select: { id: true, name: true },
           });
         } catch {

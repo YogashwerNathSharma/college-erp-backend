@@ -553,6 +553,16 @@ const fetchResults = async () => {
                         >
                           📊 Consolidated
                         </button>
+
+                        {/* Life Skills & Health entry (DB-backed) */}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/exams/${id}/skills?studentId=${result.studentId}`)}
+                          className="inline-flex items-center whitespace-nowrap px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-100 transition-colors"
+                          title="Life Skills & Health"
+                        >
+                          🏅 Skills
+                        </button>
                        </div>
                       </td>
                     </tr>

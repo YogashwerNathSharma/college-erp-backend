@@ -211,6 +211,25 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
     description: 'Classes, sections, streams, subjects, and curriculum settings',
     models: [
       {
+        key: 'level-master',
+        label: 'Level Master',
+        model: 'Level',
+        icon: 'Layers',
+        description: 'Academic levels (Primary, Junior, Middle, Senior). Classes pick one.',
+        requiredFields: ['name', 'code', 'academicYearId'],
+        searchFields: ['name', 'code'],
+        fields: [
+          { name: 'academicYearId', label: 'Academic Year', type: 'lookup', required: true, lookupUrl: '/api/academic', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'name', label: 'Level Name', type: 'text', required: true },
+          { name: 'code', label: 'Code', type: 'select', required: true, options: [
+            { label: 'PRIMARY', value: 'PRIMARY' }, { label: 'JUNIOR', value: 'JUNIOR' },
+            { label: 'MIDDLE', value: 'MIDDLE' }, { label: 'SENIOR', value: 'SENIOR' },
+          ]},
+          { name: 'sortOrder', label: 'Sort Order', type: 'number' },
+          { name: 'isActive', label: 'Active', type: 'boolean' },
+        ],
+      },
+      {
         key: 'stream-master',
         label: 'Stream Master',
         model: 'Stream',
@@ -833,6 +852,22 @@ export const MASTER_CATEGORIES: MasterCategory[] = [
           { name: 'passingMarks', label: 'Passing Marks', type: 'number', required: true },
           { name: 'practicalMarks', label: 'Practical Marks', type: 'number' },
           { name: 'internalMarks', label: 'Internal Marks', type: 'number' },
+        ],
+      },
+      {
+        key: 'student-skill-master',
+        label: 'Student Skill',
+        model: 'ReportCardSkillMaster',
+        icon: 'Award',
+        description: 'Report card life skills (class and academic year wise). Shown to teachers in Life Skills entry.',
+        requiredFields: ['name', 'classId', 'academicYearId'],
+        searchFields: ['name'],
+        fields: [
+          { name: 'name', label: 'Skill Name', type: 'text', required: true },
+          { name: 'classId', label: 'Class', type: 'lookup', required: true, lookupUrl: '/api/class', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'academicYearId', label: 'Academic Year', type: 'lookup', required: true, lookupUrl: '/api/academic', lookupLabelField: 'name', lookupValueField: 'id' },
+          { name: 'sortOrder', label: 'Sort Order', type: 'number' },
+          { name: 'isActive', label: 'Active', type: 'boolean' },
         ],
       },
       {

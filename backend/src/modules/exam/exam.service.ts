@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════
 
 import prisma from "../../utils/prisma";
+import { getReportCardPrintExtrasService } from "./report-card-print-data.service";
 import {
   CreateExamInput,
   UpdateExamInput,
@@ -993,6 +994,8 @@ export const getConsolidatedReportService = async (
     where: {
       classId,
       academicYearId,
+  
+  
       tenantId,
       isDeleted: false,
     },
@@ -1002,6 +1005,15 @@ export const getConsolidatedReportService = async (
   if (!exams || exams.length === 0) {
     throw new Error("No exams found for this class and academic year");
   }
+
+  // Life skills template is per exam: pick the first exam of this class+session
+  // that has a template; else fall back to the first exam.
+  const templateRows = await prisma.reportCardTemplate.findMany({
+    where: { tenantId, examId: { in: exams.map((e: any) => e.id) } },
+    select: { examId: true },
+  });
+  const printExamId: string =
+    (templateRows[0] && templateRows[0].examId) || exams[0].id;
 
   // Order exams in the natural academic sequence: FA1, FA2, FA3, FA4, SA1, SA2
   // (then anything else by name). We derive a sort key from the exam name so
@@ -1259,6 +1271,12 @@ export const getConsolidatedReportService = async (
       grade: overallGrade,
       rank,
     },
+    ...(await getReportCardPrintExtrasService(
+      studentId,
+      printExamId,
+      academicYearId,
+      tenantId
+    )),
   };
 };
 

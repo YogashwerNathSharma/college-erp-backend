@@ -309,6 +309,19 @@ export const auditLogin = async (
   failReason?: string
 ) => {
   try {
+    // LoginHistory.tenantId and userId are Mongo ObjectIds. A failed login has
+    // no real tenant/user, so callers pass "unknown". Writing that would throw
+    // P2023, so log to console and skip the DB write instead.
+    const isObjectId = (v: string) => /^[a-fA-F0-9]{24}$/.test(v || "");
+    if (!isObjectId(tenantId) || !isObjectId(userId)) {
+      console.warn("Login audit skipped (no valid tenant/user id):", {
+        userName,
+        action: isSuccessful ? "LOGIN" : "FAILED_LOGIN",
+        failReason,
+      });
+      return;
+    }
+
     const { browser, device, os } = parseUserAgent(req.headers["user-agent"]);
     await prisma.loginHistory.create({
       data: {

@@ -174,8 +174,8 @@ const MarksEntry: React.FC = () => {
         setGradeScale(
           (Array.isArray(gList) ? gList : []).map((g: any) => ({
             grade: g.grade,
-            minPercentage: g.minPercent ?? g.minPercentage ?? 0,
-            maxPercentage: g.maxPercent ?? g.maxPercentage ?? 100,
+            minPercentage: Number(g.minPercent ?? g.minPercentage ?? 0),
+            maxPercentage: Number(g.maxPercent ?? g.maxPercentage ?? 100),
           }))
         );
       } catch {
@@ -297,9 +297,11 @@ const MarksEntry: React.FC = () => {
   const gradeForMarks = (marks: number, maxMarks: number): string => {
     if (!gradeScale.length) return "";
     if (!maxMarks || maxMarks <= 0) return "";
-    const pct = Math.round(((marks / maxMarks) * 100) * 100) / 100; // guard float drift
+    // Grade bands are stored as RAW MARKS ranges (e.g. A+ = 55..60 for a 60-mark subject),
+    // not percentages. Match the entered marks directly against the band.
+    const m = Math.round(marks * 100) / 100;
     const band = gradeScale.find(
-      (g) => pct >= g.minPercentage && pct <= g.maxPercentage
+      (g) => m >= g.minPercentage && m <= g.maxPercentage
     );
     return band?.grade ?? "";
   };
@@ -332,14 +334,41 @@ const MarksEntry: React.FC = () => {
       }
     });
     const percentage = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-    // Overall grade uses the student's overall PERCENTAGE across visible
-    // subjects, matched against the same percentage-based bands.
+    // Overall grade for THIS term only (visible subjects of this exam).
+    // Bands are per-subject raw marks, so compare the student's AVERAGE marks per
+    // subject (total / number of graded subjects) against the same band scale.
+    const avg = gradedCount > 0 ? total / gradedCount : 0;
+    const avgMax = gradedCount > 0 ? maxTotal / visibleSubjects.length : 0;
     return {
       total,
       maxTotal,
       percentage,
-      grade: gradeForMarks(total, maxTotal),
+      grade: gradedCount > 0 ? gradeForMarks(avg, avgMax) : "",
     };
+  };
+
+  // Save ONE student's marks only. Other students are not touched.
+  const handleSaveStudent = async (studentIdx: number) => {
+    const student = students[studentIdx];
+    if (!student) return;
+    const marks = student.marks
+      .filter((m) => m.subjectId)
+      .map((m) => ({
+        subjectId: m.subjectId,
+        marksObtained: m.marks ?? 0,
+        isAbsent: m.status !== "PRESENT",
+        status: m.status,
+      }));
+    try {
+      await axios.post(
+        getFullUrl(`/api/exam/${id}/marks/student`),
+        { studentId: student._id, marks },
+        { headers }
+      );
+      toast.success(`${student.name} ke marks save ho gaye`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Save failed");
+    }
   };
 
   const handleSave = async () => {
@@ -791,6 +820,14 @@ const MarksEntry: React.FC = () => {
             </select>
           </div>
 
+          {/* Class (read-only: this exam's class) */}
+          <div>
+            <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">Class</label>
+            <div className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm min-w-[140px] text-gray-700">
+              {exam?.className || exam?.class?.name || resolvedClassName || "—"}
+            </div>
+          </div>
+
           {/* View mode toggle */}
           <div>
             <label className="block text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-1">Subject View</label>
@@ -903,7 +940,7 @@ const MarksEntry: React.FC = () => {
               subjects (student name stays frozen on the left) and up/down across
               students (header stays frozen on top) — all inside this box, so the
               whole page no longer scrolls while entering marks. */}
-          <div className="overflow-auto max-h-[70vh]">
+          <div className="hidden md:block overflow-auto max-h-[70vh]">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 sticky top-0 z-30">
                 <tr>
@@ -997,6 +1034,13 @@ const MarksEntry: React.FC = () => {
                         <div className="text-xs text-gray-500">
                           {student.admissionNo}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveStudent(sIdx)}
+                          className="mt-1 text-xs px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700"
+                        >
+                          Save
+                        </button>
                       </td>
                       {visibleSubjects.map((sub) => {
                         // Real index into this student's marks array (by subjectId)
@@ -1106,6 +1150,100 @@ const MarksEntry: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile: one card per student, subjects stacked. Uses the same data and updateMarks as the table. */}
+          <div className="md:hidden space-y-3 p-3">
+            {visibleStudents.map((student, rowIdx) => {
+              const sIdx = students.findIndex((s) => s._id === student._id);
+              return (
+                <div key={student._id} className="bg-white border border-gray-200 rounded-xl p-3">
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="text-xs text-gray-400 mt-1">{rowIdx + 1}</span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-900 break-words">{student.name}</div>
+                      <div className="text-xs text-gray-500">{student.admissionNo}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {visibleSubjects.map((sub) => {
+                      const subIdx = student.marks.findIndex((m) => m.subjectId === sub.subjectId);
+                      const mark = student.marks[subIdx];
+                      const curStatus: MarkStatus = mark?.status || (mark?.isAbsent ? "ABSENT" : "PRESENT");
+                      return (
+                        <div key={sub._id || sub.subjectId} className="border-t pt-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700">{sub.subjectName}</span>
+                            <span className="text-xs text-gray-400">Max {sub.maxMarks}</span>
+                          </div>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={mark?.marks ?? ""}
+                            disabled={curStatus !== "PRESENT"}
+                            min={0}
+                            max={sub.maxMarks}
+                            placeholder="--"
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : null;
+                              if (val !== null && val > sub.maxMarks) return;
+                              updateMarks(sIdx, subIdx, val);
+                            }}
+                            className="w-full min-h-[44px] text-center rounded-lg border border-gray-300 text-base py-2 focus:border-primary-500 focus:ring-primary-500 disabled:bg-gray-100"
+                          />
+                          <div className="mt-1 text-right text-sm font-semibold text-gray-700">
+                            Grade: {subjectGrade(
+                              mark?.marks ?? null,
+                              mark?.isAbsent ?? false,
+                              sub.maxMarks,
+                              mark?.status
+                            ) || "—"}
+                          </div>
+                          <select
+                            value={curStatus}
+                            onChange={(e) => {
+                              const next = e.target.value as MarkStatus;
+                              // Non-present status clears the marks, present keeps them
+                              updateMarks(sIdx, subIdx, next === "PRESENT" ? (mark?.marks ?? null) : null);
+                              setStudents((prev) =>
+                                prev.map((st, i) => {
+                                  if (i !== sIdx) return st;
+                                  const nm = [...st.marks];
+                                  nm[subIdx] = { ...nm[subIdx], status: next, isAbsent: next !== "PRESENT" };
+                                  return { ...st, marks: nm };
+                                })
+                              );
+                            }}
+                            className="mt-2 w-full min-h-[44px] rounded-lg border border-gray-300 text-base py-2 bg-white"
+                          >
+                            <option value="PRESENT">Present</option>
+                            <option value="ABSENT">Absent</option>
+                            <option value="LEAVE">Leave</option>
+                            <option value="MEDICAL">Medical</option>
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveStudent(sIdx)}
+                    className="mt-3 w-full min-h-[44px] bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700"
+                  >
+                    Save {student.name}
+                  </button>
+                  {(() => {
+                    const sm = studentSummary(student);
+                    return (
+                      <div className="mt-2 flex justify-between text-sm font-semibold text-gray-700">
+                        <span>Total: {sm.total}/{sm.maxTotal}</span>
+                        <span>Grade: {sm.grade || "—"}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
           </div>
 
           {/* Footer */}

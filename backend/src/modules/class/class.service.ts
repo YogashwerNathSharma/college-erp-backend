@@ -7,6 +7,7 @@ export const createClassService = async (data: any, tenantId: string) => {
   return prisma.class.create({
     data: {
       name: data.name,
+      level: data.level || null,
       tenantId,
       academicYearId: data.academicYearId,
       isActive: true,
@@ -54,7 +55,7 @@ export const updateClassService = async (id: string, data: any, tenantId: string
 
   return prisma.class.update({
     where: { id },
-    data: { name: data.name },
+    data: { name: data.name, ...(data.level !== undefined && { level: data.level || null }) },
   });
 };
 

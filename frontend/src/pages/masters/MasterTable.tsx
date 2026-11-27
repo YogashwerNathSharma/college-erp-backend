@@ -64,7 +64,7 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [actionMenuId]);
 
-  const isTimetableSlot = fields.some(f => f.name === "dayOfWeek") || entries.some(entry => ["periodId", "classId", "sectionId", "subjectId", "teacherId", "roomId"].some(k => entry?.[k] !== undefined));
+  const isTimetableSlot = fields.some(f => f.name === "dayOfWeek") || entries.some(entry => ["periodId", "subjectId", "teacherId", "roomId"].some(k => entry?.[k] != null));
   const effectiveFields = isTimetableSlot ? TIMETABLE_FIELDS.map(f => fields.find(existing => existing.name === f.name) ? { ...f, ...fields.find(existing => existing.name === f.name) } : f) : fields;
 
   useEffect(() => {
@@ -129,9 +129,13 @@ export default function MasterTable({ entries, fields, loading, pagination, onPa
 
   const isHiddenField = (name: string) => {
     if (isTimetableSlot && TIMETABLE_FIELDS.some(f => f.name === name)) return false;
+    if (name === "academicYearId") return true; // shown as academicYearName instead
     return [/^(id|_id)$/i, /Id$/, /^(tenantId|createdAt|updatedAt|deletedAt|isDeleted|isActive)$/].some(p => p.test(name));
   };
-  const visibleFields = effectiveFields.filter(f => !isHiddenField(f.name)).slice(0, isTimetableSlot ? 7 : 6);
+  const yearColumn: FieldConfig[] = entries.some((e: any) => e && e.academicYearName !== undefined)
+    ? [{ name: "academicYearName", label: "Academic Year", type: "text" } as FieldConfig]
+    : [];
+  const visibleFields = [...effectiveFields.filter(f => !isHiddenField(f.name)).slice(0, isTimetableSlot ? 7 : 6), ...yearColumn];
 
   const formatValue = (value: any, field: FieldConfig, entry?: any): string => {
     if (field.name === "dayOfWeek") {

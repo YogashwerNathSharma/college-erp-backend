@@ -147,7 +147,17 @@ export const getGradesService = async (
     where: { tenantId, isDeleted: false, OR: [{ examId: null }, { examId: { isSet: false } }] },
     orderBy: { minPercent: "desc" },
   });
-  return defaults.map((g) => ({ ...g, isInherited: true }));
+  if (defaults.length > 0) {
+    return defaults.map((g) => ({ ...g, isInherited: true }));
+  }
+
+  // Same last-resort fallback the report card uses: any configured scale for
+  // this tenant (bands are percentage-based, so any scale works).
+  const anyScale = await prisma.gradeSetting.findMany({
+    where: { tenantId, isDeleted: false },
+    orderBy: { minPercent: "desc" },
+  });
+  return anyScale.map((g) => ({ ...g, isInherited: true }));
 };
 
 // ─────────────────────────────────────────────────────

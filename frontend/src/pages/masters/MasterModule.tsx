@@ -93,6 +93,8 @@ export default function MasterModule() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  const [yearFilter, setYearFilter] = useState("");
+  const [yearOptions, setYearOptions] = useState<{ id: string; name: string }[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -101,10 +103,19 @@ export default function MasterModule() {
   const fetchCategories = async () => { try { const res = await axios.get(getFullUrl("/api/masters/categories")); if (res.data.success) setCategories(res.data.data); } catch (err) { console.error("Failed to load master categories:", err); } };
   useEffect(() => { fetchCategories(); }, []);
 
+  useEffect(() => {
+    axios.get(getFullUrl(`/api/academic`))
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setYearOptions(Array.isArray(list) ? list.map((y: any) => ({ id: y.id, name: y.name })) : []);
+      })
+      .catch(() => setYearOptions([]));
+  }, []);
+
   const fetchEntries = useCallback(async (modelKey: string, page = 1) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: page.toString(), limit: "25", search, showInactive: showInactive.toString() });
+      const params = new URLSearchParams({ page: page.toString(), limit: "25", search, showInactive: showInactive.toString(), ...(yearFilter && { academicYearId: yearFilter }) });
       const res = await axios.get(getFullUrl(`/api/masters/${modelKey}?${params}`));
       if (res.data.success) {
         setEntries(res.data.data);
@@ -112,9 +123,9 @@ export default function MasterModule() {
         if (res.data.config?.fields) setFields(getEffectiveFields(modelKey, res.data.config.fields));
       }
     } catch (err) { console.error("Failed to load entries:", err); } finally { setLoading(false); }
-  }, [search, showInactive]);
+  }, [search, showInactive, yearFilter]);
 
-  useEffect(() => { if (selectedModel) fetchEntries(selectedModel); }, [selectedModel, search, showInactive, fetchEntries]);
+  useEffect(() => { if (selectedModel) fetchEntries(selectedModel); }, [selectedModel, search, showInactive, yearFilter, fetchEntries]);
   const handleCategoryClick = (category: MasterCategory) => { setSelectedCategory(category); setCurrentView("child_grid"); };
   const handleModelClick = (model: MasterModel) => { setSelectedModel(model.key); setSelectedModelLabel(model.label); setSearch(""); setPagination({ page: 1, limit: 25, total: 0, totalPages: 0, hasNext: false, hasPrev: false }); setCurrentView("table_view"); };
   const handleBackToCategories = () => { setSelectedCategory(null); setSelectedModel(null); setCurrentView("categories"); };
@@ -131,7 +142,31 @@ export default function MasterModule() {
     <div className="h-[calc(100vh-64px)] w-full bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-y-auto p-4 md:p-6 [scrollbar-gutter:stable]">
       {currentView === "categories" && <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn"><div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex items-center gap-3"><button onClick={() => navigate("/dashboard")} className="md:hidden p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0 tap-target" aria-label="Back"><ArrowLeft size={18} /></button><div><h1 className="text-lg md:text-2xl font-bold flex items-center gap-2"><Grid className="text-indigo-500" size={24} />Master Control Setup</h1><p className="text-xs text-slate-400 mt-1">Select any architecture base matrix block to handle child structural models</p></div></div><div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">{categories.map((category, index) => { const color = RECENT_COLORS[index % RECENT_COLORS.length]; return <button key={category.id} onClick={() => handleCategoryClick(category)} className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${color.lightBg} hover:scale-105 transition-all duration-200 group relative outline-none active:scale-95 cursor-pointer`}><div className={`w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md sm:rounded-lg ${color.iconBg} flex items-center justify-center`}>{getCategoryIcon(category.icon, 16)}</div><span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">{category.label}</span></button>; })}</div></div>}
       {currentView === "child_grid" && selectedCategory && <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn"><div className="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4"><button onClick={handleBackToCategories} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center" title="Back to Main Menu"><ArrowLeft size={20} /></button><div><div className="flex items-center gap-2"><span>{getCategoryIcon(selectedCategory.icon, 20, "text-indigo-400")}</span><h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{selectedCategory.label}</h1></div><p className="text-xs text-slate-400 mt-0.5">Select a master target collection mapping below</p></div></div><div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1.5 sm:gap-3">{selectedCategory.models.map((model, idx) => <button key={model.key} onClick={() => handleModelClick(model)} className={`flex flex-col items-center gap-1 py-2 sm:py-3 px-1 sm:px-2 rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].lightBg} hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer`}><div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg ${RECENT_COLORS[idx % RECENT_COLORS.length].iconBg} flex items-center justify-center`}>{getCategoryIcon(model.icon || selectedCategory.icon, 16)}</div><span className="text-[9px] sm:text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-300 truncate w-full text-center leading-tight">{model.label}</span></button>)}</div></div>}
-      {currentView === "table_view" && selectedModel && <div className="max-w-7xl mx-auto animate-fadeIn"><div className="flex items-center justify-between gap-3 mb-4"><div className="flex items-center gap-3"><button onClick={handleBackToChildGrid} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400"><ArrowLeft size={20} /></button><div><h1 className="text-lg md:text-xl font-bold">{selectedModelLabel}</h1><p className="text-xs text-slate-400">Master data management</p></div></div><div className="flex items-center gap-2"><button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"><Plus size={18} />Add</button><button onClick={handleExport} className="hidden sm:flex items-center gap-2 px-4 py-2 border rounded-xl"><Download size={18} />Export</button></div></div><MasterTable entries={entries} fields={fields} loading={loading} search={search} onSearch={setSearch} showInactive={showInactive} onShowInactive={setShowInactive} pagination={pagination} onPageChange={(page) => fetchEntries(selectedModel, page)} onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} onClone={handleClone} /></div>}
+      {currentView === "table_view" && selectedModel && <div className="max-w-7xl mx-auto animate-fadeIn">
+        {selectedModel === "level-master" && (
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-xs text-slate-500">Academic Year</label>
+            <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white dark:bg-slate-900">
+              <option value="">All years</option>
+              {yearOptions.map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToChildGrid} className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 dark:text-slate-400"><ArrowLeft size={20} /></button>
+            <div>
+              <h1 className="text-lg md:text-xl font-bold">{selectedModelLabel}</h1>
+              <p className="text-xs text-slate-400">Master data management</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleCreate} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"><Plus size={18} />Add</button>
+            <button onClick={handleExport} className="hidden sm:flex items-center gap-2 px-4 py-2 border rounded-xl"><Download size={18} />Export</button>
+          </div>
+        </div>
+        <MasterTable entries={entries} fields={fields} loading={loading} search={search} onSearch={setSearch} showInactive={showInactive} onShowInactive={setShowInactive} pagination={pagination} onPageChange={(page) => fetchEntries(selectedModel, page)} onEdit={handleEdit} onDelete={handleDelete} onToggle={handleToggle} onClone={handleClone} />
+      </div>}
       {showForm && selectedModel && <MasterForm modelKey={selectedModel} fields={fields} initialData={editingEntry} onSubmit={handleFormSubmit} onClose={() => { setShowForm(false); setEditingEntry(null); }} loading={formLoading} title={`${editingEntry ? "Edit" : "Add"} ${selectedModelLabel}`} />}
     </div>
   );

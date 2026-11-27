@@ -16,6 +16,8 @@ import {
   Users,
   IdCard,
   FileText,
+  Award,
+  Settings,
   UserCog,
 } from "lucide-react";
 
@@ -276,6 +278,14 @@ const ExamList: React.FC = () => {
                           <button onClick={() => navigate(`/exams/${exam.id}/results`)}
                             className="p-1.5 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors" title="Results">
                             <BarChart3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => navigate(`/exams/${exam.id}/life-skills-bulk`)}
+                            className="p-1.5 text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors" title="Life Skills">
+                            <Award className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => navigate(`/exams/${exam.id}/report-card-setup`)}
+                            className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors" title="Report Card Setup">
+                            <Settings className="w-4 h-4" />
                           </button>
                           <button onClick={() => navigate(`/exam-admit-card`)}
                             className="p-1.5 text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-colors" title="Admit Cards">

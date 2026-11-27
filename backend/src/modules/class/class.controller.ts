@@ -15,7 +15,7 @@ import {
 export const createClass = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
-    const { name } = req.body;
+    const { name, level } = req.body;
     // ✅ Use middleware-injected academicYearId as primary, fallback to body
     const academicYearId = req.body.academicYearId || (req as any).academicYearId;
 
@@ -26,7 +26,7 @@ export const createClass = async (req: Request, res: Response) => {
       });
     }
 
-    const newClass = await createClassService({ name, academicYearId }, tenantId);
+    const newClass = await createClassService({ name, level, academicYearId }, tenantId);
 
     return res.status(201).json({
       success: true,
@@ -83,13 +83,13 @@ export const updateClass = async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const id = req.params.id as string;
-    const { name } = req.body;
+    const { name, level } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: "Name required" });
     }
 
-    const updated = await updateClassService(id, { name }, tenantId);
+    const updated = await updateClassService(id, { name, level }, tenantId);
 
     return res.status(200).json({ success: true, data: updated });
   } catch (error: any) {

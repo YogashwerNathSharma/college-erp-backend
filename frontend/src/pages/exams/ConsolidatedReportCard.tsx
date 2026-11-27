@@ -652,15 +652,11 @@ const ConsolidatedReportCard: React.FC = () => {
                 <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center", width: "25%" }}>TERM - 1st</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center", width: "25%" }}>TERM - 2nd</td>
               </tr>
-              {LIFE_SKILL_ITEMS.map((item) => (
-                <tr key={item}>
-                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>{item}</td>
-                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
-                    <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
-                  </td>
-                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
-                    <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
-                  </td>
+              {((reportData as any)?.lifeSkills || []).map((row: any) => (
+                <tr key={row.skillName}>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>{row.skillName}</td>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center" }}>{row.term1Value}</td>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center" }}>{row.term2Value}</td>
                 </tr>
               ))}
             </tbody>
@@ -672,31 +668,31 @@ const ConsolidatedReportCard: React.FC = () => {
               <tr>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Height</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.height}
                 </td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Weight</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.weight}
                 </td>
               </tr>
               <tr>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Blood Group</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.bloodGroup}
                 </td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Dental Hygiene</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.dentalHygiene}
                 </td>
               </tr>
               <tr>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600 }}>Passed and Promoted to Class</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.passedPromotedToClass}
                 </td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600 }}>School Reopen</td>
                 <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
-                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  {(reportData as any)?.health?.schoolReopen}
                 </td>
               </tr>
             </tbody>

@@ -42,7 +42,7 @@ export const getReportCardPrintExtrasService = async (
   const saved = await prisma.reportCardLifeSkill.findMany({
     where: { tenantId, studentId, academicYearId },
   });
-  const valueBySkill = new Map(saved.map((v) => [v.skillName, v]));
+  const valueBySkill = new Map<string, (typeof saved)[number]>(saved.map((v) => [v.skillName, v] as [string, (typeof saved)[number]]));
 
   const lifeSkills = skillNames.map((name) => ({
     skillName: name,

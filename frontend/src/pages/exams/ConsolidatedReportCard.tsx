@@ -1,4 +1,23 @@
 
+const LIFE_SKILL_ITEMS = [
+  "Class Teacher Observation",
+  "Participate in out door activities",
+  "Participate in class activities",
+  "Attendance during PTM",
+  "Neatness",
+  "Helpful",
+  "Self Contest",
+  "Discipline",
+  "Dance",
+  "Music",
+  "Creativity",
+  "Activity/Project",
+];
+
+const HEALTH_ITEMS = ["Height", "Weight", "Blood Group", "Dental Hygiene"];
+const PROMOTION_ITEMS = ["Passed and Promoted to Class", "School Reopen"];
+
+
 import { getFullUrl } from "../../utils/url";
 import React, { useEffect, useState, useRef } from "react";
 import html2canvas from "html2canvas";
@@ -294,7 +313,7 @@ const ConsolidatedReportCard: React.FC = () => {
       </div>
 
       {/* Report Card Container */}
-      <div style={{ padding: "72px 0 30px" }}>
+      <div className="report-print-wrap" style={{ padding: "72px 0 30px" }}>
        <ScaleToFit contentWidth={850}>
         <div
           ref={printRef}
@@ -358,14 +377,14 @@ const ConsolidatedReportCard: React.FC = () => {
                 {tenant.name}
               </h1>
               {tenant.address && (
-                <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "#222", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <p style={{ fontSize: "13px", margin: "0", color: "#222", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   {tenant.address}
                 </p>
               )}
-              <p style={{ fontSize: "17px", margin: "6px 0 0 0", color: "#167d3f", fontWeight: "bold" }}>
+              <p style={{ fontSize: "17px", margin: "2px 0 0 0", color: "#167d3f", fontWeight: "bold" }}>
                 Progress Report (Annual)
               </p>
-              <p style={{ fontSize: "16px", margin: "2px 0 0 0", color: "#444", fontWeight: 600 }}>
+              <p style={{ fontSize: "16px", margin: "0", color: "#444", fontWeight: 600 }}>
                 Session : {academicYear}
               </p>
             </div>
@@ -417,7 +436,7 @@ const ConsolidatedReportCard: React.FC = () => {
 
           {/* ====== MARKS TABLE ====== */}
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1.5px solid #111", fontFamily: "'Times New Roman', Times, serif" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: "1.5px solid #111", fontFamily: "'Times New Roman', Times, serif" }}>
               <thead>
                 {/* Row 1: Subject | each exam name | Grand Total */}
                 <tr>
@@ -625,8 +644,65 @@ const ConsolidatedReportCard: React.FC = () => {
             </tbody>
           </table>
 
-          {/* ====== DATE + SIGNATURES ====== */}
-          <div style={{ marginTop: "40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0 10px" }}>
+          {/* ====== LIFE SKILLS (fill in on screen; not saved yet) ====== */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: "1.5px solid #111", borderTop: "none", marginTop: "10px" }}>
+            <tbody>
+              <tr style={{ backgroundColor: "#d9d9d9", fontWeight: "bold" }}>
+                <td style={{ border: "1px solid #333", padding: "3px 6px" }}>Class Teacher Evaluation</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center", width: "25%" }}>TERM - 1st</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", textAlign: "center", width: "25%" }}>TERM - 2nd</td>
+              </tr>
+              {LIFE_SKILL_ITEMS.map((item) => (
+                <tr key={item}>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>{item}</td>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
+                    <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  </td>
+                  <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
+                    <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* ====== HEALTH STATUS (fill in on screen; not saved yet) ====== */}
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", border: "1.5px solid #111", borderTop: "none", marginTop: "10px" }}>
+            <tbody>
+              <tr>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Height</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Weight</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+              </tr>
+              <tr>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Blood Group</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600, width: "15%" }}>Dental Hygiene</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", width: "35%" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+              </tr>
+              <tr>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600 }}>Passed and Promoted to Class</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px", fontWeight: 600 }}>School Reopen</td>
+                <td style={{ border: "1px solid #333", padding: "3px 6px" }}>
+                  <span contentEditable suppressContentEditableWarning style={{ display: "block", minHeight: "14px", outline: "none" }} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="print-signatures" style={{ marginTop: "40px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", padding: "0 10px" }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ borderTop: "1.5px solid #222", paddingTop: "6px", width: "140px" }}>
                 <p style={{ fontSize: "12px", fontWeight: "bold", margin: 0 }}>Class Teacher</p>
@@ -669,8 +745,18 @@ const ConsolidatedReportCard: React.FC = () => {
           body { margin: 0 !important; padding: 0 !important; }
           aside, nav, .sidebar, [class*="sidebar"], [class*="TopNavbar"] { display: none !important; }
           main, [class*="ml-64"], [class*="main-content"] { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+        @page { size: A4 portrait; margin: 8mm; }
           tr { page-break-inside: avoid; }
           table { font-size: 10px; }
+          #print-area { padding: 8px 14px !important; }
+          #print-area table td, #print-area table th { padding: 2px 4px !important; }
+          .report-print-wrap { padding: 0 !important; }
+          #print-area table { font-size: 9px !important; line-height: 1.2 !important; }
+          #print-area h1.school-name-title { font-size: 30px !important; }
+          #print-area img[alt="School Logo"] { width: 60px !important; height: 60px !important; }
+          #print-area p { margin-top: 2px !important; margin-bottom: 2px !important; }
+          #print-area .print-signatures { margin-top: 14px !important; }
+          #print-area span[contenteditable] { min-height: 0 !important; display: block; }
           /* Watermark stays centered inside the report card (same as on screen),
              always visible whether or not "Background graphics" is enabled. */
           .report-watermark {
